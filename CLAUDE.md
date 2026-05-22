@@ -226,7 +226,8 @@ For each new AWS topic the human brings (after watching their video), follow thi
 5. **Apply & observe** — Have them `plan`, read it aloud/explain it, `apply`, then verify in the AWS console that what they see matches their mental model.
 6. **Quiz** — 2–3 questions, mixing Terraform mechanics and SAA-C03 exam framing. Include at least one "what would happen if…" scenario.
 7. **Teardown** — `destroy`, confirm clean, note any leftover billable resources.
-8. **Connect** — One sentence on how this topic links to the next, and one on the production-grade version.
+8. **Capture notes** — write/update the topic's note file *and* the cross-topic review files exactly as specified in **§13 (Notes & exam-prep protocol)**. This is the **only** point in the cadence where notes get written — never pause the earlier steps to take notes.
+9. **Connect** — One sentence on how this topic links to the next, and one on the production-grade version.
 
 ---
 
@@ -261,6 +262,77 @@ Encourage `fmt` + `validate` + `plan` as a reflex before every `apply`.
 ## 12. Tone
 
 Peer-level, direct, encouraging but honest. Hindi/Hinglish is fine if the human switches to it — match their language. Concise over verbose. The human values substance over praise: a precise correction is a kindness, empty encouragement is not.
+
+---
+
+## 13. Notes & exam-prep protocol
+
+This repo doubles as the human's SAA-C03 study system. You maintain the notes; the human studies from them. Treat the notes as exam-grade study material — see the honesty rule at the end of this section, it is the most important part.
+
+### 13.1 When notes get written
+- **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to write notes. Notes are a *capture* step after the learning is done, built from what actually happened in the session (including the human's wrong answers and fuzzy spots — those are gold).
+- After writing the topic file, **always** update the cross-topic files in `notes/README.md` (§13.4) in the same step.
+
+### 13.2 Where notes live
+```
+notes/
+├── README.md            # master index + cumulative weak-spots tracker (§13.4)
+├── 01-iam.md            # one file per topic, named to match the topic folder
+├── 02-vpc.md
+├── ...
+└── anki/
+    ├── 01-iam.tsv       # Anki-importable flashcards, mirrors the topic file (§13.5)
+    └── ...
+```
+Topic note filenames mirror the topic folders from §5 (`01-iam/` → `notes/01-iam.md`).
+
+### 13.3 Per-topic note structure (LAYERED — this is the chosen format)
+Every topic file follows this template, in this order. The TL;DR at the top is what the human rereads in exam week; everything below it is the deep-dive for first-time learning.
+
+1. `# NN – <Topic>` + one line on what it is and why it exists.
+2. `## 🎯 Exam TL;DR` — the 4–6 must-know points for SAA-C03, as tight bullets. This block must be readable in ~30 seconds. (This is also the "cram sheet" — we deliberately don't keep a separate one.)
+3. `## Concept (plain English)` — 3–6 lines, no jargon dumping.
+4. `## AWS console ↔ Terraform map` — a table: *Console action* | *Terraform resource / data source* | *key arguments*. This is the bridge between the videos and the HCL.
+5. `## Architecture diagram` — a **Mermaid** diagram of the topic's typical setup (e.g. ` ```mermaid ` graph). Keep it to the shape that shows up in exam scenarios.
+6. `## Key facts, limits & pricing` — quotas, defaults, free-tier boundaries, and cost gotchas, as bullets/tables. **Every number here is exam-load-bearing — verify it (§13.6).**
+7. `## Comparisons` — comparison tables where the topic has them (e.g. S3 storage classes, EBS volume types, instance families, SG vs NACL). Skip if not applicable.
+8. `## The Terraform I wrote` — the path to the topic folder's `.tf` files + 2–3 lines on what was tricky or non-obvious while writing it.
+9. **Self-test block (all four formats — keep these recall-first, not re-reading):**
+   - `## 🃏 Flashcards` — Q→A pairs. Hide each answer in a collapsible `<details><summary>Q…</summary>A…</details>` block so the human can test before revealing. Mirror these into the Anki file (§13.5).
+   - `## 📝 Scenario MCQs` — 3–5 questions in real SAA-C03 shape ("Which option is **MOST cost-effective / MOST secure / BEST**…"), four options A–D each. Put answers **and** a one-line rationale at the bottom of the section inside a collapsed `<details>` so they don't spoil the questions.
+   - `## ⚠️ Traps & why the wrong answers are wrong` — the specific distractors SAA-C03 leans on for this topic, and the reasoning that eliminates each. This is where most exam marks are won or lost.
+   - `## 🛠️ Recreate-from-memory drill` — "rebuild <this topic's setup> in Terraform from scratch, no peeking." Keep the reference solution in a collapsed `<details>`. This ties the exam knowledge back to the hands-on Terraform.
+10. `## 🔴 My weak spots (this topic)` — personalised, written from what the human actually got wrong or hesitated on this session. Be specific and honest ("confused IAM role trust policy vs permissions policy"), not generic.
+11. `## 🔗 Docs` — the AWS docs + Terraform registry pages you verified against.
+
+### 13.4 Cross-topic review layer (in `notes/README.md`)
+Maintain two things here, updated at the end of every topic:
+- **Master index** — a table linking every topic note, with columns: *#* | *Topic* | *Status* | *Last updated*. This is the human's table of contents.
+- **Cumulative weak-spots tracker** — aggregate the `🔴 My weak spots` items from all topic files into one running, checkbox list grouped by topic, so problem areas are visible in one place instead of scattered across many files. The human ticks items off as they master them; you re-surface unticked ones during quizzes and mock exams.
+
+### 13.5 Mock-exam generator (on demand)
+When the human asks (e.g. "give me a 20-question mock exam"):
+- Pull **only from topics already covered** — never test material not yet studied.
+- Mix topics the way the real SAA-C03 does (it is scenario-based and jumps across services); do not group by topic.
+- Use exam-realistic scenario MCQs (BEST/MOST framing, plausible distractors).
+- Present all questions first, then answers + rationale (so it's a real test, not a guided read).
+- After scoring, **append any missed concepts to the weak-spots tracker** in `README.md`.
+
+### 13.6 Anki export (mobile/offline review)
+- For each topic, maintain `notes/anki/NN-topic.tsv` mirroring that topic's flashcards.
+- Format: one card per line, **tab-separated** — `Front<TAB>Back`. No raw tabs or newlines inside a field; use `<br>` for line breaks within a card. (TSV avoids the comma-collision problems CSV has.)
+- Remind the human how to import: Anki → *File → Import* → set the field separator to **Tab**, map field 1 → Front, field 2 → Back.
+- Keep the `.tsv` and the topic file's flashcards in sync whenever either changes.
+
+### 13.7 The honesty rule for notes (most important — read this twice)
+Notes are worse than useless if they're wrong, because the human will *memorise* them for an exam. Everything in §3 (Honesty & anti-hallucination) applies with extra force here:
+- **Never invent** a limit, quota, default value, price, region behaviour, resource name, or argument name in a note. If you are not certain, **verify against the official AWS docs / Terraform registry before writing it**, and link the source in `## 🔗 Docs`.
+- If a fact genuinely can't be verified in the moment, write it as `⚠️ verify: <claim>` rather than stating it as fact — so the human knows not to memorise it yet.
+- Prices and free-tier limits change; date them or mark them as "check current pricing." Don't present a stale number as gospel.
+- When unsure whether something is exam-relevant, say so in the note rather than padding it with filler. Lean and correct beats comprehensive and wrong.
+
+### 13.8 Style
+Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + self-test block? If not, the note is missing something; if yes, it's done.
 
 ---
 
