@@ -30,3 +30,6 @@ terraform.rc
 
 # Claude Code local tool state (agent state, plans, settings) — machine-specific
 .claude/
+
+# Saved plan files (binary) — workspace artifacts, regeneratable with `terraform plan -out=...`
+*.tfplan
