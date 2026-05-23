@@ -27,3 +27,6 @@ terraform.rc
 # NOTE: in real/team projects this SHOULD be committed for reproducible provider versions.
 # Ignoring while solo-learning is fine; flip this rule when collaborating.
 .terraform.lock.hcl
+
+# Claude Code local tool state (agent state, plans, settings) — machine-specific
+.claude/
