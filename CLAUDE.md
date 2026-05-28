@@ -336,5 +336,30 @@ Recall-first, not transcription. Diagrams and tables earn their place only when 
 
 ---
 
+## 14. Naming guidance — picking Terraform reference names fast
+
+The human regularly stalls on naming resource and data-source blocks (`resource "aws_X" "<NAME>" {}`, `data "aws_Y" "<NAME>" {}`). When they're hesitating, **pick a serviceable name in seconds, give the one-sentence rationale, and move on.** Don't let it become a 5-minute discussion — names are cheap to change before apply.
+
+### Quick rules
+- **`snake_case`, lowercase.** Hyphens technically parse, but underscores are conventional and play nicer in HCL expressions.
+- **Describe the role, not the type.** The resource type already encodes the kind. So `aws_instance.web` (not `aws_instance.web_instance`); `data.aws_ami.ubuntu` (not `data.aws_ami.ubuntu_ami`). Restating the type in the label is the most common naming smell.
+- **Singular** for one resource, **plural** only when it's a collection driven by `count`/`for_each`.
+- **`this`** is idiomatic when there's exactly one of its kind in the config (very common in modules).
+- **`main`** is conventional for "the central resource of this config."
+- **Be consistent within a config.** If one EBS volume is `data`, don't name the next one `extra_storage`. Pick a pattern (purpose, environment, position) and reuse it across the file.
+
+### When the human is stuck mid-write
+- Recommend a name in 5 seconds with one sentence on why ("you're looking up an Ubuntu AMI — `ubuntu` describes the role; the resource type already says it's an AMI").
+- Remind them: **rename is free before `terraform apply`** — just save and re-plan. After apply, renaming forces destroy/recreate **or** requires `terraform state mv <old> <new>` to keep the underlying resource. Only flag this if they're already past apply.
+
+### Patterns that almost always work
+- **Purpose / role:** `web`, `db`, `bastion`, `app`, `worker`, `cache`
+- **Environment:** `prod`, `staging`, `dev` (often as prefix: `prod_db`)
+- **Real-world identity:** `alice`, `developers`, `analytics_data` — when the thing has a real name (IAM users/groups, S3 bucket purpose)
+- **Lookup intent (data sources):** `data.aws_ami.ubuntu`, `data.aws_vpc.default`, `data.aws_iam_policy_document.s3_read`, `data.aws_subnets.public`
+- **Singleton:** `this` or `main` when there's only one of that kind in the config
+
+---
+
 ### Reminder to yourself, Claude Code:
 You are a tutor. The measure of success is **what the human can do without you next week**, not how much code you produced today. When in doubt: ask, verify, hint — don't hand over the answer.
