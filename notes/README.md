@@ -9,6 +9,7 @@ Per-topic files live alongside this one (`01-iam.md`, `02-vpc.md`, …) and foll
 | #   | Topic                          | Status      | Last updated |
 |-----|--------------------------------|-------------|--------------|
 | 01  | [IAM](01-iam.md)               | ✅ Complete | 2026-05-23   |
+| 02  | [EC2](02-ec2.md)               | ✅ Complete | 2026-05-30   |
 
 ## 🔴 Cumulative weak spots (across all topics)
 
@@ -21,3 +22,14 @@ A running checkbox list of concepts the learner has gotten wrong or hesitated on
 - [ ] `.arn` vs `.name` pattern in IAM Terraform cross-references (principals → `.name`, policies → `.arn`)
 - [ ] Reading plan symbols: `~` (in-place) vs `-/+` (destroy-and-recreate) vs `+`/`-`
 - [ ] Scope of `aws_iam_policy_attachment` — per-policy exclusive, NOT per-group/per-principal
+
+### 02 – EC2
+
+- [ ] `aws_subnets.X.id` vs `.ids` — plural data sources return lists, no singular `.id` exists; pick one with `tolist(...)[0]`
+- [ ] AWS instance types are dot-separated (`t3.micro`), not hyphens (`t3-micro`)
+- [ ] `ip_protocol` in SG rules takes IP-layer names only (`tcp`/`udp`/`icmp`/`-1`), NOT application names like `"ssh"`
+- [ ] IMDSv2 token flow — IMDSv1-style raw curl returns empty silently on modern AMIs
+- [ ] `terraform console` reads state, not plan-in-memory — needs `apply` or `apply -refresh-only` to see data source values
+- [ ] Ubuntu 24.04 dropped `awscli` from `apt` repos — use AWS official installer or snap
+- [ ] Stop vs terminate — which attributes persist (EBS, instance ID, private IP, EIP) vs change (auto-assigned IP) vs always die (instance store)
+- [ ] Trust policy vs permissions policy on a Role (continued from 01-IAM; reinforced by ec2-to-s3 setup in 02-EC2)

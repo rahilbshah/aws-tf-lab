@@ -33,3 +33,6 @@ terraform.rc
 
 # Saved plan files (binary) — workspace artifacts, regeneratable with `terraform plan -out=...`
 *.tfplan
+
+# macOS Finder metadata
+.DS_Store
