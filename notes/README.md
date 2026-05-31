@@ -10,6 +10,7 @@ Per-topic files live alongside this one (`01-iam.md`, `02-vpc.md`, …) and foll
 |-----|--------------------------------|-------------|--------------|
 | 01  | [IAM](01-iam.md)               | ✅ Complete | 2026-05-23   |
 | 02  | [EC2](02-ec2.md)               | ✅ Complete | 2026-05-30   |
+| 03  | [AMI Baking w/ Packer](03-ami-bake.md) (job-skill, non-exam) | ✅ Complete | 2026-05-31   |
 
 ## 🔴 Cumulative weak spots (across all topics)
 
