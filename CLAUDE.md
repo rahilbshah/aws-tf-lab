@@ -265,99 +265,167 @@ Peer-level, direct, encouraging but honest. Hindi/Hinglish is fine if the human 
 
 ---
 
-## 13. Notes & exam-prep protocol
+## 13. Notes & exam-prep protocol (Obsidian vault)
 
-This repo doubles as the human's SAA-C03 study system. You maintain the notes; the human studies from them. Treat the notes as exam-grade study material — see the honesty rule at the end of this section, it is the most important part.
+This repo doubles as the human's SAA-C03 study system, **maintained as an Obsidian vault**. You maintain the notes; the human studies from them. Treat the notes as exam-grade study material — see the honesty rule near the end of this section, it is the most important part.
 
-### 13.1 When notes get written
-- **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to write notes. Notes are a *capture* step after the learning is done, built from what actually happened in the session (including the human's wrong answers and fuzzy spots — those are gold).
-- After writing the topic file, **always** update the cross-topic files in `notes/README.md` (§13.4) in the same step.
+### 13.1 Vault setup (one-time)
 
-### 13.2 Where notes live
+- The `notes/` folder **is** the Obsidian vault root. The human opens it in Obsidian via *Open folder as vault*. No migration needed; existing markdown files just work.
+- Required community plugins (Settings → Community plugins):
+  - **Spaced Repetition** by *st3v3nmw* — turns Q/A lines in the notes into review cards. **Replaces the old Anki TSV pipeline.**
+  - **Obsidian Git** — auto-commits and pulls the vault across devices via the repo's git history. Free cross-device sync (no need for paid Obsidian Sync).
+- Core plugins worth turning on: Templates, Tag pane, Graph view.
+- The old `notes/anki/` folder is **deprecated** — do not maintain it going forward. Any existing Anki cards can stay in Anki as a legacy deck, or get regenerated inside the topic notes the next time you visit them.
+
+### 13.2 When notes get written
+
+- **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to take notes. Notes are a *capture* step after the learning is done, built from what actually happened in the session (wrong answers, fuzzy spots — gold).
+- After writing the topic file, **always** update `notes/README.md` (vault home: index + weak-spots tracker) in the same step.
+
+### 13.3 Where notes live
+
 ```
-notes/
-├── README.md            # master index + cumulative weak-spots tracker (§13.4)
-├── 01-iam.md            # one file per topic, named to match the topic folder
+notes/                          # this folder = the Obsidian vault root
+├── README.md                   # vault home: master index + cumulative weak-spots tracker
+├── _templates/
+│   └── topic-template.md       # canonical per-topic structure (§13.5)
+├── 01-iam.md                   # one file per topic; names match the topic folders
 ├── 02-vpc.md
-├── ...
-└── anki/
-    ├── 01-iam.tsv       # Anki-importable flashcards, mirrors the topic file (§13.5)
-    └── ...
+└── ...
 ```
-Topic note filenames mirror the topic folders from §5 (`01-iam/` → `notes/01-iam.md`).
 
-### 13.3 Per-topic note structure (LAYERED — this is the chosen format)
-Every topic file follows this template, in this order. The TL;DR at the top is what the human rereads in exam week; everything below it is the deep-dive for first-time learning.
+Filenames mirror the topic folders from §5 (`01-iam/` → `01-iam.md`).
 
-1. `# NN – <Topic>` + one line on what it is and why it exists.
-2. `## 🎯 Exam TL;DR` — the 4–6 must-know points for SAA-C03, as tight bullets. This block must be readable in ~30 seconds. (This is also the "cram sheet" — we deliberately don't keep a separate one.)
-3. `## Concept (plain English)` — 3–6 lines, no jargon dumping.
-4. `## AWS console ↔ Terraform map` — a table: *Console action* | *Terraform resource / data source* | *key arguments*. This is the bridge between the videos and the HCL.
-5. `## Architecture diagram` — a **Mermaid** diagram of the topic's typical setup (e.g. ` ```mermaid ` graph). Keep it to the shape that shows up in exam scenarios.
-6. `## Key facts, limits & pricing` — quotas, defaults, free-tier boundaries, and cost gotchas, as bullets/tables. **Every number here is exam-load-bearing — verify it (§13.6).**
-7. `## Comparisons` — comparison tables where the topic has them (e.g. S3 storage classes, EBS volume types, instance families, SG vs NACL). Skip if not applicable.
-8. `## The Terraform I wrote` — the path to the topic folder's `.tf` files + 2–3 lines on what was tricky or non-obvious while writing it.
-9. **Self-test block (all four formats — keep these recall-first, not re-reading):**
-   - `## 🃏 Flashcards` — Q→A pairs. Hide each answer in a collapsible `<details><summary>Q…</summary>A…</details>` block so the human can test before revealing. Mirror these into the Anki file (§13.5).
-   - `## 📝 Scenario MCQs` — 3–5 questions in real SAA-C03 shape ("Which option is **MOST cost-effective / MOST secure / BEST**…"), four options A–D each. Put answers **and** a one-line rationale at the bottom of the section inside a collapsed `<details>` so they don't spoil the questions.
-   - `## ⚠️ Traps & why the wrong answers are wrong` — the specific distractors SAA-C03 leans on for this topic, and the reasoning that eliminates each. This is where most exam marks are won or lost.
-   - `## 🛠️ Recreate-from-memory drill` — "rebuild <this topic's setup> in Terraform from scratch, no peeking." Keep the reference solution in a collapsed `<details>`. This ties the exam knowledge back to the hands-on Terraform.
-10. `## 🔴 My weak spots (this topic)` — personalised, written from what the human actually got wrong or hesitated on this session. Be specific and honest ("confused IAM role trust policy vs permissions policy"), not generic.
-11. `## 🔗 Docs` — the AWS docs + Terraform registry pages you verified against.
+### 13.4 Obsidian conventions you must follow
 
-### 13.4 Cross-topic review layer (in `notes/README.md`)
-Maintain two things here, updated at the end of every topic:
-- **Master index** — a table linking every topic note, with columns: *#* | *Topic* | *Status* | *Last updated*. This is the human's table of contents.
-- **Cumulative weak-spots tracker** — aggregate the `🔴 My weak spots` items from all topic files into one running, checkbox list grouped by topic, so problem areas are visible in one place instead of scattered across many files. The human ticks items off as they master them; you re-surface unticked ones during quizzes and mock exams.
+The notes use Obsidian features the agent must emit consistently. These are the differences from plain markdown:
 
-### 13.5 Mock-exam generator (on demand)
-When the human asks (e.g. "give me a 20-question mock exam"):
-- Pull **only from topics already covered** — never test material not yet studied.
-- Mix topics the way the real SAA-C03 does (it is scenario-based and jumps across services); do not group by topic.
-- Use exam-realistic scenario MCQs (BEST/MOST framing, plausible distractors).
-- Present all questions first, then answers + rationale (so it's a real test, not a guided read).
-- After scoring, **append any missed concepts to the weak-spots tracker** in `README.md`.
+- **YAML frontmatter** at the top of every topic note (metadata; see §13.5).
+- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets]]`, `[[02-vpc#Subnets|subnets]]` (the `|` form aliases the displayed text). Use these whenever a concept appears in another note instead of restating it — Obsidian's graph view then shows the real concept map.
+- **Tags** inline anywhere: `#weak-spot`, `#trap`, `#domain/secure`, `#domain/resilient`, `#domain/performance`, `#domain/cost`. Tags are vault-wide searchable from the Tag pane.
+- **Callouts** for structured blocks (render as styled boxes; the `-` after `]` makes them foldable inline):
+  - `> [!info] Exam TL;DR` — must-know-for-the-exam summary.
+  - `> [!warning] Trap — <name>` — SAA-C03 distractor / gotcha.
+  - `> [!example]- Recreate-from-memory drill` — hands-on drill, foldable; reference solution nested behind another foldable callout.
+  - `> [!tip] Production gap` — the "in production you'd also want X" line.
+- **Mermaid** code fences render natively (no plugin). Keep using them for architecture diagrams.
+- **Flashcards** use the Spaced Repetition plugin syntax (§13.6).
 
-### 13.6 Anki export (mobile/offline review)
-- For each topic, maintain `notes/anki/NN-topic.tsv` mirroring that topic's flashcards.
-- Format: one card per line, **tab-separated** — `Front<TAB>Back`. No raw tabs or newlines inside a field; use `<br>` for line breaks within a card. (TSV avoids the comma-collision problems CSV has.)
-- Remind the human how to import: Anki → *File → Import* → set the field separator to **Tab**, map field 1 → Front, field 2 → Back.
-- Keep the `.tsv` and the topic file's flashcards in sync whenever either changes.
+### 13.5 Per-topic note structure (template)
 
-### 13.7 The honesty rule for notes (most important — read this twice)
-Notes are worse than useless if they're wrong, because the human will *memorise* them for an exam. Everything in §3 (Honesty & anti-hallucination) applies with extra force here:
-- **Never invent** a limit, quota, default value, price, region behaviour, resource name, or argument name in a note. If you are not certain, **verify against the official AWS docs / Terraform registry before writing it**, and link the source in `## 🔗 Docs`.
-- If a fact genuinely can't be verified in the moment, write it as `⚠️ verify: <claim>` rather than stating it as fact — so the human knows not to memorise it yet.
-- Prices and free-tier limits change; date them or mark them as "check current pricing." Don't present a stale number as gospel.
-- When unsure whether something is exam-relevant, say so in the note rather than padding it with filler. Lean and correct beats comprehensive and wrong.
+Every topic file follows the template at `_templates/topic-template.md` — create that template on the first run, then reuse it. The structure:
 
-### 13.8 Style
-Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + self-test block? If not, the note is missing something; if yes, it's done.
-
+````markdown
+---
+topic: 01-iam
+domain: secure                # one of: secure | resilient | performance | cost
+status: draft                 # draft | reviewed | mastered
+services: [IAM]
+related: [02-vpc]             # wiki-link targets (no .md extension)
+tags: [flashcards/iam]        # MUST include flashcards/<topic> so SR plugin picks up cards
 ---
 
-## 14. Naming guidance — picking Terraform reference names fast
+# 01 – IAM
+One sentence on what this is and why it exists.
 
-The human regularly stalls on naming resource and data-source blocks (`resource "aws_X" "<NAME>" {}`, `data "aws_Y" "<NAME>" {}`). When they're hesitating, **pick a serviceable name in seconds, give the one-sentence rationale, and move on.** Don't let it become a 5-minute discussion — names are cheap to change before apply.
+> [!info] Exam TL;DR
+> - point 1
+> - point 2
+> - point 3
+> (the human rereads only this block in exam week)
 
-### Quick rules
-- **`snake_case`, lowercase.** Hyphens technically parse, but underscores are conventional and play nicer in HCL expressions.
-- **Describe the role, not the type.** The resource type already encodes the kind. So `aws_instance.web` (not `aws_instance.web_instance`); `data.aws_ami.ubuntu` (not `data.aws_ami.ubuntu_ami`). Restating the type in the label is the most common naming smell.
-- **Singular** for one resource, **plural** only when it's a collection driven by `count`/`for_each`.
-- **`this`** is idiomatic when there's exactly one of its kind in the config (very common in modules).
-- **`main`** is conventional for "the central resource of this config."
-- **Be consistent within a config.** If one EBS volume is `data`, don't name the next one `extra_storage`. Pick a pattern (purpose, environment, position) and reuse it across the file.
+## Concept (plain English)
+3–6 lines, no jargon dumping.
 
-### When the human is stuck mid-write
-- Recommend a name in 5 seconds with one sentence on why ("you're looking up an Ubuntu AMI — `ubuntu` describes the role; the resource type already says it's an AMI").
-- Remind them: **rename is free before `terraform apply`** — just save and re-plan. After apply, renaming forces destroy/recreate **or** requires `terraform state mv <old> <new>` to keep the underlying resource. Only flag this if they're already past apply.
+## AWS console ↔ Terraform map
+| Console action | Terraform resource / data source | Key arguments |
+|---|---|---|
+| Create user | `aws_iam_user` | `name` |
 
-### Patterns that almost always work
-- **Purpose / role:** `web`, `db`, `bastion`, `app`, `worker`, `cache`
-- **Environment:** `prod`, `staging`, `dev` (often as prefix: `prod_db`)
-- **Real-world identity:** `alice`, `developers`, `analytics_data` — when the thing has a real name (IAM users/groups, S3 bucket purpose)
-- **Lookup intent (data sources):** `data.aws_ami.ubuntu`, `data.aws_vpc.default`, `data.aws_iam_policy_document.s3_read`, `data.aws_subnets.public`
-- **Singleton:** `this` or `main` when there's only one of that kind in the config
+## Architecture diagram
+```mermaid
+graph LR
+  ...
+```
+
+## Key facts, limits & pricing
+- Limit / quota / free-tier note (verified — §13.9)
+
+## Comparisons
+(Only if relevant — e.g. S3 storage classes, EBS volume types)
+
+## The Terraform I wrote
+- Path: `../01-iam/main.tf`
+- What was tricky: …
+
+## Flashcards
+*(Cards live here. The note's `tags: [flashcards/<topic>]` makes the SR plugin scan them.)*
+
+What is IAM's policy evaluation order?
+?
+Implicit deny (default) → explicit Allow lifts it → explicit Deny overrides.
+
+Which AWS region does IAM live in?
+?
+None — IAM is a global service.
+
+> [!warning] Trap — Multi-AZ vs Read Replica
+> Why a candidate picks the wrong option, and the reasoning that eliminates it.
+
+> [!example]- Recreate-from-memory drill
+> Rebuild this topic's setup in Terraform from scratch, no peeking.
+> > [!success]- Reference solution
+> > ```hcl
+> > resource "aws_iam_role" "example" { ... }
+> > ```
+
+## 🔴 My weak spots (this topic)   #weak-spot
+- Specific things the human got wrong or was fuzzy on this session. The `#weak-spot` tag aggregates them vault-wide automatically.
+
+## 🔗 Docs
+- [AWS IAM docs](https://docs.aws.amazon.com/iam/)
+- [Terraform aws_iam_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
+````
+
+Notes on the format:
+- The frontmatter `tags: [flashcards/<topic>]` is what registers cards with the SR plugin under that topic's sub-deck. Without it, no cards are collected.
+- The flashcard `?` separator is the plugin's multi-line Q/A delimiter. **Verify the exact syntax against the plugin's README before first use** — the plugin's documentation is the source of truth.
+- The `#weak-spot` tag at the weak-spots heading lets the human click that tag in Obsidian's Tag pane and see every weak spot across the entire vault — your cumulative weak-spots tracker becomes a built-in Obsidian feature instead of a thing the agent maintains by hand.
+
+### 13.6 Spaced repetition (in-vault — replaces the Anki pipeline)
+
+- Cards live **inside** the topic notes (in the `## Flashcards` section), not in a separate file. Edit the note → the card updates. Single source of truth.
+- The note's frontmatter `tags: [flashcards/<topic>]` registers cards under that topic's sub-deck for grouped review.
+- The human reviews via Obsidian command *Spaced Repetition: Review flashcards*, on desktop and mobile.
+- For mobile: Obsidian Mobile (free, iOS + Android) + the Obsidian Git plugin pulling from this repo's git history. Free cross-device sync.
+- **Do not** generate `.tsv` files. **Do not** maintain `notes/anki/` going forward.
+
+### 13.7 Cross-topic review layer (`notes/README.md`)
+
+Maintain in `README.md`:
+- **Master index** — a table linking every topic note as wiki-links (`[[01-iam]]`, `[[02-vpc]]`…), with `status` and last-updated date.
+- **Cumulative weak-spots tracker** — Obsidian's Tag pane on `#weak-spot` already gives an auto-aggregated view, so the README version is a curated checklist of items the human is actively drilling (tick them off as they become reliable).
+
+### 13.8 Mock-exam generator (on demand)
+
+When the human asks (e.g. "20-question mock exam"):
+- Pull only from notes whose frontmatter `status:` is `reviewed` or `mastered` — never test material not yet studied.
+- Mix topics the way SAA-C03 does (scenario-based, jumping across services).
+- Present all questions first, then answers + rationale.
+- Append missed concepts to the relevant note's `## 🔴 My weak spots` section (which keeps the vault-wide weak-spots tag-view current).
+
+### 13.9 The honesty rule for notes (most important — read this twice)
+
+Notes are worse than useless if they're wrong, because the human will *memorise* them for an exam. Everything in §3 (Honesty & anti-hallucination) applies with extra force here:
+- **Never invent** a limit, quota, default value, price, region behaviour, resource name, or argument name. If you are not certain, **verify against the official AWS docs / Terraform registry before writing it**, and link the source in `## 🔗 Docs`.
+- If a fact genuinely can't be verified in the moment, write it as `⚠️ verify: <claim>` rather than asserting it.
+- Prices and free-tier limits change; date them or mark "check current pricing."
+- When unsure whether something is exam-relevant, say so rather than padding with filler. Lean and correct beats comprehensive and wrong.
+
+### 13.10 Style
+
+Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + flashcards block? If not, the note is missing something; if yes, it's done.
 
 ---
 

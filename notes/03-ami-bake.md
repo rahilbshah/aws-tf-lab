@@ -1,6 +1,16 @@
+---
+topic: 03-ami-bake
+status: reference
+exam: false
+services: [Packer, EC2, AMI]
+related: [02-ec2]
+tags: [job-skill, packer]
+---
+
 # 03 – AMI Baking with Packer (job-skills side-quest)
 
-> **Not an SAA-C03 exam topic.** Packer doesn't appear on the exam. This note is a job-skills reference, so it skips the full §13 layered template (no flashcards/MCQs/traps). Kept short on purpose.
+> [!note] Not an SAA-C03 exam topic
+> Packer doesn't appear on the exam. This note is a job-skills reference, so it skips the full §13 layered template (no flashcards/MCQs/traps) and carries `exam: false` so the mock-exam generator never pulls from it. Kept short on purpose.
 
 ## What Packer is
 
@@ -27,7 +37,8 @@ HashiCorp's tool for **building machine images** (AMIs, Docker images, VM images
 | Iteration speed | Slow (rebuild AMI per change) | Fast (edit script) |
 | External deps at boot | None | Package mirrors, network |
 
-**Why it matters with an Auto Scaling Group:** when an ASG scales out 5 instances under load, baked instances serve traffic in seconds; `user_data` instances each burn 3 min installing first. **Rule of thumb:** bake the stable layer (docker, git, awscli, runtime), boot-install only instance-specific config/secrets.
+> [!tip] Production gap — why this matters with an Auto Scaling Group
+> When an ASG scales out 5 instances under load, baked instances serve traffic in seconds; `user_data` instances each burn 3 min installing first. **Rule of thumb:** bake the stable layer (docker, git, awscli, runtime), boot-install only instance-specific config/secrets.
 
 ## Packer HCL anatomy
 
@@ -61,7 +72,7 @@ Code: [`03-ami-bake/image.pkr.hcl`](../03-ami-bake/image.pkr.hcl)
 Baked a golden Ubuntu 24.04 AMI with **git, docker.io, awscli** pre-installed:
 - `data "amazon-ami"` looks up latest Canonical Ubuntu 24.04 noble (owner `099720109477`) — cleaner than the inline `source_ami_filter` alternative.
 - `source "amazon-ebs" "ubuntu"` — `t3.micro` temp builder, datestamped `ami_name`, tags + snapshot_tags `{Project, BakedBy=packer, BaseAmi}`.
-- `build` runs one shell provisioner: `apt install git docker.io unzip`, AWS CLI v2 via the **official installer** (Ubuntu 24.04 dropped `awscli` from apt — see [02-ec2](02-ec2.md)), `usermod -aG docker ubuntu` so the default user runs docker without sudo, then the version self-test.
+- `build` runs one shell provisioner: `apt install git docker.io unzip`, AWS CLI v2 via the **official installer** (Ubuntu 24.04 dropped `awscli` from apt — see [[02-ec2]]), `usermod -aG docker ubuntu` so the default user runs docker without sudo, then the version self-test.
 
 Result (this build): `ami-0eb8b6bc66b38afcf`, snapshot `snap-0044e28129eba85b3`, state `available`. **Kept** (not destroyed) — it's the launch image for the ALB+ASG topic.
 

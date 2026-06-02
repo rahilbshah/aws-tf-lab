@@ -36,3 +36,8 @@ terraform.rc
 
 # macOS Finder metadata
 .DS_Store
+
+# Obsidian per-session/per-device state (churns constantly; not shareable)
+notes/.obsidian/workspace.json
+notes/.obsidian/workspace-mobile.json
+notes/.obsidian/cache
