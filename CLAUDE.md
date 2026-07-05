@@ -265,56 +265,62 @@ Peer-level, direct, encouraging but honest. Hindi/Hinglish is fine if the human 
 
 ---
 
-## 13. Notes & exam-prep protocol (Obsidian vault)
+## 13. Notes & exam-prep protocol (Obsidian vault — researcher+author mode)
 
-This repo doubles as the human's SAA-C03 study system, **maintained as an Obsidian vault**. You maintain the notes; the human studies from them. Treat the notes as exam-grade study material — see the honesty rule near the end of this section, it is the most important part.
+This repo doubles as the human's SAA-C03 study system, **maintained as an Obsidian vault**. You are not a session transcriber — **you are a researcher and author.** The conversation is the *seed*; the note is the *synthesis* of the conversation plus what you research and pull in from authoritative sources. Treat the notes as exam-grade study material — see the honesty rule near the end of this section, it is the most important part.
 
 ### 13.1 Vault setup (one-time)
 
-- The `notes/` folder **is** the Obsidian vault root. The human opens it in Obsidian via *Open folder as vault*. No migration needed; existing markdown files just work.
-- Required community plugins (Settings → Community plugins):
-  - **Spaced Repetition** by *st3v3nmw* — turns Q/A lines in the notes into review cards. **Replaces the old Anki TSV pipeline.**
-  - **Obsidian Git** — auto-commits and pulls the vault across devices via the repo's git history. Free cross-device sync (no need for paid Obsidian Sync).
-- Core plugins worth turning on: Templates, Tag pane, Graph view.
-- The old `notes/anki/` folder is **deprecated** — do not maintain it going forward. Any existing Anki cards can stay in Anki as a legacy deck, or get regenerated inside the topic notes the next time you visit them.
+- The `aws-tf-lab/` folder **is** the Obsidian vault root. The human opens it in Obsidian via *Open folder as vault*.
+- Required community plugins:
+  - **Spaced Repetition** by *st3v3nmw* — turns Q/A blocks in cards files into review cards.
+  - **Obsidian Git** — auto-commits and pulls the vault across devices via the repo's git history.
+  - **Dataview** by *Michael Brenan* — powers the auto-generated index and weak-spots aggregation in `README.md` (§13.8).
+- Core plugins worth turning on: Templates, Tag pane, Graph view, Properties view.
+- Old `aws-tf-lab/anki/` folder is deprecated — do not maintain it.
 
 ### 13.2 When notes get written
 
-- **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to take notes. Notes are a *capture* step after the learning is done, built from what actually happened in the session (wrong answers, fuzzy spots — gold).
-- After writing the topic file, **always** update `notes/README.md` (vault home: index + weak-spots tracker) in the same step.
+- **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to take notes.
+- Notes are *written*, not *dumped* — see §13.6 (researcher+author mode) for what writing a note actually involves.
+- After writing, always update the cards file (§13.7) and `README.md` (§13.8) in the same step.
 
 ### 13.3 Where notes live
 
 ```
-notes/                          # this folder = the Obsidian vault root
-├── README.md                   # vault home: master index + cumulative weak-spots tracker
+aws-tf-lab/                     # this folder = the Obsidian vault root
+├── README.md                   # vault home: Dataview-powered index + weak-spots
 ├── _templates/
-│   └── topic-template.md       # canonical per-topic structure (§13.5)
-├── 01-iam.md                   # one file per topic; names match the topic folders
+│   ├── topic-template.md       # reference note template (§13.5)
+│   └── cards-template.md       # cards file template (§13.7)
+├── 01-iam.md                   # reference note (reading/teaching material)
 ├── 02-vpc.md
+├── cards/
+│   ├── 01-iam-cards.md         # SR cards for IAM (review material)
+│   ├── 02-vpc-cards.md
+│   └── ...
 └── ...
 ```
 
-Filenames mirror the topic folders from §5 (`01-iam/` → `01-iam.md`).
+**The split matters.** Reference notes and SR cards do different jobs — teaching vs active recall — and they should live in different files. The reference note stays clean reading material; the cards file stays focused review material. The SR plugin scans the whole vault, so cards-in-a-subfolder works perfectly.
 
 ### 13.4 Obsidian conventions you must follow
 
-The notes use Obsidian features the agent must emit consistently. These are the differences from plain markdown:
-
-- **YAML frontmatter** at the top of every topic note (metadata; see §13.5).
-- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets]]`, `[[02-vpc#Subnets|subnets]]` (the `|` form aliases the displayed text). Use these whenever a concept appears in another note instead of restating it — Obsidian's graph view then shows the real concept map.
-- **Tags** inline anywhere: `#weak-spot`, `#trap`, `#domain/secure`, `#domain/resilient`, `#domain/performance`, `#domain/cost`. Tags are vault-wide searchable from the Tag pane.
-- **Callouts** for structured blocks (render as styled boxes; the `-` after `]` makes them foldable inline):
+- **YAML frontmatter** on every topic note AND every cards file (templates in §13.5 and §13.7).
+- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets|subnets]]`. Each reference note should link to its cards file: `[[cards/01-iam-cards]]`.
+- **Tags** inline: `#weak-spot`, `#trap`, `#domain/secure`, etc. Cards files use `tags: [flashcards/<topic>]` in frontmatter to be picked up by the SR plugin.
+- **Callouts** for structured blocks (the `-` after `]` makes them foldable):
   - `> [!info] Exam TL;DR` — must-know-for-the-exam summary.
+  - `> [!example] Worked example` — concrete scenario showing the concept in action (§13.5).
   - `> [!warning] Trap — <name>` — SAA-C03 distractor / gotcha.
+  - `> [!failure] Failure mode` — what goes wrong in production when this concept is misapplied.
   - `> [!example]- Recreate-from-memory drill` — hands-on drill, foldable; reference solution nested behind another foldable callout.
   - `> [!tip] Production gap` — the "in production you'd also want X" line.
 - **Mermaid** code fences render natively (no plugin). Keep using them for architecture diagrams.
-- **Flashcards** use the Spaced Repetition plugin syntax (§13.6).
 
-### 13.5 Per-topic note structure (template)
+### 13.5 Per-topic reference note structure (template)
 
-Every topic file follows the template at `_templates/topic-template.md` — create that template on the first run, then reuse it. The structure:
+Every reference note follows `_templates/topic-template.md`. Note: **flashcards no longer live here** — they go in the cards file (§13.7). The reference note's job is teaching and reference; the cards file's job is recall practice.
 
 ````markdown
 ---
@@ -323,7 +329,8 @@ domain: secure                # one of: secure | resilient | performance | cost
 status: draft                 # draft | reviewed | mastered
 services: [IAM]
 related: [02-vpc]             # wiki-link targets (no .md extension)
-tags: [flashcards/iam]        # MUST include flashcards/<topic> so SR plugin picks up cards
+cards: cards/01-iam-cards     # the matching cards file
+tags: [topic, domain/secure]
 ---
 
 # 01 – IAM
@@ -333,10 +340,9 @@ One sentence on what this is and why it exists.
 > - point 1
 > - point 2
 > - point 3
-> (the human rereads only this block in exam week)
 
 ## Concept (plain English)
-3–6 lines, no jargon dumping.
+3–6 lines.
 
 ## AWS console ↔ Terraform map
 | Console action | Terraform resource / data source | Key arguments |
@@ -350,25 +356,24 @@ graph LR
 ```
 
 ## Key facts, limits & pricing
-- Limit / quota / free-tier note (verified — §13.9)
+- Limit / quota / free-tier note (verified — §13.10)
 
 ## Comparisons
-(Only if relevant — e.g. S3 storage classes, EBS volume types)
+(Only if relevant.)
+
+## Worked examples
+*1–2 concrete, realistic scenarios. Show the concept firing in real production conditions, not abstract definitions. This section is mandatory.*
+
+> [!example] Worked example — cross-account read-only auditor
+> Acme Corp needs to grant a third-party auditor (different AWS account) read-only access to a specific S3 bucket. The canonical approach: …
+> (then walk through it, naming services, with the Terraform sketched.)
+
+> [!failure] Failure mode — what goes wrong if you skip the trust policy
+> A common mistake: attaching only a permissions policy to the role and forgetting the trust policy entirely. Result: the role exists but no principal can assume it, so it does nothing. Symptoms: `AccessDenied: not authorized to perform sts:AssumeRole`. Fix: …
 
 ## The Terraform I wrote
 - Path: `../01-iam/main.tf`
 - What was tricky: …
-
-## Flashcards
-*(Cards live here. The note's `tags: [flashcards/<topic>]` makes the SR plugin scan them.)*
-
-What is IAM's policy evaluation order?
-?
-Implicit deny (default) → explicit Allow lifts it → explicit Deny overrides.
-
-Which AWS region does IAM live in?
-?
-None — IAM is a global service.
 
 > [!warning] Trap — Multi-AZ vs Read Replica
 > Why a candidate picks the wrong option, and the reasoning that eliminates it.
@@ -381,41 +386,110 @@ None — IAM is a global service.
 > > ```
 
 ## 🔴 My weak spots (this topic)   #weak-spot
-- Specific things the human got wrong or was fuzzy on this session. The `#weak-spot` tag aggregates them vault-wide automatically.
+- Specific things the human got wrong or fuzzy on this session.
 
 ## 🔗 Docs
 - [AWS IAM docs](https://docs.aws.amazon.com/iam/)
 - [Terraform aws_iam_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
+
+---
+**Cards for this topic:** [[cards/01-iam-cards]]
 ````
 
-Notes on the format:
-- The frontmatter `tags: [flashcards/<topic>]` is what registers cards with the SR plugin under that topic's sub-deck. Without it, no cards are collected.
-- The flashcard `?` separator is the plugin's multi-line Q/A delimiter. **Verify the exact syntax against the plugin's README before first use** — the plugin's documentation is the source of truth.
-- The `#weak-spot` tag at the weak-spots heading lets the human click that tag in Obsidian's Tag pane and see every weak spot across the entire vault — your cumulative weak-spots tracker becomes a built-in Obsidian feature instead of a thing the agent maintains by hand.
+### 13.6 How you write a note — researcher+author mode (this is the biggest behavioral rule)
 
-### 13.6 Spaced repetition (in-vault — replaces the Anki pipeline)
+Writing a note is **not transcribing the conversation**. It is *researching, synthesizing, and authoring* a piece of reference material that has to hold up months later under exam pressure and at the on-call keyboard. Concretely, every note-writing session involves:
 
-- Cards live **inside** the topic notes (in the `## Flashcards` section), not in a separate file. Edit the note → the card updates. Single source of truth.
-- The note's frontmatter `tags: [flashcards/<topic>]` registers cards under that topic's sub-deck for grouped review.
-- The human reviews via Obsidian command *Spaced Repetition: Review flashcards*, on desktop and mobile.
-- For mobile: Obsidian Mobile (free, iOS + Android) + the Obsidian Git plugin pulling from this repo's git history. Free cross-device sync.
-- **Do not** generate `.tsv` files. **Do not** maintain `notes/anki/` going forward.
+**Research before locking in:**
+- Search authoritative sources — official AWS docs, the Terraform registry, RFCs, vendor blogs — to **verify AND enrich** beyond what came up in the conversation. Don't reason from memory on facts.
+- Pull in details the conversation didn't surface: edge cases, recent service changes, common production gotchas.
 
-### 13.7 Cross-topic review layer (`notes/README.md`)
+**Author, don't transcribe:**
+- Generate **worked examples** from real AWS/K8s/DevOps practice — concrete scenarios showing the concept firing in production, including at least one failure mode (what goes wrong when this concept is misapplied).
+- Connect to **named services** in the cross-references, not vague gestures.
+- Write tight prose — every sentence earns its place. No filler.
 
-Maintain in `README.md`:
-- **Master index** — a table linking every topic note as wiki-links (`[[01-iam]]`, `[[02-vpc]]`…), with `status` and last-updated date.
-- **Cumulative weak-spots tracker** — Obsidian's Tag pane on `#weak-spot` already gives an auto-aggregated view, so the README version is a curated checklist of items the human is actively drilling (tick them off as they become reliable).
+**Quality-review pass before declaring the note done:**
+Run this checklist mentally; fix anything missing before saving:
+- [ ] Every numeric/factual claim has a verified source linked in `## 🔗 Docs`.
+- [ ] At least one **worked example** shows the concept in action.
+- [ ] At least one **failure mode** is described.
+- [ ] At least three **wiki-links** to related notes (where genuinely relevant — don't pad).
+- [ ] The "Production gap" / "in production you'd also want X" call-out is concrete with named services.
+- [ ] Cards file is updated to match the latest understanding.
+- [ ] No filler — every section earned its place.
 
-### 13.8 Mock-exam generator (on demand)
+If you can't satisfy the checklist with what you know, **search before writing** rather than guessing.
+
+### 13.7 Per-topic cards file (template)
+
+The cards file is the *only* place SR cards live. It holds the Q/?/A pairs and nothing else.
+
+````markdown
+---
+topic: 01-iam
+domain: secure
+related_note: 01-iam
+tags: [flashcards/iam]
+---
+
+# Cards for [[01-iam]]
+*Spaced-repetition cards. Review via the SR plugin command palette.*
+
+What is IAM's policy evaluation order?
+?
+Implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything. One Deny anywhere = no access.
+
+Which AWS region does IAM live in?
+?
+None — IAM is global. Same identities and policies seen from every region.
+
+(... and so on)
+````
+
+The `tags: [flashcards/<topic>]` in frontmatter is what registers the cards with the SR plugin under that topic's sub-deck.
+
+### 13.8 Cross-topic review (`aws-tf-lab/README.md`) — Dataview-powered
+
+`README.md` stops being a hand-maintained list and becomes **live queries**. Maintain the structure; let Dataview do the aggregation.
+
+````markdown
+# Vault home
+
+## All topics
+```dataview
+TABLE domain, status, file.mtime as "Updated"
+FROM ""
+WHERE topic AND !contains(file.path, "cards/") AND !contains(file.path, "_templates/")
+SORT file.name ASC
+```
+
+## Weak spots — all topics
+```dataview
+LIST
+FROM #weak-spot
+```
+
+## Status breakdown
+```dataview
+TABLE length(rows) as "Count"
+FROM ""
+WHERE topic AND !contains(file.path, "cards/")
+GROUP BY status
+```
+````
+
+These queries update automatically the moment a note's frontmatter or tags change. The human's only job is to write good notes; the dashboard takes care of itself.
+
+### 13.9 Mock-exam generator (on demand)
 
 When the human asks (e.g. "20-question mock exam"):
-- Pull only from notes whose frontmatter `status:` is `reviewed` or `mastered` — never test material not yet studied.
+- Pull only from reference notes whose frontmatter `status:` is `reviewed` or `mastered`. Never test material not yet studied.
 - Mix topics the way SAA-C03 does (scenario-based, jumping across services).
 - Present all questions first, then answers + rationale.
-- Append missed concepts to the relevant note's `## 🔴 My weak spots` section (which keeps the vault-wide weak-spots tag-view current).
+- Append missed concepts to the relevant note's `## 🔴 My weak spots` section so the Dataview weak-spots view stays current.
 
-### 13.9 The honesty rule for notes (most important — read this twice)
+### 13.10 The honesty rule for notes (most important — read this twice)
 
 Notes are worse than useless if they're wrong, because the human will *memorise* them for an exam. Everything in §3 (Honesty & anti-hallucination) applies with extra force here:
 - **Never invent** a limit, quota, default value, price, region behaviour, resource name, or argument name. If you are not certain, **verify against the official AWS docs / Terraform registry before writing it**, and link the source in `## 🔗 Docs`.
@@ -423,9 +497,9 @@ Notes are worse than useless if they're wrong, because the human will *memorise*
 - Prices and free-tier limits change; date them or mark "check current pricing."
 - When unsure whether something is exam-relevant, say so rather than padding with filler. Lean and correct beats comprehensive and wrong.
 
-### 13.10 Style
+### 13.11 Style
 
-Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + flashcards block? If not, the note is missing something; if yes, it's done.
+Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + worked example + cards file? If not, the note is missing something; if yes, it's done.
 
 ---
 

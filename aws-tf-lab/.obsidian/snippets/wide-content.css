@@ -1,0 +1,20 @@
+/* Tables - full width with horizontal scroll */
+.markdown-reading-view .markdown-preview-sizer table {
+  display: block !important;
+  width: max-content !important;
+  max-width: none !important;
+  overflow-x: auto !important;
+}
+
+/* Code blocks - full width */
+.markdown-reading-view .markdown-preview-sizer pre {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Break out of the readable line length container */
+.markdown-reading-view .markdown-preview-sizer > div:has(table),
+.markdown-reading-view .markdown-preview-sizer > div:has(pre) {
+  max-width: none !important;
+  width: 100% !important;
+}

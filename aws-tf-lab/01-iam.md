@@ -4,7 +4,8 @@ domain: secure
 status: reviewed
 services: [IAM]
 related: [02-ec2]
-tags: [flashcards/iam]
+cards: cards/01-iam-cards
+tags: [topic, domain/secure]
 ---
 
 # 01 – IAM (Identity and Access Management)
@@ -108,6 +109,28 @@ flowchart TD
 | Without it | Nobody can assume the role | Role can be assumed but does nothing |
 | Common values | `Service: ec2.amazonaws.com`, `Service: lambda.amazonaws.com`, `AWS: arn:aws:iam::<acct>:root` (cross-account), `Federated: <SAML/OIDC provider ARN>` | Standard policy JSON over S3, DynamoDB, etc. |
 
+## Worked examples
+
+> [!example] Worked example — third-party auditor via cross-account role + ExternalId
+> Acme Corp hires a cost-optimization vendor that needs read-only access to Acme's account. The vendor monitors many customers, so the trust must be scoped tightly:
+> 1. The vendor provides their **AWS account ID** and a **unique customer identifier** — the *ExternalId*. Crucially, the vendor generates it (one per customer); it is *not* a secret, just unique (AWS treats it as viewable by anyone who can see the role).
+> 2. Acme creates a role. Trust policy: `"Principal": {"AWS": "<vendor account ID>"}` **plus** `"Condition": {"StringEquals": {"sts:ExternalId": "<id>"}}`. Permissions policy: read-only (e.g. the AWS-managed `ReadOnlyAccess`, or scoped down to Cost Explorer/billing APIs).
+> 3. Acme hands the vendor the role ARN; the vendor calls `sts:AssumeRole` with ARN + ExternalId and receives temporary credentials.
+>
+> In Terraform this is the exact `aws_iam_role` + `data.aws_iam_policy_document` pattern from `01-iam/`, with a `condition {}` block added inside the trust-policy `statement`.
+
+> [!failure] Failure mode — confused deputy (the missing ExternalId)
+> The vendor stores role ARNs for hundreds of customers. An attacker signs up as a *legitimate customer* of the vendor, then feeds the vendor **someone else's role ARN** (ARNs are guessable: account ID + role name). The vendor's system dutifully calls `AssumeRole` on the victim's role — and it *works*, because the victim's trust policy trusts the vendor's whole account. The vendor just became a **confused deputy**: tricked into using its legitimate access on behalf of the wrong principal.
+> With one ExternalId per customer, the vendor attaches the *attacker's* ExternalId to the call, the victim's trust policy condition fails, and the assume is rejected with `AccessDenied`. This is why AWS docs say the third party must generate the ExternalId — if customers chose their own, an attacker could supply the victim's.
+
+> [!example] Worked example — CI deploys with zero long-lived keys (GitHub Actions OIDC)
+> The modern answer to "how does CI get AWS credentials?" — federation, not access keys in CI secrets:
+> 1. Register GitHub's OIDC provider in IAM: URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com` (Terraform: `aws_iam_openid_connect_provider`).
+> 2. Create a deploy role whose trust policy trusts `Federated: <provider ARN>` for action `sts:AssumeRoleWithWebIdentity`, with a condition on the token's `sub` claim, e.g. `repo:acme/platform:ref:refs/heads/main` — only workflows from *that repo, that branch* can assume it.
+> 3. The workflow exchanges its short-lived OIDC token for temporary AWS credentials. Nothing stored, nothing to rotate, nothing to leak.
+>
+> Same mental model as the EC2 instance profile in [[02-ec2]] — a role with a trust policy — only the trusted principal differs (federated IdP vs `ec2.amazonaws.com`).
+
 ## The Terraform I wrote
 
 Code: [`01-iam/main.tf`](../01-iam/main.tf)
@@ -117,58 +140,6 @@ Built a minimal user → group → policy → attachment chain (5 resources). No
 - **`.arn` vs `.name`** — IAM principal cross-references want `.name`; policy references want `.arn`. Got this wrong on the first pass for `user`, `groups`, and `group` arguments; `validate` and `plan` did NOT catch it because both shapes are strings.
 - **Quoted vs unquoted references** — wrote `groups = ["aws_iam_group.developers"]` (literal string!) on the first pass instead of `[aws_iam_group.developers.name]` (HCL reference). Same trap: type-valid, only fails at apply.
 - **Idiomatic policy authoring** — used `data "aws_iam_policy_document"` to build the policy JSON in HCL instead of a heredoc. Plan-time validation catches Effect/Action typos before AWS sees them.
-
-## Flashcards
-
-What is IAM's policy evaluation order?
-?
-Implicit deny (default) → explicit Allow lifts the implicit deny → explicit Deny overrides everything. One explicit Deny anywhere = access denied. Order/source of policies, count of Allows vs Denies, and specificity all *don't matter*.
-
-Which AWS region does IAM live in?
-?
-None — IAM is a global service. No region selection. (API endpoint runs from `us-east-1` infrastructure, but conceptually global.)
-
-What's the credential difference between a User and a Role?
-?
-**User**: long-lived credentials (password for console, access key + secret for CLI/SDK). Sit on disk, in vaults, in CI. Leak = persistent risk until rotated.
-**Role**: no permanent credentials. On assume, AWS STS issues temporary credentials (access key + secret + session token) that auto-expire — default 1h, configurable up to 12h.
-
-What two policies does a Role need to be useful?
-?
-**Trust policy** (`assume_role_policy` on `aws_iam_role`) — declares WHO can assume the role (an AWS service, another account, a federated identity).
-**Permissions policy** (attached separately via `aws_iam_role_policy_attachment` or inline) — declares WHAT the role can do once assumed. Either half missing = role is broken.
-
-Why doesn't EC2 attach to a role directly?
-?
-EC2 attaches to an instance profile — a thin container that wraps an IAM role — so the EC2 metadata service can vend role credentials cleanly. The console silently creates an instance profile with the same name as the role; Terraform requires `aws_iam_instance_profile` explicitly, referenced from `aws_instance.iam_instance_profile`. Lambda/ECS take a role directly — EC2 is the special case.
-
-In Terraform IAM, when do cross-references use `.name` vs `.arn`?
-?
-`.name` when the AWS API identifies the thing by name — principals (users, groups, roles) in management calls within your account. `.arn` when the thing might exist outside your account or needs globally unambiguous identification — policies (`policy_arn` arguments), since managed policies can be AWS-published or customer-owned. Plan/validate do not catch mistakes here because both are strings.
-
-`aws_iam_user_group_membership` vs `aws_iam_group_membership` — what's the trap?
-?
-`aws_iam_user_group_membership` — user-side, additive ("put this user in these groups"); doesn't touch other members. Use 95% of the time. `aws_iam_group_membership` — group-side, exclusive ("these are the ONLY members"); anyone not listed is removed on next apply. Dangerous in shared environments.
-
-`aws_iam_group_policy_attachment` vs `aws_iam_policy_attachment` — what's the difference?
-?
-`aws_iam_group_policy_attachment` (with prefix) manages one (group, policy) pair; safe. `aws_iam_policy_attachment` (no prefix) manages ALL attachments of one specific policy across users/groups/roles — if anyone else attaches that policy anywhere, Terraform rips it off on next apply. For exclusive management of all policies on one principal, use `aws_iam_{user,group,role}_policy_attachments_exclusive`.
-
-In HCL, what's the difference between `aws_iam_group.developers` and `"aws_iam_group.developers"`?
-?
-Without quotes: an HCL reference expression, evaluated to a resource object (then dot into `.name`/`.arn`/`.id`). With quotes: a literal string passed through unchanged. Quoting a reference is the most common HCL beginner bug — both pass `validate`.
-
-What do `+`, `-`, `~`, and `-/+` mean in a `terraform plan`?
-?
-`+` = create. `-` = destroy. `~` = in-place update (attribute changed without recreation). `-/+` = destroy and recreate, because an attribute has `ForceNew: true`; the plan annotates `# forces replacement` next to it. Reading the symbols beats memorizing which arguments force replacement.
-
-Does changing `name` on `aws_iam_user` destroy and recreate?
-?
-No — `aws_iam_user.name` is in-place updatable in the v6 provider (calls AWS `UpdateUser` with `NewUserName`). But `aws_iam_policy.name` IS `ForceNew` — destroys and recreates. Different IAM resources behave differently; always read the plan. (Verified against provider source.)
-
-What's the IAM policy `Version` field (e.g. `"2012-10-17"`)?
-?
-The IAM policy language version — always `"2012-10-17"` for modern IAM policies. It is NOT a free-form version field, it's the policy schema version. The `aws_iam_policy_document` data source adds it automatically.
 
 ## Scenario MCQs
 
@@ -271,3 +242,8 @@ The IAM policy language version — always `"2012-10-17"` for modern IAM policie
 - [Terraform AWS provider — `aws_iam_policy`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy)
 - [Terraform AWS provider — `aws_iam_policy_document` data source](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document)
 - Verified against v6 provider source (2026-05): `aws_iam_user.name` is NOT `ForceNew` (uses `UpdateUser`); `aws_iam_policy.name` IS `ForceNew` (destroys-and-recreates). `aws_iam_group_policy_attachments_exclusive` exists and ships in v6.
+- [ExternalId for third-party access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html) — confused-deputy mitigation; condition syntax verified 2026-06
+- [GitHub Actions OIDC ↔ AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) — provider URL, audience, `sub` claim format verified 2026-06
+
+---
+**Cards for this topic:** [[cards/01-iam-cards]]

@@ -38,6 +38,7 @@ terraform.rc
 .DS_Store
 
 # Obsidian per-session/per-device state (churns constantly; not shareable)
-notes/.obsidian/workspace.json
-notes/.obsidian/workspace-mobile.json
-notes/.obsidian/cache
+# Vault root was renamed notes/ -> aws-tf-lab/
+aws-tf-lab/.obsidian/workspace.json
+aws-tf-lab/.obsidian/workspace-mobile.json
+aws-tf-lab/.obsidian/cache
