@@ -42,3 +42,6 @@ terraform.rc
 aws-tf-lab/.obsidian/workspace.json
 aws-tf-lab/.obsidian/workspace-mobile.json
 aws-tf-lab/.obsidian/cache
+
+# Human-readable plan dumps (terraform show > plan.txt) — workspace artifacts
+plan.txt
