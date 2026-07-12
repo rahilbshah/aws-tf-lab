@@ -304,6 +304,16 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 
 **The split matters.** Reference notes and SR cards do different jobs — teaching vs active recall — and they should live in different files. The reference note stays clean reading material; the cards file stays focused review material. The SR plugin scans the whole vault, so cards-in-a-subfolder works perfectly.
 
+**Large topics split across concept notes.** When a topic is too big for one readable note (VPC is the canonical case — it spans subnets, routing, NAT, SG/NACL, endpoints, peering, hybrid connectivity), split it:
+- One **index / map-of-content note** (`NN-topic.md`, tag it `moc`) with the exam TL;DR, a master diagram, and a table linking each sub-note.
+- Several **concept notes** (`NN-topic-core.md`, `NN-topic-security.md`, …), each self-contained with its own frontmatter, worked examples, weak spots, and its own **cards file** (`cards/NN-topic-core-cards.md`).
+- Cross-link liberally between them so Obsidian's graph shows the real structure.
+- **Cadence for big topics:** capture per sub-concept (build → verify → note that chunk) rather than waiting for the whole topic to finish — this overrides the "notes only at §9 step 8" rule for topics genuinely too large to hold in one session. Confirm the split with the human first.
+
+**Depth standard (single source of truth for the exam).** The notes must be complete enough that the human never needs to re-watch the videos. That means *coverage* (every sub-concept the human studied gets a section, even ones not built in Terraform — some are conceptual-only, e.g. Direct Connect) and *card density* (every exam-testable fact becomes a flashcard). Complete, not verbose — keep the recall-first discipline (§13.11); comprehensiveness is about breadth of coverage and card count, not longer prose.
+
+**Build tiers.** Not every concept is built hands-on. Mark each concept's tier so it's clear what was verified vs learned: *build (free)*, *build (paid peek — apply briefly, destroy same session)*, or *conceptual-only* (learn from notes + Mermaid + a Terraform sketch you read but never apply — e.g. Direct Connect, Transit Gateway, Site-to-Site VPN).
+
 ### 13.4 Obsidian conventions you must follow
 
 - **YAML frontmatter** on every topic note AND every cards file (templates in §13.5 and §13.7).
