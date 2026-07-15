@@ -2,6 +2,8 @@
 
 SAA-C03 study vault. Reference notes at the root; spaced-repetition cards in `cards/`; templates in `_templates/`. The tables below are **live Dataview queries** — they update themselves whenever a note's frontmatter or `#weak-spot` tags change, so this page is never hand-maintained.
 
+> [!todo] 📌 [[exam-prep]] — full SAA-C03 blueprint & readiness tracker (what's covered vs. what's left)
+
 > [!info] How this vault works
 > - **Reference notes** (`NN-topic.md`) — teaching + worked examples. Frontmatter drives the tables below (`topic`, `domain`, `status`).
 > - **Cards** (`cards/NN-topic-cards.md`) — the *only* place SR flashcards live; reviewed via *Spaced Repetition: Review flashcards*. Each is tagged `flashcards/<topic>`.
