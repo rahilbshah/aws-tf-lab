@@ -54,7 +54,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ VPC core (subnets, routing, IGW/NAT) — [[05-vpc-core]]
 - [x] ✅ VPC security (SG/NACL, Flow Logs, Network Firewall) — [[05-vpc-security]]
 - [x] ✅ VPC endpoints + peering (+ Transit Gateway, conceptual) — [[05-vpc-endpoints-peering]]
-- [ ] 🔨 VPC hybrid (VPN, Direct Connect, VGW/CGW, DX Gateway) — [[05-vpc-hybrid]] *(conceptual)*
+- [x] ✅ VPC hybrid (VPN, Direct Connect, VGW/CGW, DX Gateway) — [[05-vpc-hybrid]] *(conceptual)*
 - [ ] ☐ Route 53 (routing policies, health checks) — *high exam weight*
 - [ ] ☐ CloudFront (CDN, OAI/OAC, caching)
 - [ ] ☐ API Gateway

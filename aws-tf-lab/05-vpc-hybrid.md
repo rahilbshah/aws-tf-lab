@@ -1,0 +1,145 @@
+---
+topic: 05-vpc-hybrid
+domain: secure
+status: reviewed
+services: [Site-to-Site VPN, Direct Connect, Virtual Private Gateway, Transit Gateway]
+related: [05-vpc, 05-vpc-endpoints-peering, 05-vpc-core]
+cards: cards/05-vpc-hybrid-cards
+tags: [topic, domain/secure]
+---
+
+# 05.4 – VPC Hybrid Connectivity (VPN & Direct Connect)
+
+Connecting **on-premises ↔ AWS**. Two roads: an encrypted VPN over the internet, or a dedicated private line (Direct Connect). Conceptual-only (no build). Closes out [[05-vpc]].
+
+> [!info] Exam TL;DR
+> - **Site-to-Site VPN** = IPsec VPN **over the internet**, **encrypted**, AWS-managed, **2 tunnels** for HA. **Fast to set up (hours)**, cheap, but performance rides the public internet (variable).
+> - **VPN endpoints:** **Virtual Private Gateway (VGW)** = AWS side (or a **Transit Gateway** for many VPCs); **Customer Gateway (CGW)** = config object representing your on-prem router.
+> - **Direct Connect (DX)** = **dedicated private physical fiber**, bypasses the internet. **Consistent low latency + guaranteed bandwidth + lower data cost**, but **expensive** and **weeks-to-months to provision**. **NOT encrypted by default** — run a VPN over it to encrypt.
+> - **DX speeds:** 1/10/100 Gbps dedicated; sub-1 Gbps hosted. **VIFs:** Private (→VPC), Public (→S3 etc.), Transit (→TGW).
+> - **Direct Connect Gateway** = one DX reaching **VPCs across multiple regions/accounts** (non-transitive).
+> - **Decisions:** need it *fast/temporary* → VPN. *Consistent high-throughput/low-latency* → DX. *Cheap DX backup* → VPN failover. *Encrypt DX* → VPN over DX.
+
+## Concept (plain English)
+
+To link a corporate data center to AWS you have two fundamentally different paths. A **Site-to-Site VPN** builds an encrypted IPsec tunnel across the ordinary public internet — cheap, quick, and secure, but its speed and latency are at the mercy of the internet. **Direct Connect** instead runs a *physical* dedicated fiber from your premises into an AWS facility, bypassing the internet entirely — giving you consistent, high, private bandwidth, at the cost of money and a long provisioning lead time. Crucially, DX is *private* but **not encrypted**, so security-sensitive workloads layer a VPN on top. For more than a couple of VPCs, a **Transit Gateway** becomes the on-ramp for both, and a **Direct Connect Gateway** lets a single DX serve VPCs in many regions.
+
+## AWS console ↔ Terraform map
+
+*(Conceptual — sketch you read, don't apply; a real setup needs a physical on-prem side.)*
+
+| Concept | Terraform | Notes |
+|---|---|---|
+| AWS-side VPN endpoint | `aws_vpn_gateway` (VGW) attached to the VPC | Or a Transit Gateway for many VPCs. |
+| On-prem router representation | `aws_customer_gateway` (CGW) | Its public IP + BGP ASN. |
+| The VPN tunnel | `aws_vpn_connection` | Links VGW/TGW ↔ CGW; 2 tunnels; static or BGP. |
+| Route propagation | `aws_vpn_gateway_route_propagation` | Propagates learned routes into the route table. |
+| Direct Connect | `aws_dx_connection` + `aws_dx_private_virtual_interface` (etc.) | Physical port + VIFs; provisioned with a DX partner. |
+| DX Gateway | `aws_dx_gateway` + associations | One DX → multiple VGWs/TGWs across regions. |
+
+## Architecture diagram
+
+```mermaid
+flowchart LR
+    subgraph ONP["On-premises"]
+      RTR[Router / firewall]
+    end
+    subgraph AWS["AWS"]
+      subgraph VPC["VPC"]
+        VGW[Virtual Private Gateway]
+      end
+      DXLOC[Direct Connect location]
+    end
+    RTR -- "Site-to-Site VPN<br/>IPsec, encrypted, over internet<br/>(2 tunnels)" --> VGW
+    CGW[[Customer Gateway<br/>represents the on-prem router]] -.describes.- RTR
+    RTR == "Direct Connect<br/>dedicated fiber, private, NOT encrypted<br/>(add VPN to encrypt)" ==> DXLOC
+    DXLOC -- "Private VIF" --> VGW
+    DXLOC -- "Public VIF" --> S3[(AWS public services)]
+```
+
+## Key facts, limits & pricing
+
+- **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). ~**1.25 Gbps per tunnel** ceiling (⚠️ verify current). Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
+- **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 Gbps** (400 on some); **hosted** connections (via partners) go sub-1 Gbps. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
+- **DX Virtual Interfaces (VIFs):** **Private VIF** → one VPC (via VGW); **Public VIF** → AWS public services (S3 etc.) globally; **Transit VIF** → Transit Gateway (via DX Gateway).
+- **Direct Connect Gateway:** global; a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs. **Non-transitive** (VPCs via a DXGW can't reach each other through it).
+- **VPN CloudHub:** hub-and-spoke over a VGW to connect **multiple on-prem branch offices** (and/or as backup links) using BGP.
+- **HA patterns:** DX + **VPN backup** (cheap failover if the line drops); dual DX (two connections/locations) for max resilience; VPN itself already has 2 tunnels.
+- **Client VPN** (aside): `aws_ec2_client_vpn_endpoint` — OpenVPN-based access for **individual remote users** (laptops), *not* site-to-site. Don't confuse the two.
+
+## Comparisons
+
+### Site-to-Site VPN vs Direct Connect
+
+|   | Site-to-Site VPN | Direct Connect |
+|---|---|---|
+| Path | Public internet | Dedicated private fiber |
+| Encrypted? | **Yes** (IPsec) | **No** by default (add VPN to encrypt) |
+| Bandwidth | Up to ~1.25 Gbps/tunnel, variable | 1/10/100 Gbps, consistent |
+| Latency | Variable (internet) | Low, consistent |
+| Setup time | **Minutes–hours** | **Weeks–months** |
+| Cost | Low | High (port + cross-connect) |
+| Best for | Quick/temporary, backup, low-cost, encrypted | Steady high throughput, low latency, large data egress |
+
+### Which one? (exam triggers)
+
+| Requirement phrase | Answer |
+|---|---|
+| "Connect **quickly** / temporary / this week" | Site-to-Site VPN |
+| "**Consistent** throughput, **low latency**, large/steady data (e.g. DB replication)" | Direct Connect |
+| "**Encrypted** connection over the internet" | Site-to-Site VPN |
+| "Private line but data must be **encrypted**" | **VPN over Direct Connect** |
+| "**Backup** for Direct Connect, cost-effective" | Site-to-Site VPN failover |
+| "One private connection to VPCs in **multiple regions**" | Direct Connect **Gateway** |
+| "Many VPCs / on-prem all connected, at scale" | **Transit Gateway** (+ VPN or DX) |
+| "Connect **individual remote employees'** laptops" | **Client VPN** (not Site-to-Site) |
+
+## Worked examples
+
+> [!example] Worked example — the "private but not encrypted" gotcha (VPN over DX)
+> A bank moves to Direct Connect for a low-latency link to AWS and assumes the traffic is secure because "it's a private line, not the internet." Audit fails: **DX is not encrypted** — a private circuit still carries plaintext. The fix that satisfies both requirements (private path *and* encryption) is a **Site-to-Site VPN running over the Direct Connect** (IPsec over a public VIF). Exam framing: *"needs the performance of Direct Connect **and** in-transit encryption"* → **VPN over DX**, not DX alone.
+
+> [!failure] Failure mode — betting a launch on Direct Connect lead time
+> A team plans a migration in 3 weeks and designs it around Direct Connect for throughput. DX provisioning (physical cross-connect, telecom, LOA-CFA paperwork) routinely takes **weeks to months** — the circuit isn't ready by launch, and the project stalls. The right move: **stand up a Site-to-Site VPN now** (hours) to hit the date, and cut over to Direct Connect when the circuit lands (often keeping the VPN as the backup). "Need connectivity fast" is never the DX answer.
+
+> [!example] Worked example — resilient hybrid at scale
+> An enterprise with 20 VPCs across 2 regions and 3 data centers wants one coherent network. Peering would be a 190-connection mess. Design: a **Transit Gateway** per region as the hub (all VPCs attach with one attachment each), **Direct Connect + Transit VIF via a Direct Connect Gateway** to bring the data centers onto the hubs across regions, and a **Site-to-Site VPN as failover** for the DX. This is the canonical "large hybrid network" answer — TGW for the VPC mesh, DX for the private pipe, VPN for cheap backup.
+
+## The Terraform I wrote
+
+None — **conceptual-only** (build tier: no apply). A real setup requires a physical on-prem device and a DX partner circuit, neither of which exists in a learning account. The map above is the sketch of what the HCL *would* be (`aws_vpn_gateway`, `aws_customer_gateway`, `aws_vpn_connection`, `aws_dx_*`). The exam tests the **decision criteria and topology**, not the Terraform, for these.
+
+> [!warning] Trap — "Direct Connect is encrypted because it's private"
+> Private ≠ encrypted. DX carries plaintext over a dedicated circuit. For encryption, run a **VPN over DX**. Very common distractor.
+
+> [!warning] Trap — "use Direct Connect for a quick or temporary connection"
+> DX takes **weeks-to-months** to provision. Anything "fast," "temporary," or "immediately" is a **Site-to-Site VPN**.
+
+> [!warning] Trap — "VGW vs CGW"
+> **VGW = AWS side** (attached to the VPC). **CGW = on-prem side** (a config object describing your router). Swapping these is a classic mix-up.
+
+> [!warning] Trap — "Client VPN = Site-to-Site VPN"
+> **Client VPN** = individual users' devices (OpenVPN). **Site-to-Site VPN** = whole network ↔ VPC (IPsec). Different services for different needs.
+
+> [!example]- Recall drill (no build)
+> Without looking: (1) name the AWS-side and on-prem-side VPN endpoints; (2) is Direct Connect encrypted, and how do you encrypt it; (3) DX vs VPN for "temporary connection in 5 days"; (4) what a Direct Connect Gateway buys you; (5) DX provisioning time.
+> > [!success]- Answers
+> > (1) VGW (AWS) + CGW (on-prem). (2) No — run a Site-to-Site VPN over it. (3) VPN (DX takes weeks-months). (4) One DX reaching VPCs across multiple regions/accounts (non-transitive). (5) Weeks to months.
+
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Whole topic was cold** (hadn't reviewed since the video) — learned it fresh here; needs card review to stick.
+- [ ] **DX is NOT encrypted by default** — the single most-tested nuance; encrypt via VPN-over-DX.
+- [ ] **VGW (AWS side) vs CGW (on-prem side)** — which is which.
+- [ ] **VPN = fast to set up / DX = weeks-to-months** — drives most "which connection" scenario answers.
+- [ ] **Direct Connect Gateway** = one DX to multiple regions (non-transitive).
+
+## 🔗 Docs
+
+- [Network-to-VPC connectivity options (whitepaper)](https://docs.aws.amazon.com/whitepapers/latest/aws-vpc-connectivity-options/network-to-amazon-vpc-connectivity-options.html) — the comparison table; verified 2026-07
+- [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — VIF types, speeds, not-encrypted; verified 2026-07
+- [What is Site-to-Site VPN](https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html)
+- [Direct Connect Gateway](https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-gateways.html)
+
+---
+**Cards for this topic:** [[cards/05-vpc-hybrid-cards]]
