@@ -6,3 +6,8 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "my_ip_cidr" {
+  description = "Your laptop's public IP as a /32, for the bastion SSH rule (set in terraform.tfvars)"
+  type        = string
+}

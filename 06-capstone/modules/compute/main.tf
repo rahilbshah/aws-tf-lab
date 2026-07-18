@@ -118,6 +118,9 @@ resource "aws_launch_template" "this" {
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.app.id]
   user_data              = base64encode(file("${path.module}/user_data.sh"))
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ssm.name
+  }
 
   tag_specifications {
     resource_type = "instance"

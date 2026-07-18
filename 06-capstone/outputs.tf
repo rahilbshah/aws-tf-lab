@@ -14,3 +14,8 @@ output "db_endpoint" {
   description = "RDS endpoint (private, app-tier only)"
   value       = module.database.db_endpoint
 }
+
+output "bastion_public_ip" {
+  value       = aws_instance.bastion.public_ip
+  description = "Bastion Instance Public Ip"
+}

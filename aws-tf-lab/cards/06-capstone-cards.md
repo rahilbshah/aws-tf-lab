@@ -55,3 +55,15 @@ Because instances scale in/out and their IPs change — an SG-to-SG reference ("
 When should you refactor flat Terraform into modules, and when NOT?
 ?
 DO when you've repeated a pattern (2–3×) or need reuse across environments/teams — modularize the pattern with clear inputs/outputs. DON'T wrap a single resource in a module, and don't modularize prematurely. Standard module files: main.tf / variables.tf / outputs.tf.
+
+How do you access a private EC2 instance or reach a private RDS WITHOUT a bastion or opening any port?
+?
+AWS Systems Manager Session Manager. Give the instance an instance profile with the AmazonSSMManagedInstanceCore policy (+ SSM agent + network path to SSM via NAT or VPC endpoints); then `aws ssm start-session`. For a DB, use AWS-StartPortForwardingSessionToRemoteHost to tunnel the RDS port to localhost. No public IP, no inbound port, auth is IAM, every session is logged in CloudTrail. This is the exam's "most secure / no-open-ports / auditable" access answer over a bastion.
+
+Bastion host vs SSM Session Manager for reaching private resources?
+?
+Bastion: a public-subnet EC2 with SSH :22 open from your IP; you tunnel through it. Works everywhere but = a public box to patch + an open port + SSH keys. SSM: no bastion, no public IP, no inbound port; access via IAM, logged in CloudTrail; needs an instance profile (AmazonSSMManagedInstanceCore). SSM is the preferred/most-secure answer.
+
+What does an EC2 instance need to be managed by AWS Systems Manager?
+?
+Three things: the SSM agent running (pre-installed on Amazon Linux and Ubuntu AMIs), an instance profile with the AmazonSSMManagedInstanceCore managed policy, and a network path to the SSM endpoints (via a NAT gateway, or VPC interface endpoints for ssm/ssmmessages/ec2messages if fully private).

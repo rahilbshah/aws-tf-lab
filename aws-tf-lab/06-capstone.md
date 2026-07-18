@@ -136,6 +136,31 @@ Non-obvious things hit:
 > > [!success]- Reference solution
 > > See `06-capstone/`. Gotchas: `-1` egress omits ports; non-empty SG descriptions; RDS username not `root`, password no `@`; re-export module outputs at root; `terraform init` after adding each module.
 
+## Accessing the private database (bastion vs SSM)
+
+The DB is private (no public IP; `db-sg` allows only the app tier), so reaching it from a laptop needs a jump path. Both were built and tested on this stack.
+
+> [!example] Option A — Bastion host + SSH tunnel
+> A small EC2 in a **public** subnet (public IP, `bastion-sg` allowing `:22` from your `/32`), allowed into the DB via a `db-sg` ingress rule **from `bastion-sg`**. A GUI client (TablePlus **"Over SSH"**) SSHes to the bastion and tunnels to the RDS endpoint. The cross-module wiring lived in the root: `security_group_id = module.database.db_sg_id`, `referenced_security_group_id = aws_security_group.bastion.id`. Classic and works everywhere — but it's a public box to run/patch, an open SSH port, and keys to manage.
+
+> [!example] Option B — SSM Session Manager port forwarding (preferred)
+> **No bastion, no public IP, no inbound port.** Give the private app instances an instance profile with the AWS-managed **`AmazonSSMManagedInstanceCore`** policy; the SSM agent (pre-installed on Ubuntu AMIs) registers them with SSM over NAT. Then:
+> ```
+> aws ssm start-session --target <instance-id> \
+>   --document-name AWS-StartPortForwardingSessionToRemoteHost \
+>   --parameters '{"host":["<rds-endpoint>"],"portNumber":["5432"],"localPortNumber":["5432"]}'
+> ```
+> Local `127.0.0.1:5432` emerges *inside the VPC* at RDS; TablePlus connects to `localhost` (a plain connection, no SSH). Auth is **IAM**, and every session is logged in **CloudTrail**. Gotcha: on a *launch template*, `iam_instance_profile` is a **block** (`iam_instance_profile { name = ... }`), not the bare-string attribute used on `aws_instance`. Existing instances need an **instance refresh** to pick up the new profile.
+
+| | Bastion | SSM Session Manager |
+|---|---|---|
+| Public instance | **Yes** | **No** |
+| Inbound port open | SSH :22 | **None** |
+| Auth | SSH key | **IAM** |
+| Audit | box logs | **CloudTrail** |
+| Extra infra | bastion to run/patch | just an instance profile |
+| Exam framing | classic | **"access private instances without a bastion / without opening ports / auditable"** → Session Manager |
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Module outputs bubble up one level** — must re-export at the root for `terraform output` / other modules to see them.
@@ -144,6 +169,8 @@ Non-obvious things hit:
 - [ ] **RDS Multi-AZ (HA, not readable) vs Read Replica (read scaling)** — the classic trap.
 - [ ] **RDS username/password constraints** — reserved names (`root`), forbidden chars (`@`).
 - [ ] **Secrets belong in tfvars (gitignored)/Secrets Manager**, never in a committed `.tf`.
+- [ ] **Reaching a private DB: bastion (public, SSH, open port) vs SSM Session Manager (no bastion, IAM auth, CloudTrail)** — SSM is the "no open ports / auditable" exam answer.
+- [ ] **`iam_instance_profile` is a BLOCK on a launch template**, a string on `aws_instance`; launch-template changes need an ASG instance refresh to take effect.
 
 ## 🔗 Docs
 
