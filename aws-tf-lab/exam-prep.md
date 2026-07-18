@@ -44,7 +44,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] ☐ Snow Family (migration)
 
 ### Database
-- [ ] ☐ RDS (Multi-AZ vs read replicas — classic trap)
+- [x] ✅ RDS (Multi-AZ vs read replicas, subnet groups, encryption) — [[06-capstone]]
 - [ ] ☐ Aurora
 - [ ] ☐ DynamoDB (DAX, global tables, streams)
 - [ ] ☐ ElastiCache (Redis / Memcached)
