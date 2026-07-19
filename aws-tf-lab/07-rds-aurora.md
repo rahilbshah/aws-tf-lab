@@ -113,7 +113,10 @@ flowchart TB
 
 ## The Terraform I wrote
 
-Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) in [[06-capstone]] — DB subnet group + SG-from-app-tier + sensitive password from tfvars. Aurora/Serverless/Global were studied conceptually (they bill, and the exam tests the *decisions*, not the HCL). Aurora in Terraform would be `aws_rds_cluster` + `aws_rds_cluster_instance` (writer + readers) rather than a single `aws_db_instance`.
+Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twice — in [[06-capstone]] and again as a **best-practices standalone** in `07-rds-elasticache/` (encrypted, `publicly_accessible = false`, automated backups, SG-from-app-tier, sensitive password from tfvars). Aurora/Serverless/Global were studied conceptually (they bill, and the exam tests the *decisions*, not the HCL). Aurora in Terraform would be `aws_rds_cluster` + `aws_rds_cluster_instance` (writer + readers) rather than a single `aws_db_instance`.
+
+> [!tip] Real gotcha — AWS Free Plan caps backup retention
+> On the new AWS **Free Tier "Free Plan"**, `backup_retention_period = 7` failed with `FreeTierRestrictionError`; had to drop to `1`. The current free tier has service guardrails (backup retention, sometimes instance types) the old 12-month one didn't — dial settings down rather than upgrading the plan.
 
 > [!warning] Trap — Multi-AZ to scale reads
 > Multi-AZ standby is **not readable** — it's for failover. Use **read replicas** to scale reads. Reversed constantly on the exam.

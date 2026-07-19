@@ -96,7 +96,7 @@ flowchart LR
 
 ## The Terraform I wrote
 
-Conceptual-only (ElastiCache nodes bill; the exam tests engine choice + caching strategy, not HCL). In Terraform a Redis HA cache is an `aws_elasticache_replication_group` (with `automatic_failover_enabled` + `multi_az_enabled`) in an `aws_elasticache_subnet_group` in private subnets, with an SG allowing the app tier — the same private-data-tier pattern as the RDS in [[06-capstone]].
+Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elasticache_replication_group` with `num_cache_clusters = 2` → `automatic_failover_enabled` + `multi_az_enabled` (both require ≥2 nodes), `at_rest_encryption_enabled` + `transit_encryption_enabled` (+ `auth_token`), snapshots on, in an `aws_elasticache_subnet_group` in private subnets, SG allowing 6379 **only from the app/client SG**. Verified the **primary** (`master.…`) and **reader** (`replica.…`) endpoints — same writer/reader split as Aurora. Redis took ~6 min to create. Used `aws_elasticache_replication_group` (not `aws_elasticache_cluster`) precisely to get the primary+replica HA topology.
 
 > [!warning] Trap — Memcached for anything needing HA/persistence/complex data
 > Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → **Redis**. This engine-choice question is the heart of ElastiCache on the exam.
