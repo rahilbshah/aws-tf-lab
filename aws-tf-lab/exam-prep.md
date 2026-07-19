@@ -44,10 +44,10 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] ☐ Snow Family (migration)
 
 ### Database
-- [x] ✅ RDS (Multi-AZ vs read replicas, subnet groups, encryption) — [[06-capstone]]
-- [ ] ☐ Aurora
+- [x] ✅ RDS (Multi-AZ vs read replicas, backups/PITR, encryption) — [[07-rds-aurora]]
+- [x] ✅ Aurora (6-copy storage, endpoints, Serverless v2, Global DB) — [[07-rds-aurora]]
 - [ ] ☐ DynamoDB (DAX, global tables, streams)
-- [ ] ☐ ElastiCache (Redis / Memcached)
+- [x] ✅ ElastiCache (Redis vs Memcached, caching strategies) — [[08-elasticache]]
 - [ ] ☐ Redshift
 
 ### Networking & Content Delivery
@@ -106,8 +106,8 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 ## Progress snapshot
 
-- **Done:** IAM, EC2 (+storage/purchasing), ELB+ASG, VPC core+security, Packer. ~**6 of ~30** topic areas.
-- **Honest estimate:** roughly **20–25%** of the exam surface. The heaviest un-started high-yield topics are **S3, RDS/Aurora/DynamoDB, Route 53, SQS/SNS, Lambda, KMS** — prioritize these next.
-- **Weakest domain vs weighting:** the exam is 30% *Secure* — you've done IAM + VPC security (strong start), but KMS/Secrets/Cognito/WAF are still open.
+- **Done:** IAM, EC2 (+storage/purchasing), ELB+ASG, Packer, the full VPC topic (core/security/endpoints/hybrid), the modular 3-tier capstone, RDS, Aurora, ElastiCache. ~**13 topic areas**.
+- **Honest estimate:** roughly **40%** of the exam surface, with the whole networking + compute + relational-data + caching foundation solid. Heaviest un-started high-yield gaps: **S3, DynamoDB, Route 53, CloudFront, SQS/SNS, Lambda, KMS**.
+- **Weakest domain vs weighting:** the exam is 30% *Secure* — IAM + VPC security are strong, but **KMS / Secrets Manager / Cognito / WAF** are still open and should be prioritized.
 
 _Update the checkboxes as we complete each section. When most boxes are ticked and TD sits ~80%, book the exam._
