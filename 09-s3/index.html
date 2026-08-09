@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S3 Static Site — SAA-C03 Lab</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 40rem;
+           margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
+    code { background: #f4f4f4; padding: 0.15rem 0.35rem; border-radius: 3px; }
+    .note { border-left: 3px solid #ff9900; padding-left: 1rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>🪣 Served straight from S3</h1>
+  <p>No EC2. No load balancer. No servers at all — this page is an object in a
+     bucket, and S3 is serving it over HTTP.</p>
+
+  <div class="note">
+    <p><strong>How it works:</strong> the bucket has a
+       <code>website_configuration</code> naming <code>index.html</code> as the
+       index document, Block Public Access is disabled, and a bucket policy
+       allows <code>s3:GetObject</code> to everyone.</p>
+    <p><strong>Note:</strong> the S3 website endpoint is <em>HTTP-only</em>.
+       HTTPS (and caching) needs CloudFront in front.</p>
+  </div>
+
+  <p>Try a URL that doesn't exist to see <code>error.html</code>.</p>
+</body>
+</html>

@@ -36,7 +36,9 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 ### Storage
 - [x] ✅ EBS + Instance Store (covered under EC2) — [[02-ec2]]
-- [ ] ☐ **S3** (storage classes, lifecycle, versioning, encryption, replication, static hosting, presigned URLs, bucket policies, Object Lock) — *big; high exam weight*
+- [x] ✅ **S3 intro** (buckets/keys, durability, storage classes, versioning, lifecycle, static hosting) — [[09-s3-intro]]
+- [ ] 🔨 S3 advanced (replication, multipart, Transfer Acceleration, S3 Select, events) — [[09-s3-advanced]] *(next)*
+- [ ] 🔨 S3 security (bucket policies, Block Public Access, encryption, presigned URLs, Object Lock) — [[09-s3-security]] *(next)*
 - [ ] ☐ EFS (shared NFS)
 - [ ] ☐ FSx (Windows / Lustre / NetApp / OpenZFS)
 - [ ] ☐ Storage Gateway (File / Volume / Tape)
