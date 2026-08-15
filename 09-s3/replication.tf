@@ -12,8 +12,9 @@
 #    Everything else in this project stays in us-east-1.
 # ---------------------------------------------------------------------------
 resource "aws_s3_bucket" "dest" {
-  provider = aws.dest
-  bucket   = "saa-c03-dest-${data.aws_caller_identity.current.account_id}"
+  provider      = aws.dest
+  bucket        = "saa-c03-dest-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
 
   tags = {
     Name = "replication-destination"

@@ -34,7 +34,9 @@
 
 
 resource "aws_s3_bucket" "site" {
-  bucket = "saa-c03-site-${data.aws_caller_identity.current.account_id}"
+  bucket        = "saa-c03-site-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
+
   tags = {
     Name = "My site"
   }
