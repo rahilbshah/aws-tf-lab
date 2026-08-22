@@ -24,3 +24,8 @@ output "secure_bucket" {
   description = "Secure-by-default bucket (BPA on, SSE-KMS, TLS-only policy)"
   value       = aws_s3_bucket.secure.id
 }
+
+output "locked_bucket" {
+  description = "Object Lock (WORM) bucket — GOVERNANCE mode, 1-day default retention"
+  value       = aws_s3_bucket.locked.id
+}
