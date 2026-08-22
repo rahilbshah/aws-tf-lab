@@ -61,7 +61,7 @@ flowchart TB
 - **One NACL per subnet, one SG-set per ENI.** A subnet uses the default NACL unless you associate a custom one. An instance can have up to (quota) SGs.
 - **Flow log fields (default v2):** `version account-id eni-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status`. Protocol numbers: **6 = TCP, 17 = UDP, 1 = ICMP**. Action = `ACCEPT`/`REJECT`.
 - **Flow logs = metadata only, never payload.** (Payload/deep inspection = Network Firewall's job — a classic distractor.)
-- **Flow log levels:** VPC, subnet, or ENI. **Destinations:** CloudWatch Logs, S3, Kinesis Data Firehose.
+- **Flow log levels:** VPC, subnet, or ENI. **Destinations:** CloudWatch Logs, S3, Amazon Data Firehose (renamed from *Kinesis* Data Firehose — older material still uses the old name).
 - **Not logged by flow logs:** traffic to the Amazon DNS server (custom DNS *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the **Amazon Time Sync Service `169.254.169.123`**, Windows license activation, and the reserved VPC-router IP.
 - **`max_aggregation_interval`**: 600s default, or 60s for faster records (set to 60 to see logs in ~2 min instead of ~10).
 - **Network Firewall** ~$0.395/hr per firewall endpoint + data processing (⚠️ check current). SG/NACL are **free**. Flow logs cost only the destination storage/ingestion.

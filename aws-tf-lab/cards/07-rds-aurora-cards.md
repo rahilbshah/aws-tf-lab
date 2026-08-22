@@ -14,7 +14,7 @@ MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, and Amazon Aurora (MySQL- and Po
 
 RDS Multi-AZ vs Read Replica — purpose and readability?
 ?
-Multi-AZ: a SYNCHRONOUS standby in another AZ for HIGH AVAILABILITY / automatic failover — NOT readable. Read Replica: ASYNCHRONOUS copies you CAN read from, for READ SCALING (up to 5, can be cross-region, manually promotable). Multi-AZ = survive AZ failure; Read Replica = offload reads. You can use both together.
+Multi-AZ: a SYNCHRONOUS standby in another AZ for HIGH AVAILABILITY / automatic failover — NOT readable. Read Replica: ASYNCHRONOUS copies you CAN read from, for READ SCALING (⚠️ verify the max — long-standing figure is 5, AWS may have raised it to 15 for MySQL/PostgreSQL; can be cross-region, manually promotable). Multi-AZ = survive AZ failure; Read Replica = offload reads. You can use both together.
 
 How does RDS point-in-time recovery work, and what does restore produce?
 ?
@@ -34,7 +34,7 @@ How does Aurora store data (copies, AZs, scaling)?
 
 How do Aurora Replicas differ from RDS Read Replicas?
 ?
-Aurora Replicas connect to the SAME shared cluster volume (no data copy) → typically <10 ms lag, up to 15 of them, with automatic fast failover. RDS Read Replicas each hold their own asynchronously-copied data (can lag seconds), up to 5, and are manually promoted.
+Aurora Replicas connect to the SAME shared cluster volume (no data copy) → typically <10 ms lag, up to 15 of them, with automatic fast failover. RDS Read Replicas each hold their own asynchronously-copied data (can lag seconds), ⚠️ verify the max (5, possibly now 15), and are manually promoted.
 
 What are the four Aurora cluster endpoint types?
 ?

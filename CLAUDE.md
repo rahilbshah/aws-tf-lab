@@ -511,6 +511,19 @@ Notes are worse than useless if they're wrong, because the human will *memorise*
 
 Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + worked example + cards file? If not, the note is missing something; if yes, it's done.
 
+### 13.12 The exam-trainer boundary (`../aws-saa-trainer/`)
+
+A sibling project holds a 1,156-question exam bank and a web app that drills it. It reads this vault — `app/src/lib/notes.ts` joins on our `services:` frontmatter to say "go back to your `05-vpc` note" after a weak drill. That direction is correct and should stay: read-only, degrades to silence when notes are missing.
+
+**The rule, in one line: the trainer reports what the human got *wrong*. It never writes what is *true*.**
+
+- **May cross into the vault:** measurements about the human — a missed *concept* appended to `## 🔴 My weak spots`, dated and marked as trainer-sourced, one line per concept (never per question id). This is already what §13.9 does by hand.
+- **Must never cross:** facts, traps, comparison tables, `## Key facts, limits & pricing` entries, SR cards, or whole generated notes. §13.10 requires every fact to be verified against AWS docs *at the time of writing*; the bank is third-party practice-exam content that is calibrated for **exam realism, not truth** — it shipped 13 wrong answer keys and carries 223 aged questions. Different standard. The vault holds the higher one.
+- **Legitimate use of the bank:** shaping *what I ask and what I check for coverage* — "the bank has uncovered S3 encryption and Object Lock discriminators, so make sure the security note covers them." It shapes the questions, never the answers.
+- **Counting caution:** the bank's `services[]` lists every service a question *names*, including in its wrong answers. Any count must use `topics[]` and must say whether it counts questions or tag-instances. Two separate analyses have already over-reported by counting mentions instead of subject.
+
+**Worked example of why (2026-08-22).** A trainer-side analysis reported that `09-s3-intro.md` carried a stale "30-day" S3 rule. It had conflated two different rules: the **minimum storage duration** (30 days for Standard-IA / One Zone-IA — still current) and the **minimum wait before a lifecycle transition** (removed). Our note only ever stated the former, correctly. Acting on the report would have deleted a correct fact from a note the human memorises. Verify before editing, every time.
+
 ---
 
 ### Reminder to yourself, Claude Code:

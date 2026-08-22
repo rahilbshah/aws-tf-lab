@@ -98,6 +98,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 ### Cost Optimization
 - [x] ✅ EC2 purchasing (On-Demand/Reserved/Spot/Savings) — [[02-ec2]]
+- [ ] ☐ Database & network cost (endpoints vs NAT, data transfer, replicas vs serverless) — *not started. Note: the trainer's bank is thin here (15 questions for cost-optimized database, 25 for network, vs 59–135 for every other task statement), so drilling won't cover it — this one has to be read and built.*
 - [ ] ☐ Cost Explorer / Budgets / Cost Allocation Tags
 - [ ] ☐ Compute Optimizer / Trusted Advisor
 

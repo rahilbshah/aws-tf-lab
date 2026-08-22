@@ -38,7 +38,7 @@ They capture connection METADATA per flow: source/dest IP, source/dest port, pro
 
 At what levels can you attach a VPC Flow Log, and where can it publish?
 ?
-Levels: VPC, subnet, or ENI (network interface). Destinations: CloudWatch Logs, S3, or Kinesis Data Firehose.
+Levels: VPC, subnet, or ENI (network interface). Destinations: CloudWatch Logs, S3, or Amazon Data Firehose (renamed from Kinesis Data Firehose — older material still says Kinesis).
 
 In a flow log record, what do protocol numbers 6, 17, and 1 mean?
 ?
