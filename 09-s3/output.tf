@@ -19,3 +19,8 @@ output "dest_bucket" {
   description = "Replication destination bucket (us-west-2)"
   value       = aws_s3_bucket.dest.id
 }
+
+output "secure_bucket" {
+  description = "Secure-by-default bucket (BPA on, SSE-KMS, TLS-only policy)"
+  value       = aws_s3_bucket.secure.id
+}
