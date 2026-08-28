@@ -63,3 +63,51 @@ Two reasons: (1) the console page is a static snapshot — it needs a manual ref
 What is the launch template vs launch configuration?
 ?
 `aws_launch_template` is the modern instance blueprint an ASG stamps out (AMI, type, SGs, user_data, IAM profile, versioned). The older launch *configuration* is deprecated/immutable — use launch templates.
+
+On scale-in, how does the DEFAULT termination policy choose which instance dies?
+?
+1) Pick the Availability Zone with the MOST instances that has at least one instance unprotected from scale-in — zonal balance outranks the policy. 2) Within that AZ, prefer instances on outdated configurations: first any launched from a launch CONFIGURATION, then any on a different launch template than the current one, then the oldest version of the current template. 3) Then whichever is closest to the next billing hour. 4) Then at random.
+
+Does the default termination policy terminate the OLDEST INSTANCE?
+?
+No — that's the separate `OldestInstance` policy you must opt into. The default targets the oldest CONFIGURATION, and only after balancing Availability Zones. Because AZ balance is applied first, you can correctly see a newer instance terminated before an older one.
+
+Do termination policies apply to unhealthy instances?
+?
+No. AWS applies termination policies only to instances the Auto Scaling group does not already consider unhealthy — an instance failing health checks bypasses termination-policy evaluation and is replaced regardless.
+
+Name the predefined termination policies.
+?
+Default, OldestInstance, NewestInstance, OldestLaunchConfiguration, OldestLaunchTemplate, ClosestToNextInstanceHour, and AllocationStrategy (mixed-instances groups, realigns Spot/On-Demand to the allocation strategy).
+
+What does a scheduled scaling action set, and which parts are optional?
+?
+It sets DesiredCapacity at a given time, and OPTIONALLY new MinSize and MaxSize. You can set just one of the three — but you must include min/max whenever the new desired capacity would fall outside the current limits.
+
+Why set only desired_capacity in a scheduled action rather than pinning min and max?
+?
+Because scheduled and dynamic scaling compose. After the scheduled action runs, the target-tracking/step policy keeps scaling — it just has to stay within min/max. Setting only desired pre-warms capacity for a known event and leaves dynamic scaling free; setting min = max freezes the group at a fixed size. "Predictable baseline + unpredictable spikes" = scheduled action AND a dynamic policy.
+
+What cron format and time zone does scheduled scaling use?
+?
+Five fields — [Minute] [Hour] [Day_of_Month] [Month_of_Year] [Day_of_Week] — defaulting to UTC. You can set an IANA time zone name (e.g. America/New_York), and location-based zones auto-adjust for DST while Etc/UTC does not. Max 125 scheduled actions per ASG; an action can be delayed up to 2 minutes; suspend the ScheduledActions process to pause them all.
+
+Terraform gotcha: what do min_size, max_size and desired_capacity default to in aws_autoscaling_schedule?
+?
+They default to **0**, NOT "unchanged." The sentinel for "leave this value alone" is **-1** and you must write it explicitly. Omitting min_size/max_size sets both to 0, which clamps desired to 0 and terminates the whole fleet when the cron fires — a scheduled outage that the plan output looks harmless for.
+
+How do you redirect HTTP to HTTPS on an Application Load Balancer?
+?
+A `redirect` action on the :80 listener's default action — protocol HTTPS, port 443, status HTTP_301. It's served by the load balancer itself, so the request never reaches a target and it works even when every target is unhealthy. No Lambda, no second load balancer, no application change.
+
+What are the redirect action's status codes, URI parts, and reserved keywords?
+?
+Status: HTTP_301 (permanent) or HTTP_302 (temporary). The URI is protocol://hostname:port/path?query, and you must change at least ONE of protocol, hostname, port or path or you create a redirect loop. Keywords carry the original values through: #{protocol}, #{host}, #{port}, #{path}, #{query}.
+
+Can an ALB redirect HTTPS to HTTP? Can an NLB redirect at all?
+?
+No to both. HTTP→HTTPS, HTTP→HTTP and HTTPS→HTTPS are supported; HTTPS→HTTP is not. And redirect is a Layer 7 ALB listener action — an NLB works at Layer 4 and cannot inspect or rewrite HTTP at all.
+
+Every ALB listener rule must end with exactly one of which three actions?
+?
+forward, redirect, or fixed-response — and it must be the last action performed. An HTTPS listener may additionally carry a user-authentication action (authenticate-cognito / authenticate-oidc) before the routing action.

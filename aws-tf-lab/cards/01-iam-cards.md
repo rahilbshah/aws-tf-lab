@@ -57,3 +57,23 @@ No — `aws_iam_user.name` is in-place updatable in the v6 provider (calls AWS `
 What's the IAM policy `Version` field (e.g. `"2012-10-17"`)?
 ?
 The IAM policy language version — always `"2012-10-17"` for modern IAM policies. It is NOT a free-form version field, it's the policy schema version. The `aws_iam_policy_document` data source adds it automatically.
+
+A company has users and groups in on-premises Active Directory and wants them to access AWS without creating IAM users. What is the shape of the answer?
+?
+Federation, ending at a ROLE. Directory Service (AWS Managed Microsoft AD, or AD Connector to keep using on-prem AD) → IAM Identity Center → map AD GROUPS to permission sets, which become IAM roles in each account. Users get short-term credentials for console/CLI/SDK. The older equivalent is a SAML 2.0 identity provider in IAM plus roles trusting `Federated:` for `sts:AssumeRoleWithSAML`.
+
+AWS Managed Microsoft AD vs AD Connector vs Simple AD?
+?
+Managed Microsoft AD — a REAL Microsoft AD run by AWS; supports trusts with on-prem, MFA, schema extensions, LDAPS, and RDS for SQL Server. AD Connector — a PROXY that forwards sign-ins to your on-prem domain controllers; stores no directory data in AWS and does no synchronization. Simple AD — Samba 4, AD-compatible not real AD; no trusts, no MFA, no schema extensions, no LDAPS, no RDS SQL Server.
+
+Which Directory Service option stores no directory data in AWS?
+?
+AD Connector. It's a proxy — it forwards authentication requests to your existing on-premises domain controllers and synchronizes nothing. Pick it when the requirement is "keep managing users on-premises" or "don't store directory data in AWS."
+
+What immediately disqualifies Simple AD in a question?
+?
+Any mention of trust relationships with another domain, MFA, schema extensions, LDAPS/secure LDAP, PowerShell AD cmdlets, FSMO role transfer, or RDS for SQL Server. Simple AD supports none of these — it's the low-cost basic option.
+
+An application needs to log in to an RDS database using its IAM role. Which IAM action?
+?
+`rds-db:connect` — on a resource ARN of the form `arn:aws:rds-db:{region}:{account}:dbuser:{DbiResourceId}/{db-user}`. Note the `rds-db:` prefix is separate from `rds:`, which is the RDS management API (CreateDBInstance, DescribeDBInstances…). Granting `rds:*` does NOT let anything log in to a database.

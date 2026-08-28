@@ -51,3 +51,19 @@ No — caches accelerate READS (repeated, read-heavy queries). If the bottleneck
 What is Valkey in ElastiCache?
 ?
 The AWS-backed open-source fork of Redis (created after Redis's license change). ElastiCache offers Valkey, Redis OSS, and Memcached; Valkey is feature-compatible with Redis (HA, persistence, data types) and often cheaper. For SAA-C03, treat the choice as "Redis vs Memcached."
+
+What is Auto Discovery, and which ElastiCache engine has it?
+?
+**Memcached only** — AWS states it is not available for Valkey or Redis OSS. The client connects to one node, retrieves the list of all nodes in the cluster, and then connects to any of them. Every node keeps metadata about all the others, refreshed whenever nodes are added or removed, so you never hard-code node endpoints. It needs an ElastiCache client library with Auto Discovery support.
+
+A question says "multi-threaded, sub-millisecond, needs automatic node discovery, simple key-value." Which engine?
+?
+Memcached. Both "multi-threaded" and "node discovery / Auto Discovery" are Memcached-exclusive signals. Don't let the words "session store" or "cache" pull you to Redis — count the engine-exclusive signals rather than the use case.
+
+Which signals in a question point uniquely at Redis rather than Memcached?
+?
+Persistence, backup/snapshot & restore, replication, Multi-AZ automatic failover, read replicas, pub/sub, transactions, and any rich data type (sorted sets/leaderboards, hashes, geospatial). Any ONE of those rules out Memcached.
+
+Which signals point uniquely at Memcached rather than Redis?
+?
+Multi-threaded / "use all the cores of a large node", Auto Discovery of nodes, and "simplest possible ephemeral object cache, data loss on node failure is acceptable." Scaling by simply adding nodes with client-side sharding also leans Memcached.

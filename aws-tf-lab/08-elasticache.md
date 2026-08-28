@@ -18,7 +18,9 @@ Managed in-memory caching in front of a database (or as a datastore). Turns repe
 > - **Memcached** = **multi-threaded** (big multi-core nodes), **simple** key-value only, **no** persistence/replication/failover/backup — pure ephemeral cache that scales out.
 > - **Pick Redis** for HA / durability / complex data (leaderboards, sessions, pub/sub). **Pick Memcached** for the simplest, multi-threaded, scale-horizontally object cache.
 > - **Caching strategies:** *lazy loading / cache-aside* (populate on miss) vs *write-through* (populate on write); use **TTL** to bound staleness.
+> - **Auto Discovery is Memcached-only** — the client connects to one node and learns all the others. AWS states it is **not** available for Valkey or Redis OSS.
 > - **Valkey** = the newer open-source Redis fork AWS backs; same feature profile as Redis for the exam.
+> - **Read the question for engine-exclusive signals, not the use case.** "Multi-threaded" and "node discovery" are Memcached-only; persistence / replication / failover / sorted sets are Redis-only. One exclusive signal decides it.
 
 ## Concept (plain English)
 
@@ -57,6 +59,7 @@ flowchart LR
 - **Encryption:** in-transit + at-rest supported on Redis (newer versions); Memcached in-transit on newer versions.
 - **Common use cases:** DB query cache, **session store** (Redis, so sessions survive failover), **leaderboards/counters** (Redis sorted sets), **rate limiting**, **pub/sub messaging**, **geospatial** lookups.
 - **Valkey:** AWS-backed open-source fork of Redis (after Redis's license change); ElastiCache now offers Valkey, Redis OSS, and Memcached. For SAA-C03 think "Redis vs Memcached"; Valkey ≈ Redis feature-wise and is often cheaper.
+- **Auto Discovery (Memcached only):** the app connects to a single node and retrieves the full node list, then connects to any of them — no hard-coded node endpoints, and the list stays correct as nodes are added or removed (every node holds metadata about all the others). It requires an **ElastiCache client library with Auto Discovery support**. AWS explicitly states Auto Discovery is **not available for Valkey or Redis OSS**, which is what makes "node discovery" a Memcached-exclusive signal on the exam.
 - Runs in your **VPC** (subnet group in private subnets, SG allowing the app tier) — same private-tier pattern as RDS.
 
 ## Comparisons
@@ -73,6 +76,7 @@ flowchart LR
 | Data types | Rich (sorted sets, hashes, geo…) | Simple key-value |
 | Pub/Sub, transactions | **Yes** | No |
 | Horizontal scale | Cluster mode (sharding) | Add nodes (sharding) |
+| **Auto Discovery** | ❌ not available | ✅ **Memcached-only** |
 | **Choose when** | Need HA, persistence, complex data, pub/sub | Simplest, multi-core, pure ephemeral cache at scale |
 
 ### Caching strategies
@@ -101,6 +105,9 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 > [!warning] Trap — Memcached for anything needing HA/persistence/complex data
 > Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → **Redis**. This engine-choice question is the heart of ElastiCache on the exam.
 
+> [!warning] Trap — a question that mixes Redis-sounding *use cases* with Memcached-only *features*
+> The hard version of the engine question doesn't say "pick a cache" — it describes a **session store** (which your instinct maps to Redis) while also specifying **multi-threaded** and **automatic node discovery** (both Memcached-only). The use case is a distractor; the engine-exclusive capabilities are the answer. Method: ignore *what it's for* and scan for a capability only one engine has. Multi-threaded / Auto Discovery → **Memcached**. Persistence, replication, Multi-AZ failover, backup, sorted sets, pub/sub → **Redis**. If the question also says data loss on node failure is unacceptable, that's a Redis-only signal and it outranks the others.
+
 > [!warning] Trap — "add a cache" when the problem is writes
 > Caches accelerate **reads**. If the bottleneck is heavy **writes** or the data must be strongly consistent per request, a cache doesn't help (and lazy-loading serves stale data). Match the tool to read-heavy, repeat-query workloads.
 
@@ -118,12 +125,14 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 - [ ] **Full Redis vs Memcached feature split** (HA, persistence, backup, data types, pub/sub) and the engine-choice decision.
 - [ ] **Caching strategies** — lazy loading (cache-aside) vs write-through, and TTL.
 - [ ] **Redis use cases** beyond caching: session store, leaderboards (sorted sets), pub/sub.
+- [ ] **Auto Discovery is Memcached-only** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). The discriminator was "multithreaded sub-ms session store with node discovery": I anchored on *session store → Redis* and ignored two Memcached-exclusive signals. Fix the **method**, not just the fact — scan for engine-exclusive capabilities before reading the use case.
 
 ## 🔗 Docs
 
 - [Comparing Redis OSS / Valkey / Memcached](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html) — threading + feature table; verified 2026-07
 - [Caching strategies (lazy loading, write-through, TTL)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html)
 - [Redis replication & Multi-AZ](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.html)
+- [Auto Discovery (Memcached)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/AutoDiscovery.html) — Memcached-only, not available for Valkey/Redis OSS; verified 2026-08-29
 - [Terraform `aws_elasticache_replication_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group)
 
 ---

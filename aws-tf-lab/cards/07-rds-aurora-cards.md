@@ -55,3 +55,39 @@ One primary region plus up to 5 read-only secondary regions with typically <1 se
 What is RDS Proxy and when is it useful?
 ?
 A managed connection pooler in front of RDS/Aurora. It pools and reuses DB connections, which is important for serverless/Lambda apps that can open huge numbers of short-lived connections and exhaust the DB — RDS Proxy also speeds failover and can enforce IAM auth.
+
+Which RDS engines support IAM database authentication, and how does the app actually log in?
+?
+MariaDB, MySQL and PostgreSQL (plus Aurora MySQL/PostgreSQL). The app calls `aws rds generate-db-auth-token`, then passes the returned token **as the password**. No password is stored anywhere; connections are always encrypted with SSL/TLS.
+
+How long is an RDS IAM authentication token valid, and what happens to a session already open when it expires?
+?
+15 minutes. The token authenticates only when the session is ESTABLISHED — an already-open connection is unaffected and keeps working. But every NEW connection needs a fresh token, which is why a connection pool that caches one token at startup begins failing about 15 minutes after deploy.
+
+What IAM action grants database login, and what does the resource ARN look like?
+?
+`rds-db:connect` — the only action with the `rds-db:` prefix, which is separate from the `rds:` management API. Resource: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user-name}`. Note DbiResourceId is the instance's resource id (`db-ABC…`), not the name you gave the instance; Aurora uses DbClusterResourceId, RDS Proxy uses `prx-…`.
+
+Does IAM database authentication control what a user can DO inside the database?
+?
+No. IAM controls only WHETHER you may connect as a given database user. Once connected, the database's own GRANTs decide everything — a role connecting as `jane_doe` gets exactly what `jane_doe` was granted. IAM DB auth is authentication, not in-database authorization.
+
+Do database logins via IAM database authentication appear in CloudTrail?
+?
+No. AWS documents that CloudTrail and CloudWatch do NOT log IAM DB authentication — `generate-db-auth-token` is signed locally and isn't tracked. For database-level auditing use the engine's audit plugin / pgaudit or Database Activity Streams. Don't pick IAM DB auth as the "audit trail of logins" answer.
+
+Password vs IAM DB auth vs Secrets Manager — when do you pick each?
+?
+Native password: legacy/simple. IAM DB auth: workloads with a role (EC2 instance profile, Lambda, ECS) where you want NO stored secret and 15-minute credentials. Secrets Manager: when the app or a third-party tool genuinely needs a real password, and you want automatic rotation.
+
+What resource cost does enabling IAM DB authentication add to the instance?
+?
+AWS states you need 300–1000 MiB of extra memory on the DB instance for reliable connectivity. That matters on burstable t-class instances — reduce buffers/cache by the same amount or you risk running out of memory.
+
+Terraform: what one argument enables IAM database authentication, and what does it NOT do?
+?
+`iam_database_authentication_enabled = true` on `aws_db_instance` / `aws_rds_cluster`. It only flips the feature on — you must separately attach an IAM policy allowing `rds-db:connect` AND create the database user mapped to IAM inside the DB (AWSAuthenticationPlugin for MySQL, `GRANT rds_iam` for PostgreSQL).
+
+An Aurora Replica serves reads. What ELSE does it do that an RDS read replica does not?
+?
+It doubles as the automatic failover target. Aurora Replicas share the cluster volume, so one set of instances gives you read scaling AND high availability at the same time, with failover in seconds and priority tiers deciding who gets promoted. With RDS you need a Multi-AZ standby (HA, not readable) and read replicas (readable, manual promote) as two separate things.
