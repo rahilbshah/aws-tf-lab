@@ -166,6 +166,31 @@ Built a minimal user → group → policy → attachment chain (5 resources). No
 - **Quoted vs unquoted references** — wrote `groups = ["aws_iam_group.developers"]` (literal string!) on the first pass instead of `[aws_iam_group.developers.name]` (HCL reference). Same trap: type-valid, only fails at apply.
 - **Idiomatic policy authoring** — used `data "aws_iam_policy_document"` to build the policy JSON in HCL instead of a heredoc. Plan-time validation catches Effect/Action typos before AWS sees them.
 
+### Recap lab — `01-iam-lab/` (built 2026-08-29)
+
+A second root module (own state, so it touches nothing in `01-iam`) built to close the two IAM weaknesses the 2026-08-28 mock exposed: **instance profiles** and **`Condition` blocks**. An EC2 role that may read exactly one S3 prefix, and cannot do it over plain HTTP.
+
+Three statements, deliberately three different shapes:
+
+| # | Effect | Action | How it's scoped |
+|---|---|---|---|
+| 1 | Allow | `s3:GetObject` | **resource ARN** — `bucket/reports/*` |
+| 2 | Allow | `s3:ListBucket` | **condition** — `StringLike` on `s3:prefix` |
+| 3 | Deny | `s3:*` | **condition** — `Bool aws:SecureTransport = false`, over *both* ARNs |
+
+The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects, so its resource ARN has no `/*` and cannot express "only this prefix." The scoping has to be a condition. Get it wrong and the role enumerates the whole bucket while the plan looks perfectly reasonable.
+
+> [!tip] Verify a policy without assuming the role — `simulate-principal-policy`
+> The role trusts only `ec2.amazonaws.com`, so you can't assume it from your CLI to test it. `aws iam simulate-principal-policy` evaluates the policy for a principal without anyone assuming anything — free, instant, and it accepts `--context-entries` so you can test **condition keys** directly. Crucially it returns `allowed` / `implicitDeny` / **`explicitDeny`** as distinct verdicts, which S3's uniform `AccessDenied` never tells you. Verified results for this lab:
+> ```
+> ls prefix=reports/            -> allowed        get reports/ok.txt          -> allowed
+> ls prefix=secret/             -> implicitDeny   get secret/no.txt           -> implicitDeny
+> ls no prefix                  -> implicitDeny   get reports/ok.txt via HTTP -> explicitDeny
+> ```
+
+> [!warning] Trap — "the plan showed the policy was fine"
+> It didn't, and it couldn't. Because the policy document interpolates `aws_s3_bucket.this.arn`, Terraform reports `data.aws_iam_policy_document.permissions will be read during apply` and the policy renders as `(known after apply)` — while the **trust** policy, which references nothing, renders in full. For any IAM policy built from references to resources created in the same apply, **the plan is not the artifact**. Read it after apply with `aws iam get-policy-version`, or simulate it.
+
 ## Scenario MCQs
 
 > [!question]- 1. Alice belongs to `developers`, which has `Allow s3:GetObject` on `my-bucket`. An inline policy is then attached directly to Alice that explicitly Denies `s3:GetObject` on `my-bucket/*`. Can Alice GetObject?
@@ -265,7 +290,7 @@ Built a minimal user → group → policy → attachment chain (5 resources). No
 - [ ] **`.arn` vs `.name` in IAM cross-references** — got it wrong for `user`, `groups`, `group` arguments on first pass. Internalize: principals → `.name`, policies → `.arn`.
 - [ ] **Reading plan symbols** — was unsure whether renaming a user shows `~` (in-place) or `-/+` (replacement). The deeper habit: trust the plan output, never your memory of provider behavior. Verify against source for anything you'd put in notes.
 - [ ] **AD groups mapped to IAM roles — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Directory Service and IAM Identity Center were **absent from this note** until 2026-08-29. Trigger phrase to catch: *"users already exist in Active Directory."*
-- [ ] **Instance profile delivers role credentials to EC2 — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). This is **decay, not a gap** — the note covers it, I built it in [[02-ec2]] and verified it live over IMDSv2. Drill the cards; don't re-read.
+- [x] **Instance profile delivers role credentials to EC2 — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Was decay, not a gap. **Rebuilt from scratch in `01-iam-lab/` on 2026-08-29**, this time in an IAM frame rather than as one line of an EC2 lab, alongside the `Condition` blocks that were the other half of the weakness.
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
 - [ ] **Scope of `aws_iam_policy_attachment`** — initially explained it as group-side exclusive; it's actually **per-policy** exclusive (manages all attachments of one specific policy across all principals). A different policy added to the same group is invisible to it.
 

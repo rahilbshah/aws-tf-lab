@@ -77,3 +77,19 @@ Any mention of trust relationships with another domain, MFA, schema extensions, 
 An application needs to log in to an RDS database using its IAM role. Which IAM action?
 ?
 `rds-db:connect` — on a resource ARN of the form `arn:aws:rds-db:{region}:{account}:dbuser:{DbiResourceId}/{db-user}`. Note the `rds-db:` prefix is separate from `rds:`, which is the RDS management API (CreateDBInstance, DescribeDBInstances…). Granting `rds:*` does NOT let anything log in to a database.
+
+How do you test what an IAM role is allowed to do without assuming it?
+?
+`aws iam simulate-principal-policy --policy-source-arn <role-arn> --action-names <action> --resource-arns <arn>`. It evaluates the policy without anyone assuming the role — useful when the trust policy only allows a service like ec2.amazonaws.com. Add `--context-entries` to supply condition keys (s3:prefix, aws:SecureTransport…) so conditions are actually exercised.
+
+What three verdicts does the IAM policy simulator return, and why does the distinction matter?
+?
+allowed, implicitDeny, and explicitDeny. It matters for debugging: an implicitDeny means nothing granted the action, so ADDING an Allow fixes it. An explicitDeny means a Deny statement fired, and no Allow anywhere will ever override it — you must find and change the Deny. S3 returns the same "AccessDenied" for both, which is why the simulator is worth reaching for.
+
+Why can't the resource ARN scope s3:ListBucket to one prefix?
+?
+Because ListBucket acts on the BUCKET, not on objects — its resource ARN is the bucket with no `/*`, so there's no place in the ARN to express a prefix. You scope it with a condition on the `s3:prefix` key instead (StringLike "reports/*"). Skip the condition and the role can enumerate the entire bucket even though GetObject is tightly scoped.
+
+Why might an IAM policy show as "(known after apply)" in a Terraform plan, and what's the consequence?
+?
+Because the aws_iam_policy_document interpolates an attribute that doesn't exist yet (e.g. a bucket ARN created in the same apply), so the data source is read during apply rather than at plan time. Consequence: the plan cannot show you the policy — the single most security-critical artifact is invisible. Verify after apply with `aws iam get-policy-version` or the policy simulator. A trust policy referencing nothing still renders fully at plan time.
