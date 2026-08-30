@@ -71,6 +71,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 ### Security, Identity & Compliance
 - [x] ✅ IAM (users/groups/roles/policies, evaluation) — [[01-iam]]
+- [x] ✅ **IAM advanced** (Organizations, SCPs, permissions boundaries, ABAC, condition keys, Control Tower) — [[01-iam-advanced]] *(conceptual-only — never build SCPs in a learning account)*
 - [ ] ☐ KMS (encryption keys, envelope encryption)
 - [ ] ☐ Secrets Manager vs SSM Parameter Store
 - [ ] ☐ Cognito (user pools / identity pools)
@@ -82,7 +83,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] 🔨 CloudWatch (metrics/alarms/logs — partly seen in ASG + Flow Logs)
 - [ ] ☐ CloudTrail (API audit)
 - [ ] ☐ AWS Config
-- [ ] ☐ Organizations / SCPs / Control Tower — *C03 emphasizes multi-account*
+- [x] ✅ Organizations / SCPs / Control Tower — [[01-iam-advanced]] *(was the biggest untracked gap; the Udemy IAM Advanced section had been skipped)*
 - [ ] ☐ Systems Manager (SSM — Session Manager, Parameter Store, Patch)
 
 ### Analytics

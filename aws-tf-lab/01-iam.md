@@ -12,6 +12,9 @@ tags: [topic, domain/secure]
 
 The global, free AWS service that authenticates and authorizes every AWS API call — every console click, every CLI command, every SDK request gets evaluated against IAM before it reaches the underlying service.
 
+> [!tip] Multi-account layer
+> Organizations, SCPs, permissions boundaries, ABAC and Control Tower live in **[[01-iam-advanced]]** — the Udemy "IAM Advanced" section. This note is the foundations.
+
 > [!info] Exam TL;DR
 > - **IAM is global, free, and always-on.** No region selection. Same identities and policies seen from every region.
 > - **Four core objects:** User, Group, Role, Policy. Groups can't log in; only Users can.
@@ -309,4 +312,4 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 - [GitHub Actions OIDC ↔ AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) — provider URL, audience, `sub` claim format verified 2026-06
 
 ---
-**Cards for this topic:** [[cards/01-iam-cards]]
+**Cards for this topic:** [[cards/01-iam-cards]] · **Next:** [[01-iam-advanced]]
