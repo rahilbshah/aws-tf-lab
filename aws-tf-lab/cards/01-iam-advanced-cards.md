@@ -15,6 +15,7 @@ Never. AWS states it plainly: "No permissions are granted by an SCP." An SCP def
 Which accounts do SCPs affect, and is the root user exempt?
 ?
 Member accounts only — the MANAGEMENT account and everything in it is completely exempt (that's why you keep no workloads there). But a MEMBER account's root user IS capped by SCPs like everyone else. That asymmetry is the most-tested SCP fact.
+<!--SR:!2026-09-02,3,250-->
 
 For an action to be allowed by SCPs, what must be true at each level of the OU hierarchy?
 ?

@@ -53,6 +53,7 @@ What do `+`, `-`, `~`, and `-/+` mean in a `terraform plan`?
 Does changing `name` on `aws_iam_user` destroy and recreate?
 ?
 No — `aws_iam_user.name` is in-place updatable in the v6 provider (calls AWS `UpdateUser` with `NewUserName`). But `aws_iam_policy.name` IS `ForceNew` — destroys and recreates. Different IAM resources behave differently; always read the plan. (Verified against provider source.)
+<!--SR:!2026-09-03,4,270-->
 
 What's the IAM policy `Version` field (e.g. `"2012-10-17"`)?
 ?
