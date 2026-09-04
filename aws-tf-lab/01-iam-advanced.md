@@ -52,7 +52,7 @@ Here's the consequence, and it turns up in exam questions constantly:
 
 > In one line: IAM grants, the SCP caps, and you get whichever is smaller.
 
-### Why an `Allow` has to exist at every level
+### Why an Allow has to exist at every level
 
 Accounts sit in a chain: the **root** at the top, then one or more **OUs**, then the account itself. An SCP can be attached at any of those levels.
 

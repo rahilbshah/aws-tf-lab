@@ -1,5 +1,10 @@
 # Vault home
 
+> [!tip] Revising?
+> **[[exam-night]]** is the single-sitting recall sheet — every hook and trap
+> across every topic, each linking back to the section that explains it.
+> Generated from the notes by `_scripts/build_exam_night.py`; re-run after editing.
+
 SAA-C03 study vault. Reference notes at the root; spaced-repetition cards in `cards/`; templates in `_templates/`. The tables below are **live Dataview queries** — they update themselves whenever a note's frontmatter or `#weak-spot` tags change, so this page is never hand-maintained.
 
 > [!todo] 📌 [[exam-prep]] — full SAA-C03 blueprint & readiness tracker (what's covered vs. what's left)

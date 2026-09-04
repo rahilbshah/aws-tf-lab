@@ -1,0 +1,364 @@
+---
+tags: [exam-prep, generated]
+generated: 2026-09-04
+---
+
+# 🌙 Exam-night revision sheet
+
+> [!warning] Generated file — do not edit
+> Built from the topic notes by `_scripts/build_exam_night.py`. Edit the
+> **notes**, then re-run the script. Editing this file directly means it
+> drifts from what the notes say, and you revise from something wrong.
+
+**How to use it.** Read a hook. If the concept comes straight back, move on.
+If it doesn't, follow the ↳ link — it lands on the section that *explains*
+that idea, not the top of the note. Trap and comparison entries are titles
+only, on purpose: the name is the hook, and if it doesn't fire you want the
+full wording anyway.
+
+*6 recall hooks · 152 pointers · ~9 min read*
+
+## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
+
+- Many accounts limit the damage; SCPs enforce the rules across all of them.  
+  ↳ [[01-iam-advanced#What problem does this solve?|explain]]
+- IAM grants, the SCP caps, and you get whichever is smaller.  
+  ↳ [[01-iam-advanced#The one idea: granting versus capping|explain]]
+- Every level in the chain has to say yes; one silent level means no.  
+  ↳ [[01-iam-advanced#Why an Allow has to exist at every level|explain]]
+- The account that writes the rules is exempt from them; every other account's root user is not.  
+  ↳ [[01-iam-advanced#The root-user rule that catches everyone|explain]]
+- An SCP caps an account, a boundary caps one identity, and neither one grants anything.  
+  ↳ [[01-iam-advanced#Permissions boundaries — the same idea, one identity at a time|explain]]
+- Resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.  
+  ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
+
+**Traps** [[01-iam-advanced#Traps|open]]
+- "attach an SCP to give that account access"
+- root user and SCPs
+- permissions boundary vs SCP
+- Bool vs BoolIfExists for MFA
+- Control Tower vs Organizations
+- aws:SourceIp behind a VPC endpoint
+
+**Failure modes**
+- the deny-only SCP that locked out the whole organization  ↳ [[01-iam-advanced#Worked examples|open]]
+
+**Comparisons**
+- [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]]
+- [[01-iam-advanced#How policy types combine|How policy types combine]]
+- [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
+- [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
+
+
+## [[01-iam|01 – IAM (Identity and Access Management)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[01-iam|open]]
+- "the plan showed the policy was fine"
+- Policy order or count matters
+- Specificity wins
+- Roles are only for AWS services
+- Long-lived access keys are fine for service-to-service
+- IAM is regional
+- Attach a role directly to an EC2 instance
+- All name arguments on IAM resources behave the same
+- validate/plan catch reference bugs (.arn vs .name, quoted strings)
+- "create IAM users for the on-premises staff"
+- AD Connector vs AWS Managed Microsoft AD
+- rds: vs rds-db: for database login
+
+**Failure modes**
+- confused deputy (the missing ExternalId)  ↳ [[01-iam#Worked examples|open]]
+
+**Comparisons**
+- [[01-iam#User vs Role|User vs Role]]
+- [[01-iam#Inline vs Managed policy|Inline vs Managed policy]]
+- [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]]
+- [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
+
+
+## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[02-ec2|open]]
+- All EC2 attributes can be changed in-place
+- ip_protocol accepts "ssh" / "http"
+- t3-micro works
+- aws_subnets.X.id returns one subnet ID
+- IAM changes are instant
+- EBS volumes can be moved across AZs by detach + attach
+- Instance store survives stop
+- Long-lived access keys on an instance are fine for service-to-service
+- EIP is free while attached
+
+**Failure modes**
+- credit exhaustion (it bites two different ways)  ↳ [[02-ec2#Worked examples|open]]
+
+**Comparisons**
+- [[02-ec2#Stop vs Terminate|Stop vs Terminate]]
+- [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]]
+- [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]]
+- [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
+
+
+## [[03-ami-bake|03 – AMI Baking with Packer (job-skills side-quest)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Failure modes**
+- most_recent = true silently ships an untested image  ↳ [[03-ami-bake#Worked examples|open]]
+- AMI/snapshot sprawl (the silent cost leak)  ↳ [[03-ami-bake#Worked examples|open]]
+
+
+## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[04-alb-asg|open]]
+- "the ALB terminates the unhealthy instance"
+- "a failed ALB health check means users get errors"
+- NLB vs ALB for a static IP / source-IP
+- cross-zone billing
+- "scale-in terminates the oldest instance"
+- a scheduled action that also pins min and max
+- redirect on the wrong load balancer, or the wrong direction
+
+**Failure modes**
+- the grace-period boot loop  ↳ [[04-alb-asg#Worked examples|open]]
+- aws_autoscaling_schedule silently scaling your group to zero  ↳ [[04-alb-asg#Worked examples|open]]
+
+**Comparisons**
+- [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
+- [[04-alb-asg#Scaling policy types|Scaling policy types]]
+- [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
+
+
+## [[05-vpc-core|05.1 – VPC Core (subnets, routing, IGW, NAT)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[05-vpc-core|open]]
+- "the default NACL and a new NACL behave the same"
+- "add the IGW route to the main route table to make setup simpler"
+
+**Failure modes**
+- NAT gateway in the wrong subnet (the routing loop)  ↳ [[05-vpc-core#Worked examples|open]]
+- single NAT gateway as an AZ SPOF  ↳ [[05-vpc-core#Worked examples|open]]
+
+**Comparisons**
+- [[05-vpc-core#NAT Gateway vs NAT Instance|NAT Gateway vs NAT Instance]]
+- [[05-vpc-core#IGW vs NAT Gateway vs Egress-only IGW|IGW vs NAT Gateway vs Egress-only IGW]]
+
+
+## [[05-vpc-endpoints-peering|05.3 – VPC Endpoints & Peering (+ Transit Gateway)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[05-vpc-endpoints-peering|open]]
+- "use a gateway endpoint for SQS/KMS/etc."
+- "reach the S3 gateway endpoint from a peered VPC / on-prem"
+- "peering scales fine, just add connections"
+
+**Failure modes**
+- assuming peering is transitive (the hub that isn't)  ↳ [[05-vpc-endpoints-peering#Worked examples|open]]
+
+**Comparisons**
+- [[05-vpc-endpoints-peering#Gateway vs Interface endpoint|Gateway vs Interface endpoint]]
+- [[05-vpc-endpoints-peering#VPC Peering vs Transit Gateway|VPC Peering vs Transit Gateway]]
+
+
+## [[05-vpc-hybrid|05.4 – VPC Hybrid Connectivity (VPN & Direct Connect)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[05-vpc-hybrid|open]]
+- "Direct Connect is encrypted because it's private"
+- "use Direct Connect for a quick or temporary connection"
+- "VGW vs CGW"
+- "Client VPN = Site-to-Site VPN"
+
+**Failure modes**
+- betting a launch on Direct Connect lead time  ↳ [[05-vpc-hybrid#Worked examples|open]]
+
+**Comparisons**
+- [[05-vpc-hybrid#Site-to-Site VPN vs Direct Connect|Site-to-Site VPN vs Direct Connect]]
+- [[05-vpc-hybrid#Which one? (exam triggers)|Which one? (exam triggers)]]
+
+
+## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[05-vpc-security|open]]
+- "make the NACL match the SG rules and you're done"
+- "use flow logs to see what data was exfiltrated"
+- "a higher NACL rule number can override a lower deny"
+
+**Failure modes**
+- the stateless NACL that "half works"  ↳ [[05-vpc-security#Worked examples|open]]
+
+**Comparisons**
+- [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]]
+- [[05-vpc-security#Where each layer sits|Where each layer sits]]
+
+
+## [[06-capstone|06 – Capstone: 3-Tier VPC with Terraform Modules]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[06-capstone|open]]
+- Multi-AZ to scale reads
+- "the module output shows in terraform output"
+
+**Failure modes**
+- the all-protocols-with-ports egress error  ↳ [[06-capstone#Worked examples|open]]
+- secret in a committed .tf file  ↳ [[06-capstone#Worked examples|open]]
+
+**Comparisons**
+- [[06-capstone#RDS Multi-AZ vs Read Replica (the #1 RDS exam trap)|RDS Multi-AZ vs Read Replica (the #1 RDS exam trap)]]
+- [[06-capstone#Flat config vs Modules|Flat config vs Modules]]
+
+
+## [[07-rds-aurora|07 – RDS & Aurora]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[07-rds-aurora|open]]
+- "IAM database authentication controls what the user can do in the database"
+- rds-db: vs rds:
+- "use IAM DB auth so database logins show up in CloudTrail"
+- Multi-AZ to scale reads
+- Aurora replica lag is like RDS replica lag
+- "RDS is serverless / auto-scales like Aurora"
+
+**Failure modes**
+- "we'll encrypt the database later"  ↳ [[07-rds-aurora#Worked examples|open]]
+- the connection pool that dies 15 minutes after deploy  ↳ [[07-rds-aurora#The Terraform I wrote|open]]
+
+**Comparisons**
+- [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]]
+- [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]]
+- [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
+
+
+## [[08-elasticache|08 – ElastiCache (Redis / Memcached)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[08-elasticache|open]]
+- Memcached for anything needing HA/persistence/complex data
+- a question that mixes Redis-sounding use cases with Memcached-only features
+- "add a cache" when the problem is writes
+- Redis is multi-threaded because it's fast
+
+**Failure modes**
+- Memcached for a session store  ↳ [[08-elasticache#Worked examples|open]]
+
+**Comparisons**
+- [[08-elasticache#Redis vs Memcached (the exam table)|Redis vs Memcached (the exam table)]]
+- [[08-elasticache#Caching strategies|Caching strategies]]
+
+
+## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[09-s3-advanced|open]]
+- replication copies existing objects
+- replication is transitive
+- Transfer Acceleration moves your data closer to users
+- "use S3 Select" on a new account
+
+**Failure modes**
+- "replication is on, so we're backed up"  ↳ [[09-s3-advanced#Worked examples|open]]
+- the invisible multipart bill  ↳ [[09-s3-advanced#Worked examples|open]]
+
+**Comparisons**
+- [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
+- [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
+
+
+## [[09-s3-intro|09.1 – S3 Introduction (buckets, classes, versioning, lifecycle)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[09-s3-intro|open]]
+- "S3 has folders"
+- "Glacier means slow retrieval"
+- durability vs availability
+- moving to IA/Glacier always saves money
+
+**Failure modes**
+- versioning without noncurrent-version expiration  ↳ [[09-s3-intro#Worked examples|open]]
+- One Zone-IA for the only copy  ↳ [[09-s3-intro#Worked examples|open]]
+
+**Comparisons**
+- [[09-s3-intro#Storage classes (verified against AWS docs 2026-08)|Storage classes (verified against AWS docs 2026-08)]]
+- [[09-s3-intro#Versioning: delete vs permanent delete|Versioning: delete vs permanent delete]]
+
+
+## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[09-s3-security|open]]
+- Block Public Access can be overridden by a bucket policy
+- enabling default encryption encrypts what's already there
+- a presigned URL uses the recipient's permissions
+- Object Lock stops the object being deleted
+- MFA Delete can be set up like any other bucket setting
+
+**Failure modes**
+- "the bucket policy grants access, so cross-account works"  ↳ [[09-s3-security#Worked examples|open]]
+- Object Lock in COMPLIANCE mode on a test bucket  ↳ [[09-s3-security#Worked examples|open]]
+
+**Comparisons**
+- [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]]
+- [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]
+
+
+## [[10-route53|10 – Route 53 (DNS)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[10-route53#Traps|open]]
+- "use simple routing to distribute traffic across three servers"
+- CNAME at the apex
+- geolocation vs geoproximity
+- "we set up failover but users were down for an hour"
+- health check on a private IP
+- inbound vs outbound Resolver endpoints
+- "HTTPS health checks prove the certificate is valid"
+
+**Failure modes**
+- the geolocation record with no default  ↳ [[10-route53#Worked examples|open]]
+
+**Comparisons**
+- [[10-route53#The eight routing policies|The eight routing policies]]
+- [[10-route53#Alias vs CNAME|Alias vs CNAME]]
+- [[10-route53#Public vs private hosted zone|Public vs private hosted zone]]
+- [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
+
+
+## [[11-cloudfront|11 – CloudFront (CDN)]]
+
+*No recall hooks yet — this note hasn't had the comprehension pass.*
+
+**Traps** [[11-cloudfront#Traps|open]]
+- "put CloudFront in front of the S3 website endpoint and use OAC"
+- the ACM certificate in the wrong Region
+- CloudFront vs Global Accelerator
+- "invalidate on every deploy"
+- CloudFront Functions asked to do too much
+- geo restriction vs geolocation routing
+
+**Failure modes**
+- the bucket policy that trusts every CloudFront distribution on earth  ↳ [[11-cloudfront#Worked examples|open]]
+
+**Comparisons**
+- [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]]
+- [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]]
+- [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
