@@ -10,7 +10,123 @@ tags: [topic, domain/secure]
 
 # 01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)
 
-The multi-account layer of IAM. [[01-iam]] answers *"what may this principal do?"*; this note answers *"what is this principal **allowed to be allowed** to do?"* — the guardrails that cap permissions from above, no matter how permissive someone's IAM policy is.
+The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do?"* — this note answers a different question: *"what is anyone in this account **permitted to be allowed** to do?"*
+
+> [!warning] Build tier — **conceptual-only**
+> Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from notes + the exam framing, not from `terraform apply`.
+
+## What problem does this solve?
+
+One AWS account is one blast radius. Everything inside it can potentially reach everything else, and one careless IAM policy is all it takes.
+
+So real companies don't use one account. They use dozens or hundreds — one per team, per environment, per product — so that a mistake in one cannot reach the others.
+
+That solves the first problem and creates a second one: **how do you enforce a rule across all of them?**
+
+Say the rule is "nobody may switch off CloudTrail," or "nothing may run outside Europe." You could email every account administrator and ask them to write that policy themselves. You'd be trusting a hundred people to get it right, and to keep getting it right, forever.
+
+**AWS Organizations** is the container that holds all those accounts. **Service Control Policies** are how you set a rule that nobody inside them can escape — not even their own administrator.
+
+> In one line: many accounts limit the damage; SCPs enforce the rules across all of them.
+
+## How it actually works
+
+### The one idea: granting versus capping
+
+Think of two separate lists.
+
+- **List 1 — your IAM policy.** The things *you* are allowed to do.
+- **List 2 — the SCP.** The things *anyone in this account* is allowed to do at all.
+
+You can only do something that appears on **both** lists.
+
+Which means an SCP can **never give you anything**. If EC2 is on the SCP's list but not on yours, you still can't launch an instance. The SCP didn't grant it — it only permitted it to be granted, and nobody granted it.
+
+This catches people out because an SCP *looks* exactly like an IAM policy. It has `"Effect": "Allow"` in it. But `Allow` in an SCP doesn't mean "you may do this." It means "this isn't forbidden here."
+
+Here's the consequence, and it turns up in exam questions constantly:
+
+> An account administrator attaches `AdministratorAccess` to themselves — full power, every action, every resource. They try to launch an EC2 instance. It fails.
+>
+> Nothing is broken, and their IAM policy is being read correctly. But the SCP above their account never permitted EC2 at all. "Everything" on their list overlaps with a list that doesn't contain EC2, and the overlap is empty.
+
+> In one line: IAM grants, the SCP caps, and you get whichever is smaller.
+
+### Why an `Allow` has to exist at every level
+
+Accounts sit in a chain: the **root** at the top, then one or more **OUs**, then the account itself. An SCP can be attached at any of those levels.
+
+Each level is its own "what's permitted here" list — and you have to be on **all of them**.
+
+Walk a real one:
+
+| Level | SCP attached | What that level permits |
+|---|---|---|
+| Root | `FullAWSAccess` | everything |
+| Production OU | `Allow: ec2:*` | **only EC2** |
+| Account B | `FullAWSAccess` | everything |
+
+Account B ends up able to use **EC2 and nothing else**. Everything ∩ EC2 ∩ everything = EC2. The account's own permissive SCP can't widen what the OU already narrowed.
+
+Now the trap that takes down entire environments. Someone wants to block S3 in the Sandbox OU. They write an SCP containing **only** a `Deny` on S3, detach `FullAWSAccess`, and attach theirs.
+
+Every account under Sandbox immediately loses access to **everything** — not just S3.
+
+Why? A Deny-only policy grants nothing, so that level's "permitted" list is now **empty**. Anything intersected with an empty list is empty.
+
+That is what `FullAWSAccess` is for. AWS attaches it to every root, OU and account so that by default every level says "everything is permitted here," leaving your `Deny` statements to do the actual restricting.
+
+> In one line: every level in the chain has to say yes; one silent level means no.
+
+### The root-user rule that catches everyone
+
+Two facts, pointing in opposite directions:
+
+- The **management account** is **completely exempt** from SCPs. Not partly — entirely. Its root user, its IAM users, its roles: none of them can be capped.
+- A **member account's root user is not exempt.** It gets capped like everyone else in that account.
+
+The asymmetry isn't arbitrary. The management account is where the rules are *written*. If SCPs could constrain it, you could attach one bad policy and lock yourself out of your own organisation permanently, with no way back in.
+
+Which is exactly why AWS recommends **keeping no workloads in the management account** — nothing there can be restricted.
+
+> In one line: the account that writes the rules is exempt from them; every other account's root user is not.
+
+### Permissions boundaries — the same idea, one identity at a time
+
+An SCP caps a whole account. A **permissions boundary** caps exactly one user or one role.
+
+Why you'd want that: you need your junior admin to handle user onboarding, but they must not be able to create an administrator — including for themselves.
+
+Three pieces make it work:
+
+1. A policy describing the **maximum** any new user may ever have.
+2. The junior admin's own IAM policy, allowing `iam:CreateUser`.
+3. The junior admin's own **boundary**, which allows `iam:CreateUser` **only when** the user being created is stamped with that maximum-permissions policy.
+
+Now if they create a user and forget to attach the boundary, the call simply fails. They cannot mint anything more powerful than the ceiling they're forced to apply.
+
+> In one line: an SCP caps an account, a boundary caps one identity, and neither one grants anything.
+
+### Why one combining rule is the odd one out
+
+Nearly every policy type **narrows** your access:
+
+- identity policy **+ SCP** → both must allow
+- identity policy **+ permissions boundary** → both must allow
+
+Exactly one type **widens** it:
+
+- identity policy **+ resource-based policy** → **either** one allowing is enough
+
+That exception looks inconsistent until you notice what a resource policy actually is: the *owner of the resource* saying "I permit this principal." That's a genuine grant arriving from the other direction — and it's the only reason cross-account access can work at all. If resource policies only narrowed, a bucket in account A could never give anything to a principal in account B.
+
+Above all of it: an **explicit `Deny` anywhere wins.** In any policy, of any type, at any level. Nothing overrides it.
+
+> In one line: resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
 
 > [!info] Exam TL;DR
 > - **An SCP never grants anything.** It sets a **ceiling**. Effective permissions = **intersection** of the SCP and the identity/resource policies. A user with no IAM policy still has no access, however permissive the SCP.
@@ -22,17 +138,6 @@ The multi-account layer of IAM. [[01-iam]] answers *"what may this principal do?
 > - **ABAC** = access by **tags** — `aws:PrincipalTag/x` compared against `aws:ResourceTag/x`. Scales where RBAC needs a new policy per team.
 > - **`aws:PrincipalOrgID`** lets one resource policy trust a whole organization without listing account IDs.
 > - **MFA conditions must use `BoolIfExists`**, not `Bool` — the key is absent for long-term access keys, so plain `Bool` denies things you didn't mean to.
-
-> [!warning] Build tier — **conceptual-only**
-> Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from notes + the exam framing, not from `terraform apply`.
-
-## Concept (plain English)
-
-One AWS account is a blast radius. Real companies run dozens or hundreds, and need a way to say *"nobody, anywhere, in any of these accounts, may turn off CloudTrail or launch resources outside eu-west-1"* — without trusting every account admin to write that policy themselves.
-
-**AWS Organizations** is the container that makes that possible: accounts grouped into **OUs** under a **root**, all billed to one **management account**. **Service Control Policies** are the enforcement: they don't hand out permissions, they define the outer edge of what permissions can ever be handed out inside those accounts. An account administrator can attach `AdministratorAccess` to themselves and still be unable to touch a service the SCP excludes.
-
-**Permissions boundaries** do the same thing one level down — capping a *single* user or role rather than a whole account — which is what makes it safe to let a junior admin create IAM users without letting them create an admin.
 
 ## AWS console ↔ Terraform map
 
