@@ -12,6 +12,112 @@ tags: [topic, domain/resilient]
 
 The plumbing of a VPC: how you carve address space into public and private subnets and control which way traffic can flow. Part of the [[05-vpc]] topic.
 
+## What problem does this solve?
+
+Your servers have to live on a network. Something has to decide which addresses they get, which of them can be reached from the internet, and which can only reach out.
+
+AWS hands you that network as something you define rather than something you're given: a **VPC** — a private virtual network, scoped to one region, whose address range you choose yourself as a CIDR block like `10.0.0.0/16`. Inside it you cut smaller ranges, **subnets**, and each subnet is pinned to a single Availability Zone.
+
+Then comes the part that trips people up. Nothing on a subnet says "this one is exposed to the internet." Exposure is a *consequence* — of the routes attached to that subnet, and of whether its instances got a public IP. Change the routing and the same subnet flips from public to private without moving a single server.
+
+That indirection is the entire design. It is also what lets a private subnet still reach *out* — to fetch updates, to call an API — while nothing on the internet can start a conversation *in*. That inbound/outbound asymmetry is the core of the public/private design.
+
+> In one line: a VPC is a network you define; whether any part of it is public is a routing decision, not a property of the subnet.
+
+## How it actually works
+
+### The address space, and the five IPs you never get
+
+A VPC spans a whole region. A subnet lives in exactly **one** AZ. That one fact drives most VPC layouts: to survive an AZ failure you need a subnet in each AZ, which is why the build here has public-a *and* public-b, private-a *and* private-b, rather than one of each.
+
+The VPC's CIDR must be between `/16` and `/28`. Choose it with a second thing in mind: if you ever want to peer two VPCs, their CIDRs must not overlap. Two VPCs both sitting on `10.0.0.0/16` can't be peered.
+
+Then the arithmetic that catches people. A `/24` looks like 256 addresses. You get **251**, because AWS reserves five in *every* subnet:
+
+| Address | Reserved for |
+|---|---|
+| `.0` | network address |
+| `.1` | the VPC router |
+| `.2` | DNS |
+| `.3` | future use |
+| last (`.255` in a `/24`) | broadcast |
+
+Five gone in *every* subnet, whatever its size — the two worth remembering by name are `.1`, the VPC router, and `.2`, DNS. This is exam-frequent, and the trap is pure arithmetic — size a subnet for exactly 256 hosts and you come up five short.
+
+> In one line: a subnet is one AZ, a VPC is one region, and every subnet is five addresses smaller than it looks.
+
+### There is no public subnet checkbox
+
+A subnet is public only when **both** of these are true:
+
+1. Its route table carries `0.0.0.0/0 → Internet Gateway`.
+2. Its instances get a public IP — via `map_public_ip_on_launch` on the subnet, or an Elastic IP.
+
+Miss either and the subnet is effectively private, and it's worth seeing *why* each half fails on its own. A route to the IGW but no public IP: nothing on the internet has an address to send to. A public IP but no IGW route: the address exists, but the subnet's route table offers no path to the internet, so it still can't be reached.
+
+So the thing doing the deciding is the **route table**, not the subnet.
+
+Which raises an obvious question — what routes a subnet you never associated with a route table? Every VPC has a **main route table**, and any subnet not explicitly associated falls back to it.
+
+That fallback is exactly why there is a hard rule here: **never add an IGW route to the main route table**. Do it and every subnet you forget to wire up becomes internet-exposed by default. Leave it alone, keep custom route tables and explicit associations, and a forgotten subnet fails *closed* — private, useless, and safe. Failing closed rather than open is the whole point.
+
+The Internet Gateway itself is the least fussy piece here. One per VPC, attached at the VPC edge, horizontally scaled and redundant, no bandwidth limit, and free — you pay for the data transfer, not the gateway. And unlike everything else in this note, it is **bidirectional**: traffic flows both ways through it.
+
+> In one line: public = IGW route + public IP, both required; the route table decides, and the main route table must never be the one that says yes.
+
+### Why the NAT gateway has to live in a public subnet
+
+A private subnet still needs to reach out. That is the NAT gateway's job: it takes traffic from private instances, sends it to the internet on their behalf, and returns the replies. Because it only ever tracks connections *started from inside*, unsolicited inbound traffic has nothing to match against and is dropped. That is the outbound-only asymmetry, implemented.
+
+Now the counter-intuitive bit — the one that cost an hour of debugging while building this topic. The NAT gateway sits **in a public subnet**, not in the private subnets it serves.
+
+The reason becomes obvious once you trace the packet. The NAT has to reach the internet itself, so *its* subnet's route table must point at the IGW. There are two hops, not one:
+
+| Route table | Default route |
+|---|---|
+| the private subnets' RT | `0.0.0.0/0 → NAT gateway` |
+| the NAT's own (public) subnet RT | `0.0.0.0/0 → IGW` |
+
+Put the NAT in a private subnet whose default route is the NAT itself and you have built a loop: the NAT's own egress follows `0.0.0.0/0 → itself` and never reaches the IGW. AWS **creates this without an error**. There is no failure message anywhere — the private instances just silently have no internet, and you burn an hour debugging "why can't my instance apt-install."
+
+Two more properties follow from what a NAT gateway is. It needs an **EIP**, because it has to present a real public address to the internet. And it has **no security group** at all — there is nothing to attach, so nothing to misconfigure.
+
+One boundary worth holding: NAT is IPv4 only. IPv6 addresses are globally routable, so there is no private-address translation to perform. The IPv6 equivalent is the **egress-only Internet Gateway**, which gives outbound-only IPv6 and sits at the VPC edge rather than inside a subnet.
+
+> In one line: the NAT needs its own door to the internet, so it lives in a public subnet — the private RT points at the NAT, and the NAT's RT points at the IGW.
+
+### Why one NAT gateway is not enough
+
+A NAT gateway is redundant *within* its AZ — and AZ-scoped. Those two facts together are the trap.
+
+Route every private subnet, across every AZ, through a single NAT gateway and it works perfectly, which is the problem. If that NAT's AZ goes down, **every** private subnet in **every** AZ loses egress, not only the ones sharing its AZ. And in normal operation, traffic crossing from another AZ to reach it is billed as cross-AZ traffic — you pay extra, every day, for the privilege of a single point of failure.
+
+The production answer is one NAT gateway per AZ, with each AZ's private route table pointing at its local NAT. That costs more up front — a NAT bills roughly $0.045/hr plus per-GB data processed (⚠️ check current pricing) — which is exactly the cost-versus-resilience tradeoff the exam likes to probe.
+
+The legacy alternative is a **NAT instance**: an EC2 box you run yourself. It is worth knowing for two odd properties. It needs its **source/destination check disabled**, which the managed gateway has no equivalent setting for. And because it *is* an instance, it has a security group and can double as a bastion. Reach for it on the exam when the question emphasises cost at tiny scale, or wants the NAT box to also be a bastion — otherwise the answer is the NAT gateway.
+
+> In one line: a NAT gateway is redundant inside its AZ and nowhere else — one per AZ, or you have built a single point of failure with a cross-AZ bill attached.
+
+### The defaults that behave backwards from what you create
+
+Creating a VPC quietly creates three more things:
+
+- a **main route table**,
+- a **default NACL** — allows all traffic, in and out,
+- a **default security group** — self-referencing inbound, allow-all outbound.
+
+Here is the flip that gets tested. A **custom** NACL you create yourself **denies everything** until you add numbered rules. A **new** security group denies inbound. So the defaults are permissive and anything you make is restrictive — the opposite pairing to the one most people assume, which is what makes it such a reliable distractor.
+
+There is no rationale to reason your way back to here — just hold the direction: what AWS made for you is open, what you make yourself is closed.
+
+Terraform knows about none of the three. They are not in your state unless you deliberately adopt them with the `aws_default_*` resources — which is why the console showed a **third** route table after an apply that only defined two.
+
+> In one line: AWS's own defaults are open, anything you create is closed, and Terraform ignores the defaults until you adopt them.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - A **subnet is public** iff **(1)** its route table has `0.0.0.0/0 → Internet Gateway` **and (2)** instances get a public IP (`map_public_ip_on_launch` or an EIP). Miss either and it's effectively private. There is no "public" checkbox.
 > - **Route tables decide public vs private**, not the subnet itself. Any subnet not explicitly associated uses the VPC's **main route table**.
@@ -19,10 +125,6 @@ The plumbing of a VPC: how you carve address space into public and private subne
 > - Creating a VPC auto-creates **3 defaults**: main route table, default NACL (allow-all), default SG (self-referencing). A **new custom** NACL denies all; a **new custom** SG denies inbound — opposite of the defaults.
 > - Subnets are **AZ-scoped**; a VPC spans a region. AWS reserves **5 IPs per subnet** (first 4 + last 1).
 > - **NAT gateway** = managed, AZ-scoped, one-per-AZ for HA, no SG. **NAT instance** = legacy EC2, needs source/dest-check off, has an SG, can double as a bastion.
-
-## Concept (plain English)
-
-A VPC is a private, region-scoped virtual network defined by a CIDR block (e.g. `10.0.0.0/16`). You slice it into subnets, each pinned to one Availability Zone. Whether a subnet is "public" is a consequence of routing: give its route table a default route to an Internet Gateway and hand its instances public IPs, and it's public; otherwise it's private. Private subnets can still reach *out* to the internet (updates, API calls) via a NAT gateway — but nothing on the internet can initiate a connection *in*, because NAT only tracks connections started from inside. This inbound/outbound asymmetry is the core of the public/private design.
 
 ## AWS console ↔ Terraform map
 

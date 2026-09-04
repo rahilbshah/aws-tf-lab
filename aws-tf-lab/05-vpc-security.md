@@ -12,6 +12,122 @@ tags: [topic, domain/secure]
 
 The traffic-control and visibility layers of a VPC: two firewalls (stateful SG, stateless NACL), the log that tells you *why* traffic was allowed or blocked (Flow Logs), and the managed deep-inspection layer (Network Firewall). Part of [[05-vpc]].
 
+## What problem does this solve?
+
+Your instances live in a VPC. Something has to decide which packets are allowed to reach them, and something has to tell you afterwards what that decision was.
+
+AWS gives you two firewalls for the deciding, and they sit in different places.
+
+One wraps each instance's network interface. That's the **security group**. It only knows how to say *yes*: you list what may reach this instance, and anything you didn't list is refused — not by a rule, but by never having been mentioned.
+
+The other wraps the whole subnet. That's the **network ACL**. It can say *no* out loud, and it applies to every instance in that subnet whether or not the person who launched them agreed.
+
+You need both because each can do exactly one thing the other can't. A security group can't block a specific bad IP — it has no deny at all. A network ACL can't follow a conversation — it judges each packet alone, so you have to describe the reply as well as the request. In day-to-day work security groups do about 95% of the job; the NACL is there for those two gaps.
+
+Deciding without seeing is how you lose an afternoon to "the traffic is mysteriously blocked". So **Flow Logs** record every connection — who talked to whom on what port, and whether it was accepted or rejected.
+
+And when address-and-port isn't enough — you need to know what's *inside* the packet, or block by domain name — that's **Network Firewall**.
+
+> In one line: the SG guards the instance and can only allow, the NACL guards the subnet and can deny, and Flow Logs record whether the traffic was allowed or rejected.
+
+## How it actually works
+
+### Stateful versus stateless
+
+Almost everything else in this topic falls out of this one difference.
+
+A security group is **stateful**. When it allows a request in, it remembers that connection. The reply is allowed back out automatically — you never wrote a rule for it, and you don't need one.
+
+A network ACL is **stateless**. It has no memory. Every packet is judged on its own, with no knowledge that it happens to be the answer to something already allowed.
+
+Walk a real one. Someone on the internet loads your web page:
+
+1. Their packet reaches the subnet — **inbound**, destination port 80. The NACL checks its inbound rules, finds your allow for 80, passes it.
+2. It reaches the instance's ENI — **inbound** port 80 again. The SG allows 80. Passes.
+3. The web server replies. Leaving through the SG — **outbound**. The SG remembers step 2, so no rule is needed.
+4. That same reply hits the NACL — **outbound**. The NACL remembers nothing. It looks for an outbound rule matching this packet, and if you never wrote one, the unmatched-traffic deny drops it.
+
+The page hangs. Inbound worked, the reply died, and nothing in the rules you wrote looks wrong — which is why this is the most common NACL mistake there is.
+
+> In one line: the SG remembers the conversation, the NACL sees one packet at a time — so on a NACL you must write both halves.
+
+### Ephemeral ports, and which direction to open them
+
+Step 4 above raises the obvious question: what port is that reply even going to?
+
+Not 80. Port 80 is where the *request* went. The reply goes back to whatever port the client's operating system picked when it opened the connection — a temporary, high-numbered port that's thrown away when the connection closes. That's an **ephemeral port**.
+
+You can't know which one it picked. So you allow the whole range: **1024–65535**.
+
+That range is deliberately a superset. The real range depends on who's at the other end — Linux uses 32768–60999, Windows 2008 and later 49152–65535, and ELB, Lambda and NAT use 1024–65535. Since the other end could be any of them, you open the widest.
+
+Now the part people write backwards. The direction depends on who started the conversation.
+
+| The instance is… | The ephemeral rule goes… | Because |
+|---|---|---|
+| Receiving requests (a web server) | **outbound** | its reply travels out to the *client's* ephemeral port |
+| Initiating requests (calling an API, resolving DNS) | **inbound** | the answer comes back to *its own* ephemeral port |
+
+An instance that does both — most do — needs both.
+
+One more thing hides in here. A NACL rule names a protocol, so a rule set written only for TCP blocks UDP outright. That quietly kills DNS on UDP 53 and NTP on UDP 123, and it surfaces as outbound `REJECT` lines in the flow logs rather than as an obvious error.
+
+> In one line: replies land on 1024–65535 — outbound if you're answering, inbound if you're asking — and a TCP-only rule set silently drops UDP.
+
+### Numbered rules, and first match wins
+
+A security group has no ordering. Every rule is an allow, all of them are evaluated together, and if any one of them permits the traffic it's in. Two rules can never contradict each other.
+
+A NACL *can* contradict itself — it holds allows and denies side by side — so it needs a tiebreaker. The tiebreaker is the rule number.
+
+Custom rules are numbered 1–32766 and read in ascending order. **The first rule that matches decides, and nothing after it is read.** At the end sits a `*` rule you can't remove, denying anything that matched nothing.
+
+So a low number isn't "less important" — it's more. Put `deny 203.0.113.50/32` at #100 and `allow 80/443 from anywhere` at #110, and that IP is blocked: #100 matched first and evaluation stopped there. Write the same deny at #200 and it never runs, because #110 already allowed the packet and the search ended.
+
+Two defaults flip in a way worth pinning down:
+
+|   | The auto-created one | A NEW one you create |
+|---|---|---|
+| Security group | self-referencing inbound, allow all outbound | denies all inbound, allows all outbound |
+| Network ACL | allows everything in and out | **denies everything in and out** |
+
+The default NACL is wide open, which is why a subnet you never configured is effectively filtered by security groups alone. Create a custom NACL and associate it, and you start from deny-all and have to build every flow back up by hand — both directions, ephemeral range included. A subnet has exactly one NACL; leave it unassociated and it uses the default.
+
+> In one line: lowest matching number wins and stops the search — and a custom NACL starts closed while the default one starts open.
+
+### What flow logs can and cannot tell you
+
+A flow log records connection metadata: source and destination address, source and destination port, protocol, packet and byte counts, a start and end time, and `ACCEPT` or `REJECT`. You can attach one at the VPC, subnet or ENI level, and publish to CloudWatch Logs, S3, or Amazon Data Firehose (older material calls it Kinesis Data Firehose).
+
+What a flow log never contains is the payload. No request body, no filename, no URL. If the question is "what data left the network", flow logs cannot answer it — that's Network Firewall's job, or VPC Traffic Mirroring for real packet capture.
+
+Reading them is a small skill worth having. The useful split is:
+
+- `REJECT` + **inbound** + a port you never opened → your firewall working correctly. The internet scans every public IP constantly; this noise is normal.
+- `REJECT` + **outbound** + a port your app actually needs → *your own* rule is too strict. That one is the bug.
+
+Two practicalities. The protocol shows up as a number — 6 is TCP, 17 is UDP, 1 is ICMP. And records are batched: the aggregation interval defaults to 600 seconds, so while debugging set it to 60 and see logs in roughly two minutes instead of ten.
+
+Some traffic never appears at all: the Amazon DNS server (a custom DNS resolver *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the Amazon Time Sync Service `169.254.169.123`, Windows license activation, and the reserved VPC router address. Silence there is not evidence that something was blocked.
+
+> In one line: flow logs give you who-to-whom-on-what-port plus ACCEPT or REJECT — never the contents.
+
+### Network Firewall, and why it needs a subnet of its own
+
+Security groups and NACLs both stop at IP and port. They can't tell that a packet carries a known exploit, and they can't block `evil.example.com`, because a domain name isn't an address.
+
+Network Firewall is the managed layer for that: a stateful intrusion-prevention system built on Suricata rules, doing deep packet inspection and domain filtering.
+
+The awkward part is where it lives. It isn't a setting you enable on a subnet. It's an endpoint that sits in its **own dedicated firewall subnet**, and traffic only reaches it because you changed route tables to send it there. Skip the routing and the firewall is running, billing, and inspecting nothing.
+
+Which is the other thing to hold on to: security groups and NACLs are free. Network Firewall runs around $0.395/hr per firewall endpoint plus data processing (⚠️ check current). It's not the default answer — it's the answer when the requirement mentions payload, protocol or domain.
+
+> In one line: SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Security Group** = stateful, instance/ENI-level, **allow-only** (implicit deny for the rest), all rules evaluated together. Return traffic is auto-allowed (stateful).
 > - **NACL** = stateless, subnet-level, **allow AND deny**, rules **numbered & evaluated low→high, first match wins**. You must open **both directions** *and* the **ephemeral return ports `1024–65535`** yourself.
@@ -19,10 +135,6 @@ The traffic-control and visibility layers of a VPC: two firewalls (stateful SG, 
 > - **Use a NACL when** you need an explicit **DENY** (block an IP/CIDR) or a **subnet-wide guardrail** — the two things an SG fundamentally can't do.
 > - **Flow Logs** capture connection **metadata** + **ACCEPT/REJECT** — never payload. Attach at **VPC / subnet / ENI**; publish to **CloudWatch Logs / S3 / Kinesis Firehose**.
 > - **Network Firewall** = managed, stateful **IPS (Suricata)** with deep packet inspection + **domain filtering**; lives in a **dedicated firewall subnet** with route tables sending traffic through it. Far beyond SG/NACL (which are just IP/port allow-deny).
-
-## Concept (plain English)
-
-Two firewalls guard your VPC at different layers. The **security group** wraps each instance's network interface: it's stateful (if it lets a request in, the reply is automatically allowed out) and only expresses *allows*. The **NACL** wraps the whole subnet: it's stateless (it evaluates every packet in isolation, so you must explicitly allow the return traffic too) and can express *denies*. In practice SGs do 95% of the work; NACLs exist for the two things SGs can't — explicitly blocking a bad actor and enforcing a subnet-wide rule independent of instance owners. **Flow Logs** are the audit trail: for every connection they record who-talked-to-whom-on-what-port and whether it was allowed or rejected — the first thing you check when "traffic is mysteriously blocked." **Network Firewall** is the heavy artillery: a managed intrusion-prevention system that actually inspects packet contents and can filter by domain name.
 
 ## AWS console ↔ Terraform map
 

@@ -12,6 +12,113 @@ tags: [topic, domain/performance]
 
 The foundation: what S3 stores and how, the storage-class spectrum, and the two data-management features that save you money and mistakes — versioning and lifecycle. Part of [[09-s3]].
 
+## What problem does this solve?
+
+You have files. Not a database, not a disk you attach to one server — just files. Logs, images, backups, CSV exports, a website's HTML.
+
+S3 takes a different shape from anything you'd mount on a machine. You put whole files — **objects** — into containers called **buckets**, and you address each one by a **key**: the object's full name. No server, no disk to size, no filesystem. AWS stores every object redundantly across at least three Availability Zones, which is where the famous eleven-nines durability comes from.
+
+That solves losing data. It creates the second problem: storage you never delete costs money forever. A log file read constantly this week will be read once next year and never again — but you're still paying the same rate for it.
+
+So S3 adds two more things. **Storage classes** are price tiers: cheaper per GB the slower or rarer the access. **Lifecycle rules** walk objects down that ladder automatically, and eventually delete them. And **versioning** turns the bucket into an append-only history, so an overwrite or a delete never actually loses the data.
+
+> In one line: durable file storage addressed by name, with tiers and automatic ageing so old data gets cheap instead of getting expensive.
+
+## How it actually works
+
+### The key is the whole name, and there are no folders
+
+There is no directory tree in S3. There is one flat map: key → object.
+
+`photos/cat.jpg` is not a file called `cat.jpg` inside a folder called `photos`. It is a single key, 14 characters long, that happens to contain a slash. Nothing created `photos/`. Nothing would notice if it disappeared.
+
+The console shows you folders because it splits keys on `/` and groups them. That is a rendering trick and nothing more. The leading part of a key is called a **prefix**, and listing by prefix is how you emulate "show me that directory".
+
+Note the word **key** here means *name*, not *encryption key*. Bucket + key is what identifies an object.
+
+The naming rules are stricter than you'd expect. Bucket names are **globally unique across all AWS accounts** — if a bucket called `photos` already exists in someone else's account, you can't create one by that name. Names must also be DNS-compatible: 3–63 characters, lowercase, no underscores.
+
+But the bucket itself is **regional**. The *name* is global; the *data* sits in one region you chose. Those two facts sound contradictory and are constantly confused.
+
+Objects run from 0 bytes to **5 TB**, but a single `PUT` maxes out at **5 GB**. Anything larger has to be a multipart upload. And since December 2020 S3 gives **strong read-after-write consistency** on all PUTs and DELETEs — write it, read it back immediately, you get the new version. The old eventual-consistency caveats are gone.
+
+> In one line: a bucket is a globally-unique name for a regional flat key→object map, and folders are a console illusion.
+
+### Durability and availability are two different numbers
+
+Every storage class is **99.999999999% durable** — eleven nines. Standard, IA, Glacier, all of them. That number never changes.
+
+Durability means: *will S3 lose your data?* No.
+
+Availability means: *can you reach it right now?* That one **does** vary — Standard 99.99%, Standard-IA 99.9%, One Zone-IA 99.5%.
+
+Now the part that looks like a contradiction. One Zone-IA is stored in **one** Availability Zone instead of three or more. It is still advertised at eleven nines durability.
+
+Both are true at once, because they answer different questions. Eleven nines is what the class is *designed for*; it is not a promise that the data survives losing the Availability Zone it sits in. One Zone-IA data is **lost if that AZ is destroyed** — that is exactly the case the durability number doesn't cover.
+
+So the eleven nines are true and useless as reassurance here. One Zone-IA is only for data you could **re-create** — thumbnails, derived files, a secondary copy. Put your only backup there and if that AZ is physically destroyed, it goes with it.
+
+That's why a question about "surviving the loss of an Availability Zone" is a question about **AZ count**, not about durability.
+
+> In one line: every class is eleven-nines durable, availability and AZ count are what actually differ, and One Zone-IA sits in a single AZ.
+
+### Why moving data to a cheaper class can cost you more
+
+The ladder runs: Standard → Intelligent-Tiering → Standard-IA → One Zone-IA → Glacier Instant Retrieval → Glacier Flexible Retrieval → Glacier Deep Archive. Cheaper storage as you go down, and slower or more expensive to read back.
+
+The obvious move is "put everything cold in IA and save money". Two rules make that backfire.
+
+**Minimum storage duration.** Once an object is in a class, you are billed for a minimum residence whether or not it's still there.
+
+| Class | Minimum storage duration |
+|---|---|
+| Standard, Intelligent-Tiering | none |
+| Standard-IA, One Zone-IA | 30 days |
+| Glacier Instant, Glacier Flexible | 90 days |
+| Glacier Deep Archive | 180 days |
+
+Move an object to Glacier and delete it a week later, and you still pay for 90 days of Glacier. The tier is cheap *because* you promised to leave it alone.
+
+**Minimum billable object size.** Standard-IA, One Zone-IA and Glacier Instant bill every object as if it were at least **128 KB**. Store a million 4 KB files in Standard-IA and you are billed for a million 128 KB files — 32× the bytes you actually have, which is how storing many tiny files in IA *can* cost more than Standard.
+
+So the rule is: transition only data that is genuinely large and genuinely going to sit there.
+
+The other thing people get wrong on this ladder is retrieval speed. "Glacier" does not mean slow. **Glacier Instant Retrieval** returns objects in **milliseconds** — it's an archive price with normal access. Only **Flexible Retrieval** (minutes to hours) and **Deep Archive** (hours) require a restore job before you can read anything.
+
+And if you genuinely don't know the access pattern, that's what **Intelligent-Tiering** is for. It moves objects itself — Frequent → Infrequent after 30 days without access → Archive Instant Access after 90 — and charges a small per-object monitoring fee with **no retrieval fees**. Objects under 128 KB aren't monitored and just stay in Frequent Access.
+
+**Lifecycle rules** are how you drive the ladder deliberately. One rule can carry an object its whole life: Standard on write → Standard-IA at 30 days → Glacier Flexible at 90 days → expire at 7 years. The same rule type also expires **noncurrent versions** and aborts **incomplete multipart uploads** — both invisible costs.
+
+> In one line: cheaper classes charge a minimum stay and a minimum object size, so short-lived or tiny objects can cost more down the ladder, not less.
+
+### Versioning, delete markers, and the bill that grows in the dark
+
+Turn versioning on and a delete stops deleting.
+
+Walk it. You `DELETE photos/cat.jpg`. S3 adds a **delete marker** on top of the object. The key now returns "not found", and `s3 ls` no longer shows it. But every version is still there, still stored, still billed. Delete the *delete marker* and the object reappears.
+
+To actually remove data you must delete a **specific version id**. That one is permanent.
+
+| Action | Versioning OFF | Versioning ON |
+|---|---|---|
+| Delete an object | destroyed | delete marker added, versions kept |
+| Delete a version id | n/a | that version permanently gone |
+| Overwrite | replaced in place | new version, old one kept |
+
+Two more asymmetries worth holding. Versioning is set at the **bucket** level, and once enabled it can be **suspended but never disabled**. And objects that existed before you enabled it have a version id of literally `null`.
+
+Now the failure this causes. A job rewrites the same objects every hour. Every rewrite keeps the previous version forever. The bucket *looks* the same size in the console, because `s3 ls` only lists current versions. Months later the bill is 20× what anyone expected. You only see the truth with `list-object-versions`.
+
+The fix is always the same: enable versioning and a lifecycle rule with **noncurrent version expiration** in the same breath. Never one without the other.
+
+This is also why a versioned bucket refuses to `terraform destroy` — it fails with `BucketNotEmpty` until every version *and* every delete marker is purged, even though the bucket appears empty.
+
+> In one line: with versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Bucket names are GLOBALLY unique** (across all AWS accounts); buckets themselves live in **one region**.
 > - The **key** is the object's full name (`photos/cat.jpg`). S3 is a **flat key→object map** — "folders" are a console illusion over the `/` in keys; the leading part is a **prefix**.
@@ -20,10 +127,6 @@ The foundation: what S3 stores and how, the storage-class spectrum, and the two 
 > - **Versioning** keeps every version; a delete creates a **delete marker** (nothing is really removed). Deleting the marker restores the object.
 > - **Lifecycle rules** transition objects between classes and **expire** them (incl. noncurrent versions + incomplete multipart uploads) — pure cost control.
 > - **Static website hosting** serves objects over **HTTP only** — HTTPS needs CloudFront in front.
-
-## Concept (plain English)
-
-S3 is object storage: you put whole files ("objects") into containers ("buckets") and address them by a **key** — the object's full name. There is no real directory tree; `photos/cat.jpg` is just a key that happens to contain a slash, and the console groups on those slashes to fake folders. AWS replicates every object across at least three Availability Zones, which is where the famous eleven-nines durability comes from. Because storage costs money forever, S3 gives you **storage classes** (cheaper per GB the slower/rarer the access) and **lifecycle rules** to move data down that ladder automatically. **Versioning** turns the bucket into an append-only history so an overwrite or delete never actually loses data.
 
 ## AWS console ↔ Terraform map
 

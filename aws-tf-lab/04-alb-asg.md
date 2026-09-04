@@ -12,6 +12,158 @@ tags: [topic, domain/resilient]
 
 The two halves of horizontal scaling on EC2: an **Application Load Balancer** spreads incoming traffic across many instances (Layer 7), and an **Auto Scaling Group** keeps the right number of instances running and replaces the dead ones. Together they turn a single fragile server into a self-healing, elastic fleet.
 
+## What problem does this solve?
+
+One EC2 instance gives you two problems that look like one.
+
+The first is failure. If that instance dies, the site is gone. There is nothing else to send traffic to.
+
+The second is size. You picked an instance type once, and that fixed the capacity you have. Traffic doesn't stay fixed — so a single instance is only ever the right size by accident, and it cannot grow or shrink to follow the load.
+
+Running several instances instead of one is the obvious answer, and it doesn't work on its own. Clients need a single address to talk to. Something has to decide which instance gets each request, and stop sending requests to the broken ones. And something has to decide how many instances there should even be right now.
+
+Those are two separate jobs, so AWS gives you two separate things.
+
+- The **ALB** is the traffic director. Clients hit its DNS name. It forwards each request to a healthy instance, and checks health continuously so it never sends traffic to a broken one. It also spans failure domains by design — an ALB requires **at least two Availability Zones**; you cannot build a single-AZ one.
+- The **ASG** is the capacity manager. You give it a floor (`min`), a ceiling (`max`) and a target (`desired`). It launches and terminates instances — stamped out from a **launch template** — to hold that count, and replaces any that fail.
+
+Neither one knows about the other. The piece joining them is the **target group**.
+
+> In one line: the ALB decides which instance gets a request, the ASG decides how many instances exist, and the target group is the only thing connecting the two.
+
+## How it actually works
+
+### The ALB opens your HTTP request, and everything follows from that
+
+Start with the load balancer that doesn't. An **NLB** works at Layer 4. It sees a TCP or UDP flow, hashes it (protocol, source/destination IP and port), and forwards the packets. It never looks inside. That buys ultra-low latency, a **static IP per AZ** (you can attach an EIP), and the client's real source IP arriving untouched at your instance.
+
+An **ALB** works at Layer 7: it parses the HTTP request. That costs latency, and it costs you the client's IP — the ALB terminates the connection itself, so the instance sees the ALB as the source and the original address arrives in an `X-Forwarded-For` header. There is no static IP either; you get a DNS name.
+
+What you buy with all that: the ALB can route on anything *inside* the request — host, path, header, method, query-string, source IP.
+
+And here's the consequence people miss. Because the ALB has already read the request, it can **answer** it. A listener rule's action doesn't have to be `forward`. Every rule ends in exactly one of `forward`, `redirect`, or `fixed-response`.
+
+That is why forcing HTTPS needs no application change and no second load balancer. Two listeners on the same ALB:
+
+| Listener | Action |
+|---|---|
+| :443 (carries the ACM certificate) | `forward` to the target group — the real traffic |
+| :80 | `default_action` of type `redirect` → protocol `HTTPS`, port `443`, `HTTP_301` |
+
+Leave host, path and query unset on the redirect and the reserved keywords (`#{host}`, `#{path}`, `#{query}`) carry the originals through, so `http://site/a/b?c=1` lands on `https://site/a/b?c=1`. The redirect is served **by the load balancer** — the request never reaches an instance. It consumes no capacity, and it still works when every target is unhealthy.
+
+Two redirect rules look arbitrary until you see what they prevent:
+
+- You must change **at least one** of protocol, hostname, port or path. If you change nothing, the redirect points at the same URI it came from, and you've built a loop.
+- `HTTP→HTTPS`, `HTTP→HTTP` and `HTTPS→HTTPS` are all allowed. **`HTTPS→HTTP` is not.** The one direction that isn't offered is the one that downgrades a secure connection to an insecure one.
+
+An NLB can do none of this. At Layer 4 there is no HTTP to inspect or rewrite, so "redirect HTTP to HTTPS on an NLB" is always the wrong answer.
+
+> In one line: the ALB reads the request, so it can route on anything inside it and answer some requests itself; the NLB can't, but hands you a static IP and the true client IP.
+
+### The target group is the joint — and two health checks meet inside it
+
+The ALB never points at instances. It points at a **target group**, and instances are members of that group.
+
+You don't put them there by hand. The ASG does it: give the ASG `target_group_arns` and every instance it launches registers itself, every instance it terminates deregisters. (`aws_autoscaling_attachment` exists, but it's for pre-existing instances you manage yourself — not for an ASG-managed fleet.)
+
+Now the part that catches everyone. There are **two** health checks. They measure different things, and by default they don't talk to each other.
+
+|   | Target-group health check | ASG `health_check_type` |
+|---|---|---|
+| Question it asks | does the app answer on this path with the expected status code? | is this instance healthy? |
+| What it decides | **routing** | **replacement** |
+| Default | — | `EC2` — hypervisor status checks only |
+
+Walk a real one. A Java app deadlocks. The JVM process is still alive, so EC2 status checks pass. Every HTTP request hangs, so the ALB's check on `/health` returns 504.
+
+- The ALB stops routing to that instance. Correct behaviour.
+- The ASG, on the default `EC2`, sees a live VM and does nothing.
+
+So the instance sits there forever, serving nothing, and you quietly run at N-1 capacity. Nobody complains, because with one healthy target left the ALB just routes around the broken one and users are fine. A failed health check only means user-visible errors when **no** targets are healthy. The silence is the danger.
+
+Set `health_check_type = "ELB"` and the ALB's verdict becomes the ASG's verdict: mark unhealthy → drain it (`deregistration_delay`, default **300s**, letting in-flight requests finish; state goes `draining` → `unused`) → terminate → launch a replacement from the launch template.
+
+Note what the ALB never does: **terminate anything**. It only stops routing. Termination is the ASG's job, and only when you've set `ELB`.
+
+There is a second knob and it is not a nicety. `health_check_grace_period` is how many seconds after launch the ASG waits before counting health against a new instance. Get it wrong and you build a boot loop that looks like a scaling bug:
+
+| Stage | Time |
+|---|---|
+| boot | ~30s |
+| `apt install nginx` at boot | ~60s |
+| health-check convergence (`healthy_threshold` 3 × `interval` 30s) | ~90s |
+| **actually ELB-healthy** | **~180s** |
+
+Set the grace period to 120s and the ASG starts honouring the ELB verdict at 120s, sees "unhealthy", terminates, and launches a replacement that hits the exact same wall. Instances cycle every few minutes and the target group never reaches a steady healthy state. Two fixes: raise the grace period above the true time-to-healthy (~300s here), or bake nginx into the AMI so an instance is healthy in ~40s and the problem evaporates. That second option is the clearest argument for golden images there is.
+
+> In one line: the ASG registers instances into the target group, but only acts on the ALB's health verdict when `health_check_type = "ELB"` — and only after the grace period expires.
+
+### Target tracking scales out fast and scales in slowly, deliberately
+
+You set one number — keep `ASGAverageCPUUtilization` at 50 — and EC2 Auto Scaling **creates and manages** the CloudWatch alarms for you: an `AlarmHigh` at 50% to scale out, and an `AlarmLow` at 35% (the lower band AWS picks) to scale in. Don't hand-edit or delete them; they aren't yours.
+
+Then the behaviour that reads like a bug. **You cannot provoke a scale-out by lowering the target value.** Target tracking never scales out while the metric is *below* target. An idle fleet serving a static nginx page sits at near-zero CPU; drop the target and all you trigger is a scale-*in*. The only way to see a scale-out is genuine load above the target — `stress` on the instances, or real traffic.
+
+The asymmetry is the design, not an oversight: EC2 Auto Scaling prioritises **availability**. It scales out aggressively and scales in gradually, so a brief dip in traffic doesn't leave you under-provisioned the moment the traffic comes back.
+
+Practical consequence when you're learning this: scale-in is free to watch — leave an idle fleet alone and it drifts down toward `min_size`. Scale-out is the one you have to pay for with generated load.
+
+> In one line: target tracking is asymmetric on purpose — nothing below the target will ever scale you out, only real load above it will.
+
+### Which instance dies when it scales in
+
+"The oldest one" is wrong in two separate ways.
+
+**First**, before any termination policy is consulted at all, AWS picks the **Availability Zone with the most instances** that has at least one instance unprotected from scale-in. Zonal balance takes precedence over the policy. So you can watch a *newer* instance get terminated ahead of an older one, simply because it was sitting in the over-weighted AZ.
+
+**Second**, within that AZ, among the unprotected instances, the default policy hunts for the **oldest configuration** — not the oldest instance — in this order:
+
+1. instances launched from a **launch configuration** (the deprecated predecessor to launch templates)
+2. instances launched from a **different** launch template than the current one
+3. instances on the **oldest version** of the current launch template
+
+Only if none of that resolves a tie does it fall through to the instance **closest to its next billing hour** — largely vestigial now that most EC2 usage bills per second — and then to **random**.
+
+If you actually want oldest-instance behaviour (say you're rolling the fleet onto a new instance *type*), `OldestInstance` is a separate policy you opt into.
+
+One exception sits outside the whole ordering: **unhealthy instances skip it entirely.** Termination policies only apply to instances the ASG doesn't already consider unhealthy. An unhealthy instance is replaced regardless of policy.
+
+Last thing, because it looks like a malfunction the first time: terminating an instance yourself, out of band, is **not** instant to the ASG. It notices on its periodic health-check cycle — roughly 1–2 minutes — and then launches the replacement. Console pages are static snapshots, so an instance can still read "Healthy" there long after you killed it. Refresh, and trust the **Activity tab**, which is the authoritative event log.
+
+> In one line: AZ balance first, then oldest *configuration*, then billing hour, then random — and unhealthy instances bypass the whole ordering.
+
+### Scheduling capacity without freezing the group
+
+Target tracking is reactive by nature. It responds *after* load arrives, and instances need to boot and pass health checks before they help — so the first few minutes of a known 09:00 rush are slow no matter how good the policy is.
+
+A scheduled action fixes exactly that: at 08:45 raise `desired_capacity` to 6 so the capacity is already warm when users show up.
+
+The subtlety is worth the whole section: **set only desired capacity.** Leave `min` and `max` alone and the target-tracking policy keeps making its own decisions afterwards — at 09:30 it can still climb to 9 if the day is heavier than usual, and come back down when it isn't. Scheduled and dynamic scaling **compose**: the scheduled action moves the dial once, the dynamic policy keeps adjusting within the min/max it finds.
+
+Pin `min = max = 6` instead and you've bought a fixed block of capacity and switched dynamic scaling off for the day. "Guarantee 10 instances at 9am" and "run exactly 10 instances at 9am" are different requirements and they have different answers.
+
+(The one time you *must* supply min/max: when the new desired capacity would fall outside the group's current limits.)
+
+The schedule itself is **5-field cron** — `[Minute] [Hour] [Day_of_Month] [Month_of_Year] [Day_of_Week]` — in **UTC** unless you set an IANA `time_zone` like `America/New_York`, which then auto-adjusts for DST.
+
+And then the Terraform trap, which has no console equivalent. In `aws_autoscaling_schedule`, `min_size`, `max_size` and `desired_capacity` are all optional — but an omitted one defaults to **`0`**, not to "leave unchanged." The sentinel meaning "don't touch this" is **`-1`**, and you have to write it out. So this:
+
+```hcl
+resource "aws_autoscaling_schedule" "morning" {
+  desired_capacity = 6          # min_size and max_size omitted -> both become 0
+  recurrence       = "0 13 * * 1-5"
+}
+```
+
+…quietly sets `max_size = 0` at 13:00 UTC, which clamps desired to 0 and **terminates your entire fleet on a schedule, every weekday**. The plan looks harmless because the resource is new; the damage happens later, at the cron time.
+
+> In one line: schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write `min_size = -1` / `max_size = -1`, because omitted means zero, not unchanged.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **ALB = Layer 7** (reads the HTTP request → routes on host / path / header / method / query-string / source-IP). **NLB = Layer 4** (TCP/UDP, flow-hash, ultra-low latency, millions of connections, static IP / EIP per AZ). **GWLB = Layer 3** (GENEVE, for inline appliances).
 > - ALB routes to a **target group**, not to instances directly. An **ASG registers its instances into the target group automatically** via `target_group_arns` — never attach by hand.
@@ -23,10 +175,6 @@ The two halves of horizontal scaling on EC2: an **Application Load Balancer** sp
 > - **Scheduled scaling** sets `desired_capacity` at a wall-clock time, and *optionally* min/max. Setting only desired leaves dynamic scaling free to keep adjusting afterwards; pinning `min = max` freezes the group.
 > - **HTTP→HTTPS redirect is a native ALB listener action** (`redirect`, `HTTP_301`) — no instance, Lambda, or second load balancer needed. NLB can't do it (Layer 4).
 > - Production tiering: **ALB in public subnets, instances in private subnets** (only the ALB SG can reach them) + NAT/VPC-endpoints for outbound.
-
-## Concept (plain English)
-
-A single EC2 instance is a single point of failure and a fixed amount of capacity. The ALB is a managed reverse proxy: clients hit its DNS name, and it forwards each request to a healthy instance, checking health continuously so it never sends traffic to a broken one. The ASG is the capacity manager: you tell it a floor, a ceiling, and a target count, and it launches/terminates instances (from a **launch template**) to hold that count, replacing any that fail. The glue is the **target group** — the ASG registers instances into it, and the ALB routes to it. `health_check_type = "ELB"` is what lets the ALB's health opinion drive the ASG's replacement decisions, so a hung app (not just a dead VM) gets recycled.
 
 ## AWS console ↔ Terraform map
 

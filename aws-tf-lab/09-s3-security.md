@@ -12,6 +12,129 @@ tags: [topic, domain/secure]
 
 Who can reach an object, how it's encrypted, and how to make it undeletable. The largest exam domain (Secure, 30%) leans on this heavily. Part of [[09-s3]].
 
+## What problem does this solve?
+
+An S3 object is private by default. Nobody but the account that owns it can read it until somebody deliberately widens that. So the whole topic is really about *deliberate widening and narrowing* — and about what stops an accidental widening from becoming a headline.
+
+Three completely different questions get asked about one object, and each one has its own machinery:
+
+1. **Who may reach it?** Answered by policies — one attached to the person, one attached to the bucket.
+2. **Who holds the key?** Everything is encrypted at rest anyway. The only real choice is *whose* key, and how auditable its use is.
+3. **Can it be deleted at all?** A separate question entirely. Not "who may read this" but "is destruction even possible" — which is what regulators and ransomware defence care about.
+
+The reason these are separate is that they fail separately. An answer to question 1 says nothing about question 3. A perfectly locked-down policy does not stop an admin deleting the object; a WORM lock does not stop the world reading it.
+
+Sitting across the top of question 1 is **Block Public Access** — a guardrail that ignores any policy that would make the bucket public. It exists because a wrong policy is a normal human mistake and the blast radius of *this particular* mistake is "the internet has your data."
+
+> In one line: three unrelated questions — who may read it, who holds the key, can it be deleted at all — with three unrelated mechanisms, plus one guardrail over the first.
+
+## How it actually works
+
+### Two policies pointing at each other
+
+There are two places a permission can live, and they are asking different questions.
+
+| | Attached to | The question it answers |
+|---|---|---|
+| **IAM policy** | a user, group or role | "What may *this principal* do?" |
+| **Bucket policy** | the bucket | "Who may act on *this bucket*?" |
+
+IAM policies are the tool for your own account's identities — that is the job they exist for. The split starts to matter at the edges.
+
+**Cross-account needs both.** Your bucket policy must allow their principal, *and* their IAM policy must allow the call. Either side missing is a denial. This is the single most common "but I granted it!" moment: you can only ever write half the permission, because the other half lives in an account you don't control.
+
+**Anonymous access never comes from an IAM policy.** An IAM policy has to hang off an identity, and an anonymous caller has no identity in your account. So "make this public" is a bucket-policy conversation — or, on the legacy path, an ACL, which is exactly why Block Public Access needs ACL switches as well as policy ones. Bucket policies have a **20 KB** ceiling, and when one bucket is shared by many teams the answer is **Access Points** — named endpoints on the same bucket, each with its own policy and an optional VPC restriction — rather than one enormous policy document.
+
+Evaluation is the same rule as everywhere else in [[01-iam]]: **explicit Deny beats explicit Allow beats implicit deny.** That ordering is what makes the lab bucket work. Its policy contains nothing but `Deny` statements — no TLS, no upload that isn't SSE-KMS — so it holds regardless of how generous anybody's IAM policy is. Denies are the only statements you can write once and stop worrying about.
+
+**ACLs** are the third, pre-IAM mechanism: per-object, legacy, and now discouraged outright. Setting `BucketOwnerEnforced` makes S3 ignore ACLs entirely and makes the bucket owner own every object — the default for buckets created since April 2023.
+
+> In one line: IAM policy asks what a principal may do, bucket policy asks who may touch the bucket, cross-account needs both, and an explicit Deny beats everything.
+
+### Block Public Access, and why there are exactly four switches
+
+Four settings looks fussy until you see the grid. There are **two ways a bucket becomes public** (an ACL, or a policy) and **two timings** (something new arriving, or something that is already there). Two by two:
+
+| | Public via an **ACL** | Public via a **policy** |
+|---|---|---|
+| **New** ones | `block_public_acls` | `block_public_policy` |
+| **Existing** ones | `ignore_public_acls` | `restrict_public_buckets` |
+
+That is the whole design. Blocking only the new ones leaves whatever was already public still public, which is why the "existing" column exists at all.
+
+Now the part that trips people up. BPA does **not** lose to a bucket policy — it **overrides** it. Write a technically perfect public bucket policy with BPA on, and it simply never takes effect. That is deliberate: BPA is a guardrail, not a permission. Permissions are things you grant; a guardrail is a thing you cannot accidentally argue your way past.
+
+It can be set per-bucket **and** account-wide, and the account-level setting wins.
+
+The counter-intuitive edge: BPA only concerns itself with **public** paths. A grant to a *named* principal — a specific partner account, say — isn't public, so BPA doesn't touch it. Hence the debugging order when a cross-account grant fails: ask first whether the grant is public (BPA will kill it) or named (BPA is irrelevant, so go and look at the other account's IAM policy).
+
+> In one line: two ways to become public × two timings = four switches, and BPA overrides policy rather than the other way round.
+
+### Encryption is a question about custody, not about whether
+
+Since **5 January 2023** every object is encrypted at rest automatically with **SSE-S3**. So "is it encrypted?" is no longer the interesting question. The interesting question is *who holds the key* and *what trail its use leaves*.
+
+- **SSE-S3** (`AES256`) — AWS holds the key. Free, and there is no audit trail of key use.
+- **SSE-KMS** (`aws:kms`) — your key in KMS. You get a key policy, rotation, and **every use logged in CloudTrail**. That logging is the reason to pay for it. The cost to watch is KMS *request* charges, which **S3 Bucket Keys** cut dramatically with a short-lived bucket-level data key.
+- **DSSE-KMS** — two independent AES-256 layers, for compliance mandates that demand multi-layer encryption.
+- **SSE-C** — you supply the key on every single request. S3 encrypts and decrypts with it but never stores it. Since **April 2026 it is disabled by default** on new general-purpose buckets and must be deliberately re-enabled.
+- **Client-side** — you encrypt before upload, so S3 never sees plaintext or the key. Maximum control, and all the key management is yours.
+
+The four server-side options are **mutually exclusive per object** — an object is encrypted one way, not two. And **default encryption can only be SSE-S3, SSE-KMS or DSSE-KMS, never SSE-C**, which follows from what SSE-C is: the key arrives with the request, so a bucket-level default has nothing to hold.
+
+The rule people get wrong: **changing default encryption does not re-encrypt what's already in the bucket.** Default encryption is a rule applied at *write* time. Objects already sitting there were written under the old rule and keep it until something rewrites them — which is what **S3 Batch Operations → Copy** is for.
+
+Encryption *in transit* is a separate axis with no setting of its own. You enforce it with a bucket policy that denies `s3:*` when `aws:SecureTransport = false`.
+
+> In one line: everything is encrypted anyway, so the choice is whose key and whether CloudTrail sees it — and changing the default only affects new objects.
+
+### A presigned URL is a bearer token wearing your permissions
+
+You need to give one person one file out of a private bucket. Making the bucket public exposes everything. Creating an IAM user for them builds a permanent identity for a one-off. Emailing the file gives you no audit and no way to revoke.
+
+A **presigned URL** is the answer, and its mechanics are worth holding precisely.
+
+The URL carries **the permissions of whoever generated it** — not the recipient's, because the recipient may well have no AWS account at all. That is the whole trick and also the whole danger: generate one from an over-privileged role and you have just handed that privilege to a link.
+
+And it is a **bearer token**. Anyone holding it can use it, until it expires. Forwarded, screenshotted, pasted into a chat — it still works. So the expiry window is your only real control: **7 days maximum via CLI/SDK, 12 hours via the console.**
+
+One trap on top of that: if you signed it with **temporary or role credentials**, the URL dies when those credentials expire, no matter what `--expires-in` said. The signature can never outlive the thing that signed it.
+
+They work for **uploads** too — a presigned `PUT` is the standard way to let a browser upload straight into S3.
+
+> In one line: time-limited, carries the generator's permissions, and works for anyone holding the link — so keep the window short.
+
+### Object Lock, and the delete that succeeds anyway
+
+Object Lock is WORM: write once, read many. It needs **versioning**, and it locks a specific object **version**, not "the object". `object_lock_enabled` is a **create-time** bucket property — you cannot bolt it onto a live bucket.
+
+Two independent protections:
+
+- **Retention** — a fixed "retain until" date. It can be **extended, never shortened**.
+- **Legal hold** — the same protection with **no expiry**, independent of retention, removed only by an explicit call.
+
+And two modes, which differ only in whether there is a way out:
+
+- **GOVERNANCE** — overridable by a principal holding `s3:BypassGovernanceRetention` (plus the bypass header). A strong internal policy.
+- **COMPLIANCE** — *nobody* can overwrite or delete the version, **including the root user**. AWS's documented escape before expiry is closing the AWS account. Which is exactly why the lab used GOVERNANCE with a 1-day retention: identical mechanics, and you can still get your account back.
+
+Now the behaviour that surprises everybody, and it makes sense once you remember that the lock is on a *version*:
+
+| The call | What happens |
+|---|---|
+| Permanent delete (`DELETE` **with** a version id) | **403 AccessDenied** — you named the protected version |
+| Simple delete (`DELETE`, **no** version id) | **200 OK** and a **delete marker** |
+
+The simple delete didn't destroy anything. It laid a delete marker *on top*, so the object stops appearing. The locked version is still underneath, intact. Nothing was violated — but "the file vanished from a WORM bucket" panic is very real.
+
+Finally **MFA Delete**, which protects permanent version deletion and turning versioning off. It can only be configured by the **root account** holding an MFA device, via the CLI. Not an IAM user, not the console, not Terraform — and that root-only constraint is the entire reason it shows up on the exam.
+
+> In one line: the lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Three access mechanisms:** **IAM policies** (identity-based — "what may *this principal* do?"), **bucket policies** (resource-based — "who may touch *this bucket*?"), **ACLs** (legacy, now discouraged — disable with `BucketOwnerEnforced`).
 > - **Block Public Access = 4 settings** (new/existing × ACL/policy). It **overrides policy** — a valid public policy simply won't take effect. Settable per-bucket **and account-wide**.
@@ -20,10 +143,6 @@ Who can reach an object, how it's encrypted, and how to make it undeletable. The
 > - **Presigned URL** carries the **permissions of whoever generated it**, is time-limited, and works for **anyone holding the link**. Max **7 days** via CLI/SDK, **12 hours** via console.
 > - **Object Lock = WORM.** **GOVERNANCE** = overridable with `s3:BypassGovernanceRetention`; **COMPLIANCE** = nobody can delete, *including root*. **Legal hold** = no expiry, removed explicitly. Requires **versioning**.
 > - **MFA Delete** can only be configured by the **root account** with an MFA device — not via IAM users, not via Terraform.
-
-## Concept (plain English)
-
-S3 objects are private by default; everything here is about deliberately widening or narrowing that. Access is decided by policies — an **IAM policy** attached to a user/role saying what they may do, and a **bucket policy** attached to the bucket saying who may touch it. (ACLs are the old per-object mechanism and should simply be turned off.) On top of those sits **Block Public Access**, a guardrail that ignores any policy that would make the bucket public — so a mistake can't expose you. Encryption is orthogonal: everything is encrypted at rest automatically, and the choice is really *who holds the key* and *how auditable that is*. Finally, **Object Lock** answers a different question — not "who can read this?" but "can this be deleted at all?" — which is what regulators and ransomware defence care about.
 
 ## AWS console ↔ Terraform map
 

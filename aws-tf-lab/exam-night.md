@@ -1,6 +1,6 @@
 ---
 tags: [exam-prep, generated]
-generated: 2026-09-04
+generated: 2026-09-05
 ---
 
 # 🌙 Exam-night revision sheet
@@ -16,7 +16,7 @@ that idea, not the top of the note. Trap and comparison entries are titles
 only, on purpose: the name is the hook, and if it doesn't fire you want the
 full wording anyway.
 
-*6 recall hooks · 152 pointers · ~9 min read*
+*97 recall hooks · 152 pointers · ~22 min read*
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
@@ -53,7 +53,18 @@ full wording anyway.
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- IAM decides who you are and what you may do on every AWS API call — global, free, and never optional.  
+  ↳ [[01-iam#What problem does this solve?|explain]]
+- The default is no, an Allow lifts it, and an explicit Deny puts it back forever — order, count and specificity change nothing.  
+  ↳ [[01-iam#Explicit Deny wins, and nothing else counts|explain]]
+- A role is a credential-less hat — the trust policy says who may wear it, the permissions policy says what it can do, and either half missing breaks it differently.  
+  ↳ [[01-iam#A role is a hat, and it needs two policies|explain]]
+- EC2 wears the hat through an instance profile; the console hides the wrapper, Terraform makes you write it.  
+  ↳ [[01-iam#The instance profile — the wrapper the console hides|explain]]
+- Principals go by name, policies go by ARN — and both are strings, so nothing but your own eyes will catch the swap.  
+  ↳ [[01-iam#Why a principal is named but a policy is an ARN|explain]]
+- If the users already exist, don't copy them — federate, and the AD group ends up wearing an IAM role.  
+  ↳ [[01-iam#When the users already exist somewhere else|explain]]
 
 **Traps** [[01-iam|open]]
 - "the plan showed the policy was fine"
@@ -81,7 +92,18 @@ full wording anyway.
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- EC2 rents you a virtual server by the second and hands you every decision a physical one would have made for you.  
+  ↳ [[02-ec2#What problem does this solve?|explain]]
+- The AMI is regional and the subnet fixes the AZ — those are the two parts you cannot swap under a live instance.  
+  ↳ [[02-ec2#What an instance is actually made of|explain]]
+- Stop keeps EBS and kills instance store; terminate kills the root volume too but leaves extra volumes behind.  
+  ↳ [[02-ec2#Stop is not terminate, and only part of it survives|explain]]
+- An auto-assigned IP belongs to the instance and changes on stop, an EIP belongs to you and doesn't — and since Feb 2024 both are billed.  
+  ↳ [[02-ec2#Why the public IP walks away when you stop|explain]]
+- EC2 gets its permissions from a role, but the thing you hand the instance is the instance profile wrapping that role.  
+  ↳ [[02-ec2#Giving the instance an identity without putting a secret on it|explain]]
+- IMDSv2 wants a PUT for a token before any GET, and skipping it fails quietly instead of loudly.  
+  ↳ [[02-ec2#Why a plain curl to the metadata endpoint returns nothing|explain]]
 
 **Traps** [[02-ec2|open]]
 - All EC2 attributes can be changed in-place
@@ -106,7 +128,16 @@ full wording anyway.
 
 ## [[03-ami-bake|03 – AMI Baking with Packer (job-skills side-quest)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Install once at build time and snapshot the result, instead of re-installing on every boot.  
+  ↳ [[03-ami-bake#What problem does this solve?|explain]]
+- Packer launches a temp instance, provisions it over SSH, snapshots it, and destroys it — the image is the only thing that survives.  
+  ↳ [[03-ami-bake#The build is a throwaway instance|explain]]
+- Bake what rarely changes, boot-install what differs per instance.  
+  ↳ [[03-ami-bake#Bake at build, or install at boot|explain]]
+- Filter on a tag you set after testing, not on whichever image happens to be newest.  
+  ↳ [[03-ami-bake#Why "use the latest image" is the dangerous setting|explain]]
+- Every build leaves two billable objects behind, and only one of them is visible.  
+  ↳ [[03-ami-bake#An AMI and its snapshot are two separate objects|explain]]
 
 **Failure modes**
 - most_recent = true silently ships an untested image  ↳ [[03-ami-bake#Worked examples|open]]
@@ -115,7 +146,18 @@ full wording anyway.
 
 ## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- The ALB decides which instance gets a request, the ASG decides how many instances exist, and the target group is the only thing connecting the two.  
+  ↳ [[04-alb-asg#What problem does this solve?|explain]]
+- The ALB reads the request, so it can route on anything inside it and answer some requests itself; the NLB can't, but hands you a static IP and the true client IP.  
+  ↳ [[04-alb-asg#The ALB opens your HTTP request, and everything follows from that|explain]]
+- The ASG registers instances into the target group, but only acts on the ALB's health verdict when health_check_type = "ELB" — and only after the grace period expires.  
+  ↳ [[04-alb-asg#The target group is the joint — and two health checks meet inside it|explain]]
+- Target tracking is asymmetric on purpose — nothing below the target will ever scale you out, only real load above it will.  
+  ↳ [[04-alb-asg#Target tracking scales out fast and scales in slowly, deliberately|explain]]
+- AZ balance first, then oldest configuration, then billing hour, then random — and unhealthy instances bypass the whole ordering.  
+  ↳ [[04-alb-asg#Which instance dies when it scales in|explain]]
+- Schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write min_size = -1 / max_size = -1, because omitted means zero, not unchanged.  
+  ↳ [[04-alb-asg#Scheduling capacity without freezing the group|explain]]
 
 **Traps** [[04-alb-asg|open]]
 - "the ALB terminates the unhealthy instance"
@@ -138,7 +180,18 @@ full wording anyway.
 
 ## [[05-vpc-core|05.1 – VPC Core (subnets, routing, IGW, NAT)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- A VPC is a network you define; whether any part of it is public is a routing decision, not a property of the subnet.  
+  ↳ [[05-vpc-core#What problem does this solve?|explain]]
+- A subnet is one AZ, a VPC is one region, and every subnet is five addresses smaller than it looks.  
+  ↳ [[05-vpc-core#The address space, and the five IPs you never get|explain]]
+- Public = IGW route + public IP, both required; the route table decides, and the main route table must never be the one that says yes.  
+  ↳ [[05-vpc-core#There is no public subnet checkbox|explain]]
+- The NAT needs its own door to the internet, so it lives in a public subnet — the private RT points at the NAT, and the NAT's RT points at the IGW.  
+  ↳ [[05-vpc-core#Why the NAT gateway has to live in a public subnet|explain]]
+- A NAT gateway is redundant inside its AZ and nowhere else — one per AZ, or you have built a single point of failure with a cross-AZ bill attached.  
+  ↳ [[05-vpc-core#Why one NAT gateway is not enough|explain]]
+- AWS's own defaults are open, anything you create is closed, and Terraform ignores the defaults until you adopt them.  
+  ↳ [[05-vpc-core#The defaults that behave backwards from what you create|explain]]
 
 **Traps** [[05-vpc-core|open]]
 - "the default NACL and a new NACL behave the same"
@@ -155,7 +208,16 @@ full wording anyway.
 
 ## [[05-vpc-endpoints-peering|05.3 – VPC Endpoints & Peering (+ Transit Gateway)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Endpoints get you privately to AWS services; peering and Transit Gateway get you privately to other VPCs.  
+  ↳ [[05-vpc-endpoints-peering#What problem does this solve?|explain]]
+- A gateway endpoint is a free route-table entry for S3/DynamoDB, usable only from inside the VPC that owns the route table.  
+  ↳ [[05-vpc-endpoints-peering#The gateway endpoint is a route, not a box|explain]]
+- An interface endpoint is a PrivateLink ENI with a private IP — most services, billed per AZ per hour, and reachable across peering/VPN/DX.  
+  ↳ [[05-vpc-endpoints-peering#The interface endpoint is an IP, not a route|explain]]
+- Peering is a private 1-to-1 link with routes on both sides, no overlapping CIDRs, and no path through it to anywhere else.  
+  ↳ [[05-vpc-endpoints-peering#Why peering never becomes a hub|explain]]
+- Peering is O(N²) and non-transitive, so at many VPCs / hybrid at scale the answer becomes one Transit Gateway hub.  
+  ↳ [[05-vpc-endpoints-peering#The mesh math, and what Transit Gateway replaces|explain]]
 
 **Traps** [[05-vpc-endpoints-peering|open]]
 - "use a gateway endpoint for SQS/KMS/etc."
@@ -172,7 +234,18 @@ full wording anyway.
 
 ## [[05-vpc-hybrid|05.4 – VPC Hybrid Connectivity (VPN & Direct Connect)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- A VPN rents an encrypted tunnel across the internet; Direct Connect buys a private wire that avoids it.  
+  ↳ [[05-vpc-hybrid#What problem does this solve?|explain]]
+- VGW is AWS's end, CGW is a description of your end, and every connection ships with two tunnels whether you asked for them or not.  
+  ↳ [[05-vpc-hybrid#The two endpoints, and why one of them isn't a device|explain]]
+- DX gives you a private path, not a secret one — layer a VPN on top when the auditor asks.  
+  ↳ [[05-vpc-hybrid#Private is not the same as encrypted|explain]]
+- The fiber is the port; the VIF declares whether it lands in a VPC, on AWS's public services, or on a Transit Gateway.  
+  ↳ [[05-vpc-hybrid#What a Direct Connect port actually carries|explain]]
+- A DXGW fans one circuit out to VPCs in many regions; a TGW is what lets those VPCs talk to each other.  
+  ↳ [[05-vpc-hybrid#One circuit, many VPCs — and the limit of that|explain]]
+- Throughput argues for Direct Connect, but the calendar picks the VPN.  
+  ↳ [[05-vpc-hybrid#The calendar usually decides, not the bandwidth|explain]]
 
 **Traps** [[05-vpc-hybrid|open]]
 - "Direct Connect is encrypted because it's private"
@@ -190,7 +263,18 @@ full wording anyway.
 
 ## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- The SG guards the instance and can only allow, the NACL guards the subnet and can deny, and Flow Logs record whether the traffic was allowed or rejected.  
+  ↳ [[05-vpc-security#What problem does this solve?|explain]]
+- The SG remembers the conversation, the NACL sees one packet at a time — so on a NACL you must write both halves.  
+  ↳ [[05-vpc-security#Stateful versus stateless|explain]]
+- Replies land on 1024–65535 — outbound if you're answering, inbound if you're asking — and a TCP-only rule set silently drops UDP.  
+  ↳ [[05-vpc-security#Ephemeral ports, and which direction to open them|explain]]
+- Lowest matching number wins and stops the search — and a custom NACL starts closed while the default one starts open.  
+  ↳ [[05-vpc-security#Numbered rules, and first match wins|explain]]
+- Flow logs give you who-to-whom-on-what-port plus ACCEPT or REJECT — never the contents.  
+  ↳ [[05-vpc-security#What flow logs can and cannot tell you|explain]]
+- SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.  
+  ↳ [[05-vpc-security#Network Firewall, and why it needs a subnet of its own|explain]]
 
 **Traps** [[05-vpc-security|open]]
 - "make the NACL match the SG rules and you're done"
@@ -207,7 +291,18 @@ full wording anyway.
 
 ## [[06-capstone|06 – Capstone: 3-Tier VPC with Terraform Modules]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Tiers limit the blast radius of a breach; modules turn one untouchable file into composable, reusable pieces.  
+  ↳ [[06-capstone#What problem does this solve?|explain]]
+- Each tier only accepts the group in front of it, referenced by SG ID so it survives every scale event.  
+  ↳ [[06-capstone#The security-group chain is the architecture|explain]]
+- A module is a directory with variables in and outputs out, and its outputs reach the caller and stop there.  
+  ↳ [[06-capstone#Modules, and the output that goes missing|explain]]
+- Multi-AZ is a standby you cannot read that fails over automatically; a read replica is a copy you can read but must promote by hand.  
+  ↳ [[06-capstone#Multi-AZ and read replicas solve different problems|explain]]
+- Encryption is decided at creation and the only way back is snapshot-copy-restore; the username and password just have to survive RDS's validation rules.  
+  ↳ [[06-capstone#The RDS setting you can only get right once|explain]]
+- A bastion opens a door and guards it; Session Manager opens no door and dials out instead.  
+  ↳ [[06-capstone#Reaching a database that has no way in|explain]]
 
 **Traps** [[06-capstone|open]]
 - Multi-AZ to scale reads
@@ -224,7 +319,16 @@ full wording anyway.
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- RDS hands AWS the operational chores; Aurora hands them over too, and re-architects the storage underneath so the limits of a single volume stop applying.  
+  ↳ [[07-rds-aurora#What problem does this solve?|explain]]
+- The standby is unreadable on purpose, because its job is to be identical rather than useful.  
+  ↳ [[07-rds-aurora#Multi-AZ and read replicas are two different jobs|explain]]
+- The instances share one 6-copy volume instead of each owning a copy, and every Aurora advantage is a consequence of that.  
+  ↳ [[07-rds-aurora#Why Aurora's storage layer changes everything above it|explain]]
+- Automated backups die with the instance, manual snapshots don't, every restore is a new endpoint, and encryption at rest is creation-time only.  
+  ↳ [[07-rds-aurora#Backups, restores, and the encryption rule with no undo|explain]]
+- A 15-minute signed token used as the password, gated by rds-db:connect on the instance's resource id — nothing stored, nothing rotated, nothing in CloudTrail.  
+  ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
 
 **Traps** [[07-rds-aurora|open]]
 - "IAM database authentication controls what the user can do in the database"
@@ -246,7 +350,18 @@ full wording anyway.
 
 ## [[08-elasticache|08 – ElastiCache (Redis / Memcached)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- A cache stores answers in RAM so the database stops re-answering the same question.  
+  ↳ [[08-elasticache#What problem does this solve?|explain]]
+- The cache fills on misses, TTL bounds how stale it may get, and none of it helps writes.  
+  ↳ [[08-elasticache#The hit, the miss, and why the cache starts empty|explain]]
+- Memcached is the multi-threaded one; Redis buys throughput with shards, not cores.  
+  ↳ [[08-elasticache#Redis is single-threaded — and that is not a bug|explain]]
+- Memcached forgets on node loss; Redis replicates, fails over, persists and backs up.  
+  ↳ [[08-elasticache#What Memcached simply does not have|explain]]
+- One endpoint gets you every endpoint — Memcached only, and AWS says so in writing.  
+  ↳ [[08-elasticache#Auto Discovery, the odd Memcached-only feature|explain]]
+- Find the capability only one engine has; the use case is the distractor.  
+  ↳ [[08-elasticache#Reading the engine question the right way round|explain]]
 
 **Traps** [[08-elasticache|open]]
 - Memcached for anything needing HA/persistence/complex data
@@ -264,7 +379,16 @@ full wording anyway.
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Copy it elsewhere, move it efficiently, and react when it changes.  
+  ↳ [[09-s3-advanced#What problem does this solve?|explain]]
+- Replication only copies what happens next; everything else — pre-existing, failed, or a replica — needs Batch Replication.  
+  ↳ [[09-s3-advanced#Replication starts from now, not from the beginning|explain]]
+- Parts upload in parallel and retry individually — and the ones you never finish keep billing invisibly.  
+  ↳ [[09-s3-advanced#Why a big upload is many small ones|explain]]
+- Nearest edge, then AWS's private backbone — the bucket stays exactly where it was.  
+  ↳ [[09-s3-advanced#Transfer Acceleration moves the path, not the bucket|explain]]
+- The destination must grant S3 permission, and the output must never land where the trigger is watching.  
+  ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
 
 **Traps** [[09-s3-advanced|open]]
 - replication copies existing objects
@@ -283,7 +407,16 @@ full wording anyway.
 
 ## [[09-s3-intro|09.1 – S3 Introduction (buckets, classes, versioning, lifecycle)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Durable file storage addressed by name, with tiers and automatic ageing so old data gets cheap instead of getting expensive.  
+  ↳ [[09-s3-intro#What problem does this solve?|explain]]
+- A bucket is a globally-unique name for a regional flat key→object map, and folders are a console illusion.  
+  ↳ [[09-s3-intro#The key is the whole name, and there are no folders|explain]]
+- Every class is eleven-nines durable, availability and AZ count are what actually differ, and One Zone-IA sits in a single AZ.  
+  ↳ [[09-s3-intro#Durability and availability are two different numbers|explain]]
+- Cheaper classes charge a minimum stay and a minimum object size, so short-lived or tiny objects can cost more down the ladder, not less.  
+  ↳ [[09-s3-intro#Why moving data to a cheaper class can cost you more|explain]]
+- With versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.  
+  ↳ [[09-s3-intro#Versioning, delete markers, and the bill that grows in the dark|explain]]
 
 **Traps** [[09-s3-intro|open]]
 - "S3 has folders"
@@ -302,7 +435,18 @@ full wording anyway.
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- Three unrelated questions — who may read it, who holds the key, can it be deleted at all — with three unrelated mechanisms, plus one guardrail over the first.  
+  ↳ [[09-s3-security#What problem does this solve?|explain]]
+- IAM policy asks what a principal may do, bucket policy asks who may touch the bucket, cross-account needs both, and an explicit Deny beats everything.  
+  ↳ [[09-s3-security#Two policies pointing at each other|explain]]
+- Two ways to become public × two timings = four switches, and BPA overrides policy rather than the other way round.  
+  ↳ [[09-s3-security#Block Public Access, and why there are exactly four switches|explain]]
+- Everything is encrypted anyway, so the choice is whose key and whether CloudTrail sees it — and changing the default only affects new objects.  
+  ↳ [[09-s3-security#Encryption is a question about custody, not about whether|explain]]
+- Time-limited, carries the generator's permissions, and works for anyone holding the link — so keep the window short.  
+  ↳ [[09-s3-security#A presigned URL is a bearer token wearing your permissions|explain]]
+- The lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.  
+  ↳ [[09-s3-security#Object Lock, and the delete that succeeds anyway|explain]]
 
 **Traps** [[09-s3-security|open]]
 - Block Public Access can be overridden by a bucket policy
@@ -322,7 +466,18 @@ full wording anyway.
 
 ## [[10-route53|10 – Route 53 (DNS)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- DNS is a search for who to ask; Route 53 is the server being asked, and the routing policy decides which answer comes back.  
+  ↳ [[10-route53#What problem does this solve?|explain]]
+- A hosted zone makes you able to answer; delegation is the only thing that makes anyone ask you.  
+  ↳ [[10-route53#Owning a name and answering for it are two different things|explain]]
+- A CNAME at the apex is illegal DNS, and an alias is Route 53 dressing a redirect up as an A record so the apex can point at an ALB anyway.  
+  ↳ [[10-route53#Why a CNAME cannot sit at the apex|explain]]
+- Simple hands out everything blind, multivalue hands out only what's alive; geolocation reads the user, geoproximity reads your resources.  
+  ↳ [[10-route53#The two policy pairs everyone swaps|explain]]
+- Route 53 notices the failure in (interval × threshold) seconds; the TTL decides when anybody else does.  
+  ↳ [[10-route53#What a health check can see, and how fast failover really is|explain]]
+- A private zone answers only inside its associated VPCs; inbound lets on-prem ask AWS, outbound lets AWS ask on-prem.  
+  ↳ [[10-route53#Private zones, and which way the Resolver points|explain]]
 
 **Traps** [[10-route53#Traps|open]]
 - "use simple routing to distribute traffic across three servers"
@@ -345,7 +500,18 @@ full wording anyway.
 
 ## [[11-cloudfront|11 – CloudFront (CDN)]]
 
-*No recall hooks yet — this note hasn't had the comprehension pass.*
+- A copy of your content near the user, and AWS's own network for everything that can't be copied.  
+  ↳ [[11-cloudfront#What problem does this solve?|explain]]
+- Edge first, regional edge cache second, origin last — a miss at the edge doesn't mean a trip home.  
+  ↳ [[11-cloudfront#Two caches sit between the viewer and your origin|explain]]
+- The service principal names the service, never the customer — the SourceArn condition is the part that names you.  
+  ↳ [[11-cloudfront#Why the S3 bucket policy needs a condition to actually be safe|explain]]
+- Change the name, not the cache — invalidation can't reach caches you don't own.  
+  ↳ [[11-cloudfront#Why AWS tells you not to invalidate|explain]]
+- The certificate viewers see lives in us-east-1 whatever the origin does; the origin-facing one is the exception.  
+  ↳ [[11-cloudfront#Why the certificate has to be in one specific Region|explain]]
+- CloudFront caches, Global Accelerator doesn't — its trick is IPs that never change, so DNS never has to catch up.  
+  ↳ [[11-cloudfront#Why Global Accelerator fails over faster than DNS can|explain]]
 
 **Traps** [[11-cloudfront#Traps|open]]
 - "put CloudFront in front of the S3 website endpoint and use OAC"

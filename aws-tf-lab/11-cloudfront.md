@@ -12,6 +12,97 @@ tags: [topic, domain/performance]
 
 AWS's content delivery network. Caches your content at edge locations worldwide so users fetch it from nearby instead of from your origin — and, less obviously, accelerates even *uncacheable* traffic by pulling it onto the AWS backbone at the edge.
 
+## What problem does this solve?
+
+Distance is the problem. A request from Mumbai to a server in Virginia crosses the public internet twice — once out, once back — and every hop adds latency. Nothing about your code is slow. The map is slow.
+
+One fix is to run copies of your server in twenty countries. That is expensive, and now there are twenty things to deploy to.
+
+CloudFront does the cheap version. AWS already operates **edge locations** worldwide. CloudFront keeps your real server — the **origin** — in one place, and puts *copies of the content* at the edges near your users. The first person in Mumbai to ask pays for the long trip. Everyone after them gets a local answer.
+
+Then there is the second, quieter benefit, and it is the one people miss. Content that *cannot* be cached at all — a logged-in dashboard, an API response that differs for every user — still gets faster. The request enters the **AWS global backbone** at the nearest edge instead of traversing the public internet end to end. That is why putting CloudFront in front of a dynamic API is a real optimisation and not just a static-asset trick.
+
+> In one line: a copy of your content near the user, and AWS's own network for everything that can't be copied.
+
+## How it actually works
+
+### Two caches sit between the viewer and your origin
+
+Walk a real request.
+
+A viewer in Mumbai asks for an object. The nearest edge location doesn't have it — that's a **miss**. Before going all the way back to your origin, CloudFront checks a **regional edge cache**, a second cache that sits between the edges and the origin. Only if that misses too does the origin get touched. The object then travels back out, is stored at the edge, and is served.
+
+Every later request at that edge is a **hit**, answered locally in milliseconds, until the **TTL** expires and CloudFront revalidates.
+
+The practical consequence of the middle layer: *a miss at the edge is not automatically a trip to your origin.* If you are reasoning about origin load, the edge miss rate is not the number you want.
+
+You can watch the whole thing in the response headers, which is the fastest way to check your mental model against reality:
+
+| Header | Tells you |
+|---|---|
+| `X-Cache: Hit from cloudfront` / `Miss from cloudfront` | whether this request was served from cache |
+| `Age` | how many seconds the cached copy has been sitting there |
+| `X-Amz-Cf-Pop` | which edge location served you |
+| `X-Amz-Cf-Id` | the id to correlate with logs |
+
+> In one line: edge first, regional edge cache second, origin last — a miss at the edge doesn't mean a trip home.
+
+### Why the S3 bucket policy needs a condition to actually be safe
+
+The goal: the bucket is completely private — Block Public Access fully on — and CloudFront is the only way in.
+
+The mechanism is **Origin Access Control**. OAC signs every CloudFront→S3 request, and the bucket policy grants `s3:GetObject` to the service principal `cloudfront.amazonaws.com`. (OAC is the current tool; **OAI is legacy**.) So far this reads like ordinary IAM.
+
+Here is the part that bites. `cloudfront.amazonaws.com` is **the same principal for every AWS customer on earth**. It identifies the *service*, never the *customer*. A bucket policy that trusts it and stops there has said "any CloudFront distribution may read this bucket."
+
+And it works. The site serves. Direct S3 URLs still return 403 to anonymous users. The tests pass. But anyone who learns your bucket name can point **their own** distribution at it and serve your content on their own domain — read from you, billed to them.
+
+That is what the `AWS:SourceArn` condition pinning your distribution's ARN is for. Note carefully what it does *not* do: it is not what makes your distribution work. It is what stops everybody else's. This is the confused-deputy defence, and its whole difficulty is that omitting it breaks nothing visible.
+
+One hard constraint sits on top of all this: OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`). An S3 bucket configured as a **website endpoint** is treated as a *custom* origin, and custom origins support **neither OAC nor OAI**. If the requirement is "private bucket," you take the REST endpoint and give up S3's website features — index documents on subfolders, S3 redirect rules — replacing them with CloudFront's `default_root_object` and custom error pages.
+
+> In one line: the service principal names the service, never the customer — the `SourceArn` condition is the part that names you.
+
+### Why AWS tells you not to invalidate
+
+You deployed new CSS. Until the TTL on that object expires, the edges keep serving the old file. The obvious move is **invalidation**: tell CloudFront to drop that path. It's cheap — the first **1,000 paths per month per account** are free, and a path containing `*` counts as **one path** no matter how many files it clears.
+
+AWS still recommends you don't design around it, and the reason is worth holding on to: **invalidation only clears caches AWS owns.** It cannot reach the viewer's browser cache, and it cannot reach a corporate proxy. So some users keep seeing the stale file regardless, and now your access logs are ambiguous too — the same URL meant two different files at two different times.
+
+The alternative flips the problem around. Put a hash **in the filename**. A new build produces a new name, and a new name is a **new cache key** — so there is nothing stale to clear, because nothing was ever overwritten. You also get clean rollbacks, readable logs, and users mid-session keep working off the old asset instead of receiving a half-updated page.
+
+That leads to the two-tier pattern: `index.html` gets a **short TTL** (60 s) because it is tiny and it is the one file that must change quickly; `/static/app.a1b2c3.css` gets a **one-year TTL** because its name already guarantees uniqueness.
+
+Invalidation isn't wrong — it's the emergency tool, for when you shipped a genuine mistake.
+
+> In one line: change the name, not the cache — invalidation can't reach caches you don't own.
+
+### Why the certificate has to be in one specific Region
+
+An ACM certificate used for **viewer↔CloudFront** HTTPS must be requested or imported in **`us-east-1`**. Not the origin's Region. Not your Region. Always that one.
+
+The reason it catches people is the failure mode. A perfectly valid certificate sitting in `eu-west-1` doesn't throw an error explaining the rule — it simply **never appears** in the distribution's certificate list. You go looking for a bug in your ACM setup, and there isn't one.
+
+There is exactly one exception, and it is on the other leg of the journey: for **CloudFront↔origin** HTTPS with an **ELB** origin, the certificate may live in any Region. Different leg, different rule. That leg has its own failure to recognise too — if no domain in the origin's certificate matches the origin domain name, viewers get **502 Bad Gateway**.
+
+> In one line: the certificate viewers see lives in `us-east-1` whatever the origin does; the origin-facing one is the exception.
+
+### Why Global Accelerator fails over faster than DNS can
+
+These two look interchangeable in a question. Both "make it faster globally," both ride the AWS edge network. They are not the same tool.
+
+**CloudFront caches HTTP content.** **Global Accelerator caches nothing** — it routes **any TCP/UDP** traffic over the AWS backbone to the nearest healthy Region, with **NLB, ALB, EC2 or an Elastic IP** as endpoints.
+
+The discriminator that actually decides exam questions is failover speed, and it comes from one detail: Global Accelerator gives you **two static anycast IPs** (four dual-stack) and **those IPs never change**. Failover normally means publishing a different DNS answer, and you are then stuck waiting for every resolver's cached copy to expire — [[10-route53]] failover is bounded by `(interval × threshold) + TTL`. With Global Accelerator there is nothing for a resolver to cache in the first place, because the address is identical before and after. The switch happens inside AWS's network. No DNS, no TTL.
+
+CloudFront has its own failover, and it is worth not confusing with either of the above: an **origin group** holds a primary and a secondary origin and switches when the primary returns configured HTTP failure codes. Per request, inside CloudFront, no DNS involved.
+
+> In one line: CloudFront caches, Global Accelerator doesn't — its trick is IPs that never change, so DNS never has to catch up.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** sits between the edge and your origin, checked on a miss before the origin is.
 > - **Not just static content.** Dynamic, uncacheable requests still benefit, because they enter the AWS backbone at the edge instead of crossing the public internet.
@@ -22,11 +113,6 @@ AWS's content delivery network. Caches your content at edge locations worldwide 
 > - **CloudFront Functions** (JS, sub-ms, viewer events only, no network) vs **Lambda@Edge** (Node/Python, up to 30 s, all four events, network + request body).
 > - **CloudFront vs Global Accelerator:** CloudFront caches HTTP at the edge. Global Accelerator gives **two static anycast IPs**, works at **TCP/UDP**, **caches nothing**, and fails over **without DNS or TTL** because the IPs never change.
 
-## Concept (plain English)
-
-A request from Mumbai to a server in Virginia crosses the public internet twice — once out, once back — and every hop adds latency. CloudFront puts a copy of your content in an edge location near the user. The first request there is a **miss**: CloudFront fetches from your origin, stores it, and serves it. Every later request is a **hit**, answered locally in milliseconds, until the **TTL** expires and CloudFront revalidates.
-
-The second, quieter benefit: even content that *can't* be cached still enters the **AWS global backbone** at the nearest edge rather than traversing the public internet end to end. That's why CloudFront in front of a dynamic API is a real optimisation, not just a static-asset trick.
 
 ## AWS console ↔ Terraform map
 

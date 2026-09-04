@@ -15,6 +15,111 @@ The global, free AWS service that authenticates and authorizes every AWS API cal
 > [!tip] Multi-account layer
 > Organizations, SCPs, permissions boundaries, ABAC and Control Tower live in **[[01-iam-advanced]]** — the Udemy "IAM Advanced" section. This note is the foundations.
 
+## What problem does this solve?
+
+Imagine an AWS account with no IAM. There is one set of credentials, and whoever holds them can do everything: read every bucket, delete every database, spin up anything, close the account. No separation of duties. No audit trail. And no safe way for one service to talk to another — the only thing you could hand your application is that same god-level credential.
+
+IAM is the layer that fixes this. It answers two questions on every single request: **"who are you?"** (authentication) and **"what are you allowed to do?"** (authorization). Nothing reaches S3 or EC2 or RDS until both have been answered.
+
+The split matters, because it's the split the whole service is built on. **Identities prove WHO.** **Policies declare WHAT.** They are separate objects and you wire them together. There are four things to know: **User**, **Group**, **Role**, **Policy**. User, Group and Role sit on the identity side; the Policy is the WHAT. A Group holds no credentials of its own and cannot log in — you drop Users into it and attach the policy to the Group.
+
+Two properties are easy to skim past. IAM is **global** — there is no region picker, and the user you create is the same user seen from every region. And IAM is **free** and always-on: no per-user, per-policy or per-call charge, nothing to enable, nothing to opt into.
+
+> In one line: IAM decides who you are and what you may do on every AWS API call — global, free, and never optional.
+
+## How it actually works
+
+### Explicit Deny wins, and nothing else counts
+
+Some access systems do resolve conflicts by ranking rules — NTFS ACLs, where the more specific rule wins. IAM has no such rule, and expecting one is exactly the kind of plausible-sounding wrong answer the exam is built out of.
+
+There are only three states, and they resolve in a fixed order:
+
+| State | What it means |
+|---|---|
+| **Implicit deny** | The default. You start with nothing. Say nothing about an action and it stays denied. |
+| **Explicit Allow** | Lifts the implicit deny for that action. |
+| **Explicit Deny** | Overrides everything. Nothing lifts it. |
+
+Walk a real one. Alice is in the `developers` group, which carries `Allow s3:GetObject` on `my-bucket`. Someone then attaches an inline policy directly to Alice that explicitly Denies `s3:GetObject` on `my-bucket/*`. Can she read the object?
+
+No. And the reasons people give for "yes" are all the traps:
+
+- *"The group's Allow was attached first."* Order is irrelevant — IAM evaluates the whole set, not a sequence.
+- *"There are more Allows than Denies."* Count is irrelevant too. One Deny anywhere in any attached policy is enough.
+- *"The inline policy is more specific."* There is no specificity rule in IAM. That rule exists in NTFS ACLs, which is exactly why it *sounds* right.
+
+Once you see that the default is deny, the rest follows. An Allow is the only thing that can open anything, so nothing is ever accidentally left open. And a Deny can never be out-voted by piling on more Allows, so a Deny is a guarantee rather than a vote.
+
+The three states are real, not just a mental model — `aws iam simulate-principal-policy` reports them as distinct verdicts: `allowed`, `implicitDeny`, `explicitDeny`. Worth knowing, because the service itself won't tell you: S3 returns the same flat `AccessDenied` whichever of the two denials it was.
+
+> In one line: the default is no, an Allow lifts it, and an explicit Deny puts it back forever — order, count and specificity change nothing.
+
+### A role is a hat, and it needs two policies
+
+A User is a specific someone. It owns long-lived credentials — a console password, an access key and secret — and those stay valid until you rotate them. Which is the problem: if one leaks, the attacker has access for as long as you don't notice.
+
+A Role is not a someone. It's a hat that anybody permitted may put on. It owns **no credentials at all**. When something assumes it, AWS STS mints **temporary** credentials on the spot — default one hour, up to twelve. Nothing to store, nothing to rotate, and a leak expires on its own.
+
+Because a role belongs to nobody, one object has to answer two completely different questions, and it does so with two completely separate policies:
+
+| | **Trust policy** | **Permissions policy** |
+|---|---|---|
+| The question | *Who is allowed to wear this hat?* | *What can the wearer do?* |
+| Where it lives | On the role itself — the `assume_role_policy` argument | Attached separately, like any other policy |
+| If it's missing | Nobody can assume the role at all | The role assumes fine and then does nothing |
+
+Both halves are required, and the failure modes look nothing alike, which is what makes the distinction stick. Forget the trust policy and the door won't open. Forget the permissions policy and the door opens onto an empty room.
+
+The trust policy is also where a role's reach comes from. Change nothing but the principal it trusts and the same mechanic covers wildly different cases: `Service: ec2.amazonaws.com` for an instance, `Service: lambda.amazonaws.com` for a function, another account's ARN for cross-account access, or `Federated: <provider ARN>` for a human arriving via SAML or a CI job arriving via OIDC. It's one pattern wearing different clothes.
+
+And roles reach past AWS's own APIs. With **IAM database authentication**, an EC2 or Lambda role logs in to RDS using a 15-minute token instead of a stored database password. Watch the action name: it is `rds-db:connect`, *not* the `rds:` management prefix.
+
+> In one line: a role is a credential-less hat — the trust policy says who may wear it, the permissions policy says what it can do, and either half missing breaks it differently.
+
+### The instance profile — the wrapper the console hides
+
+Here is a rule that looks like a typo until you've been bitten by it. **An EC2 instance cannot be given a role directly.** It is given an *instance profile*, a thin wrapper around a role that delivers the role's credentials to the instance.
+
+Lambda takes a role directly. ECS takes a role directly. EC2 is the odd one.
+
+You never notice this in the console, because the console hides the wrapper entirely. Terraform doesn't: you create `aws_iam_instance_profile` yourself and hand *that* to the instance's `iam_instance_profile` argument.
+
+Which gives this failure a signature worth memorising: the apply succeeds, the role exists, the role's permissions are correct — and the instance still can't reach S3. Two likely causes, and both are ordinary. Either the instance profile is missing or unreferenced (a role went where a profile belonged), or you hit IAM's **eventual consistency** — a brand-new role can take a few seconds to become visible everywhere, so an apply that creates a role and immediately uses it can race. Usually a retry resolves that one.
+
+> In one line: EC2 wears the hat through an instance profile; the console hides the wrapper, Terraform makes you write it.
+
+### Why a principal is named but a policy is an ARN
+
+In Terraform, IAM cross-references are inconsistent in a way that feels arbitrary: principals are referenced by **`.name`**, policies by **`.arn`**. It isn't arbitrary, and the reason makes it stay put.
+
+A principal — a user, a group, a role — only ever exists inside your account. Within that scope a name is already unambiguous, so a name is all AWS needs. A policy might not be yours. AWS-managed policies live in AWS's own namespace (`arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`), customer-managed ones live in yours. Only a full ARN, which carries the account, can tell those apart.
+
+The trap is that Terraform cannot protect you here. `.arn` and `.name` are both strings, so a swap is perfectly type-valid: `validate` passes, `plan` passes, and the error surfaces at apply — or worse, doesn't surface at all and just produces the wrong wiring. The same trap in a second costume is the quoted reference: `groups = ["aws_iam_group.developers"]` is a literal string that happens to look like HCL, where `[aws_iam_group.developers.name]` is the actual reference. Also type-valid. Also silent.
+
+> In one line: principals go by name, policies go by ARN — and both are strings, so nothing but your own eyes will catch the swap.
+
+### When the users already exist somewhere else
+
+A company with an on-premises Active Directory has, say, four hundred staff. They need AWS access. The instinct is to create four hundred IAM users. That is always the wrong answer, and exam questions are built on the instinct.
+
+The reason is deprovisioning. Copy the identities into IAM and the same person now exists in two systems. When they leave, someone has to remember to remove them from both — and the day someone forgets is the failure the question is really about. Federation avoids that duplicate: nobody gets a parallel IAM user, so there stays exactly one place to deprovision them.
+
+The route ends at a **role** in every case. **AD groups map to IAM roles.** Two ways to get there:
+
+- **IAM Identity Center** (the successor to AWS SSO, and the modern answer). It connects to AD or an external IdP; you map AD groups to **permission sets**, which are provisioned into each account as IAM roles. Users get short-term credentials for the console, the CLI and the SDK.
+- **SAML 2.0 federation straight to IAM** — register a SAML identity provider, then create roles whose trust policy trusts `Federated: <provider ARN>` for `sts:AssumeRoleWithSAML`. Older, more moving parts, still valid.
+
+Behind either one sits a directory, and which one is a question in its own right. **AWS Managed Microsoft AD** is a real Microsoft AD run by AWS in your VPC — pick it when you need actual AD in the cloud, AD-aware apps, RDS for SQL Server, or a trust with on-prem. **AD Connector** is a proxy: it forwards sign-ins to your on-prem domain controllers and stores no directory data in AWS at all, which is precisely the phrase a question will use to point at it. **Simple AD** is the cheap Samba-4 lookalike, and it's disqualified the instant a question mentions trusts, MFA, schema extensions, LDAPS or RDS SQL Server — it supports none of them.
+
+Notice that this is the trust-policy mechanic again. AD group, EC2 instance, GitHub Actions workflow — every one of them ends up assuming a role. Only the principal the trust policy names changes.
+
+> In one line: if the users already exist, don't copy them — federate, and the AD group ends up wearing an IAM role.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **IAM is global, free, and always-on.** No region selection. Same identities and policies seen from every region.
 > - **Four core objects:** User, Group, Role, Policy. Groups can't log in; only Users can.
@@ -24,10 +129,6 @@ The global, free AWS service that authenticates and authorizes every AWS API cal
 > - **Roles reach past AWS APIs.** With **IAM database authentication** an EC2/Lambda role can log in to RDS with a 15-minute token instead of a password — the IAM action is `rds-db:connect` (note: *not* the `rds:` management prefix). See [[07-rds-aurora]].
 > - **Existing corporate users?** Don't create IAM users — federate. **AD groups map to IAM roles** via IAM Identity Center (or SAML 2.0), backed by AWS Managed Microsoft AD or AD Connector.
 > - **EC2 doesn't attach to a role directly** — it attaches to an *Instance Profile*, a thin wrapper around a role (see [[02-ec2]]). Console hides this; Terraform makes it explicit. (Lambda, ECS, etc. take roles directly.)
-
-## Concept (plain English)
-
-Without IAM, anyone with the AWS account credentials would have full god-level access — no separation of duties, no audit trail, no safe way for services to talk to each other. IAM solves authentication ("who are you?") and authorization ("what are you allowed to do?") for every AWS API call. Identities prove WHO; policies declare WHAT. IAM is global, free, and always-on; it costs nothing to use and there is no opt-in.
 
 ## AWS console ↔ Terraform map
 
@@ -169,7 +270,7 @@ Built a minimal user → group → policy → attachment chain (5 resources). No
 - **Quoted vs unquoted references** — wrote `groups = ["aws_iam_group.developers"]` (literal string!) on the first pass instead of `[aws_iam_group.developers.name]` (HCL reference). Same trap: type-valid, only fails at apply.
 - **Idiomatic policy authoring** — used `data "aws_iam_policy_document"` to build the policy JSON in HCL instead of a heredoc. Plan-time validation catches Effect/Action typos before AWS sees them.
 
-### Recap lab — `01-iam-lab/` (built 2026-08-29)
+### Recap lab — 01-iam-lab/ (built 2026-08-29)
 
 A second root module (own state, so it touches nothing in `01-iam`) built to close the two IAM weaknesses the 2026-08-28 mock exposed: **instance profiles** and **`Condition` blocks**. An EC2 role that may read exactly one S3 prefix, and cannot do it over plain HTTP.
 

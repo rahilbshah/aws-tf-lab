@@ -12,16 +12,112 @@ tags: [topic, domain/resilient, capstone]
 
 The consolidation build: a real secure 3-tier app (ALB → ASG → RDS) in a purpose-built VPC, composed as **three reusable Terraform modules**. Two big lessons: **modules** (the Terraform skill) and **RDS** (the exam service). Ties together [[05-vpc-core]], [[04-alb-asg]], [[02-ec2]], [[01-iam]], [[03-ami-bake]].
 
+## What problem does this solve?
+
+An app that serves the public internet has to be reachable. A database holding that app's data must never be.
+
+Those two sentences are in tension. The way this build resolves them is to split the app into **tiers with different exposure**. The load balancer is the only thing the internet can talk to. The app servers sit behind it in private subnets with no public IP at all. The database sits behind *them*, in its own private subnets, and will only answer the app tier. Each tier is one hop, and each hop is a separate permission. Breaking into one does not hand you the next.
+
+That is the shape. The second problem is how you *write* it.
+
+A build like this is a lot of resources — network, routing, load balancer, scaling group, database — and if they all live in one flat directory you have a file nobody wants to touch and nothing you can reuse for the next environment. So it is split too: three **modules**, each a self-contained directory with typed inputs and explicit outputs, wired together by a thin root config. That is how real Terraform is organized: composable, reusable, testable.
+
+> In one line: tiers limit the blast radius of a breach; modules turn one untouchable file into composable, reusable pieces.
+
+## How it actually works
+
+### The security-group chain is the architecture
+
+The tiers are enforced twice over. Once by placement — the ALB in public subnets, the app instances in private subnets with no public IP, the database in its own private data subnets. And again, on top of that, by security groups pointing at each other. The SG chain is the layer you can trace request by request:
+
+| Hop | Rule that allows it |
+|---|---|
+| User → ALB | `alb-sg` allows `:80` from `0.0.0.0/0` |
+| ALB → app instance | `app-sg` allows `:80` **from `alb-sg`** |
+| App → database | `db-sg` allows `:5432` **from `app-sg`** |
+
+Read what each rule *doesn't* say. `app-sg` never mentions the internet, so nothing on the internet can reach an app instance — and the instance has no public IP and lives in a private subnet anyway. `db-sg` names only `app-sg`, so the database can't be reached except from the app tier. Nothing can skip a tier, because no tier will accept traffic from anything except the one directly in front of it.
+
+The detail that makes this work at scale: each rule references the security group **in front of it by SG ID, not by CIDR**. Instances come and go as the ASG scales, and their IPs change every time. An IP-based rule would need rewriting constantly. An SG-ID reference means "whatever is currently wearing that group" — it keeps being correct without being touched. That reference chain *is* the security model.
+
+One rule about writing those rules that bites once and then never again: an egress rule with `ip_protocol = "-1"` (all protocols) **cannot also carry a port range**. Set `from_port`/`to_port` to `0` alongside it and AWS quietly accepts it at **create** time — it normalises `0/0` to "all" — so the apply succeeds and you think you're fine. Every later plan then shows drift (`0` against the stored `-1`), and the **update** is rejected outright. All protocols ⇒ no ports; specific ports ⇒ a specific protocol.
+
+> In one line: each tier only accepts the group in front of it, referenced by SG ID so it survives every scale event.
+
+### Modules, and the output that goes missing
+
+A Terraform module is less exotic than it sounds: **a module is a directory of `.tf` files**. Nothing more. The directory you actually run Terraform in is the **root module**; any other directory you point at with `module "name" { source = "..." }` is a **child module**.
+
+The contract between them is two ordinary things you already use:
+
+- **`variable` blocks are the inputs** — the module's API, the knobs the caller can turn.
+- **`output` blocks are the return values** — what the caller is allowed to read back, as `module.<name>.<output>`.
+
+That is how the three modules here are wired. `module.vpc` hands out subnet IDs; `module.compute` takes them and hands back `app_sg_id`; `module.database` takes *that* and builds `db-sg` from it. The root config's job is that wiring — it passes outputs into inputs, and that plumbing is most of what the root file contains.
+
+Now the part that surprises people, and did here: **outputs bubble up exactly one level.**
+
+A child module's output is visible to its **direct caller only**. It does not propagate further on its own. So `terraform output` at the root came back empty even though every module declared outputs — because the root had never re-declared them as its own. The fix is to re-export: the caller writes an `output` block of its own that reads the child's. Once you know it, the rule reads as deliberate — a module's outputs are its API to *its caller*, not a global namespace everything can reach into.
+
+Two smaller mechanics worth holding: the **provider is configured once, in the root**, and child modules inherit it — you do not put a `provider` or `terraform` block inside a module. And after you add a `module` block or change its `source`, you must **re-run `terraform init`** to register it.
+
+Finally, the judgement call: **don't over-modularize.** Wrapping a single resource in a module buys nothing but indirection. You modularize a *pattern you have already repeated*.
+
+> In one line: a module is a directory with variables in and outputs out, and its outputs reach the caller and stop there.
+
+### Multi-AZ and read replicas solve different problems
+
+This is the RDS confusion the exam leans on hardest, and the reason it works is that both features are described as "a copy of your database in another place."
+
+They are not interchangeable.
+
+**Multi-AZ** creates a **synchronous** standby in another AZ. Every write lands on both before it is acknowledged. If the primary dies, RDS fails over to the standby automatically. And the standby is **passive — you cannot read from it.** That feels wasteful: a full second database that serves no traffic. But that is the point of it: Multi-AZ is bought for **availability**, not capacity — the standby is there to take over, not to take load. It also doubles the cost and is **not** Free Tier.
+
+**Read replicas** are **asynchronous** copies that you *can* read from. They exist for **read scaling** — reporting queries, read-heavy traffic you want off the primary. Because replication is async they lag slightly (eventual consistency), which is fine for read traffic. They can be same-AZ, cross-AZ or **cross-region**, and a replica can be **promoted** to a standalone database — but that promotion is **manual**, not an automatic failover.
+
+So the trigger words split cleanly: "survive an AZ failure" / "HA" → **Multi-AZ**. "Offload reads" / "scale read traffic" / "reporting" → **read replicas**.
+
+> In one line: Multi-AZ is a standby you cannot read that fails over automatically; a read replica is a copy you can read but must promote by hand.
+
+### The RDS setting you can only get right once
+
+Encryption at rest is set at creation only — you cannot encrypt an existing unencrypted instance in place.
+
+**Encryption at rest is set at creation only.** `storage_encrypted = true` is decided when the instance is born; you cannot flip it on afterwards for a database that is already running unencrypted. The route back is a three-step dance: **snapshot → copy the snapshot with encryption enabled → restore from that copy.** You end up with a new instance, not a modified one. Worth internalising as a design habit, not a fact: encrypt everything at creation, because "we'll turn it on later" isn't a thing here.
+
+Separate from that, two input rules RDS validates and will bounce your apply over — both hit live during this build:
+
+- **Master username reserved words.** RDS rejects certain names — `root`, `rdsadmin`, `admin` on some engines. Use something like `dbadmin`. (`root` on postgres failed here.)
+- **Master password constraints.** 8–128 characters, and it may not contain `/`, `"`, `@`, or spaces. (An `@` in the first password would have been rejected.)
+
+And two placement decisions that belong with them. A VPC database needs a **DB subnet group** — the set of subnets, across **2+ AZs**, that RDS is permitted to place instances in. And `publicly_accessible = false` keeps it off the public internet, which is the only correct answer for something sitting in a data-tier subnet.
+
+> In one line: encryption is decided at creation and the only way back is snapshot-copy-restore; the username and password just have to survive RDS's validation rules.
+
+### Reaching a database that has no way in
+
+Having built a database nothing can reach, you now need to reach it — from a laptop, with a GUI client. Both routes were built and tested here.
+
+**Option A: a bastion.** Put a small EC2 in a **public** subnet with a public IP, let `bastion-sg` accept `:22` from your own `/32`, and add a `db-sg` ingress rule **from `bastion-sg`**. Your client SSHes to the bastion and tunnels through to the RDS endpoint. It works everywhere and it is the classic answer. It also leaves you running and patching a public box, with an SSH port open and keys to manage.
+
+**Option B: SSM Session Manager port forwarding.** No bastion, no public IP, and **no inbound port open at all**. Attach an instance profile carrying the AWS-managed **`AmazonSSMManagedInstanceCore`** policy to the private app instances; the SSM agent already on the AMI registers them with SSM *outbound* over the NAT gateway. You then start a port-forwarding session and `127.0.0.1:5432` on your laptop emerges inside the VPC at RDS. The client connects to `localhost` as a plain connection — no SSH involved.
+
+Notice what changed underneath. The bastion's security model is a network hole plus an SSH key. Session Manager's is **IAM** for authentication and **CloudTrail** for the audit trail, with the connection established from the inside out — which is why nothing has to be opened inbound. Any question phrased as "access private instances without a bastion / without opening ports / with an audit trail" is pointing at Session Manager.
+
+Two Terraform snags on the way: on a **launch template**, `iam_instance_profile` is a **block** (`iam_instance_profile { name = ... }`), not the bare string you use on `aws_instance` — and instances that already exist need an **ASG instance refresh** before they pick up the new profile.
+
+> In one line: a bastion opens a door and guards it; Session Manager opens no door and dials out instead.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **3-tier shape:** ALB in **public** subnets → ASG instances in **private app** subnets → RDS in **private data** subnets. Security-group **chain**: internet → alb-sg → app-sg → db-sg (each tier only reachable from the one in front). This is *the* canonical SAA-C03 architecture.
 > - **RDS Multi-AZ = synchronous standby in another AZ for FAILOVER (HA)** — NOT readable. **Read Replicas = async copies for READ SCALING** — readable, can be cross-region. Different problems.
 > - **RDS encryption at rest is set at creation only** — can't encrypt an existing unencrypted instance in place (snapshot → copy with encryption → restore).
 > - **DB subnet group** tells RDS which (2+ AZ) subnets it may live in. Keep RDS `publicly_accessible = false`.
 > - **Terraform modules:** a module is just a directory (variables = inputs, outputs = returns). Outputs bubble up **one level** — re-export at each caller. Provider is configured once in the **root**; child modules inherit it.
-
-## Concept (plain English)
-
-A production app isn't one flat config — it's tiers with different exposure, and it's built from reusable pieces. This capstone puts the internet-facing load balancer in public subnets, the app servers in private subnets (no public IP, reachable only via the ALB's security group), and the database in its own private data subnets (reachable only from the app tier). Each tier is a security-group hop, so a breach of one doesn't hand over the next. And instead of one giant file, it's three **modules** — `vpc`, `compute`, `database` — each a self-contained directory with typed inputs and explicit outputs, wired together by a thin root config. That's how real Terraform is organized: composable, reusable, testable.
 
 ## AWS console ↔ Terraform map (new pieces)
 

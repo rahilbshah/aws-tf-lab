@@ -12,6 +12,92 @@ tags: [topic, domain/performance]
 
 Moving data around and reacting to it: replication for DR/latency, multipart & byte-range for big objects, Transfer Acceleration for distance, and event notifications for automation. Part of [[09-s3]].
 
+## What problem does this solve?
+
+A bucket that just holds objects is easy to reason about. The trouble starts once the data matters, or gets big, or has to make something else happen.
+
+Three separate pains, three separate features.
+
+**"I need a second copy somewhere else."** One region, one bucket, one bad day. Or: your users are in Sydney and your bucket is in Virginia. Or: an auditor wants a copy inside a specific country. You could write a script that re-uploads everything on a schedule and hope it keeps up. **Replication** does it for you — automatically, in the background, to another region (**CRR**) or the same one (**SRR**).
+
+**"This file is too big to upload as one thing."** A single `PUT` tops out at **5 GB**. And even under that, one long upload is one long chance to fail — lose the connection at 90% and you start again from zero. **Multipart upload** cuts the object into parts you send in parallel and retry individually. **Byte-range fetch** is the same trick pointed at downloads. **Transfer Acceleration** attacks a different part of the problem: not the file, the distance.
+
+**"Something changed — now do something about it."** Polling a bucket to see if a new file arrived is wasteful and slow. **Event notifications** invert it: S3 tells you. An object lands, a message goes to SQS, SNS, Lambda or EventBridge, and a pipeline runs. That is how S3 stops being storage and becomes a trigger.
+
+> In one line: copy it elsewhere, move it efficiently, and react when it changes.
+
+## How it actually works
+
+### Replication starts from now, not from the beginning
+
+Turn on a replication rule and nothing happens. The destination stays empty until somebody writes a new object.
+
+That is the single most misread behaviour in this topic. Live replication copies **only objects created or updated after the rule existed**. Years of data already in the bucket are simply not in scope. The team in the failure mode below found this out during an actual regional failover.
+
+The fix has a name, and the name is the exam answer: **S3 Batch Replication** — an on-demand job that handles the four cases live replication won't.
+
+| Situation | Live rule | Batch Replication |
+|---|---|---|
+| New object written now | ✅ | — |
+| Object that existed before the rule | ❌ | ✅ |
+| Object whose replication **FAILED** | ❌ | ✅ |
+| Object already replicated, new destination added | ❌ | ✅ |
+| A replica you want re-replicated | ❌ | ✅ |
+
+That last row is the other counter-intuitive one: **replication is not chained.** If A replicates to B and B replicates to C, objects from A do **not** reach C. B's copies are *replicas*, and a live rule won't re-replicate a replica. Only Batch Replication will.
+
+Two prerequisites, and they are non-negotiable: **versioning on both buckets**, and an **IAM role** S3 assumes to read the source versions and write the destination.
+
+Deletes then behave in two different ways, and both are worth memorising as stated. Delete an object and the **delete marker is not replicated** unless you explicitly opt in (`delete_marker_replication`). Delete a *specific version* and that is **never** replicated, opt-in or not — that one protects the copy. Replication is a copy, not a backup.
+
+It is also **asynchronous** — the write succeeds immediately and the copy catches up afterwards. If a scenario demands a *predictable* catch-up, that is **S3 RTC**: 99.99% of new objects replicated within **15 minutes**, backed by an SLA and CloudWatch replication metrics.
+
+> In one line: replication only copies what happens next; everything else — pre-existing, failed, or a replica — needs Batch Replication.
+
+### Why a big upload is many small ones
+
+Above **5 GB** you have no choice: that is the maximum for a single `PUT`. AWS recommends switching at **100 MB**, well before you're forced to.
+
+The reason to switch early isn't the size limit. It's the failure math. One 4 GB upload is a single indivisible bet — a network blip anywhere in it costs you the whole thing. Split it and each part is its own small bet: parts go up **in parallel** (throughput), and a failed part is retried **alone**. Up to **10,000 parts**, up to a **5 TB** object.
+
+Now the part that costs real money. A multipart upload is a conversation with three stages: start it, send the parts, complete it. If the client dies before that last step, the parts that made it are **stored and billed** — but the object doesn't exist yet, so it does **not** appear in a normal listing or the bucket's object count. You are paying for data you cannot see.
+
+A nightly job that crashes occasionally accumulates these quietly for months. You find them with `aws s3api list-multipart-uploads`. You prevent them with a lifecycle rule containing **`AbortIncompleteMultipartUpload`** — hygiene that costs nothing to add, and the reason that clause is in our lifecycle rule.
+
+**Byte-range fetch** is the mirror image on the way down: ask for only a range of bytes. Read just a header or metadata block without pulling the whole object, resume a broken download from where it stopped, or split one big download into ranges fetched in parallel.
+
+> In one line: parts upload in parallel and retry individually — and the ones you never finish keep billing invisibly.
+
+### Transfer Acceleration moves the path, not the bucket
+
+The name suggests the data gets closer to the user. It doesn't. The bucket does not move, and no copy is made.
+
+What changes is the **route**. With Transfer Acceleration the client uploads to the **nearest CloudFront edge location**, and from there the data travels over **AWS's private backbone** to the bucket's region.
+
+A short hop to get into AWS, then the long haul on AWS's own network. Same bucket, same region, different path. It costs extra per GB, so it earns its keep on long-distance transfers of large objects.
+
+The distinction that gets tested: this is about **uploads**. If the scenario is serving *reads* to a global audience, the answer is **CloudFront** — Transfer Acceleration is not a CDN.
+
+> In one line: nearest edge, then AWS's private backbone — the bucket stays exactly where it was.
+
+### Events, and the two ways they fail
+
+An event notification is a rule on the bucket: when *this* kind of thing happens to an object matching *this* prefix or suffix, tell *that* destination.
+
+The triggers are `s3:ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, and more. The destinations are **SNS**, **SQS**, **Lambda** and **EventBridge** — EventBridge being the one that buys richer filtering, archive/replay, and 20+ further targets.
+
+**First failure: nobody told the destination.** S3 publishing into your queue is S3 calling *your* resource, so the permission has to live on that resource. Each destination needs a **resource policy** allowing `s3.amazonaws.com`, scoped with an `aws:SourceArn` condition to the one bucket. Miss it and you don't get a quiet runtime error later — the setup itself **fails validation**. In Terraform that also fixes the ordering: the policy must exist before the notification.
+
+**Second failure: the rule feeds itself.** A Lambda triggered by uploads to `uploads/` writes a thumbnail. If it writes that thumbnail back into `uploads/`, the write is a new `ObjectCreated` event, which fires the same Lambda, which writes another object. Infinite recursion, billed every turn. The output must go to a **different prefix or bucket**.
+
+One more shape worth holding: delivery is typically seconds but **not guaranteed instant**, so design consumers to be **idempotent**.
+
+> In one line: the destination must grant S3 permission, and the output must never land where the trigger is watching.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Replication:** **CRR** = different region (DR, latency, compliance), **SRR** = same region (log aggregation, prod↔test). Requires **versioning on BOTH buckets** + an **IAM role**. It is **asynchronous**.
 > - Live replication only copies **new/updated** objects. Pre-existing objects (or previously failed ones) need **S3 Batch Replication** — an on-demand job.
@@ -23,10 +109,6 @@ Moving data around and reacting to it: replication for DR/latency, multipart & b
 > - **Event notifications:** on object created/removed/restored → **SNS, SQS, Lambda, EventBridge**. Destination needs a **resource policy** allowing S3.
 > - **Glacier retrieval tiers** (Flexible): Expedited **1–5 min**, Standard **3–5 h**, Bulk **5–12 h**. Deep Archive: **no Expedited**, Standard **~12 h**, Bulk **~48 h**.
 > - ⚠️ **S3 Select is no longer available to new customers** — learn the concept; use **Athena** in practice.
-
-## Concept (plain English)
-
-Once objects are in S3, the advanced features are about three problems. **Getting a second copy somewhere else** — replication automatically and asynchronously copies objects to another bucket, in another region (DR, closer users, compliance) or the same one (aggregating logs, syncing prod to test). **Moving big objects efficiently** — multipart upload splits a large file into parts you can send in parallel and retry individually, and byte-range fetch does the reverse for downloads; Transfer Acceleration shortens the *path* by entering AWS's network at a nearby edge location. And **reacting to change** — event notifications turn "an object was created" into a message to SQS/SNS/Lambda/EventBridge, which is how S3 becomes the trigger for event-driven pipelines.
 
 ## AWS console ↔ Terraform map
 

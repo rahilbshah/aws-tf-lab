@@ -9,12 +9,85 @@ tags: [job-skill, packer]
 
 # 03 – AMI Baking with Packer (job-skills side-quest)
 
+Packer is the tool that makes an AMI. This note is the job-skills companion to [[02-ec2]]: how a server image gets built once, deliberately, instead of being reassembled on every single boot.
+
 > [!note] Not an SAA-C03 exam topic
 > Packer doesn't appear on the exam. This note is a job-skills reference, so it skips the full §13 layered template (no flashcards/MCQs/traps) and carries `exam: false` so the mock-exam generator never pulls from it. Kept short on purpose.
 
-## What Packer is
+## What problem does this solve?
 
-HashiCorp's tool for **building machine images** (AMIs, Docker images, VM images) as code. Same HCL syntax family as Terraform, same company. It launches a temporary instance from a base image, runs your provisioners over SSH, snapshots the result into a new image, and tears the temp instance down.
+A server needs software on it. Git, Docker, the AWS CLI, your app's runtime. Something has to put them there.
+
+The obvious way is to install them while the machine boots. You hand EC2 a startup script — `user_data` — and every new instance runs `apt install` on its way up. It works. It is also the same work, repeated forever, once per instance.
+
+Two costs come with that. The first is time: installing at boot takes 2–5 minutes, against roughly 30 seconds for a machine that already has everything. The second is fragility: at boot the instance has to reach package mirrors over the network. If a repo is down or the network isn't there, the launch that worked yesterday fails today.
+
+Packer flips the order. Do the install **once**, at build time, and take a picture of the finished disk. Every instance afterwards launches from that picture with the software already on it — nothing to download, no mirrors to depend on, no external dependencies at boot.
+
+It's HashiCorp's tool, from the same company and the same HCL syntax family as Terraform, and it builds machine images generally: AMIs, Docker images, VM images.
+
+> In one line: install once at build time and snapshot the result, instead of re-installing on every boot.
+
+## How it actually works
+
+### The build is a throwaway instance
+
+There is no magic image factory. Packer does exactly what you would do by hand, then cleans up after itself:
+
+1. Launch a **temporary** EC2 instance from a base image — here a `t3.micro` off the latest Canonical Ubuntu 24.04.
+2. Connect to it over SSH and run your provisioners — the shell script that installs git, docker.io, the AWS CLI.
+3. Snapshot the resulting disk into a new AMI.
+4. Terminate the temporary instance.
+
+About five minutes end to end.
+
+That shape explains every difference from Terraform. Terraform keeps a state file because it owns resources that go on existing and need managing. Packer's only lasting output is the image; the instance it borrowed is gone. So there is nothing to track, and Packer is stateless. It belongs to the build stage of a pipeline, Terraform to the deploy stage.
+
+Two build-time details fall straight out of "it's a real instance running a real script":
+
+- Ending the provisioner with `git --version && docker --version && aws --version` is a free self-test. Packer fails the build on any non-zero exit, so a build that *succeeds* has proved the tools installed.
+- `ami_name` must be unique — Packer refuses to overwrite an existing name. That is why builds datestamp themselves with `formatdate("YYYY-MM-DD-hhmm", timestamp())`.
+
+> In one line: Packer launches a temp instance, provisions it over SSH, snapshots it, and destroys it — the image is the only thing that survives.
+
+### Bake at build, or install at boot
+
+Baking is not simply better. The two options trade the same cost around, and which one hurts depends on what you are doing.
+
+Baking is slow to iterate: change one package and you rebuild the whole AMI. Editing a `user_data` script is instant. That is the one row of the comparison where boot-install comes out ahead — everywhere else (boot time, reproducibility, boot-time dependencies) baking does.
+
+Then look at the same choice under an Auto Scaling Group. Load spikes, the ASG launches five instances. Baked ones serve traffic in seconds. `user_data` ones each spend about 3 minutes running `apt install` before they are any use — precisely during the window you needed the capacity for.
+
+Hence the rule of thumb: **bake the stable layer** (docker, git, awscli, the runtime), **boot-install only the instance-specific config and secrets**. The stable layer changes rarely, so a slow rebuild costs you almost nothing; the per-instance config differs by instance, so it could never have lived in a shared image anyway.
+
+> In one line: bake what rarely changes, boot-install what differs per instance.
+
+### Why "use the latest image" is the dangerous setting
+
+This is the counter-intuitive one. Terraform's `data "aws_ami"` offers `most_recent = true`, and taking the newest image sounds obviously right.
+
+Trace it through. Packer bakes nightly and tags each AMI `BakedBy=packer`. Terraform filters on that tag with `most_recent = true`. A build lands at 2 a.m. — broken, unvetted, nobody has looked at it yet. The next `terraform plan` now resolves a *different* AMI ID. On its own that is only a diff. Paired with an ASG **instance refresh** or a launch-template update, it is Terraform rolling your entire fleet onto that untested image automatically.
+
+The defect isn't `most_recent`. It is that baking an image and releasing it have become the same event. Separate them and the danger goes away:
+
+- Tag on build, then set a **promotion tag** such as `Release=stable` only *after* tests pass, and filter on the promotion tag instead. Baking no longer implies releasing.
+- Or **pin the AMI ID** in a variable the pipeline sets after validation, so bumping the image is a reviewable, deliberate change rather than a side effect of "latest wins."
+
+That is also the shape of a healthy pipeline: bake → tag `Release=candidate` → smoke-test (launch one instance, hit a health endpoint) → retag `Release=stable` → let the instance refresh roll the fleet. Servers are never patched in place; they are replaced wholesale from a new image.
+
+> In one line: filter on a tag you set *after* testing, not on whichever image happens to be newest.
+
+### An AMI and its snapshot are two separate objects
+
+Deleting one does not delete the other. Deregister the AMI and the backing EBS snapshot stays behind, still billing. Cleanup takes two calls: `aws ec2 deregister-image` **and** `aws ec2 delete-snapshot`.
+
+What makes this a silent leak is visibility. Snapshots don't appear in the EC2 *instances* view, so nothing ever reminds you they're there. Every Packer build creates one AMI plus one snapshot, so a nightly pipeline with no retention policy leaves 365 AMIs and 365 snapshots after a year, most unused, each charging snapshot storage (~$0.05/GB-month) indefinitely. Teams typically discover this when a cost review flags a growing EBS-snapshot line item.
+
+It is also why you tag **both** — `tags` on the AMI and `snapshot_tags` on the snapshot. An untagged snapshot is exactly the one nobody can attribute six months later.
+
+The fix is a retention policy — keep the last N stable images, deregister and delete the rest — automated with **Amazon Data Lifecycle Manager**, rather than left as a manual chore.
+
+> In one line: every build leaves two billable objects behind, and only one of them is visible.
 
 ## The core idea: build artifacts vs manage infrastructure
 
@@ -28,7 +101,7 @@ HashiCorp's tool for **building machine images** (AMIs, Docker images, VM images
 
 **Production pattern: "Packer bakes, Terraform deploys."** Packer builds a tagged golden AMI on a schedule (CI, or when deps change); Terraform consumes the latest tagged AMI via `data "aws_ami"` and deploys many instances from it. Separation of concerns — image builds and infra deploys happen on different cadences.
 
-## Bake-at-build vs install-at-boot (`user_data`)
+## Bake-at-build vs install-at-boot (user_data)
 
 | | Bake into AMI (Packer) | Install via `user_data` at boot |
 |---|---|---|

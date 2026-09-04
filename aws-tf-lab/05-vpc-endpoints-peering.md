@@ -12,16 +12,99 @@ tags: [topic, domain/secure]
 
 Two ways to keep traffic off the public internet: **endpoints** reach *AWS services* privately; **peering / Transit Gateway** connect *VPCs* privately. Part of [[05-vpc]].
 
+## What problem does this solve?
+
+There are two separate privacy problems in this note, and it helps to keep them apart.
+
+**Problem one — talking to an AWS service.** S3, DynamoDB, SQS, KMS are AWS services, but from your VPC's point of view they sit *outside* it, out on the public internet. So an instance that wants to read an S3 object takes the public path: out through an internet gateway, or through a NAT gateway if it's in a private subnet.
+
+That's bad in two ways. A subnet you wanted to be fully private has to keep an internet path open just to talk to AWS. And a NAT gateway bills **hourly *and* per-GB** — for a batch worker pushing objects to S3 all day, the per-GB charge can dwarf the hourly one.
+
+**VPC endpoints** delete that public leg. They give you a private on-ramp to the service over AWS's own backbone, so a subnet with no internet route at all can still reach S3 or SQS. There are two kinds and the difference is the whole topic: **gateway** endpoints (route-based, S3 and DynamoDB only, free) and **interface** endpoints (an ENI, PrivateLink, almost every other service, paid).
+
+**Problem two — talking to another VPC.** VPCs are separate networks. **Peering** joins two of them with a private 1-to-1 link. It's simple and it works — right up until you have more than a couple, at which point its two limits bite: it is **non-transitive**, and a full mesh grows quadratically. **Transit Gateway** is the hub-and-spoke router that replaces the mesh, and it takes on-prem VPN/Direct Connect on the same hub.
+
+> In one line: endpoints get you privately to AWS *services*; peering and Transit Gateway get you privately to other *VPCs*.
+
+## How it actually works
+
+### The gateway endpoint is a route, not a box
+
+You attach a gateway endpoint to a **route table**, and AWS injects one entry into it: destination `pl-xxxx` (the S3 or DynamoDB side), target `vpce-xxxx` (the endpoint). Traffic bound for the service now matches that route and leaves over the backbone instead of via the NAT or internet gateway.
+
+Three properties come with that shape, and they are the ones the exam tests:
+
+- **It's free.** No hourly charge and no per-GB charge — where the same S3 traffic sent through a NAT gateway bills you both.
+- **It only exists for S3 and DynamoDB.** Ask for a gateway endpoint to SQS or KMS and there isn't one. Every other service goes the interface route.
+- **A peered VPC, a VPN, or Direct Connect cannot use it** — a gateway endpoint is usable only from within the VPC that owns the route table. This is the odd rule people trip on, and peering states a matching limit from its own side: **no edge-to-edge routing**, i.e. a peer cannot use your IGW, NAT, VPN or endpoints through the peering. If you need private S3 access from a peered VPC or from on-prem, you need an interface endpoint instead.
+
+Both endpoint types also accept an **endpoint policy** — a resource-style policy narrowing which resources and actions the endpoint permits. Default is full access.
+
+> In one line: a gateway endpoint is a free route-table entry for S3/DynamoDB, usable only from inside the VPC that owns the route table.
+
+### The interface endpoint is an IP, not a route
+
+An interface endpoint puts an **ENI with a private IP** into each subnet you choose. That's a real network object living inside your VPC, which flips every gateway property around:
+
+|   | Gateway | Interface |
+|---|---|---|
+| What it is | a route | an ENI with a private IP |
+| Reach | this VPC only | also over peering / VPN / Direct Connect |
+| Cost | free | ~$0.01/hr per endpoint per AZ + ~$0.01/GB (⚠️ check current pricing) |
+| Firewalled by | endpoint policy | endpoint policy **+ a security group** |
+
+Two consequences worth holding on to.
+
+**Your code doesn't change.** The endpoint uses **private DNS**, so the service's normal hostname resolves to the ENI's private IP. The application keeps calling SQS the way it always did; the name just points somewhere else now.
+
+**It's reachable from outside the VPC.** Traffic arriving over **peering, VPN or Direct Connect** can reach an interface endpoint — exactly the three paths a gateway endpoint cannot serve, which is why *private S3 access from a peered VPC or from on-prem* is an interface-endpoint answer. And unlike a route, it sits behind a **security group**, so you control who is allowed to reach it at all.
+
+> In one line: an interface endpoint is a PrivateLink ENI with a private IP — most services, billed per AZ per hour, and reachable across peering/VPN/DX.
+
+### Why peering never becomes a hub
+
+A peering connection is a private point-to-point link between two VPCs over the AWS backbone. Cross-account and cross-region both work. The mechanics are small: create the connection, then add a route **on both sides**, each one pointing at the *other* VPC's CIDR via the peering connection id. Getting those two backwards is the classic mistake — a route table says where to *send* traffic, so it names the far side, never itself.
+
+Two limits define everything else about peering.
+
+**No overlapping CIDRs.** Routing picks a destination by CIDR. If both VPCs are `10.0.0.0/16`, a route table has no way to express which side you meant — and peering treats that as a hard limit. (This is why the lab's second VPC is `10.1.0.0/16`.)
+
+**It's non-transitive**, and this is the one that quietly costs people days. Peer a shared-services VPC to VPC-A and to VPC-B, and you have *not* connected A to B. A↔shared plus B↔shared gives you exactly nothing between A and B; traffic from A to B blackholes while every console page reads "everything is peered." The fixes are another direct peering — and now the mesh grows — or replacing the whole thing with a Transit Gateway.
+
+Same family of rule as the gateway-endpoint one above: **no edge-to-edge routing**. A peer cannot borrow your IGW, NAT, VPN or endpoints. Peering connects the two VPCs and nothing beyond them.
+
+> In one line: peering is a private 1-to-1 link with routes on both sides, no overlapping CIDRs, and no path through it to anywhere else.
+
+### The mesh math, and what Transit Gateway replaces
+
+Because peering is 1-to-1 and non-transitive, connecting everything to everything means connecting every *pair*. That is **N(N-1)/2**:
+
+| VPCs | Peering connections for a full mesh |
+|---|---|
+| 4 | 6 |
+| 5 | 10 |
+| 6 | 15 |
+| 10 | 45 |
+| 12 | 66 |
+
+Four VPCs at 6 connections is fine. Twelve VPCs at 66 connections — each needing routes maintained on *both* sides — is not something a team keeps correct. The wiring grows O(N²) while the number of VPCs grows linearly.
+
+**Transit Gateway** is a regional hub. Each VPC, each VPN, each Direct Connect gets **one attachment**, and connectivity through the hub is **transitive** — so twelve VPCs means twelve attachments, not sixty-six peerings. You segment it with **TGW route tables** when you don't want true any-to-any, and you join regions with **inter-region TGW peering**. It scales to thousands of attachments.
+
+The tradeoff is cost and weight: TGW bills **per attachment per hour plus per-GB**, where peering itself is free (you pay for data). For two or three VPCs it's overkill and peering is the right answer. The exam signal is the phrasing — *growing number of VPCs, simplify connectivity, connect on-prem* is always Transit Gateway.
+
+> In one line: peering is O(N²) and non-transitive, so at **many VPCs / hybrid at scale** the answer becomes one Transit Gateway hub.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **Gateway endpoint** = a **route-table** entry for **S3 & DynamoDB only**, **free**. Lets a fully-private subnet reach S3/DynamoDB with no NAT/IGW.
 > - **Interface endpoint** = an **ENI with a private IP** in your subnet, powered by **PrivateLink**, for **almost every other service**, **~$0.01/hr/AZ + data**. Reachable over peering/VPN/DX (gateway endpoints are **not**).
 > - **VPC peering** = private 1-to-1 link between two VPCs. **Non-transitive** (A–B + B–C ≠ A–C) and **no overlapping CIDRs**. Cross-account & cross-region OK. Update route tables **on both sides**.
 > - **Full mesh of N VPCs = N(N-1)/2 peerings** → explodes. **Transit Gateway** = hub-and-spoke: each VPC gets **one attachment**, connectivity is **transitive**, and on-prem (VPN/DX) attaches to the same hub. Scales to thousands.
 > - Decision: **S3/DynamoDB privately → gateway endpoint (free)**; other service → interface endpoint; **2 VPCs → peering**; **many VPCs / hybrid at scale → Transit Gateway**.
-
-## Concept (plain English)
-
-By default, reaching an AWS service (like S3) from your VPC goes over the public internet — which forces a NAT/IGW path and leaves the subnet internet-connected. **VPC endpoints** fix that: they give you a private on-ramp to the service over AWS's backbone, so a fully-private subnet can reach S3 or SQS without ever touching the internet. There are two kinds — gateway (route-based, S3/DynamoDB, free) and interface (an ENI, PrivateLink, most services, paid). Separately, **peering** and **Transit Gateway** connect *VPCs* to each other privately: peering is a simple 1-to-1 link that doesn't scale (non-transitive, quadratic mesh), and Transit Gateway is the hub-and-spoke router that replaces the mesh once you have more than a couple of VPCs or need to fold in on-prem.
 
 ## AWS console ↔ Terraform map
 

@@ -10,7 +10,118 @@ tags: [topic, domain/performance]
 
 # 08 – ElastiCache (Redis / Memcached)
 
-Managed in-memory caching in front of a database (or as a datastore). Turns repeated, expensive DB reads into microsecond memory hits. Two engines: **Redis** (feature-rich, HA) and **Memcached** (simple, multi-threaded). Part of the data tier with [[07-rds-aurora]].
+Managed in-memory caching in front of a database — or used as a datastore in its own right. This note is about why a cache exists at all, how the hit/miss loop actually behaves, and how to tell the two engines apart under exam pressure. Part of the data tier with [[07-rds-aurora]].
+
+## What problem does this solve?
+
+A database read costs something. It hits disk, it runs a query, it comes back in milliseconds.
+
+Now run that exact same query millions of times. "Get product by id 4471." The answer barely changes from second to second, but the database re-computes it every single time. The DB's CPU gets pegged and latency climbs — not because the work is hard, but because it is the *same* work, repeated.
+
+The fix is to remember the answer. Keep it in RAM, keyed by the thing you asked for. The app checks that memory first and only bothers the database when the answer isn't there.
+
+Answering out of RAM instead of going back to disk and re-running the query is what turns those **milliseconds into microseconds**. And every read served from memory is a read the database never sees — so the load on it drops, not just the latency.
+
+ElastiCache is AWS running that in-memory store for you. You choose an engine — **Redis** (feature-rich, highly available) or **Memcached** (simple, multi-threaded) — and AWS handles the nodes, the replication and the failover. It lives in your VPC, in private subnets behind a security group, exactly like RDS does.
+
+> In one line: a cache stores answers in RAM so the database stops re-answering the same question.
+
+## How it actually works
+
+### The hit, the miss, and why the cache starts empty
+
+The loop has only two outcomes.
+
+The app asks the cache for a key. **Hit** — the value is there, it comes back in microseconds, the database is never touched. **Miss** — nothing is there, so the app queries RDS or Aurora itself, gets the answer, and *then* writes it into the cache with a TTL before returning it.
+
+That is **lazy loading**, also called **cache-aside**, and the name tells you the important part: the cache does not fill itself in advance. It only ever fills as a side effect of somebody missing.
+
+Which has three consequences worth holding onto:
+
+| Consequence | Why |
+|---|---|
+| Only requested data is cached | Nothing gets stored until someone actually asks for it |
+| The first read of anything is slow | It is, by definition, a miss — DB round trip plus a cache write |
+| Cached data can go stale | Once written, it sits there until it is evicted |
+
+That last one is why **TTL** matters. Set a key to expire after, say, 300 seconds and you have bounded how wrong the cache is allowed to get. Staleness stops being unbounded and becomes a number you chose.
+
+The alternative shape is **write-through**: every write goes to the cache *and* the database at the same time. The cache is then always fresh — no staleness at all. You pay for it twice, though: writes get slower because they now do two things, and you end up caching data that nobody may ever read.
+
+And the reason both strategies are read-shaped: a cache accelerates **reads**. If the bottleneck is heavy writes, or the data must be strongly consistent on every single request, adding a cache does not help — lazy loading will happily serve a stale answer. The workload has to be read-heavy with repeated queries for any of this to pay off.
+
+> In one line: the cache fills on misses, TTL bounds how stale it may get, and none of it helps writes.
+
+### Redis is single-threaded — and that is not a bug
+
+This one gets remembered backwards more than anything else in the topic, because it feels wrong.
+
+Redis is the sophisticated engine. It has replication, failover, persistence, sorted sets, pub/sub. So the instinct is that it must also be the one using all your cores.
+
+It isn't. **Redis executes commands single-threaded** — one core per node. **Memcached is the multi-threaded one.**
+
+The consequence follows directly. Giving a Redis node more cores buys you almost nothing, because command execution won't use them. So Redis scales *horizontally* instead: **cluster mode** shards the data across multiple primaries, each with its own replicas, and every shard runs its own single thread. More throughput comes from more shards, not from a bigger box.
+
+Memcached gets to do it the other way round. Being multi-threaded, it genuinely scales **up** on a large multi-core node — *and* out, by adding nodes and partitioning keys across them on the client side.
+
+> In one line: Memcached is the multi-threaded one; Redis buys throughput with shards, not cores.
+
+### What Memcached simply does not have
+
+Memcached's feature list is short, and the short list is the whole point of it. No replication. No failover. No persistence. No backup.
+
+Which means: **if a Memcached node dies, the data on it is gone.** Not degraded, not slow to recover — gone. Same if it reboots, or gets replaced while scaling.
+
+For a pure object cache that is fine. A cache is allowed to lose things; the worst outcome is a miss, and a miss just means one slow read against the database.
+
+It stops being fine the moment the cache is holding something you cannot re-derive. Put user login sessions in Memcached and one node reboot logs out every user whose session lived on it, all at once. There is nowhere to recover them from.
+
+Redis is the answer there because it has all four of the things Memcached lacks: a **replication group** of one primary plus up to five read replicas, **Multi-AZ with automatic failover** that promotes a replica when the primary dies, **persistence**, and **snapshot backup/restore**.
+
+The rule that falls out of this: anything you cannot afford to lose on a node failure belongs in Redis.
+
+Redis also carries the richer data model — strings, lists, sets, hashes, bitmaps, hyperloglog, geospatial, and **sorted sets**. Sorted sets are the reason "leaderboard" is a Redis answer: a ranked set maintained in memory returns the top-N in microseconds, where a relational `ORDER BY score` over millions of rows cannot. Memcached holds simple strings and objects, and nothing else.
+
+> In one line: Memcached forgets on node loss; Redis replicates, fails over, persists and backs up.
+
+### Auto Discovery, the odd Memcached-only feature
+
+Almost every capability that belongs to exactly one engine belongs to Redis. Auto Discovery is the exception pointing the other way, which is precisely why it gets tested.
+
+The problem it solves: a Memcached cluster is several nodes with keys partitioned across them, and the client is the thing doing the partitioning. So the client needs to know every node's endpoint. Hard-code that list and it goes wrong the moment a node is added or removed.
+
+Auto Discovery removes the list. The app connects to a **single** node, retrieves the **full node list** from it, and then connects to any of them. It stays correct as the cluster changes, because **every node holds metadata about all the others**.
+
+Two conditions on it, both testable. It needs an **ElastiCache client library with Auto Discovery support** — an ordinary Memcached client won't do it. And AWS states explicitly that Auto Discovery is **not available for Valkey or Redis OSS**.
+
+That second sentence is the whole exam value: "node discovery" in a question is a Memcached-exclusive signal, with no Redis equivalent to muddy it.
+
+> In one line: one endpoint gets you every endpoint — Memcached only, and AWS says so in writing.
+
+### Reading the engine question the right way round
+
+The engine choice is the heart of ElastiCache on the exam, and the hard version of the question is built to defeat the obvious method.
+
+The obvious method is: read the use case, map it to an engine. Session store → Redis. Leaderboard → Redis. That works right up until a question describes a **session store** *and also* specifies **multi-threaded** and **automatic node discovery**. The use case pulls you to Redis. Both capabilities are Memcached-only. The use case was the distractor.
+
+So invert it. Ignore what the cache is *for*, and scan the question for a capability that only one engine has:
+
+| Signal in the question | Engine |
+|---|---|
+| Multi-threaded | **Memcached** |
+| Auto Discovery / node discovery | **Memcached** |
+| Persistence, replication, Multi-AZ failover, backup | **Redis** |
+| Sorted sets, pub/sub, transactions, geospatial | **Redis** |
+
+One exclusive signal decides it. And when a question additionally says data loss on node failure is unacceptable, that is a Redis-only signal that outranks the others — Memcached has no way to survive it.
+
+One more piece of vocabulary, since it appears alongside the other two: **Valkey** is the open-source Redis fork AWS backs after Redis's licence change, and ElastiCache now offers Valkey, Redis OSS and Memcached. For the exam, treat Valkey as Redis — same feature profile, often cheaper — with the single carve-out that Auto Discovery does not apply to it either.
+
+> In one line: find the capability only one engine has; the use case is the distractor.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
 
 > [!info] Exam TL;DR
 > - **Cache = in-memory key-value store** in front of the DB. On a read: check cache → **hit** returns instantly; **miss** → read DB, then populate cache. Slashes DB load + latency for read-heavy, repeated queries.
@@ -21,10 +132,6 @@ Managed in-memory caching in front of a database (or as a datastore). Turns repe
 > - **Auto Discovery is Memcached-only** — the client connects to one node and learns all the others. AWS states it is **not** available for Valkey or Redis OSS.
 > - **Valkey** = the newer open-source Redis fork AWS backs; same feature profile as Redis for the exam.
 > - **Read the question for engine-exclusive signals, not the use case.** "Multi-threaded" and "node discovery" are Memcached-only; persistence / replication / failover / sorted sets are Redis-only. One exclusive signal decides it.
-
-## Concept (plain English)
-
-A database read that hits disk and re-runs the same query thousands of times per second is wasteful — the answer rarely changes second to second. An in-memory cache stores those answers in RAM keyed by the query, so the app checks the cache first and only touches the database on a miss. That cuts latency from milliseconds to microseconds and takes huge load off the DB. ElastiCache is the managed version — you pick Redis (when you need HA, persistence, or rich data structures) or Memcached (when you want the simplest possible multi-threaded object cache) and AWS runs the nodes, replication, and failover.
 
 ## AWS console ↔ Terraform map
 

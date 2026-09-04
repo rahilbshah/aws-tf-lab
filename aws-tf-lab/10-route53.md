@@ -12,6 +12,123 @@ tags: [topic, domain/resilient]
 
 AWS's managed DNS. It answers "what IP is behind this name?" — but the exam cares about the *policy* in that answer: which of several IPs, chosen how, and what happens when one dies. Named after port 53.
 
+## What problem does this solve?
+
+Machines route on IP addresses. People type names. Something has to turn one into the other.
+
+That translation isn't a single question, it's a **search followed by an answer**. A resolver asks a root server "who handles `.com`?", then asks a `.com` server "who handles example.com?" — that reply is an **NS record**, the *delegation* — and only then asks the named server for the actual address.
+
+The first steps exist purely to **discover which server to ask**. The last step is the real answer, and it comes from a **hosted zone**: a container of records for one domain.
+
+Route 53 is AWS's version of that final server. It will also sell you the domain, but that is a separate job — registration is what puts your NS records into the parent zone so strangers can find you.
+
+The harder problem is the one the exam actually tests. Once you own the answer, that answer no longer has to be a single fixed address. It can depend on who asked, where they are, and which of your endpoints is still alive. Route 53 calls that choice a **routing policy**, and it is why DNS ends up doing traffic shifting, blue/green releases and cross-region failover — jobs that look like they should belong to a load balancer.
+
+> In one line: DNS is a search for who to ask; Route 53 is the server being asked, and the routing policy decides *which* answer comes back.
+
+## How it actually works
+
+### Owning a name and answering for it are two different things
+
+These feel like one thing. They are not.
+
+A hosted zone makes Route 53 **authoritative** for a domain — it will answer for that name, properly, for as long as the zone exists. It **never checks whether you own the name**. Nothing stops you creating a zone for a domain that isn't yours.
+
+Registering a domain buys you something else entirely: the **NS delegation in the parent zone**. That is the signpost inside `.com` that points the rest of the world at your four nameservers. Without it, nobody is ever routed to your zone, so your perfectly good answers are simply never requested.
+
+Discovery and answering are separate — which is why you can build the entire Route 53 lab **without buying a domain**. Create a zone for a name nobody delegates to you (`saa-c03-lab.example`, a reserved TLD) and query the four assigned nameservers **directly** with `dig @ns-…`. You have skipped steps 1 and 2 of the search and gone straight to the source. Route 53 answers properly — routing policies, health checks, failover and all — because it genuinely holds the zone. The only thing you lose is that no stranger can find it.
+
+> In one line: a hosted zone makes you *able* to answer; delegation is the only thing that makes anyone *ask* you.
+
+### Why a CNAME cannot sit at the apex
+
+This sounds like an AWS limitation. It isn't — it is plain DNS, and knowing why makes it stick.
+
+A CNAME means "this name **is** another name, go look there instead." DNS forbids a CNAME from coexisting with **any other record at that same name** — a name with a CNAME can have no other records at all.
+
+Now look at the zone apex — `example.com` itself. It **must carry SOA and NS** records. A CNAME there would have to coexist with records the apex is obliged to have. So a CNAME at the apex is **invalid DNS**, not a Route 53 restriction.
+
+That leaves a real problem, because the thing you most want `example.com` to point at is an ALB or CloudFront — moving targets you only ever have a *name* for, never a stable IP.
+
+**Alias** is Route 53's way out. An alias resolves as an **A/AAAA** record in `dig` — the world sees a plain address record, so the apex rule is never violated — while Route 53 performs the redirection internally and follows the target's IP changes for you. Three properties come with it:
+
+| Property | What that means |
+|---|---|
+| Points at **AWS resources only** | The target list is fixed — ALB/NLB, CloudFront, S3 static website, API Gateway and friends, or another record in the same zone. **An EC2 instance is not a valid alias target**; use a plain A record to an Elastic IP. |
+| **You cannot set a TTL** | The record uses the **target's** TTL; there is no TTL of your own to set. |
+| **Queries are free** | Alias queries to AWS resources aren't billed. A CNAME pointing at another Route 53 record bills as **two** queries. |
+
+> In one line: a CNAME at the apex is illegal DNS, and an alias is Route 53 dressing a redirect up as an A record so the apex can point at an ALB anyway.
+
+### The two policy pairs everyone swaps
+
+There are eight routing policies. Two pairs cause nearly all the wrong answers.
+
+**Simple vs multivalue answer.** The trap is that simple *looks* like load balancing. Give it three IPs and it returns **all three, in random order** — and then it is finished. The **client** picks one. Route 53 is **not health checking** any of them, so a dead server keeps being handed out until you remove it by hand.
+
+**Multivalue answer** is the same shape with the missing half added: up to **8 healthy** records, randomly ordered, unhealthy ones simply not returned. That is the entire difference between the two, and it is the whole reason multivalue exists.
+
+If the scenario wants controlled proportions, that's **weighted**. If it wants real load balancing rather than answer-shuffling, that's an **ALB**, not DNS at all.
+
+**Geolocation vs geoproximity.** Both sound like "route by location." They read *different* locations:
+
+| | Reads | The dial you turn |
+|---|---|---|
+| **Geolocation** | where the **user** is — continent, country, US state | none; you map locations to records |
+| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment (needs Traffic Flow) |
+
+"German users must get the German site" is geolocation — a localization/compliance sentence. "Shift more traffic toward the bigger data centre" is geoproximity bias — a capacity sentence.
+
+Geolocation also carries a nasty failure mode of its own. Define records for `US`, `GB` and `DE`, test from those three countries, and everything looks perfect — while users in **every other country get no answer at all**. Not a slow answer or a wrong region: silence, because nothing matched and there is nothing to fall back on. The fix is a record with country `*` as the **default**. Test an unmatched location deliberately, every time.
+
+One mechanical detail sits under all of these: the moment several records share a name and type, each needs a **`set_identifier`** to tell them apart. Plain DNS never needs that, so it is easy to forget. And a weight of **0** means "never return this" — which is how you drain a stack cleanly.
+
+> In one line: simple hands out everything blind, multivalue hands out only what's alive; geolocation reads the user, geoproximity reads your resources.
+
+### What a health check can see, and how fast failover really is
+
+Failover routing is the obvious answer to "automatic cross-region failover with minimal RTO." What the exam actually probes is the two things people get wrong about it: how long the switch takes, and what Route 53 can observe in the first place.
+
+**How long.** The budget is:
+
+**(health check interval × failure threshold) + TTL**
+
+The interval is **30s**, or **10s** if you pay for fast. The threshold is how many *consecutive* checks must fail before the status flips. So Route 53's own half is typically 30 × 3 ≈ 90 seconds — and then the TTL term usually dwarfs it. A record with a 3600s TTL means resolvers and browsers keep serving the old address for up to an hour *after* Route 53 has already switched. That is the whole of the "we set up failover but users were down for an hour" scenario: the failover worked, the caches didn't care. Lower the TTL to around 60 on failover-critical records. If the record is an **alias** to an ALB you cannot set a TTL at all — you inherit the ALB's, which is already low, so that case is fine.
+
+**What it can see.** Route 53's health checkers live on the public internet, and that placement dictates the rest:
+
+- They **cannot reach private, nonroutable or multicast addresses**. You cannot health check an instance in a private subnet directly — check the public-facing load balancer instead, or use a **CloudWatch alarm** health check driven by a metric the private resource publishes (that type watches the alarm's *data stream*, not its state).
+- For EC2, attach an **Elastic IP** and check that, so the target never moves under you.
+- Many checkers vote independently, so the aggregate rule is **more than 18% reporting healthy ⇒ healthy**. A brand-new check counts as **healthy** until it has enough data.
+- **HTTPS health checks do not validate certificates.** An expired cert passes happily. Certificate expiry belongs to ACM + CloudWatch/EventBridge, not here.
+
+And when a single endpoint isn't the unit you care about, a **calculated** check lets one parent watch up to **255** children with AND / OR / "at least N".
+
+> In one line: Route 53 notices the failure in (interval × threshold) seconds; the TTL decides when anybody else does.
+
+### Private zones, and which way the Resolver points
+
+The same hosted-zone machinery has a second mode. A **private hosted zone** is associated with one or more VPCs and resolves **only** from inside them; the VPC needs DNS support and DNS hostnames enabled.
+
+Two details are worth holding on to. Its four nameservers are **reserved names that are never actually contacted** — they exist only because DNS requires an NS record set. And querying the name from outside an associated VPC does **not** error: it quietly **falls through to public recursive resolution** instead, which is exactly what makes this awkward to debug.
+
+That fall-through is also the feature. Run the *same* name as both a public and a private zone and you get **split-view DNS** — the internal answer inside the VPC, the public answer outside. This is the usual shape of `internal.example.com` setups.
+
+Then hybrid. The VPC's built-in resolver sits at the **VPC base + 2** address (`10.0.0.2` in a `10.0.0.0/16`) and answers for VPC names, private hosted zones and public names. To bridge on-premises you add a **Resolver endpoint**, and its direction is the thing candidates reverse constantly:
+
+| | **Inbound endpoint** | **Outbound endpoint** |
+|---|---|---|
+| Who is asking | **on-premises** | resources **in your VPC** |
+| What they want resolved | names **in AWS** | names **on-premises** |
+
+Anchor on the direction the **query** travels, not the answer. Inbound = queries coming *into* AWS. Outbound = queries heading *out*.
+
+> In one line: a private zone answers only inside its associated VPCs; inbound lets on-prem ask AWS, outbound lets AWS ask on-prem.
+
+## Exam recap
+
+*Now that the mechanisms are clear, this is the compressed version to revise from.*
+
 > [!info] Exam TL;DR
 > - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — **it never checks whether you own the name**. Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
 > - **Alias vs CNAME** is the #1 Route 53 question. **CNAME cannot exist at the zone apex** (DNS protocol rule). **Alias can**, is Route 53-only, points **only at AWS resources**, and **query costs are free**. You **cannot set a TTL on an alias** to an AWS resource — it uses the target's.
@@ -21,14 +138,6 @@ AWS's managed DNS. It answers "what IP is behind this name?" — but the exam ca
 > - **Failover speed = (health check interval × failure threshold) + TTL.** Default-ish: (30s × 3) + TTL. Lower the TTL on failover-critical records — a 3600s TTL means an hour of stale answers no matter how fast Route 53 reacts.
 > - **Private hosted zone** = resolvable only from **associated VPCs**. Same name can exist public *and* private → **split-view DNS**.
 > - **Route 53 Resolver:** **inbound** endpoint = on-prem resolves **into** AWS. **outbound** endpoint = AWS resolves **out to** on-prem. Remember the direction.
-
-## Concept (plain English)
-
-A DNS lookup is a **search followed by an answer**. The resolver asks a root server "who handles `.com`?", then asks a `.com` server "who handles example.com?" — that reply is an **NS record**, the *delegation* — and only then asks the named server for the actual address.
-
-The first steps exist purely to **discover which server to ask**. The last step is the real answer, and it comes from a **hosted zone**.
-
-That split is why you can build a full Route 53 lab **without buying a domain**: create a hosted zone for a name nobody delegates to you, and query the four assigned nameservers **directly** with `dig @ns-…`. Route 53 answers properly — routing policies, health checks, failover and all — because it genuinely holds the zone. The only thing you lose is that no stranger can find it.
 
 ## AWS console ↔ Terraform map
 
