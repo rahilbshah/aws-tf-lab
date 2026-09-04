@@ -58,7 +58,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ VPC endpoints + peering (+ Transit Gateway, conceptual) — [[05-vpc-endpoints-peering]]
 - [x] ✅ VPC hybrid (VPN, Direct Connect, VGW/CGW, DX Gateway) — [[05-vpc-hybrid]] *(conceptual)*
 - [x] ✅ Route 53 (routing policies, health checks, alias vs CNAME, private zones, Resolver) — [[10-route53]]
-- [ ] ☐ CloudFront (CDN, OAI/OAC, caching)
+- [x] ✅ CloudFront (CDN, OAC, caching, edge functions, Global Accelerator comparison) — [[11-cloudfront]] *(note written 2026-09-04; lab written but not yet applied)*
 - [ ] ☐ API Gateway
 - [ ] ☐ Global Accelerator
 
@@ -98,7 +98,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] ☐ Snow Family (also under Storage)
 
 ### Cost Optimization
-- [x] ✅ EC2 purchasing (On-Demand/Reserved/Spot/Savings) — [[02-ec2]]
+- [ ] ☐ **EC2 purchasing (On-Demand/Reserved/Spot/Savings Plans/Dedicated)** — *was wrongly ticked as covered by [[02-ec2]]; audit on 2026-09-04 found no Spot/Reserved/Savings Plans content anywhere in the vault. Corrected.*
 - [ ] ☐ Database & network cost (endpoints vs NAT, data transfer, replicas vs serverless) — *not started. Note: the trainer's bank is thin here (15 questions for cost-optimized database, 25 for network, vs 59–135 for every other task statement), so drilling won't cover it — this one has to be read and built.*
 - [ ] ☐ Cost Explorer / Budgets / Cost Allocation Tags
 - [ ] ☐ Compute Optimizer / Trusted Advisor
