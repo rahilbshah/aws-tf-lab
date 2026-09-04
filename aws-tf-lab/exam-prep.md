@@ -57,7 +57,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ VPC security (SG/NACL, Flow Logs, Network Firewall) — [[05-vpc-security]]
 - [x] ✅ VPC endpoints + peering (+ Transit Gateway, conceptual) — [[05-vpc-endpoints-peering]]
 - [x] ✅ VPC hybrid (VPN, Direct Connect, VGW/CGW, DX Gateway) — [[05-vpc-hybrid]] *(conceptual)*
-- [ ] ☐ Route 53 (routing policies, health checks) — *high exam weight*
+- [x] ✅ Route 53 (routing policies, health checks, alias vs CNAME, private zones, Resolver) — [[10-route53]]
 - [ ] ☐ CloudFront (CDN, OAI/OAC, caching)
 - [ ] ☐ API Gateway
 - [ ] ☐ Global Accelerator
