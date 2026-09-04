@@ -1,0 +1,119 @@
+---
+topic: 13-cost-optimization
+type: revision
+source: 13-cost-optimization
+tags: [revision, generated]
+---
+
+# Revision — 13 – Cost optimization
+
+> [!abstract] Night-before read · ~10 min · self-contained
+> Everything you need is here — no need to jump back mid-revision.
+> Full teaching explanations, Terraform and diagrams: **[[13-cost-optimization]]**
+> *Generated from the note by `_scripts/build_revision.py` — do not edit.*
+## The shape of it
+
+> [!info] Exam TL;DR
+> - **Seven ways to pay:** On-Demand · Savings Plans · Reserved Instances · Spot · Dedicated Hosts · Dedicated Instances · Capacity Reservations.
+> - **Savings Plans commit to a $/hour spend. Reserved Instances commit to a configuration.** AWS now recommends Savings Plans over RIs.
+> - **Compute Savings Plans: up to 66%**, flexible across family, size, **Region**, OS, tenancy — **and covers Fargate and Lambda**. **EC2 Instance Savings Plans: up to 72%**, but locked to **one family in one Region**. Less flexible = bigger discount.
+> - **Standard RI** = bigger discount, **can be modified but not exchanged**. **Convertible RI** = smaller discount, **can be exchanged**.
+> - **A Savings Plan does not reserve capacity.** For guaranteed capacity in an AZ you need a **Capacity Reservation** or a **zonal Reserved Instance**.
+> - **Spot** = spare capacity, steepest discount, **two-minute interruption notice** via **EventBridge** and **instance metadata** (`spot/instance-action`). Hibernate gets a notice but **no two minutes**. For fault-tolerant, interruptible work only.
+> - **Dedicated Hosts** for **BYOL per-socket/per-core licensing**; Dedicated Instances for single-tenant hardware without host visibility.
+> - **Cost Explorer** analyses and forecasts · **Budgets** alerts on a threshold · **Cost Anomaly Detection** watches for the unexpected · **Compute Optimizer** rightsizes from 14 days of CloudWatch metrics · **cost allocation tags** slice the bill.
+> - **Non-compute levers:** gateway endpoints are free vs NAT per-hour+per-GB · outbound and cross-AZ data transfer is charged · unattached EIPs cost money · S3 lifecycle · `gp3` · orphaned EBS snapshots · consolidated billing shares volume/RI/SP discounts.
+
+## Facts, limits & pricing
+
+- **Seven purchasing options:** On-Demand, Savings Plans, Reserved Instances, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations. (Capacity Blocks additionally reserve clusters of GPU instances.)
+- **Savings Plans commit to a spend rate in USD/hour** for **1 or 3 years**. Payment: **All Upfront**, **Partial Upfront**, or **No Upfront**. **Terms cannot be changed after purchase** — as usage grows you buy an additional plan.
+- **Compute Savings Plans — up to 66% off.** Apply regardless of instance family, size, **Region**, operating system or tenancy, **and cover AWS Fargate and AWS Lambda**.
+- **EC2 Instance Savings Plans — up to 72% off.** Commit to a **specific instance family in a chosen Region**; within that, size, OS and tenancy are free to change.
+- **Database Savings Plans — up to 35%** across Aurora, RDS, DynamoDB, ElastiCache, DocumentDB, Timestream, Neptune, Keyspaces, DMS and OpenSearch, including serverless usage. **SageMaker AI Savings Plans — up to 64%.**
+- Both Compute and EC2 Instance plans **apply to the EC2 instances inside EMR, EKS and ECS clusters** — though EKS's own control-plane charge is not covered. **Dedicated Instances' $2/hour per-Region fee is not discounted** by Savings Plans.
+- **Reserved Instances are a billing discount, not a physical instance.** Priced on four attributes: **instance type, Region, tenancy, platform (OS)**. Terms of **1 or 3 years**; the 3-year term discounts more.
+- **Standard RIs** give the largest RI discount and can be **modified but never exchanged**. **Convertible RIs** discount less but **can be exchanged** for another Convertible RI with different attributes. **Purchases cannot be cancelled**, though Standard RIs can be **sold on the Reserved Instance Marketplace**.
+- **RIs do not auto-renew.** On expiry the instance keeps running and silently reverts to On-Demand rates.
+- **Only zonal Reserved Instances and Capacity Reservations reserve capacity.** Savings Plans and regional RIs are discounts only.
+- **Spot interruption notice = 2 minutes**, emitted as an **EventBridge event** (`EC2 Spot Instance Interruption Warning`) and as instance metadata at **`/latest/meta-data/spot/instance-action`** (which gives the action and time; HTTP 404 when not marked). AWS recommends polling **every 5 seconds**; notices are **best-effort**.
+- **Interruption behaviours:** terminate, stop, or **hibernate** — and hibernate gets a notice **without** the two-minute lead time, because hibernation starts immediately.
+- **Spot interruption causes:** EC2 needing the capacity back (most common), the Spot price exceeding a maximum price you set, or a constraint (launch group / AZ group) no longer being satisfiable. **Setting a maximum price increases interruption frequency.**
+- **Dedicated Hosts** expose the physical server (sockets, cores, host affinity) and support **per-socket / per-core / per-VM BYOL**. **Dedicated Instances** are single-tenant hardware billed hourly, without host-level visibility.
+- **AWS Compute Optimizer** analyses **CloudWatch metrics from the last 14 days** (extendable to **93 days** with the paid enhanced infrastructure metrics) and recommends rightsizing plus flags idle resources. Covers EC2, Auto Scaling groups, EBS volumes, Lambda, ECS on Fargate, Aurora/RDS, NAT Gateway, DynamoDB, ElastiCache, MemoryDB, DocumentDB, WorkSpaces and SageMaker. **You must opt in.**
+- **Cost Explorer** analyses and forecasts cost/usage and produces **Savings Plans recommendations**. **AWS Budgets** alerts on **cost or usage** thresholds. **Cost Anomaly Detection** alerts without a threshold. **Cost allocation tags** and **cost categories** slice the bill by team/app/environment.
+- **Consolidated billing** (AWS Organizations) is **free** and **combines usage across accounts**, so volume discounts, RI discounts and Savings Plans are shared organization-wide.
+- ⚠️ Discount percentages are AWS's stated maxima and change over time; the exam tests the **ordering and the trade-off**, not the exact figure. Check current pricing before relying on a number.
+
+## Comparisons
+
+### Savings Plans vs Reserved Instances
+
+|   | **Savings Plans** | **Reserved Instances** |
+|---|---|---|
+| Commit to | **$/hour of spend** | **an instance configuration** |
+| Term | 1 or 3 years | 1 or 3 years |
+| Payment | All / Partial / No Upfront | All / Partial / No Upfront |
+| Reserves capacity | ❌ **never** | only **zonal** RIs |
+| Can be sold | ❌ | ✅ Standard RIs, on the **RI Marketplace** |
+| Applies to | EC2, **Fargate, Lambda** (Compute SP) | EC2 (and separately RDS, Redshift, ElastiCache…) |
+| AWS's recommendation | ✅ **preferred** | legacy |
+
+### When each purchasing option is the answer
+
+| The scenario says | Answer |
+|---|---|
+| steady baseline usage, want flexibility to change instance types | **Compute Savings Plan** |
+| steady usage, known instance family, want the deepest committed discount | **EC2 Instance Savings Plan** |
+| interruptible batch / CI / stateless workers, cost is the priority | **Spot** |
+| must guarantee capacity in an AZ (DR standby, licensed capacity) | **Capacity Reservation** or **zonal RI** |
+| BYOL with per-socket or per-core licensing | **Dedicated Host** |
+| regulatory isolation, no need to see the physical host | **Dedicated Instance** |
+| unpredictable, short-lived, or dev/test | **On-Demand** |
+
+### The cost tools
+
+| Tool | Answers |
+|---|---|
+| **Cost Explorer** | "where did the money go, and what will it be?" |
+| **Budgets** | "tell me before I cross $X" |
+| **Cost Anomaly Detection** | "tell me when something is weird, without me setting a threshold" |
+| **Cost allocation tags / categories** | "which team spent it?" |
+| **Compute Optimizer** | "is this resource the right size?" |
+| **Cost Optimization Hub** | "what should I change, ranked?" |
+
+## Worked examples
+
+> [!example] Worked example — a steady fleet with a variable shape
+> A company runs roughly $12/hour of EC2 around the clock, but the mix changes — they migrate services between instance families as they tune, and they're moving some workloads to Fargate. A **Reserved Instance** would lock them to a family and be wasted the moment they migrate. An **EC2 Instance Savings Plan** would give the bigger 72% discount but only within one family in one Region — the same problem. The fit is a **Compute Savings Plan** at roughly their steady baseline: it follows them across families, sizes, Regions, operating systems and tenancies, **and covers the Fargate and Lambda usage too**. Commit to the *baseline*, not the peak — usage above the commitment simply bills On-Demand, whereas commitment you don't use is money gone.
+
+> [!example] Worked example — cutting a bill with no instance changes at all
+> A team's largest line items are a NAT Gateway and data transfer. Their private-subnet application reads heavily from S3, and every byte is going out through the NAT — charged per hour *and* per gigabyte. Adding an **S3 gateway endpoint** is free, routes that traffic inside the VPC, and removes it from the NAT bill entirely ([[05-vpc-endpoints-peering]]). While they're there: an **unattached Elastic IP** left from a decommissioned host is billing for nothing, old **EBS snapshots** from a Packer pipeline are charging indefinitely ([[03-ami-bake]]), and an **S3 lifecycle rule** moves logs older than 90 days to Glacier ([[09-s3-intro]]). Not one instance was resized. This is the shape of a lot of real cost work, and of the exam questions that don't mention compute.
+
+> [!failure] Failure mode — Spot for the wrong tier
+> A team puts their entire ASG on Spot to cut costs, including the instances holding user sessions in memory. AWS reclaims capacity, the **two-minute notice** fires, instances go away, and every user on them is logged out. The instances came back — the sessions didn't. Spot's contract is explicit: you get spare capacity and two minutes' warning, and anything that can't survive that isn't a Spot workload. The correct shapes are a **mixed-instances policy** (an On-Demand baseline with Spot on top for elasticity), moving session state out to **ElastiCache** ([[08-elasticache]]) so the instances are genuinely stateless, or handling the interruption notice to drain gracefully.
+
+## Traps
+
+> [!warning] Trap — "buy a Savings Plan to guarantee capacity"
+> A Savings Plan is **only a billing discount**. It never reserves capacity. If a scenario needs certainty that an instance can be launched in a specific Availability Zone — a DR standby, a licensed workload — the answer is a **Capacity Reservation** or a **zonal Reserved Instance**. The two concerns are separate and can be combined.
+
+> [!warning] Trap — assuming the most flexible option is the cheapest
+> **EC2 Instance Savings Plans give up to 72%; Compute Savings Plans up to 66%.** The *less* flexible one is cheaper. Same for RIs: **Standard** discounts more than **Convertible**. A question that stresses "they know exactly what they'll run for three years" is pointing at the narrower, deeper discount, not the flexible one.
+
+> [!warning] Trap — Standard vs Convertible RI, exchange vs modify
+> **Standard RIs can be *modified* but never *exchanged*.** Convertible RIs can be **exchanged** for a different Convertible RI with different attributes. If the requirement is "we may need to switch instance families later," Standard is wrong however good the discount looks. Neither can be cancelled after purchase — though **Standard** RIs can be **sold** on the Reserved Instance Marketplace.
+
+> [!warning] Trap — Dedicated Host vs Dedicated Instance
+> Both give single-tenant hardware. **Dedicated Host** gives you visibility and control of the **physical server** — sockets, cores, host affinity — which is what **per-socket / per-core BYOL licensing** requires. **Dedicated Instance** gives isolation without host-level visibility. Any question mentioning existing server-bound licences is a **Dedicated Host** question.
+
+> [!warning] Trap — Spot hibernation and the two minutes
+> The two-minute notice applies when the interruption behaviour is **stop or terminate**. With **hibernate**, you get an interruption notice but **not two minutes of warning** — hibernation starts immediately. Also: setting a maximum Spot price makes interruptions **more** frequent, not fewer.
+
+> [!warning] Trap — Cost Explorer vs Budgets vs Compute Optimizer
+> Three tools, three jobs. **Cost Explorer** analyses what already happened and forecasts. **Budgets** alerts you when spend or usage crosses a threshold you set. **Compute Optimizer** looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.
+
+> [!example]- Recall drill
+> (1) Which Savings Plan gives the bigger discount, and what does it lock you to? (2) Does a Savings Plan reserve capacity? What does? (3) Standard vs Convertible RI — which can be exchanged? (4) How long is the Spot interruption notice, how is it delivered, and which behaviour doesn't get it? (5) Dedicated Host or Dedicated Instance for per-core BYOL? (6) Which tool alerts you before you cross a spend threshold?
+> > [!success]- Answers
+> > (1) **EC2 Instance Savings Plans**, up to 72%, locked to one instance family in one Region. Compute SP is up to 66% and flexible everywhere including Fargate and Lambda. (2) No — never. Capacity Reservations or zonal RIs do. (3) **Convertible**. Standard can only be modified (or sold on the Marketplace). (4) **Two minutes**, via EventBridge and instance metadata `spot/instance-action`; **hibernate** gets a notice but not the two minutes. (5) **Dedicated Host**. (6) **AWS Budgets**.

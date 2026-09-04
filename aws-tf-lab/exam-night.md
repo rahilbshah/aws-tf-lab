@@ -16,7 +16,7 @@ that idea, not the top of the note. Trap and comparison entries are titles
 only, on purpose: the name is the hook, and if it doesn't fire you want the
 full wording anyway.
 
-*97 recall hooks · 152 pointers · ~22 min read*
+*110 recall hooks · 172 pointers · ~25 min read*
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
@@ -528,3 +528,69 @@ full wording anyway.
 - [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]]
 - [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]]
 - [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
+
+
+## [[12-storage-extras|12 – Storage extras (EFS, FSx, Storage Gateway, DataSync, Snow, Backup)]]
+
+- EBS is one disk for one server, S3 is an API, and everything in this note exists because real workloads need a shared file system or a bridge to a building.  
+  ↳ [[12-storage-extras#What problem does this solve?|explain]]
+- Block is one disk for one server, file is one file system many servers mount, object is an API — and the question's verbs tell you which.  
+  ↳ [[12-storage-extras#Block, file, object — the distinction the exam is really testing|explain]]
+- EFS is an elastic NFS file system many Linux machines mount at once — and it does not work with Windows.  
+  ↳ [[12-storage-extras#EFS: the file system with no size|explain]]
+- FSx is AWS running a named file system for you — Windows/SMB/Active Directory for lift-and-shift, Lustre for speed and S3-backed compute.  
+  ↳ [[12-storage-extras#FSx: when the workload demands a *specific* file system|explain]]
+- Storage Gateway is an on-prem appliance that looks like NFS, SMB, iSCSI or a tape library locally while storing in AWS — and for Volume Gateway, cached keeps the primary in S3 while stored keeps it on site.  
+  ↳ [[12-storage-extras#Storage Gateway: making cloud storage look local|explain]]
+- DataSync goes over the wire and can repeat on a schedule; Snow goes in a truck because the wire would take too long.  
+  ↳ [[12-storage-extras#Moving bulk data in: over the wire, or in a truck|explain]]
+- AWS Backup is a policy engine over every service's own backups, with tag-based assignment, cross-Region and cross-account copies, and a vault lock that makes them WORM.  
+  ↳ [[12-storage-extras#AWS Backup: one place instead of six|explain]]
+
+**Traps** [[12-storage-extras#Traps|open]]
+- EFS for a Windows workload
+- cached vs stored Volume Gateway, reversed
+- DataSync vs Storage Gateway
+- Snow when the network would do
+- Lustre scratch vs persistent read as a speed choice
+- "EFS One Zone is fine, it's still durable"
+
+**Failure modes**
+- Lustre scratch for data that mattered  ↳ [[12-storage-extras#Worked examples|open]]
+
+**Comparisons**
+- [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]]
+- [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]]
+- [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
+
+
+## [[13-cost-optimization|13 – Cost optimization]]
+
+- You pay the most for committing to nothing, and the exam's cost questions are asking which commitment the scenario can afford to make.  
+  ↳ [[13-cost-optimization#What problem does this solve?|explain]]
+- On-Demand commits to nothing, Savings Plans commit to spend, Reserved Instances commit to a configuration, Spot commits to nothing but accepts eviction — and only Capacity Reservations and zonal RIs actually hold capacity for you.  
+  ↳ [[13-cost-optimization#The ways to pay for a server|explain]]
+- Reserved Instances commit to a configuration, Savings Plans commit to a spend — and in both, giving up flexibility buys a bigger discount, which is the opposite of what most people guess.  
+  ↳ [[13-cost-optimization#Savings Plans vs Reserved Instances — and why *more* flexible costs *more*|explain]]
+- Spot is spare capacity at a steep discount, and the two-minute notice via EventBridge or instance metadata is what makes fault-tolerant workloads able to use it.  
+  ↳ [[13-cost-optimization#Spot, and the two minutes that make it usable|explain]]
+- A large share of real savings is architectural, not contractual — endpoints instead of NAT, lifecycle instead of Standard, gp3 instead of oversized gp2, and one bill instead of ten.  
+  ↳ [[13-cost-optimization#The bill that isn't compute|explain]]
+- Cost Explorer analyses, Budgets alert, Anomaly Detection watches, tags slice, and Compute Optimizer says the instance is too big.  
+  ↳ [[13-cost-optimization#The tools that tell you where the money went|explain]]
+
+**Traps** [[13-cost-optimization#Traps|open]]
+- "buy a Savings Plan to guarantee capacity"
+- assuming the most flexible option is the cheapest
+- Standard vs Convertible RI, exchange vs modify
+- Dedicated Host vs Dedicated Instance
+- Spot hibernation and the two minutes
+- Cost Explorer vs Budgets vs Compute Optimizer
+
+**Failure modes**
+- Spot for the wrong tier  ↳ [[13-cost-optimization#Worked examples|open]]
+
+**Comparisons**
+- [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]]
+- [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]]
+- [[13-cost-optimization#The cost tools|The cost tools]]

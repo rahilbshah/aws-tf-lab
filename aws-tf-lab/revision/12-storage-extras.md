@@ -1,0 +1,109 @@
+---
+topic: 12-storage-extras
+type: revision
+source: 12-storage-extras
+tags: [revision, generated]
+---
+
+# Revision — 12 – Storage extras (EFS, FSx, Storage Gateway, DataSync, Snow, Backup)
+
+> [!abstract] Night-before read · ~10 min · self-contained
+> Everything you need is here — no need to jump back mid-revision.
+> Full teaching explanations, Terraform and diagrams: **[[12-storage-extras]]**
+> *Generated from the note by `_scripts/build_revision.py` — do not edit.*
+## The shape of it
+
+> [!info] Exam TL;DR
+> - **Block / file / object.** EBS = one disk, one instance. EFS + FSx = a shared file system many machines mount. S3 = an API. "Mount", "shared across instances" → file.
+> - **EFS** = elastic **NFS** for **Linux**, mounted by many instances across AZs, no capacity to provision. **Not supported with Windows EC2 instances.** Regional vs One Zone; Standard / IA / Archive with lifecycle on last access.
+> - **FSx for Windows File Server** = **SMB + Active Directory + Windows ACLs**. The lift-and-shift-a-Windows-app answer. Single-AZ or Multi-AZ.
+> - **FSx for Lustre** = HPC/ML speed, sub-ms latency, **links to an S3 bucket and presents objects as files**. **Scratch** = not replicated; **Persistent** = replicated.
+> - **FSx for NetApp ONTAP** = the one that speaks **both NFS and SMB**. **OpenZFS** = NFS with cheap snapshots/clones.
+> - **Storage Gateway** = on-prem appliance. **S3 File Gateway** (NFS/SMB→S3) · **FSx File Gateway** · **Volume Gateway** (iSCSI) · **Tape Gateway** (virtual tape library).
+> - **Volume Gateway: cached** = primary in **S3**, hot subset local (shrink on-prem storage). **stored** = primary **on-prem**, snapshots to S3 (low-latency for everything + offsite backup).
+> - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object → S3/EFS/FSx, integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
+> - **AWS Backup** = central backup plans, tag-based assignment, cross-Region **and** cross-account (needs Organizations), and **Vault Lock = WORM**.
+
+## Facts, limits & pricing
+
+- **EFS** speaks **NFSv4.1 and NFSv4.0**. Mountable from EC2, ECS, EKS, Lambda and Fargate. Capacity is elastic to petabyte scale with nothing to provision. **Using EFS with Windows EC2 instances is not supported.**
+- **EFS file system types:** *Regional* (recommended) stores data redundantly across several AZs; *One Zone* stores in a single AZ and data may be lost if that AZ is lost.
+- **EFS defaults AWS recommends:** **General Purpose** performance mode (for latency-sensitive work like web serving, CMSes, home directories) and **Elastic** throughput mode (scales automatically with the workload).
+- **EFS storage classes:** Standard, Infrequent Access, Archive, plus One Zone variants. **Lifecycle management** transitions files based on **last access time**, and accessing an archived file transitions it back automatically.
+- **EFS encryption:** at rest is enabled **at creation** (encrypts data *and* metadata); in transit is enabled **at mount time**. Network access via security groups + IAM; in-file-system permissions via POSIX.
+- **FSx for Windows** speaks **SMB 2.0–3.1.1**, requires **Microsoft Active Directory**, and offers **Single-AZ or Multi-AZ** (Multi-AZ provisions a standby file server in another AZ). SSD and HDD storage; storage, SSD IOPS and throughput are provisioned independently. Encrypted at rest with KMS, in transit with SMB Kerberos session keys. Reachable from on-premises over **Direct Connect or Site-to-Site VPN**, and cross-VPC/account/Region via peering or Transit Gateway.
+- **FSx for Lustre** is POSIX-compliant and **Linux-only** (needs the Lustre client). **Scratch** file systems are **not replicated** and do not survive a file server failure; **persistent** ones are replicated and failed servers are replaced. Storage classes: SSD, Intelligent-Tiering, HDD.
+- **FSx for Lustre + S3:** linking a bucket presents its objects as files; Amazon FSx imports file listings at creation and can import later additions, and data can be written back to S3.
+- **Storage Gateway** deploys as a VM on **VMware ESXi, KVM or Hyper-V**, as a hardware appliance, or as an **EC2 instance** (useful for DR and mirroring).
+- **Volume Gateway is iSCSI.** *Cached*: data lives in **S3**, frequently-accessed subset retained locally. *Stored*: **all** data local, asynchronous point-in-time snapshots to S3, recoverable to your data centre **or to EC2**.
+- **DataSync** sources: on-prem **NFS, SMB, HDFS, object storage**, and other clouds (Azure Blob/Files, Google Cloud Storage, and others). Destinations: **S3, EFS, FSx for Windows / Lustre / OpenZFS / NetApp ONTAP**. Includes **automatic encryption and data integrity validation**, supports **VPC endpoints** so traffic avoids the public internet, and uses a purpose-built parallel protocol.
+- **Snowball Edge:** Storage Optimized **210 TB** or Compute Optimized; network adapters up to **100 Gbit/s**; encryption enforced at rest and in transit; devices can be **clustered (3–16)**; supports **NFSv3/v4/v4.1** and the S3 API. Can run EC2 instances and Lambda via IoT Greengrass at the edge. ⚠️ **No longer available to new customers** — see the currency warning above.
+- **AWS Backup** supports EC2, EBS, S3, RDS (all engines, incl. Multi-AZ clusters), Aurora, DynamoDB, EFS, all four FSx types, Storage Gateway volumes, DocumentDB, Neptune, Redshift, Timestream, EKS, CloudFormation, SAP HANA on EC2, and VMware Cloud on AWS. Backups are **incremental for supported resource types** (others are full copies each time — a real cost consideration). **Cross-account** backup requires an **AWS Organizations** structure.
+- ⚠️ Pricing for EFS, FSx, Storage Gateway, DataSync and Snow changes; check current rates rather than memorising figures. The exam tests *service choice*, not price points.
+
+## Comparisons
+
+### EFS vs FSx vs EBS vs S3
+
+|   | **EBS** | **EFS** | **FSx for Windows** | **FSx for Lustre** | **S3** |
+|---|---|---|---|---|---|
+| Shape | block | file | file | file | object |
+| Protocol | — (attached disk) | **NFS** | **SMB** | Lustre | HTTP API |
+| Shared by many instances | ❌ one at a time | ✅ | ✅ | ✅ | ✅ (API) |
+| OS | any | **Linux only** | Windows (and Linux SMB clients) | **Linux only** | any |
+| Capacity | provisioned | **elastic** | provisioned | provisioned | elastic |
+| Reach for it when | boot volume, single-instance disk | shared Linux file system | Windows app, AD auth, SMB | HPC/ML speed, S3-backed compute | objects, static content, backup |
+
+### Volume Gateway: cached vs stored
+
+|   | **Cached volumes** | **Stored volumes** |
+|---|---|---|
+| Primary copy lives | **in S3** | **on premises** |
+| Kept locally | frequently-accessed subset | the **entire** dataset |
+| In AWS | all data | asynchronous point-in-time snapshots |
+| Solves | on-prem storage keeps growing | need low-latency access to everything, plus offsite backup |
+
+### Getting data in: DataSync vs Snow vs Storage Gateway
+
+|   | **DataSync** | **Snow Family** | **Storage Gateway** |
+|---|---|---|---|
+| Moves data over | the network | a truck | the network, continuously |
+| One-off or ongoing | one-off **or scheduled** | one-off | **ongoing** — it's a permanent bridge |
+| Purpose | migrate / replicate / archive | migrate when the network can't cope | let on-prem systems *use* cloud storage |
+| Tell | "transfer", "migrate", "sync on a schedule" | "petabytes", "poor connectivity", "would take months" | "keep the on-prem app unchanged", "tape", "iSCSI", "NFS/SMB share" |
+
+## Worked examples
+
+> [!example] Worked example — a web tier that needs shared uploads
+> An application behind an ALB runs on an Auto Scaling group ([[04-alb-asg]]) and lets users upload files. Instances come and go, so anything written to an instance's EBS volume disappears with it, and two instances can't see each other's uploads. Attaching one EBS volume to all of them isn't possible — EBS belongs to a single instance. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it in `user_data`. Every instance now sees the same directory, new instances pick it up automatically, and there is no capacity to manage. (In production you'd more likely put uploads in **S3** and skip the file system entirely — EFS is the answer when the application insists on file paths and can't be changed.)
+
+> [!example] Worked example — lifting a Windows application into AWS
+> A company runs a .NET application against a Windows file share, with permissions driven by Active Directory groups. They want it in AWS without rewriting it. EFS is out — it's NFS, and **AWS doesn't support EFS with Windows EC2 instances**. S3 is out — the app opens file paths, not APIs. The answer is **FSx for Windows File Server**: SMB, joined to Active Directory (either AWS Managed Microsoft AD or their own via AD Connector — see [[01-iam-advanced]]), enforcing the same Windows ACLs. Choose **Multi-AZ** so a zone failure doesn't take the share down. On-premises users can reach it over Direct Connect or Site-to-Site VPN ([[05-vpc-hybrid]]) during the migration.
+
+> [!failure] Failure mode — Lustre scratch for data that mattered
+> A team runs genomics processing on **FSx for Lustre**, picks the **scratch** deployment type because it's cheaper and faster, and writes results straight to it. A file server fails mid-run. Scratch file systems are **not replicated** and data does not persist through a file server failure — the results are gone, and there was no second copy. Two correct fixes: use a **persistent** file system for anything you'd be upset to lose, or keep the durable copy in **S3** and use Lustre as the fast working layer over it, writing results back. The second is the idiomatic pattern and the reason the S3 link exists.
+
+## Traps
+
+> [!warning] Trap — EFS for a Windows workload
+> The most reliable elimination in this topic. **AWS does not support EFS with Windows EC2 instances.** Any question mentioning Windows, SMB, Active Directory, or Windows ACLs is pointing at **FSx for Windows File Server**, however well "shared file system" seems to fit EFS.
+
+> [!warning] Trap — cached vs stored Volume Gateway, reversed
+> Read where the *primary* copy lives. **Cached** = primary in S3, hot subset local — chosen to stop on-premises storage growing. **Stored** = primary on-premises, snapshots to S3 — chosen when you need low-latency access to the *whole* dataset and want offsite backups. The words are unhelpfully similar; anchor on "which copy is authoritative".
+
+> [!warning] Trap — DataSync vs Storage Gateway
+> Both move data between on-premises and AWS, and both need something installed locally. **DataSync transfers data** — a migration or a scheduled sync, after which the job is done. **Storage Gateway is a permanent bridge** — the on-premises system keeps using it every day as if it were local storage. "Migrate 50 TB to S3" → DataSync. "Our backup software must keep writing to tape" → Tape Gateway.
+
+> [!warning] Trap — Snow when the network would do
+> Snow exists for data volumes where transferring over the network would take impractically long, or where connectivity is poor. It is not the answer to "we have 5 TB to move" on a decent link — that's **DataSync**. And note the currency point: **Snowball Edge is closed to new customers**, with AWS pointing to DataSync, AWS Data Transfer Terminal, or Outposts.
+
+> [!warning] Trap — Lustre scratch vs persistent read as a speed choice
+> The difference is **durability**, not performance. Scratch is **not replicated** and does not survive a file server failure; persistent is replicated with automatic server replacement. If the question mentions long-running work or data you can't re-create, it's persistent.
+
+> [!warning] Trap — "EFS One Zone is fine, it's still durable"
+> Same shape as the S3 One Zone-IA trap in [[09-s3-intro]]. One Zone stores in a single Availability Zone, and data may be lost if that zone is lost. It's for data you could re-create, not for the only copy.
+
+> [!example]- Recall drill
+> (1) Which storage service can't be used with Windows EC2 instances, and what replaces it? (2) Volume Gateway cached vs stored — where does the primary copy live in each? (3) FSx for Lustre scratch vs persistent — what actually differs? (4) DataSync or Storage Gateway for "our tape backup software must keep working"? (5) Which FSx speaks both NFS and SMB? (6) What does AWS Backup Vault Lock give you, and what does cross-account backup require?
+> > [!success]- Answers
+> > (1) EFS — it's NFS/Linux only; use FSx for Windows File Server. (2) Cached = primary in S3 with a hot subset local; stored = primary on-premises with snapshots to S3. (3) Durability — scratch isn't replicated and doesn't survive a file server failure. (4) Storage Gateway, specifically **Tape Gateway**. (5) FSx for NetApp ONTAP. (6) WORM immutability on backups; cross-account requires AWS Organizations.

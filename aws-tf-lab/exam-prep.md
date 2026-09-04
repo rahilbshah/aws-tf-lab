@@ -39,11 +39,11 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ **S3 intro** (buckets/keys, durability, storage classes, versioning, lifecycle, static hosting) — [[09-s3-intro]]
 - [x] ✅ S3 advanced (replication + Batch, multipart, Transfer Acceleration, S3 Select, events, Glacier tiers) — [[09-s3-advanced]]
 - [x] ✅ S3 security (bucket policies vs IAM vs ACLs, Block Public Access, encryption, presigned URLs, Object Lock, MFA delete) — [[09-s3-security]]
-- [ ] ☐ EFS (shared NFS)
-- [ ] ☐ FSx (Windows / Lustre / NetApp / OpenZFS)
-- [ ] ☐ Storage Gateway (File / Volume / Tape)
-- [ ] ☐ AWS Backup
-- [ ] ☐ Snow Family (migration)
+- [x] ✅ EFS (shared NFS) — [[12-storage-extras]]
+- [x] ✅ FSx (Windows / Lustre / NetApp / OpenZFS) — [[12-storage-extras]]
+- [x] ✅ Storage Gateway (File / Volume / Tape) — [[12-storage-extras]]
+- [x] ✅ AWS Backup — [[12-storage-extras]]
+- [x] ✅ Snow Family (migration) + DataSync — [[12-storage-extras]] *(note: Snowball Edge closed to new customers)*
 
 ### Database
 - [x] ✅ RDS (Multi-AZ vs read replicas, backups/PITR, encryption) — [[07-rds-aurora]]
@@ -98,10 +98,10 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] ☐ Snow Family (also under Storage)
 
 ### Cost Optimization
-- [ ] ☐ **EC2 purchasing (On-Demand/Reserved/Spot/Savings Plans/Dedicated)** — *was wrongly ticked as covered by [[02-ec2]]; audit on 2026-09-04 found no Spot/Reserved/Savings Plans content anywhere in the vault. Corrected.*
+- [x] ✅ **EC2 purchasing (On-Demand/Reserved/Spot/Savings Plans/Dedicated)** — [[13-cost-optimization]] — *was wrongly ticked as covered by [[02-ec2]]; audit on 2026-09-04 found no Spot/Reserved/Savings Plans content anywhere in the vault. Corrected.*
 - [ ] ☐ Database & network cost (endpoints vs NAT, data transfer, replicas vs serverless) — *not started. Note: the trainer's bank is thin here (15 questions for cost-optimized database, 25 for network, vs 59–135 for every other task statement), so drilling won't cover it — this one has to be read and built.*
-- [ ] ☐ Cost Explorer / Budgets / Cost Allocation Tags
-- [ ] ☐ Compute Optimizer / Trusted Advisor
+- [x] ✅ Cost Explorer / Budgets / Cost Allocation Tags — [[13-cost-optimization]]
+- [x] ✅ Compute Optimizer — [[13-cost-optimization]]
 
 ### Cross-cutting (whitepaper-level)
 - [ ] ☐ Disaster Recovery strategies (backup-restore → pilot light → warm standby → multi-site) + RTO/RPO
