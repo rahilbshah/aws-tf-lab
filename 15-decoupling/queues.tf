@@ -1,21 +1,26 @@
-###############################################################################
-# The queues — one per downstream consumer, plus a dead-letter queue
-###############################################################################
-
-# TODO(2): two aws_sqs_queue resources, one per consumer.
-#          Set visibility_timeout_seconds from var.visibility_timeout so the
-#          "message comes back on its own" behaviour is observable in seconds
-#          instead of the 30-second default.
-#          Consider for_each over a set of names rather than copy-paste.
-
-
-# TODO(3): a third aws_sqs_queue as the dead-letter queue, then attach it to
-#          the first queue with a redrive_policy using var.max_receive_count.
+# The queues — one per downstream consumer, plus the dead-letter queue.
 #
-#          redrive_policy takes a JSON STRING — jsonencode({...}) is the
-#          idiomatic way to build it. It needs the DLQ's ARN and the count.
+# Write the DLQ before queue A: A's redrive_policy needs the DLQ's ARN.
 #
-#          One thing AWS is explicit about: for standard queues a message keeps
-#          its ORIGINAL enqueue timestamp when it moves to the DLQ. Given that,
-#          what should the DLQ's message_retention_seconds be relative to the
-#          source queue's?
+#   2.  aws_sqs_queue.dlq      – name = "${var.name_prefix}-dlq"
+#                                message_retention_seconds = ?  (see below)
+#
+#   3.  aws_sqs_queue.a        – name = "${var.name_prefix}-a"
+#                                visibility_timeout_seconds = var.visibility_timeout
+#                                redrive_policy = jsonencode({
+#                                    deadLetterTargetArn = <the DLQ's arn>
+#                                    maxReceiveCount     = var.max_receive_count
+#                                })
+#
+#   4.  aws_sqs_queue.b        – name = "${var.name_prefix}-b"
+#                                visibility_timeout_seconds = var.visibility_timeout
+#                                no DLQ on this one, so you can compare behaviour
+#
+# (3 and 4 differ only in name and the redrive policy — for_each over a map is
+#  legitimate here, but two explicit resources is clearer while learning. Pick.)
+#
+# On the DLQ's retention: AWS documents that for STANDARD queues a message keeps
+# its ORIGINAL enqueue timestamp when it moves to the DLQ. So a message that sat
+# 3 days in queue A arrives in the DLQ already 3 days old. Given that, should the
+# DLQ's retention be shorter than, equal to, or longer than queue A's? Answer it
+# to yourself, then set the number.

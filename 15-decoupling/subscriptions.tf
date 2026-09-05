@@ -1,25 +1,36 @@
-###############################################################################
-# Wiring SNS to SQS — the subscription, and the permission that makes it work
-###############################################################################
-
-# TODO(4): aws_sns_topic_subscription per queue, protocol = "sqs".
-#          Watch which ARN goes in `endpoint` and which in `topic_arn` — this
-#          is the .arn-vs-.name class of mistake from 01-iam, one level up.
-
-
-# TODO(5): aws_sqs_queue_policy for each queue.  THIS IS THE LESSON.
+# Wiring SNS to SQS — the subscription, and the permission that makes it work.
 #
-#          A queue rejects everything by default, so SNS cannot deliver until
-#          the queue's own resource policy allows it. Build the document with
-#          data "aws_iam_policy_document" and grant sqs:SendMessage to the
-#          service principal that does the delivering.
+#   5.  aws_sns_topic_subscription.a / .b
+#                                topic_arn = the topic's arn
+#                                protocol  = "sqs"
+#                                endpoint  = the QUEUE'S ARN  (not its URL —
+#                                            the arn/url distinction here is the
+#                                            same class of mistake as .arn vs
+#                                            .name in 01-iam)
 #
-#          Then stop, because you have now seen this exact shape three times
-#          (09-s3/events.tf, 01-iam-lab, 11-cloudfront):
+#   6.  data.aws_iam_policy_document.allow_sns   ← THE LESSON. Read below first.
+#                                statement: effect "Allow", actions
+#                                ["sqs:SendMessage"], resources = the queue arn,
+#                                principals { type = "Service", identifiers = [?] }
+#                                condition { test = ? , variable = ? , values = [?] }
 #
-#            - Which service principal delivers an SNS message?
-#            - That principal is identical for every AWS customer on earth.
-#              So what stops ANYONE's SNS topic writing into your queue?
-#            - Which condition key pins it to YOUR topic, and which operator?
+#   7.  aws_sqs_queue_policy.a / .b
+#                                queue_url = the queue's id
+#                                policy    = the document's .json
 #
-#          Get this wrong and everything still works. That is the whole point.
+# Why a policy is needed at all: a queue rejects everything by default. The
+# subscription tells SNS where to deliver; it does not give SNS permission to.
+# Without 6 and 7 the subscription exists, the publish succeeds, and the message
+# silently never arrives.
+#
+# Now the part worth stopping on. You have written this exact shape three times
+# already — 09-s3/events.tf, 01-iam-lab, 11-cloudfront:
+#
+#   - Which service principal delivers an SNS message into a queue?
+#   - That principal is byte-identical for every AWS customer on earth. So with
+#     only the principal and no condition, whose topics can write to your queue?
+#   - Which condition key pins it to YOUR topic, and which operator does an ARN
+#     comparison rather than a string one?
+#
+# Say the answer out loud before you write it. Get it wrong and every test you
+# run still passes — that is precisely why it is worth getting right.
