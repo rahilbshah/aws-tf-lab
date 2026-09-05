@@ -1,36 +1,46 @@
 #!/usr/bin/env python3
-"""
-Generate revision/NN-topic.md — the night-before read, one file per service.
-
-SELF-CONTAINED by design: everything you need is in the file, so you don't have
-to jump back to the note mid-revision. Content is lifted VERBATIM from the note,
-never paraphrased, so no fact can drift and nothing new can be invented.
-
-Keeps:  Exam TL;DR · Key facts · Comparisons · Worked examples · Traps
-Drops:  teaching walk-through, Terraform map, architecture diagrams,
-        "The Terraform I wrote", drills, weak spots, doc links
+"""Generate revision/<note>-revision.md — the self-contained night-before read.
 
     python3 _scripts/build_revision.py [note-name ...]
+
+Content is lifted VERBATIM. Two design decisions from the 2026-09-06 audit:
+
+  * DROP-LIST, NOT WHITELIST. The old version kept four hard-coded headings and
+    silently dropped everything else — which lost 06-capstone's whole
+    bastion-vs-SSM comparison and ten scenario MCQs. It now drops only sections
+    known to be non-exam material and keeps the rest, so a new section fails
+    OPEN rather than vanishing.
+  * Filenames are <note>-revision.md. When they shared a basename with the
+    source note, the "back to the full note" link resolved to the revision file
+    itself, because Obsidian prefers a same-folder match.
 """
 import re, io, os, sys, glob
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _lib
 
 VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT   = os.path.join(VAULT, 'revision')
-SKIP  = {'README.md', 'exam-prep.md', 'exam-night.md'}
 
-# section heading -> heading to use in the revision file
-KEEP = [
-    (r'^## Key facts.*$',      '## Facts, limits & pricing'),
-    (r'^## Comparisons\s*$',   '## Comparisons'),
-    (r'^## Worked examples\s*$','## Worked examples'),
-    (r'^## Traps\s*$',         '## Traps'),
-]
+# sections that are NOT exam material — everything else is kept
+DROP = ['what problem does this solve', 'how it actually works',
+        'console', 'terraform i wrote', 'weak spot', 'docs', 'concept']
+# self-test callouts promised as dropped in the docstring
+DRILL = re.compile(r'^>\s*\[!example\]-?\s*(Recreate-from-memory|Recall) drill', re.I)
 
-def sections(text):
-    """Split a note into {h2_heading: body} preserving order."""
+def strip_drills(md):
+    out, skipping = [], False
+    for line in md.splitlines():
+        if DRILL.match(line): skipping = True; continue
+        if skipping:
+            if line.startswith('>') or not line.strip(): continue
+            skipping = False
+        out.append(line)
+    return '\n'.join(out).strip()
+
+def h2_blocks(text):
     parts, cur, buf = [], None, []
     for line in text.splitlines():
-        if re.match(r'^## ', line):
+        if line.startswith('## '):
             if cur is not None: parts.append((cur, '\n'.join(buf).strip()))
             cur, buf = line, []
         elif cur is not None:
@@ -38,86 +48,85 @@ def sections(text):
     if cur is not None: parts.append((cur, '\n'.join(buf).strip()))
     return parts
 
-def loose_callouts(text, kinds=('warning', 'failure')):
-    """Trap/failure callouts that aren't under a ## Traps heading."""
-    out, buf, grab = [], [], False
-    for line in text.splitlines():
-        m = re.match(r'^>\s*\[!(\w+)\][-]?\s*(Trap|Failure mode)\b', line)
-        if m and m.group(1) in kinds:
-            if buf: out.append('\n'.join(buf))
-            buf, grab = [line], True
-        elif grab and line.startswith('>'):
-            buf.append(line)
-        elif grab:
-            out.append('\n'.join(buf)); buf, grab = [], False
-    if buf: out.append('\n'.join(buf))
-    return out
-
-def build(path):
+def build(path, text):
     name = os.path.basename(path)[:-3]
-    text = io.open(path, encoding='utf-8').read()
-    if re.search(r'^tags:.*\bmoc\b', text, re.M): return None
     title = (re.search(r'^# (.+)$', text, re.M) or [None, name])[1]
+    body, kept, dropped = [], [], []
 
     tldr = re.search(r'(> \[!info\] Exam TL;DR\n(?:> .*\n?)+)', text)
-    secs = sections(text)
-    body, seen_traps = [], False
+    if tldr: body.append('## The shape of it\n\n' + tldr.group(1).rstrip())
 
-    if tldr:
-        body.append('## The shape of it\n\n' + tldr.group(1).rstrip())
-    for pat, newhead in KEEP:
-        for head, content in secs:
-            if re.match(pat, head) and content:
-                if newhead == '## Traps': seen_traps = True
-                body.append(f'{newhead}\n\n{content}')
-    if not seen_traps:
-        # only callouts we haven't already captured inside a kept section —
-        # otherwise failure modes living under "Worked examples" appear twice
-        already = '\n'.join(body)
-        loose = [c for c in loose_callouts(text)
-                 if c.splitlines()[0] not in already]
-        if loose:
-            body.append('## Traps & failure modes\n\n' + '\n\n'.join(loose))
+    for head, content in h2_blocks(text):
+        h = head[3:].strip()
+        if _lib.heading_matches(h, 'exam recap'):      # the TL;DR, already taken
+            continue
+        if any(_lib.heading_matches(h, d) for d in DROP):
+            dropped.append(h); continue
+        content = strip_drills(content)
+        if content:
+            body.append(f'{head}\n\n{content}'); kept.append(h)
+
+    # rescue any warning/tip callout stranded in a dropped section — this is how
+    # 12-storage-extras lost its "Snowball Edge is closing" currency warning
+    joined = '\n'.join(body)
+    orphans, buf, grab = [], [], False
+    for line in text.splitlines():
+        if re.match(r'^>\s*\[!(warning|tip)\]-?\s', line):
+            if buf: orphans.append('\n'.join(buf))
+            buf, grab = [line], True
+        elif grab and line.startswith('>'): buf.append(line)
+        elif grab: orphans.append('\n'.join(buf)); buf, grab = [], False
+    if buf: orphans.append('\n'.join(buf))
+    orphans = [o for o in orphans if o.splitlines()[0] not in joined]
+    if orphans:
+        body.append('## Also worth carrying\n\n' + '\n\n'.join(orphans))
 
     if not body: return None
     words = sum(len(b.split()) for b in body)
-    hdr = [
-        '---', f'topic: {name}', 'type: revision', f'source: {name}',
-        'tags: [revision, generated]', '---', '',
-        f'# Revision — {title}', '',
-        f'> [!abstract] Night-before read · ~{max(1, round(words/200))} min · self-contained',
-        f'> Everything you need is here — no need to jump back mid-revision.',
-        f'> Full teaching explanations, Terraform and diagrams: **[[{name}]]**',
-        f'> *Generated from the note by `_scripts/build_revision.py` — do not edit.*', '',
-    ]
-    dest = os.path.join(OUT, name + '.md')
-    io.open(dest, 'w', encoding='utf-8').write('\n'.join(hdr) + '\n\n'.join(body).rstrip() + '\n')
-    return name, max(1, round(words/200))
+    mins = max(1, round(words / 200))
+    hdr = ['---', f'topic: {name}', 'type: revision', f'source: {name}',
+           'tags: [revision, generated]', '---', '',
+           f'# Revision — {title}', '',
+           f'> [!abstract] Night-before read · ~{mins} min · self-contained',
+           '> Everything you need is here — no need to jump back mid-revision.',
+           f'> Full teaching explanations, Terraform and diagrams: **[[{name}]]**',
+           '> *Generated by `_scripts/build_revision.py` — do not edit.*', '']
+    io.open(os.path.join(OUT, f'{name}-revision.md'), 'w', encoding='utf-8').write(
+        '\n'.join(hdr) + '\n\n'.join(body).rstrip() + '\n')
+    return name, mins, kept, dropped
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
-    targets = ([os.path.join(VAULT, a + '.md') for a in sys.argv[1:]] if len(sys.argv) > 1
-               else [p for p in sorted(glob.glob(os.path.join(VAULT, '*.md')))
-                     if os.path.basename(p) not in SKIP])
+    wanted = set(sys.argv[1:])
+    all_notes = _lib.notes(VAULT)
     total, rows = 0, []
-    for p in targets:
-        r = build(p)
+    for path, text in all_notes:
+        n = os.path.basename(path)[:-3]
+        if wanted and n not in wanted: continue
+        r = build(path, text)
         if r:
-            print(f'  {r[0]:26} ~{r[1]:2} min'); total += r[1]; rows.append(r)
-
-    # index — only rebuilt on a full run, so a single-note run can't truncate it
-    if len(sys.argv) == 1:
+            print(f'  {r[0]:26} ~{r[1]:2} min   kept {len(r[2])} section(s), dropped {len(r[3])}')
+            total += r[1]; rows.append(r)
+        else:
+            print(f'  {n:26} SKIPPED — nothing extractable')
+    if not wanted:
+        # prune revision docs whose source note is gone
+        live = {f'{os.path.basename(p)[:-3]}-revision.md' for p, _ in all_notes}
+        for f in glob.glob(os.path.join(OUT, '*-revision.md')):
+            if os.path.basename(f) not in live:
+                os.remove(f); print(f'  pruned stale {os.path.basename(f)}')
         idx = ['---', 'tags: [revision, generated]', '---', '',
                '# 🌙 Night-before revision — index', '',
-               f'**{len(rows)} topics · ~{total} min total.** Each one is self-contained;',
+               f'**{len(rows)} topics · ~{total} min total.** Each is self-contained;',
                'you should not need the full note. Tick them off as you go.', '',
                '> [!tip] Order',
-               '> This lists them in vault order. The night before, start with whatever',
-               '> your last mock said was weakest — read those while you are freshest.', '',
+               '> Listed in study order. The night before, start with whatever your last',
+               '> mock said was weakest — read those while you are freshest.', '',
                '| ✓ | Topic | Read | Full note |', '|---|---|---|---|']
-        for name, mins in rows:
-            idx.append(f'| [ ] | [[revision/{name}\\|{name}]] | ~{mins} min | [[{name}]] |')
+        for name, mins, _, _ in rows:
+            idx.append(f'| [ ] | {_lib.link(f"revision/{name}-revision", None, name, table=True)}'
+                       f' | ~{mins} min | {_lib.link(name, None, None)} |')
         idx += ['', '*Generated by `_scripts/build_revision.py` — do not edit.*']
         io.open(os.path.join(OUT, '00-index.md'), 'w', encoding='utf-8').write('\n'.join(idx) + '\n')
-        print('  wrote revision/00-index.md')
+        print(f'  wrote revision/00-index.md')
     print(f'total ~{total} min')

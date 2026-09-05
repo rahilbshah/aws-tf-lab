@@ -1,117 +1,84 @@
 #!/usr/bin/env python3
-"""
-Generate discriminators.md — every "which of these two is it?" pair in the vault,
-in one place, with the sentence that actually separates them.
-
-The human's measured failure mode is discrimination: picking between two
-plausible options. This gathers every comparison table and every trap across all
-notes so those decisions can be drilled in one pass instead of hunting through 20
-notes.
-
-Content is lifted VERBATIM (trap opening sentences, comparison headings). Nothing
-is paraphrased, so the sheet cannot say something the notes don't.
+"""Generate discriminators.md — every "which of these two is it?" pair.
 
     python3 _scripts/build_discriminators.py
+
+Verbatim extraction only. See _lib.py for the audit findings this fixes.
 """
-import re, io, os, glob
+import re, io, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _lib
 
 VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIP  = {'README.md', 'exam-prep.md', 'exam-night.md', 'discriminators.md'}
+TRAP = re.compile(r'^>\s*\[!warning\]-?\s*Trap\s*[—\-–]\s*(.+?)\s*$')   # -? = foldable
 
-# Traps only. Failure modes open with narrative setup, not a discriminator —
-# they live in full in the revision docs where the story is the point.
-TRAP_RE = re.compile(r'^>\s*\[!warning\][-]?\s*Trap\s*[—\-–]\s*(.+?)\s*$')
-
-def clean(s):
-    s = re.sub(r'`([^`]*)`', r'\1', s)
-    s = re.sub(r'\*\*([^*]*)\*\*', r'\1', s)
-    s = re.sub(r'\*([^*]*)\*', r'\1', s)
-    return s.strip()
-
-def first_sentence(lines):
-    """First sentence of a callout body, verbatim (minus the '> ' prefix)."""
-    body = ' '.join(l.lstrip('> ').strip() for l in lines).strip()
-    if not body:
-        return None
-    # keep taking sentences until there is enough to actually discriminate —
-    # some traps open with a short punch ("Route 53 did fail over.") that means
-    # nothing on its own
-    out, rest = '', body
-    while len(out) < 90:
-        m = re.match(r'(.{10,300}?[.!?])(\s|$)', rest)
-        if not m:
-            out = (out + ' ' + rest[:300]).strip(); break
-        out = (out + ' ' + m.group(1)).strip()
-        rest = rest[m.end():]
-        if not rest: break
-    return clean(out[:340])
-
-def harvest(path):
+def harvest(path, text):
     name = os.path.basename(path)[:-3]
-    text = io.open(path, encoding='utf-8').read()
-    if re.search(r'^tags:.*\bmoc\b', text, re.M):
-        return None
-    title = clean((re.search(r'^# (.+)$', text, re.M) or [None, name])[1])
+    title = _lib.clean((re.search(r'^# (.+)$', text, re.M) or [None, name])[1])
+    anchor = _lib.traps_anchor(text)
 
-    pairs, traps = [], []
-    in_comparisons = False
-    cur_trap, buf = None, []
-    has_traps_head = bool(re.search(r'^## Traps\s*$', text, re.M))
+    pairs = [h for h, _ in _lib.find_sections(text, 'comparison')]
+    pairs = [m.group(1).strip()
+             for sec in [b for _, b in _lib.find_sections(text, 'comparison')]
+             for m in re.finditer(r'^### (.+)$', sec, re.M)]
+    # comparisons written at H2 (e.g. "## Bake-at-build vs install-at-boot")
+    pairs += [h.strip() for h in re.findall(r'^## (.+)$', text, re.M)
+              if re.search(r'\bvs\b|\bversus\b', h, re.I)]
 
+    # track the enclosing H2 so a trap that lives inline still gets a useful
+    # anchor instead of degrading to the top of a 400-line note
+    traps, cur, buf, h2, cur_h2 = [], None, [], None, None
     for line in text.splitlines():
-        h = re.match(r'^(#{2,3})\s+(.*\S)\s*$', line)
-        if h:
-            if len(h.group(1)) == 2:
-                in_comparisons = h.group(2).lower().startswith('comparison')
-            elif in_comparisons:
-                pairs.append(h.group(2))
-        m = TRAP_RE.match(line)
+        if line.startswith('## '):
+            h2 = line[3:].strip()
+        m = TRAP.match(line)
         if m:
-            if cur_trap: traps.append((cur_trap, first_sentence(buf)))
-            cur_trap, buf = m.group(1), []
-        elif cur_trap is not None and line.startswith('>'):
+            if cur: traps.append((cur, _lib.discriminating_text(buf, cur), cur_h2))
+            cur, buf, cur_h2 = m.group(1), [], anchor or h2
+        elif cur is not None and line.startswith('>'):
             buf.append(line)
-        elif cur_trap is not None:
-            traps.append((cur_trap, first_sentence(buf))); cur_trap, buf = None, []
-    if cur_trap: traps.append((cur_trap, first_sentence(buf)))
+        elif cur is not None:
+            traps.append((cur, _lib.discriminating_text(buf, cur), cur_h2))
+            cur, buf = None, []
+    if cur: traps.append((cur, _lib.discriminating_text(buf, cur), cur_h2))
 
-    return dict(name=name, title=title, pairs=pairs, traps=traps,
-                traps_head=has_traps_head) if (pairs or traps) else None
+    return dict(name=name, title=title, pairs=pairs, traps=traps, anchor=anchor)
 
 def main():
-    notes = sorted(p for p in glob.glob(os.path.join(VAULT, '*.md'))
-                   if os.path.basename(p) not in SKIP)
-    body, n_pairs, n_traps = [], 0, 0
-    for p in notes:
-        d = harvest(p)
-        if not d: continue
-        body.append(f"\n## [[{d['name']}|{d['title']}]]\n")
+    body, n_pairs, n_traps, unanchored = [], 0, 0, []
+    for path, text in _lib.notes(VAULT):
+        d = harvest(path, text)
+        if not (d['pairs'] or d['traps']): continue
+        body.append(f"\n## {_lib.link(d['name'], display=d['title'])}\n")
         if d['pairs']:
             n_pairs += len(d['pairs'])
             body.append('**Compare:** ' + ' · '.join(
-                f"[[{d['name']}#{c}|{clean(c)}]]" for c in d['pairs']) + '\n')
-        for name, sent in d['traps']:
+                _lib.link(d['name'], p, _lib.clean(p)) for p in d['pairs']) + '\n')
+        if not d['anchor'] and d['traps']: unanchored.append(d['name'])
+        for name, sent, sect in d['traps']:
             if not sent: continue
             n_traps += 1
-            tgt = f"{d['name']}#Traps" if d['traps_head'] else d['name']
-            body.append(f"- **{clean(name)}** — {sent}  \n  ↳ [[{tgt}|note]]")
+            body.append(f"- **{_lib.clean(name)}** — {sent}  \n"
+                        f"  ↳ {_lib.link(d['name'], sect, 'note')}")
         body.append('')
 
-    words = sum(len(b.split()) for b in body)
+    words = sum(len(re.sub(r'\[\[[^\]]*\]\]', '', b).split()) for b in body)
     out = ['---', 'tags: [exam-prep, generated]', '---', '',
            '# ⚖️ Discriminators — "which of these two is it?"', '',
            '> [!warning] Generated file — do not edit',
-           '> Built from the notes by `_scripts/build_discriminators.py`. Edit the',
-           '> **notes**, then re-run. Every line is lifted verbatim.', '',
-           'Your mock data says the thing costing you marks is **choosing between two',
-           'plausible options**, not recalling facts. This is every such pair in the',
-           'vault in one place: the comparison tables to open, and the sentence that',
-           'actually separates each trap pair.', '',
+           '> Built by `_scripts/build_discriminators.py`. Edit the **notes**, then re-run.',
+           '> Every line is lifted verbatim.', '',
+           'Your mock data says what costs you marks is **choosing between two plausible',
+           'options**, not recalling facts. This is every such pair in the vault: the',
+           'comparison tables to open, and the sentence that separates each trap pair.', '',
            f'*{n_pairs} comparison tables · {n_traps} discriminators · ~{max(1, words//200)} min read*',
            ] + body
     io.open(os.path.join(VAULT, 'discriminators.md'), 'w', encoding='utf-8').write(
         '\n'.join(out).rstrip() + '\n')
     print(f'wrote discriminators.md — {n_pairs} comparison tables, {n_traps} discriminators')
+    if unanchored:
+        print(f'  note: no traps heading found in {len(unanchored)} note(s), '
+              f'links land at note top: {", ".join(unanchored)}')
 
 if __name__ == '__main__':
     main()

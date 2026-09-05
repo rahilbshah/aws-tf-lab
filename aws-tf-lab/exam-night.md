@@ -1,55 +1,18 @@
 ---
 tags: [exam-prep, generated]
-generated: 2026-09-06
 ---
 
-# 🌙 Exam-night revision sheet
+# 🌙 Exam-morning skim sheet
 
 > [!warning] Generated file — do not edit
-> Built from the topic notes by `_scripts/build_exam_night.py`. Edit the
-> **notes**, then re-run the script. Editing this file directly means it
-> drifts from what the notes say, and you revise from something wrong.
+> Built by `_scripts/build_exam_night.py`. Edit the **notes**, then re-run.
 
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
-that idea, not the top of the note. Trap and comparison entries are titles
-only, on purpose: the name is the hook, and if it doesn't fire you want the
-full wording anyway.
+that idea. Trap and comparison entries are titles only, on purpose.
+For the longer night-before read see **[[revision/00-index]]**.
 
-*116 recall hooks · 182 pointers · ~27 min read*
-
-## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
-
-- Many accounts limit the damage; SCPs enforce the rules across all of them.  
-  ↳ [[01-iam-advanced#What problem does this solve?|explain]]
-- IAM grants, the SCP caps, and you get whichever is smaller.  
-  ↳ [[01-iam-advanced#The one idea: granting versus capping|explain]]
-- Every level in the chain has to say yes; one silent level means no.  
-  ↳ [[01-iam-advanced#Why an Allow has to exist at every level|explain]]
-- The account that writes the rules is exempt from them; every other account's root user is not.  
-  ↳ [[01-iam-advanced#The root-user rule that catches everyone|explain]]
-- An SCP caps an account, a boundary caps one identity, and neither one grants anything.  
-  ↳ [[01-iam-advanced#Permissions boundaries — the same idea, one identity at a time|explain]]
-- Resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.  
-  ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
-
-**Traps** [[01-iam-advanced#Traps|open]]
-- "attach an SCP to give that account access"
-- root user and SCPs
-- permissions boundary vs SCP
-- Bool vs BoolIfExists for MFA
-- Control Tower vs Organizations
-- aws:SourceIp behind a VPC endpoint
-
-**Failure modes**
-- the deny-only SCP that locked out the whole organization  ↳ [[01-iam-advanced#Worked examples|open]]
-
-**Comparisons**
-- [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]]
-- [[01-iam-advanced#How policy types combine|How policy types combine]]
-- [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
-- [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
-
+*111 recall hooks · 181 pointers · ~18 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -90,6 +53,39 @@ full wording anyway.
 - [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
 
 
+## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
+
+- Many accounts limit the damage; SCPs enforce the rules across all of them.  
+  ↳ [[01-iam-advanced#What problem does this solve?|explain]]
+- IAM grants, the SCP caps, and you get whichever is smaller.  
+  ↳ [[01-iam-advanced#The one idea: granting versus capping|explain]]
+- Every level in the chain has to say yes; one silent level means no.  
+  ↳ [[01-iam-advanced#Why an Allow has to exist at every level|explain]]
+- The account that writes the rules is exempt from them; every other account's root user is not.  
+  ↳ [[01-iam-advanced#The root-user rule that catches everyone|explain]]
+- An SCP caps an account, a boundary caps one identity, and neither one grants anything.  
+  ↳ [[01-iam-advanced#Permissions boundaries — the same idea, one identity at a time|explain]]
+- Resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.  
+  ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
+
+**Traps** [[01-iam-advanced#Traps|open]]
+- "attach an SCP to give that account access"
+- root user and SCPs
+- permissions boundary vs SCP
+- Bool vs BoolIfExists for MFA
+- Control Tower vs Organizations
+- aws:SourceIp behind a VPC endpoint
+
+**Failure modes**
+- the deny-only SCP that locked out the whole organization  ↳ [[01-iam-advanced#Worked examples|open]]
+
+**Comparisons**
+- [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]]
+- [[01-iam-advanced#How policy types combine|How policy types combine]]
+- [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
+- [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
+
+
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
 - EC2 rents you a virtual server by the second and hands you every decision a physical one would have made for you.  
@@ -126,24 +122,6 @@ full wording anyway.
 - [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
 
-## [[03-ami-bake|03 – AMI Baking with Packer (job-skills side-quest)]]
-
-- Install once at build time and snapshot the result, instead of re-installing on every boot.  
-  ↳ [[03-ami-bake#What problem does this solve?|explain]]
-- Packer launches a temp instance, provisions it over SSH, snapshots it, and destroys it — the image is the only thing that survives.  
-  ↳ [[03-ami-bake#The build is a throwaway instance|explain]]
-- Bake what rarely changes, boot-install what differs per instance.  
-  ↳ [[03-ami-bake#Bake at build, or install at boot|explain]]
-- Filter on a tag you set after testing, not on whichever image happens to be newest.  
-  ↳ [[03-ami-bake#Why "use the latest image" is the dangerous setting|explain]]
-- Every build leaves two billable objects behind, and only one of them is visible.  
-  ↳ [[03-ami-bake#An AMI and its snapshot are two separate objects|explain]]
-
-**Failure modes**
-- most_recent = true silently ships an untested image  ↳ [[03-ami-bake#Worked examples|open]]
-- AMI/snapshot sprawl (the silent cost leak)  ↳ [[03-ami-bake#Worked examples|open]]
-
-
 ## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
 
 - The ALB decides which instance gets a request, the ASG decides how many instances exist, and the target group is the only thing connecting the two.  
@@ -159,7 +137,7 @@ full wording anyway.
 - Schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write min_size = -1 / max_size = -1, because omitted means zero, not unchanged.  
   ↳ [[04-alb-asg#Scheduling capacity without freezing the group|explain]]
 
-**Traps** [[04-alb-asg|open]]
+**Traps** [[04-alb-asg#The Terraform I wrote|open]]
 - "the ALB terminates the unhealthy instance"
 - "a failed ALB health check means users get errors"
 - NLB vs ALB for a static IP / source-IP
@@ -193,7 +171,7 @@ full wording anyway.
 - AWS's own defaults are open, anything you create is closed, and Terraform ignores the defaults until you adopt them.  
   ↳ [[05-vpc-core#The defaults that behave backwards from what you create|explain]]
 
-**Traps** [[05-vpc-core|open]]
+**Traps** [[05-vpc-core#The Terraform I wrote|open]]
 - "the default NACL and a new NACL behave the same"
 - "add the IGW route to the main route table to make setup simpler"
 
@@ -204,6 +182,34 @@ full wording anyway.
 **Comparisons**
 - [[05-vpc-core#NAT Gateway vs NAT Instance|NAT Gateway vs NAT Instance]]
 - [[05-vpc-core#IGW vs NAT Gateway vs Egress-only IGW|IGW vs NAT Gateway vs Egress-only IGW]]
+
+
+## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
+
+- The SG guards the instance and can only allow, the NACL guards the subnet and can deny, and Flow Logs record whether the traffic was allowed or rejected.  
+  ↳ [[05-vpc-security#What problem does this solve?|explain]]
+- The SG remembers the conversation, the NACL sees one packet at a time — so on a NACL you must write both halves.  
+  ↳ [[05-vpc-security#Stateful versus stateless|explain]]
+- Replies land on 1024–65535 — outbound if you're answering, inbound if you're asking — and a TCP-only rule set silently drops UDP.  
+  ↳ [[05-vpc-security#Ephemeral ports, and which direction to open them|explain]]
+- Lowest matching number wins and stops the search — and a custom NACL starts closed while the default one starts open.  
+  ↳ [[05-vpc-security#Numbered rules, and first match wins|explain]]
+- Flow logs give you who-to-whom-on-what-port plus ACCEPT or REJECT — never the contents.  
+  ↳ [[05-vpc-security#What flow logs can and cannot tell you|explain]]
+- SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.  
+  ↳ [[05-vpc-security#Network Firewall, and why it needs a subnet of its own|explain]]
+
+**Traps** [[05-vpc-security#The Terraform I wrote|open]]
+- "make the NACL match the SG rules and you're done"
+- "use flow logs to see what data was exfiltrated"
+- "a higher NACL rule number can override a lower deny"
+
+**Failure modes**
+- the stateless NACL that "half works"  ↳ [[05-vpc-security#Worked examples|open]]
+
+**Comparisons**
+- [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]]
+- [[05-vpc-security#Where each layer sits|Where each layer sits]]
 
 
 ## [[05-vpc-endpoints-peering|05.3 – VPC Endpoints & Peering (+ Transit Gateway)]]
@@ -219,7 +225,7 @@ full wording anyway.
 - Peering is O(N²) and non-transitive, so at many VPCs / hybrid at scale the answer becomes one Transit Gateway hub.  
   ↳ [[05-vpc-endpoints-peering#The mesh math, and what Transit Gateway replaces|explain]]
 
-**Traps** [[05-vpc-endpoints-peering|open]]
+**Traps** [[05-vpc-endpoints-peering#The Terraform I wrote|open]]
 - "use a gateway endpoint for SQS/KMS/etc."
 - "reach the S3 gateway endpoint from a peered VPC / on-prem"
 - "peering scales fine, just add connections"
@@ -247,7 +253,7 @@ full wording anyway.
 - Throughput argues for Direct Connect, but the calendar picks the VPN.  
   ↳ [[05-vpc-hybrid#The calendar usually decides, not the bandwidth|explain]]
 
-**Traps** [[05-vpc-hybrid|open]]
+**Traps** [[05-vpc-hybrid#The Terraform I wrote|open]]
 - "Direct Connect is encrypted because it's private"
 - "use Direct Connect for a quick or temporary connection"
 - "VGW vs CGW"
@@ -259,34 +265,6 @@ full wording anyway.
 **Comparisons**
 - [[05-vpc-hybrid#Site-to-Site VPN vs Direct Connect|Site-to-Site VPN vs Direct Connect]]
 - [[05-vpc-hybrid#Which one? (exam triggers)|Which one? (exam triggers)]]
-
-
-## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
-
-- The SG guards the instance and can only allow, the NACL guards the subnet and can deny, and Flow Logs record whether the traffic was allowed or rejected.  
-  ↳ [[05-vpc-security#What problem does this solve?|explain]]
-- The SG remembers the conversation, the NACL sees one packet at a time — so on a NACL you must write both halves.  
-  ↳ [[05-vpc-security#Stateful versus stateless|explain]]
-- Replies land on 1024–65535 — outbound if you're answering, inbound if you're asking — and a TCP-only rule set silently drops UDP.  
-  ↳ [[05-vpc-security#Ephemeral ports, and which direction to open them|explain]]
-- Lowest matching number wins and stops the search — and a custom NACL starts closed while the default one starts open.  
-  ↳ [[05-vpc-security#Numbered rules, and first match wins|explain]]
-- Flow logs give you who-to-whom-on-what-port plus ACCEPT or REJECT — never the contents.  
-  ↳ [[05-vpc-security#What flow logs can and cannot tell you|explain]]
-- SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.  
-  ↳ [[05-vpc-security#Network Firewall, and why it needs a subnet of its own|explain]]
-
-**Traps** [[05-vpc-security|open]]
-- "make the NACL match the SG rules and you're done"
-- "use flow logs to see what data was exfiltrated"
-- "a higher NACL rule number can override a lower deny"
-
-**Failure modes**
-- the stateless NACL that "half works"  ↳ [[05-vpc-security#Worked examples|open]]
-
-**Comparisons**
-- [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]]
-- [[05-vpc-security#Where each layer sits|Where each layer sits]]
 
 
 ## [[06-capstone|06 – Capstone: 3-Tier VPC with Terraform Modules]]
@@ -304,7 +282,7 @@ full wording anyway.
 - A bastion opens a door and guards it; Session Manager opens no door and dials out instead.  
   ↳ [[06-capstone#Reaching a database that has no way in|explain]]
 
-**Traps** [[06-capstone|open]]
+**Traps** [[06-capstone#The Terraform I wrote|open]]
 - Multi-AZ to scale reads
 - "the module output shows in terraform output"
 
@@ -313,8 +291,9 @@ full wording anyway.
 - secret in a committed .tf file  ↳ [[06-capstone#Worked examples|open]]
 
 **Comparisons**
-- [[06-capstone#RDS Multi-AZ vs Read Replica (the #1 RDS exam trap)|RDS Multi-AZ vs Read Replica (the #1 RDS exam trap)]]
+- [[06-capstone#RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)|RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)]]
 - [[06-capstone#Flat config vs Modules|Flat config vs Modules]]
+- [[06-capstone#Accessing the private database (bastion vs SSM)|Accessing the private database (bastion vs SSM)]]
 
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
@@ -330,7 +309,7 @@ full wording anyway.
 - A 15-minute signed token used as the password, gated by rds-db:connect on the instance's resource id — nothing stored, nothing rotated, nothing in CloudTrail.  
   ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
 
-**Traps** [[07-rds-aurora|open]]
+**Traps** [[07-rds-aurora#The Terraform I wrote|open]]
 - "IAM database authentication controls what the user can do in the database"
 - rds-db: vs rds:
 - "use IAM DB auth so database logins show up in CloudTrail"
@@ -363,7 +342,7 @@ full wording anyway.
 - Find the capability only one engine has; the use case is the distractor.  
   ↳ [[08-elasticache#Reading the engine question the right way round|explain]]
 
-**Traps** [[08-elasticache|open]]
+**Traps** [[08-elasticache#The Terraform I wrote|open]]
 - Memcached for anything needing HA/persistence/complex data
 - a question that mixes Redis-sounding use cases with Memcached-only features
 - "add a cache" when the problem is writes
@@ -375,34 +354,6 @@ full wording anyway.
 **Comparisons**
 - [[08-elasticache#Redis vs Memcached (the exam table)|Redis vs Memcached (the exam table)]]
 - [[08-elasticache#Caching strategies|Caching strategies]]
-
-
-## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
-
-- Copy it elsewhere, move it efficiently, and react when it changes.  
-  ↳ [[09-s3-advanced#What problem does this solve?|explain]]
-- Replication only copies what happens next; everything else — pre-existing, failed, or a replica — needs Batch Replication.  
-  ↳ [[09-s3-advanced#Replication starts from now, not from the beginning|explain]]
-- Parts upload in parallel and retry individually — and the ones you never finish keep billing invisibly.  
-  ↳ [[09-s3-advanced#Why a big upload is many small ones|explain]]
-- Nearest edge, then AWS's private backbone — the bucket stays exactly where it was.  
-  ↳ [[09-s3-advanced#Transfer Acceleration moves the path, not the bucket|explain]]
-- The destination must grant S3 permission, and the output must never land where the trigger is watching.  
-  ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
-
-**Traps** [[09-s3-advanced|open]]
-- replication copies existing objects
-- replication is transitive
-- Transfer Acceleration moves your data closer to users
-- "use S3 Select" on a new account
-
-**Failure modes**
-- "replication is on, so we're backed up"  ↳ [[09-s3-advanced#Worked examples|open]]
-- the invisible multipart bill  ↳ [[09-s3-advanced#Worked examples|open]]
-
-**Comparisons**
-- [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
-- [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 
 ## [[09-s3-intro|09.1 – S3 Introduction (buckets, classes, versioning, lifecycle)]]
@@ -418,7 +369,7 @@ full wording anyway.
 - With versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.  
   ↳ [[09-s3-intro#Versioning, delete markers, and the bill that grows in the dark|explain]]
 
-**Traps** [[09-s3-intro|open]]
+**Traps** [[09-s3-intro#The Terraform I wrote|open]]
 - "S3 has folders"
 - "Glacier means slow retrieval"
 - durability vs availability
@@ -431,6 +382,34 @@ full wording anyway.
 **Comparisons**
 - [[09-s3-intro#Storage classes (verified against AWS docs 2026-08)|Storage classes (verified against AWS docs 2026-08)]]
 - [[09-s3-intro#Versioning: delete vs permanent delete|Versioning: delete vs permanent delete]]
+
+
+## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
+
+- Copy it elsewhere, move it efficiently, and react when it changes.  
+  ↳ [[09-s3-advanced#What problem does this solve?|explain]]
+- Replication only copies what happens next; everything else — pre-existing, failed, or a replica — needs Batch Replication.  
+  ↳ [[09-s3-advanced#Replication starts from now, not from the beginning|explain]]
+- Parts upload in parallel and retry individually — and the ones you never finish keep billing invisibly.  
+  ↳ [[09-s3-advanced#Why a big upload is many small ones|explain]]
+- Nearest edge, then AWS's private backbone — the bucket stays exactly where it was.  
+  ↳ [[09-s3-advanced#Transfer Acceleration moves the path, not the bucket|explain]]
+- The destination must grant S3 permission, and the output must never land where the trigger is watching.  
+  ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
+
+**Traps** [[09-s3-advanced#The Terraform I wrote|open]]
+- replication copies existing objects
+- replication is transitive
+- Transfer Acceleration moves your data closer to users
+- "use S3 Select" on a new account
+
+**Failure modes**
+- "replication is on, so we're backed up"  ↳ [[09-s3-advanced#Worked examples|open]]
+- the invisible multipart bill  ↳ [[09-s3-advanced#Worked examples|open]]
+
+**Comparisons**
+- [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
+- [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
@@ -448,7 +427,7 @@ full wording anyway.
 - The lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.  
   ↳ [[09-s3-security#Object Lock, and the delete that succeeds anyway|explain]]
 
-**Traps** [[09-s3-security|open]]
+**Traps** [[09-s3-security#The Terraform I wrote|open]]
 - Block Public Access can be overridden by a bucket policy
 - enabling default encryption encrypts what's already there
 - a presigned URL uses the recipient's permissions

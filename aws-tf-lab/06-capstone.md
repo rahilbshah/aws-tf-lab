@@ -173,7 +173,7 @@ flowchart TB
 
 ## Comparisons
 
-### RDS Multi-AZ vs Read Replica (the #1 RDS exam trap)
+### RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)
 
 |   | Multi-AZ | Read Replica |
 |---|---|---|
