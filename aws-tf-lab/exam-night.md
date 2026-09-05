@@ -16,7 +16,7 @@ that idea, not the top of the note. Trap and comparison entries are titles
 only, on purpose: the name is the hook, and if it doesn't fire you want the
 full wording anyway.
 
-*110 recall hooks · 172 pointers · ~25 min read*
+*116 recall hooks · 182 pointers · ~27 min read*
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
@@ -594,3 +594,35 @@ full wording anyway.
 - [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]]
 - [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]]
 - [[13-cost-optimization#The cost tools|The cost tools]]
+
+
+## [[14-dr-resilience|14 – Disaster recovery & resilience]]
+
+- HA survives losing a component, DR survives losing a Region — and the exam's DR questions are asking you to assemble services you already know.  
+  ↳ [[14-dr-resilience#What problem does this solve?|explain]]
+- RPO is how much data you can lose, RTO is how long you can be down, and the two together pick the strategy.  
+  ↳ [[14-dr-resilience#Two numbers decide everything: RTO and RPO|explain]]
+- The four strategies differ only in how much is already running in the recovery Region, and cost and recovery speed rise together.  
+  ↳ [[14-dr-resilience#The four strategies, and what's actually running|explain]]
+- Pilot light needs switching on before it can serve anything; warm standby is already serving, just small.  
+  ↳ [[14-dr-resilience#Pilot light vs warm standby — the distinction that gets tested|explain]]
+- Prefer data-plane operations for failover, because control planes are likelier to be degraded exactly when you need them.  
+  ↳ [[14-dr-resilience#Data plane vs control plane — why some failovers are more reliable|explain]]
+- Your RPO target picks the replication mechanism, and Aurora Global Database is the strongest answer whenever the question pairs cross-Region with a tight recovery window.  
+  ↳ [[14-dr-resilience#Which service buys you which RPO|explain]]
+
+**Traps** [[14-dr-resilience#Traps|open]]
+- pilot light vs warm standby
+- treating replication as backup
+- RTO and RPO swapped
+- automatic failover assumed to be the better answer
+- an RDS read replica used where Aurora Global Database belongs
+- a DR design that depends on the control plane
+
+**Failure modes**
+- replication that faithfully copied the disaster  ↳ [[14-dr-resilience#Worked examples|open]]
+
+**Comparisons**
+- [[14-dr-resilience#The four strategies side by side|The four strategies side by side]]
+- [[14-dr-resilience#HA vs DR|HA vs DR]]
+- [[14-dr-resilience#Picking a cross-Region database|Picking a cross-Region database]]

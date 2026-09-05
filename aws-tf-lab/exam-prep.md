@@ -104,7 +104,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ Compute Optimizer — [[13-cost-optimization]]
 
 ### Cross-cutting (whitepaper-level)
-- [ ] ☐ Disaster Recovery strategies (backup-restore → pilot light → warm standby → multi-site) + RTO/RPO
+- [x] ✅ Disaster Recovery strategies (backup-restore → pilot light → warm standby → multi-site) + RTO/RPO — [[14-dr-resilience]]
 - [ ] ☐ Well-Architected Framework (the 6 pillars)
 - [ ] ☐ Decoupling & serverless reference architectures
 

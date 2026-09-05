@@ -1,0 +1,117 @@
+---
+topic: 14-dr-resilience
+type: revision
+source: 14-dr-resilience
+tags: [revision, generated]
+---
+
+# Revision — 14 – Disaster recovery & resilience
+
+> [!abstract] Night-before read · ~11 min · self-contained
+> Everything you need is here — no need to jump back mid-revision.
+> Full teaching explanations, Terraform and diagrams: **[[14-dr-resilience]]**
+> *Generated from the note by `_scripts/build_revision.py` — do not edit.*
+## The shape of it
+
+> [!info] Exam TL;DR
+> - **RTO = how long you're down. RPO = how much data you lose.** Both set by the business. RPO is bought with replication; RTO is bought with pre-provisioned capacity.
+> - **HA survives a component or AZ. DR survives a Region** (or data corruption).
+> - **Four strategies, by how much is running in the DR Region:** backup & restore (nothing) → pilot light (data + core infra, **servers off**) → warm standby (**scaled-down but working**) → multi-site active/active (full, serving). Cost and speed rise together.
+> - **Pilot light vs warm standby:** pilot light **cannot serve a request without action first**; warm standby **can serve immediately, at reduced capacity**. It's about whether compute is *running*.
+> - **Backup & restore needs infrastructure as code** — you must rebuild infra, config and code, not just data. Back up and copy **AMIs** too.
+> - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
+> - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
+> - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
+> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to 5 secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
+> - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
+> - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
+
+## Facts, limits & pricing
+
+- **Four DR strategies:** backup & restore, pilot light, warm standby, multi-site active/active. **Hot standby** is a variant of multi-site that is active/**passive** — full capacity deployed, but only one Region takes traffic.
+- **Pilot light vs warm standby (AWS's own wording):** pilot light *"cannot process requests without additional action taken first"*; warm standby *"can handle traffic (at reduced capacity levels) immediately"*. Pilot light requires switching servers on and scaling up; warm standby requires only scaling up.
+- **For a disaster confined to one data centre**, a well-architected highly available workload may only need **backup & restore**. Pilot light, warm standby and multi-site are for **Region-level** disasters or regulatory requirements.
+- **Use data-plane operations during failover.** Data planes have higher availability design goals than control planes. Route 53 health checks and **Amazon Application Recovery Controller** (health checks used as manual on/off switches) are data plane; Route 53 weight changes, Global Accelerator traffic dials, and Auto Scaling are control plane.
+- **Auto Scaling is a control-plane dependency.** Provisioning full capacity instead — **static stability** — removes it, at the cost of paying for idle capacity.
+- **Automatic failover carries false-alarm risk.** AWS advises caution; a common pattern is fully scripted but **manually triggered** failover.
+- **Continuous cross-Region replication is available from:** S3 Replication, RDS read replicas, **Aurora Global Databases**, **DynamoDB Global Tables**, DocumentDB global clusters, and **ElastiCache Global Datastore**.
+- **Aurora Global Database:** typical cross-Region replication latency **under one second** (and well under 100 ms within a Region); a secondary can be promoted to read/write in **less than one minute**, even during a full regional outage; up to **five** secondary Regions; supports **write forwarding** from secondaries to the primary; can monitor RPO lag against a target.
+- **RDS (non-Aurora) read replica promotion takes a few minutes and involves a reboot** — materially worse than Aurora Global Database for DR.
+- **DynamoDB Global Tables** allow reads *and* writes in every Region, reconciling concurrent updates with **last writer wins**.
+- **S3 Cross-Region Replication does not replicate delete markers by default**, protecting the DR Region from deletions in the source. **S3 Replication Time Control (RTC)** gives a measurable replication window. **Versioning** protects against human error.
+- **AWS Backup supports cross-Region and cross-account copy**; cross-account protects against insider threat or account compromise. Note AWS Backup **does not currently support scheduled or automatic restore** — restore is a control-plane operation you may want to rehearse.
+- **AWS Backup's extra EC2 metadata** (instance type, VPC, security group, IAM role, monitoring config, tags) is **only used when restoring to the same Region**.
+- **AWS Elastic Disaster Recovery (DRS)** continuously replicates whole servers at block level from on-premises, another cloud, or EC2 — and implements a **pilot light** strategy with switched-off resources in a staging VPC. It does not cover RDS.
+- **Multi-site write strategies:** *write global* (all writes to one Region — Aurora Global Database), *write local* (write anywhere — DynamoDB Global Tables), *write partitioned* (writes routed by partition key — bidirectional S3 replication, currently two Regions).
+- **CloudFront origin failover** switches **per request** — subsequent requests still try the primary first, unlike a DNS or Global Accelerator failover which moves everything.
+- **AWS Resilience Hub** continuously validates whether a workload is likely to meet its RTO and RPO targets.
+
+## Comparisons
+
+### The four strategies side by side
+
+|   | **Backup & restore** | **Pilot light** | **Warm standby** | **Multi-site active/active** |
+|---|---|---|---|---|
+| Data in DR Region | backups | **continuously replicated** | continuously replicated | continuously replicated |
+| Infrastructure | none — redeploy from IaC | core deployed | **full stack, scaled down** | full stack |
+| Servers running | ❌ | ❌ **switched off** | ✅ **running, small** | ✅ running, full |
+| Can serve a request now | no | **no** | **yes, at low capacity** | yes |
+| Recovery work needed | redeploy + restore | **switch on + scale up** | **scale up only** | none — already live |
+| RTO | hours | tens of minutes | minutes | near zero |
+| Cost | lowest | low | medium | highest |
+
+### HA vs DR
+
+|   | **High availability** | **Disaster recovery** |
+|---|---|---|
+| Survives | an instance or an **Availability Zone** | a **Region**, or data corruption |
+| Typical tools | Multi-AZ, ASG across AZs, ALB, EFS Regional | cross-Region replication, Route 53/GA failover, backups |
+| Failover | automatic, seconds | strategy-dependent, seconds to hours |
+| Always paying for it | yes, and it's cheap | yes, and it's the whole cost question |
+
+### Picking a cross-Region database
+
+|   | **Aurora Global Database** | **RDS cross-Region read replica** | **DynamoDB Global Tables** |
+|---|---|---|---|
+| Replication lag | **< 1 second** typical | seconds to minutes | seconds |
+| Promotion / failover | **< 1 minute** | **minutes, plus a reboot** | none needed — already writable |
+| Writes in the DR Region | after promotion (or write forwarding) | after promotion | **always** |
+| Secondary Regions | up to **5** | multiple | many |
+| Conflict handling | single writer | single writer | **last writer wins** |
+
+## Worked examples
+
+> [!example] Worked example — reading the numbers to pick the strategy
+> *"A retail platform must survive the loss of its primary Region. Management will accept up to 15 minutes of downtime and at most 1 minute of lost orders. Cost matters."*
+> Work the two numbers separately. **RPO of 1 minute** rules out anything backup-based — AWS Backup cross-Region copy runs on a schedule measured in hours. It demands **continuous replication**: **Aurora Global Database** for the orders database (sub-second, promote in under a minute) and **S3 Cross-Region Replication** for assets. **RTO of 15 minutes** rules out backup & restore, which means redeploying everything. But 15 minutes is loose enough that you don't need a full active/active build — you can afford to switch servers on and scale. That lands on **pilot light**, tightening toward warm standby if 15 minutes proves optimistic. Route the traffic with **Route 53 failover** using health checks — a data-plane operation — and keep the record TTL low, because failover is bounded by `(interval × threshold) + TTL` ([[10-route53]]).
+
+> [!example] Worked example — why the DR plan failed its test
+> A team has warm standby: a scaled-down stack in `eu-west-1`, an ASG at desired capacity 2, Aurora Global Database replicating. They run a game day, fail over, and the site collapses under real traffic. Two causes, both classic. First, they depended on **Auto Scaling** to reach production capacity — a **control-plane** operation, and the very thing likely to be degraded in a regional event. Second, their **service quotas** in the DR Region were never raised, so scaling stopped well below production levels. The fixes: pre-provision enough capacity to absorb initial traffic without scaling (**static stability**), raise quotas in the DR Region ahead of time, and treat Auto Scaling as an optimisation rather than a dependency.
+
+> [!failure] Failure mode — replication that faithfully copied the disaster
+> A company runs S3 Cross-Region Replication and Aurora Global Database and considers itself protected. A bad deployment writes corrupted records for six hours; replication dutifully copies every one into the DR Region within seconds. Both copies are now wrong, and there is nothing to fail over *to*. **Replication is not backup** — it defends against losing infrastructure, not against losing correctness. The missing pieces: **point-in-time recovery** on the database and **S3 versioning** so the pre-corruption objects still exist. It's also exactly why S3 **doesn't replicate delete markers by default** — a deletion in the source Region shouldn't be able to destroy the DR copy.
+
+## Traps
+
+> [!warning] Trap — pilot light vs warm standby
+> The single most-tested pair here. **Pilot light cannot serve a request until you switch something on. Warm standby is already running and serving, just small.** Both replicate data; both have infrastructure in the DR Region. The only question is whether the compute is running. "Scale up" alone → warm standby. "Turn on, then scale up" → pilot light.
+
+> [!warning] Trap — treating replication as backup
+> Cross-Region replication copies corruption, bad deployments and malicious deletions perfectly. It protects against **losing** data, not against data becoming **wrong**. Any scenario mentioning corruption, ransomware, accidental deletion or a bad release needs **point-in-time recovery, versioning, or immutable backups** — not more replication.
+
+> [!warning] Trap — RTO and RPO swapped
+> **RPO is data loss. RTO is downtime.** A question giving "RPO of 5 minutes" is constraining your **replication**; "RTO of 5 minutes" is constraining how much **capacity is already running**. Answer the wrong one and you'll pick a strategy that's either far too expensive or far too slow.
+
+> [!warning] Trap — automatic failover assumed to be the better answer
+> AWS explicitly advises caution with automatically initiated failover, because a false alarm makes you incur real downtime and real data loss for nothing. A fully scripted, **manually triggered** failover is a legitimate and often preferred design. Don't reflexively pick "automatic".
+
+> [!warning] Trap — an RDS read replica used where Aurora Global Database belongs
+> Both give cross-Region replication. But an RDS read replica promotion takes **a few minutes and includes a reboot**, while Aurora Global Database replicates in **under a second** and promotes in **under a minute**. When a question pairs cross-Region with an aggressive RTO or RPO, the read replica is the distractor.
+
+> [!warning] Trap — a DR design that depends on the control plane
+> Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are **control-plane** operations, and control planes are less available than data planes exactly when you need them. Route 53 **health checks** and **Application Recovery Controller** are data plane. A "most resilient failover" question is usually asking you to spot this.
+
+> [!example]- Recall drill
+> (1) Which of RTO and RPO is about data loss? (2) The four strategies in order of cost — what's actually running in the DR Region for each? (3) The one-sentence test for pilot light vs warm standby? (4) Why prefer Route 53 health checks over changing Route 53 weights during a failover? (5) Your RPO is 1 second and the database is relational — what do you use? (6) Why doesn't replication protect against a bad deployment?
+> > [!success]- Answers
+> > (1) **RPO** — how much data you can lose. RTO is downtime. (2) Backup & restore: nothing but backups. Pilot light: data replicating + core infra, servers **off**. Warm standby: full stack running but **scaled down**. Multi-site: full stack **serving traffic**. (3) Could it serve a request right now with no action from you? No → pilot light. Yes, at low capacity → warm standby. (4) Health checks are a **data-plane** operation; changing weights is **control plane**, and control planes are less available during a disaster. (5) **Aurora Global Database** — sub-second replication, promote in under a minute. (6) Replication copies the corruption faithfully. You need point-in-time recovery or versioning.
