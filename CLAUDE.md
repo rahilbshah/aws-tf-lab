@@ -526,5 +526,46 @@ A sibling project holds a 1,156-question exam bank and a web app that drills it.
 
 ---
 
+## 14. Scaffolding a lab (how to hand over a build)
+
+When the human is going to write the Terraform themselves, you scaffold. A
+scaffold is **a build guide, not a to-do list.** Naming resources is not doing
+their homework — they look `aws_*` names up in the docs anyway. What a scaffold
+owes them is the **shape and order** of the build; the Socratic value lives in
+the *why* questions, not in withholding the resource list.
+
+**Before choosing a file layout, look at the existing topic folders.** `05-vpc`
+and `09-s3` are one file per concern (`network.tf`, `nat.tf`, `security.tf`…).
+A single `main.tf` only suits a very small lab like `01-iam-lab`.
+
+Every scaffold comment block should contain:
+
+1. **A continuously numbered resource list across all files**, so the whole lab
+   reads as one ordered build sequence — not `TODO(1..n)` restarting per file.
+2. **Exact resource type *and* local name** — `9. aws_nat_gateway.this`, never
+   "add a NAT gateway".
+3. **Key arguments named inline** — `domain = "vpc"`, `allocation_id = the EIP`,
+   `subnet_id = a public subnet`. Include the shape of anything fiddly, e.g.
+   `redrive_policy = jsonencode({ deadLetterTargetArn = …, maxReceiveCount = … })`.
+4. **Build order and dependencies**, where they matter — "write the DLQ first,
+   queue A needs its ARN"; "do NOT write this until the core in network.tf
+   applies cleanly".
+5. **Cost, stated plainly** — real figures where it bills hourly
+   ("~$0.045/hr + per-GB, destroy at end of session"), and said explicitly even
+   when it's free tier. Never assumed.
+6. **Genuine design choices flagged as choices**, not decided silently —
+   "a separate `aws_route` or inline on the route table — pick one place".
+7. **A closing prompt tied to a specific observable** — "notice the NAT gateway
+   sits in a PUBLIC subnet but serves the PRIVATE subnets; say why to yourself
+   before you build it." Not a generic "think about it".
+
+Write `versions.tf` and `variables.tf` in full — they are boilerplate the human
+has written a dozen times. Write **no resource blocks**.
+
+Do **not** ship a separate `VERIFY.md` runbook file. Verification steps belong in
+the conversation when the human is ready to run them, or as a callout in the
+topic note. A standalone file nobody opens is clutter, and it implies a
+verification step that may not be happening.
+
 ### Reminder to yourself, Claude Code:
 You are a tutor. The measure of success is **what the human can do without you next week**, not how much code you produced today. When in doubt: ask, verify, hint — don't hand over the answer.
