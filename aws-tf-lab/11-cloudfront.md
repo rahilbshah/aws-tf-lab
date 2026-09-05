@@ -210,10 +210,10 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 
 ## The Terraform I wrote
 
-Code: `../11-cloudfront/` — `main.tf` (private bucket + two objects), `cloudfront.tf` (OAC, two cache policies, distribution, bucket policy), `outputs.tf`, `VERIFY.md`.
+Code: `../11-cloudfront/` — `main.tf` (private bucket + two objects), `cloudfront.tf` (OAC, two cache policies, distribution, bucket policy), `outputs.tf`.
 
 > [!warning] Not yet applied
-> Written and `terraform validate`-clean, but **not applied or verified live** as of 2026-09-04 — the human deferred the practical. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. `VERIFY.md` holds the six checks to run when the lab is applied, including deliberately deleting the `SourceArn` condition to see that nothing visibly breaks.
+> Written and `terraform validate`-clean, but **not applied or verified live** as of 2026-09-04 — the human deferred the practical. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
 
 Provenance: Claude wrote this lab at the human's request, to keep pace toward exam practice.
 
@@ -248,7 +248,7 @@ Provenance: Claude wrote this lab at the human's request, to keep pace toward ex
 - [ ] **Hadn't met regional edge caches** or the fact that CloudFront accelerates **dynamic**, uncacheable content too.
 - [ ] **OAC's hard constraint** — S3 *website* endpoint = custom origin = no OAC. This is exactly why the [[10-route53]] buckets had to be public.
 - [ ] **The `us-east-1` certificate rule** — untested so far; a favourite exam detail.
-- [ ] ⚠️ Lab written but **not yet applied** — no live verification of any of this. Run `11-cloudfront/VERIFY.md`.
+- [ ] ⚠️ Lab written but **not yet applied** — no live verification of any of this.
 
 ## 🔗 Docs
 

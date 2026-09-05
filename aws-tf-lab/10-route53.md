@@ -263,7 +263,7 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 
 ## The Terraform I wrote
 
-Code: `../10-route53/` — `main.tf` (zone), `websites.tf` (two S3 static sites, us-east-1 + us-west-2), `health.tf`, `records.tf` (all six policies), `outputs.tf`, plus `VERIFY.md` (the `dig` runbook).
+Code: `../10-route53/` — `main.tf` (zone), `websites.tf` (two S3 static sites, us-east-1 + us-west-2), `health.tf`, `records.tf` (all six policies), `outputs.tf`.
 
 **Provenance, honestly:** Claude wrote this one at my request, on the argument that Route 53's HCL is thin (one resource type, six nested blocks) while the learning is in the DNS behaviour. I owned every verification instead — predicting each `dig` result before running it.
 
