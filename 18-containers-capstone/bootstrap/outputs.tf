@@ -43,3 +43,8 @@
 #   DynamoDB table every tutorial still tells you to build. Watch it appear
 #   once and you will never wonder what use_lockfile actually does.
 # ==========================================================================
+
+output "state_bucket" {
+  description = "Name of the S3 bucket used for Terraform remote state"
+  value       = aws_s3_bucket.state.id
+}
