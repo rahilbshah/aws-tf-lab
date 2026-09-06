@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*56 comparison tables · 109 discriminators · ~19 min read*
+*58 comparison tables · 115 discriminators · ~20 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -350,3 +350,21 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[15-decoupling#Traps|note]]
 - **Amazon MQ picked for a new application** — Amazon MQ exists for migration: an existing app already speaking a standard broker protocol that you don't want to rewrite.  
   ↳ [[15-decoupling#Traps|note]]
+
+
+## [[16-kinesis|16 – Kinesis (Data Streams & Data Firehose)]]
+
+**Compare:** [[16-kinesis#SQS vs SNS vs Kinesis|SQS vs SNS vs Kinesis]] · [[16-kinesis#Data Streams vs Firehose|Data Streams vs Firehose]]
+
+- **SQS chosen where replay or multiple consumers are needed** — The single most-tested distinction here. SQS deletes a message once processed, so a second consumer can never see it and nothing can be re-read.  
+  ↳ [[16-kinesis#Traps|note]]
+- **assuming ordering across the whole stream** — Kinesis guarantees order within a shard, not across the stream. Two records with different partition keys may be processed in any relative order.  
+  ↳ [[16-kinesis#Traps|note]]
+- **a low-cardinality partition key** — Adding shards does nothing if the partition key only produces a handful of hash values. A key like region or event_type concentrates traffic on a few shards while the rest idle, and the stream throttles far below its nominal capacity.  
+  ↳ [[16-kinesis#Traps|note]]
+- **Firehose expected to store or replay** — Firehose has no retention period and no concept of re-reading. It buffers briefly and delivers.  
+  ↳ [[16-kinesis#Traps|note]]
+- **Firehose treated as real-time** — Firehose buffers by size or interval before delivering, so it is near real-time — seconds to minutes, not milliseconds.  
+  ↳ [[16-kinesis#Traps|note]]
+- **forgetting that read throughput is shared** — A shard's 2 MB/sec read is split across all consumers using the default shared fan-out.  
+  ↳ [[16-kinesis#Traps|note]]

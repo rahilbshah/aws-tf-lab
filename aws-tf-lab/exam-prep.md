@@ -67,7 +67,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ SNS (fan-out) — [[15-decoupling]]
 - [ ] ☐ EventBridge
 - [ ] ☐ Step Functions
-- [ ] ☐ Kinesis (Data Streams / Firehose)
+- [x] ✅ Kinesis (Data Streams / Firehose) — [[16-kinesis]] *(conceptual-only: both services are blocked on this account's AWS Free plan)*
 
 ### Security, Identity & Compliance
 - [x] ✅ IAM (users/groups/roles/policies, evaluation) — [[01-iam]]

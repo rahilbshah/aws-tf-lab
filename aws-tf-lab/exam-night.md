@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*118 recall hooks · 192 pointers · ~20 min read*
+*123 recall hooks · 201 pointers · ~20 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -640,3 +640,32 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[15-decoupling#SQS vs SNS|SQS vs SNS]]
 - [[15-decoupling#Standard vs FIFO queues|Standard vs FIFO queues]]
 - [[15-decoupling#SQS vs SNS vs Amazon MQ|SQS vs SNS vs Amazon MQ]]
+
+
+## [[16-kinesis|16 – Kinesis (Data Streams & Data Firehose)]]
+
+- SQS deletes a message when it's done; Kinesis keeps every record for its retention period so any number of consumers can read, and re-read, the same data.  
+  ↳ [[16-kinesis#What problem does this solve?|explain]]
+- A shard is one partition and one fixed slice of throughput — 1 MB/sec or 1,000 records/sec in, 2 MB/sec out shared between all consumers.  
+  ↳ [[16-kinesis#Shards — capacity and partitioning in one thing|explain]]
+- The partition key hashes to a shard, order is guaranteed only inside a shard, and picking a high-cardinality key is what buys you ordering and parallelism together.  
+  ↳ [[16-kinesis#The partition key decides both placement and ordering|explain]]
+- Data Streams stores and you build the consumer; Firehose delivers to a destination and you build nothing — and Firehose can read from a stream, so it's usually both.  
+  ↳ [[16-kinesis#Data Streams vs Firehose — a store versus a pipe|explain]]
+- Shared fan-out splits one shard's 2 MB/sec between all consumers; enhanced fan-out gives each registered consumer its own 2 MB/sec, pushed rather than polled.  
+  ↳ [[16-kinesis#Reading: shared fan-out versus enhanced fan-out|explain]]
+
+**Traps** [[16-kinesis#Traps|open]]
+- SQS chosen where replay or multiple consumers are needed
+- assuming ordering across the whole stream
+- a low-cardinality partition key
+- Firehose expected to store or replay
+- Firehose treated as real-time
+- forgetting that read throughput is shared
+
+**Failure modes**
+- the hot shard  ↳ [[16-kinesis#Worked examples|open]]
+
+**Comparisons**
+- [[16-kinesis#SQS vs SNS vs Kinesis|SQS vs SNS vs Kinesis]]
+- [[16-kinesis#Data Streams vs Firehose|Data Streams vs Firehose]]
