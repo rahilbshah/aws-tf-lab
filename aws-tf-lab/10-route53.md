@@ -75,7 +75,7 @@ If the scenario wants controlled proportions, that's **weighted**. If it wants r
 | | Reads | The dial you turn |
 |---|---|---|
 | **Geolocation** | where the **user** is — continent, country, US state | none; you map locations to records |
-| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment |
+| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment (the console **bias maps** need Traffic Flow; the policy itself does not) |
 
 "German users must get the German site" is geolocation — a localization/compliance sentence. "Shift more traffic toward the bigger data centre" is geoproximity bias — a capacity sentence.
 

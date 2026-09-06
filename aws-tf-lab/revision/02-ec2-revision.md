@@ -72,7 +72,7 @@ flowchart TD
 - **AMI = metadata + reference to EBS snapshots** for modern EBS-backed AMIs. Snapshots hold the disk data; AMI bundles them with kernel/architecture/virtualization-type metadata to make them launchable.
 - **Billing:**
   - **On-Demand** — per-second after a 60-second minimum for Linux, Windows and RHEL/Ubuntu Pro. **SLES is the one still billed as a full hour.**
-  - **Free Tier** — accounts created before **15 Jul 2025**: `t2.micro`/`t3.micro`, 750 hrs/month, 12 months. Accounts created on or after: `t3.micro`/`t3.small`/`t4g.micro`/`t4g.small`/`c7i-flex.large`/`m7i-flex.large`, funded by $100 sign-up credits and ending at **6 months or when the credits run out** — this account is on that newer plan.
+  - **Free Tier** — accounts created before **15 Jul 2025**: `t2.micro`/`t3.micro`, 750 hrs/month, 12 months. Accounts created on or after: `t3.micro`/`t3.small`/`t4g.micro`/`t4g.small`/`c7i-flex.large`/`m7i-flex.large`, funded by credits — **$100 on sign-up plus up to $100 more** as you use foundational services — and ending at **6 months or when the credits run out** — this account is on that newer plan.
   - **Public IPv4** — since **Feb 2024**, all IPv4 public addresses cost ~$0.005/hour. Old "EIP free while attached" rule no longer applies.
   - **EBS** — `gp3` ~$0.08/GB-month in `us-east-1`; ⚠️ verify current pricing.
 - **`delete_on_termination` defaults differ by volume role:**
