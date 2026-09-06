@@ -12,7 +12,7 @@ tags: [job-skill, packer]
 Packer is the tool that makes an AMI. This note is the job-skills companion to [[02-ec2]]: how a server image gets built once, deliberately, instead of being reassembled on every single boot.
 
 > [!note] Not an SAA-C03 exam topic
-> Packer doesn't appear on the exam. This note is a job-skills reference, so it skips the full §13 layered template (no flashcards/MCQs/traps) and carries `exam: false` so the mock-exam generator never pulls from it. Kept short on purpose.
+> Packer doesn't appear on the exam. This note is a job-skills reference, so it skips the full §13 layered template (no MCQs or traps) and carries `exam: false` so the mock-exam generator never pulls from it. Kept short on purpose.
 
 ## What problem does this solve?
 

@@ -4,7 +4,7 @@ domain: secure
 status: reviewed
 services: [S3, KMS]
 related: [09-s3, 09-s3-intro, 09-s3-advanced, 01-iam]
-cards: cards/09-s3-security-cards
+revision: revision/09-s3-security-revision
 tags: [topic, domain/secure]
 ---
 
@@ -319,4 +319,4 @@ Non-obvious things:
 - [Terraform `aws_s3_bucket_public_access_block`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) / [`aws_s3_bucket_object_lock_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_object_lock_configuration)
 
 ---
-**Cards for this topic:** [[cards/09-s3-security-cards]]
+**Self-test for this topic:** [[revision/09-s3-security-revision#Self-test]]

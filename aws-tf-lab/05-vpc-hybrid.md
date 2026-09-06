@@ -4,7 +4,7 @@ domain: secure
 status: reviewed
 services: [Site-to-Site VPN, Direct Connect, Virtual Private Gateway, Transit Gateway]
 related: [05-vpc, 05-vpc-endpoints-peering, 05-vpc-core]
-cards: cards/05-vpc-hybrid-cards
+revision: revision/05-vpc-hybrid-revision
 tags: [topic, domain/secure]
 ---
 
@@ -238,4 +238,4 @@ None — **conceptual-only** (build tier: no apply). A real setup requires a phy
 - [Direct Connect Gateway](https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-gateways.html)
 
 ---
-**Cards for this topic:** [[cards/05-vpc-hybrid-cards]]
+**Self-test for this topic:** [[revision/05-vpc-hybrid-revision#Self-test]]

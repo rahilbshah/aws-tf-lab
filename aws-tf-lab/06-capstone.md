@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [VPC, ALB, ASG, RDS, Terraform Modules]
 related: [05-vpc-core, 04-alb-asg, 02-ec2, 01-iam, 03-ami-bake]
-cards: cards/06-capstone-cards
+revision: revision/06-capstone-revision
 tags: [topic, domain/resilient, capstone]
 ---
 
@@ -277,4 +277,4 @@ The DB is private (no public IP; `db-sg` allows only the app tier), so reaching 
 - [Terraform `aws_db_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) / [`aws_db_subnet_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group)
 
 ---
-**Cards for this topic:** [[cards/06-capstone-cards]]
+**Self-test for this topic:** [[revision/06-capstone-revision#Self-test]]

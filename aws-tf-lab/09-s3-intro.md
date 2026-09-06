@@ -4,7 +4,7 @@ domain: performance
 status: reviewed
 services: [S3]
 related: [09-s3, 09-s3-security, 05-vpc-endpoints-peering]
-cards: cards/09-s3-intro-cards
+revision: revision/09-s3-intro-revision
 tags: [topic, domain/performance]
 ---
 
@@ -256,4 +256,4 @@ Non-obvious things:
 - [Terraform `aws_s3_bucket`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) / [`aws_s3_object`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object)
 
 ---
-**Cards for this topic:** [[cards/09-s3-intro-cards]]
+**Self-test for this topic:** [[revision/09-s3-intro-revision#Self-test]]

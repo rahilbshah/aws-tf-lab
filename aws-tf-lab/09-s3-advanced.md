@@ -4,7 +4,7 @@ domain: performance
 status: reviewed
 services: [S3]
 related: [09-s3, 09-s3-intro, 09-s3-security, 01-iam]
-cards: cards/09-s3-advanced-cards
+revision: revision/09-s3-advanced-revision
 tags: [topic, domain/performance]
 ---
 
@@ -259,4 +259,4 @@ Non-obvious things:
 - [Terraform `aws_s3_bucket_replication_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_replication_configuration) / [`aws_s3_bucket_notification`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_notification)
 
 ---
-**Cards for this topic:** [[cards/09-s3-advanced-cards]]
+**Self-test for this topic:** [[revision/09-s3-advanced-revision#Self-test]]

@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [SQS, SNS, AmazonMQ]
 related: [04-alb-asg, 14-dr-resilience, 09-s3-advanced, 08-elasticache]
-cards: cards/15-decoupling-cards
+revision: revision/15-decoupling-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -260,4 +260,4 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - [Terraform `aws_sqs_queue`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) / [`aws_sns_topic_subscription`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription)
 
 ---
-**Cards for this topic:** [[cards/15-decoupling-cards]]
+**Self-test for this topic:** [[revision/15-decoupling-revision#Self-test]]

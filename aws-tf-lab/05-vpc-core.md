@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [VPC, NAT Gateway, Internet Gateway]
 related: [05-vpc, 05-vpc-security, 04-alb-asg, 02-ec2]
-cards: cards/05-vpc-core-cards
+revision: revision/05-vpc-core-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -246,4 +246,4 @@ Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../
 - [Terraform `aws_vpc`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) / [`aws_nat_gateway`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway)
 
 ---
-**Cards for this topic:** [[cards/05-vpc-core-cards]]
+**Self-test for this topic:** [[revision/05-vpc-core-revision#Self-test]]

@@ -273,17 +273,16 @@ This repo doubles as the human's SAA-C03 study system, **maintained as an Obsidi
 
 - The `aws-tf-lab/` folder **is** the Obsidian vault root. The human opens it in Obsidian via *Open folder as vault*.
 - Required community plugins:
-  - **Spaced Repetition** by *st3v3nmw* — turns Q/A blocks in cards files into review cards.
   - **Obsidian Git** — auto-commits and pulls the vault across devices via the repo's git history.
   - **Dataview** by *Michael Brenan* — powers the auto-generated index and weak-spots aggregation in `README.md` (§13.8).
 - Core plugins worth turning on: Templates, Tag pane, Graph view, Properties view.
-- Old `aws-tf-lab/anki/` folder is deprecated — do not maintain it.
+- Old `aws-tf-lab/anki/` folder is deprecated — do not maintain it. The `cards/` folder and the **Spaced Repetition** plugin are **retired** (2026-09-06): 368 cards were written and 3 were ever reviewed, and because they were hand-written they drifted out of step with the notes — a currency sweep corrected 58 facts in the notes and every card kept asserting the old ones. **Do not write flashcards.** Recall practice now comes from the generated self-test (§13.7).
 
 ### 13.2 When notes get written
 
 - **Only at §9 step 8 (end of a topic).** Never interrupt orientation, building, review, or quizzing to take notes.
 - Notes are *written*, not *dumped* — see §13.6 (researcher+author mode) for what writing a note actually involves.
-- After writing, always update the cards file (§13.7) and `README.md` (§13.8) in the same step.
+- After writing, always re-run the generators (§13.7) and update `README.md` (§13.8) in the same step.
 
 ### 13.3 Where notes live
 
@@ -291,34 +290,36 @@ This repo doubles as the human's SAA-C03 study system, **maintained as an Obsidi
 aws-tf-lab/                     # this folder = the Obsidian vault root
 ├── README.md                   # vault home: Dataview-powered index + weak-spots
 ├── _templates/
-│   ├── topic-template.md       # reference note template (§13.5)
-│   └── cards-template.md       # cards file template (§13.7)
+│   └── topic-template.md       # reference note template (§13.5)
 ├── 01-iam.md                   # reference note (reading/teaching material)
 ├── 02-vpc.md
-├── cards/
-│   ├── 01-iam-cards.md         # SR cards for IAM (review material)
-│   ├── 02-vpc-cards.md
+├── revision/                   # GENERATED — never hand-edit
+│   ├── 00-index.md
+│   ├── 01-iam-revision.md       # night-before read + self-test (§13.7)
 │   └── ...
+├── exam-night.md               # GENERATED — morning skim
+├── discriminators.md           # GENERATED — every "X vs Y" in the vault
+├── _scripts/                   # the generators
 └── ...
 ```
 
-**The split matters.** Reference notes and SR cards do different jobs — teaching vs active recall — and they should live in different files. The reference note stays clean reading material; the cards file stays focused review material. The SR plugin scans the whole vault, so cards-in-a-subfolder works perfectly.
+**One source, many derived views.** The reference note is the ONLY hand-written artifact. Everything else — the revision docs, their self-tests, `exam-night.md`, `discriminators.md` — is generated from it verbatim by `_scripts/`. This is not a style preference: the retired cards proved that any hand-maintained second copy of a fact will eventually contradict the first, and the copy nobody opens is the one that rots. **If you find yourself about to hand-write a fact twice, generate it instead.** After editing any note, re-run the generators.
 
 **Large topics split across concept notes.** When a topic is too big for one readable note (VPC is the canonical case — it spans subnets, routing, NAT, SG/NACL, endpoints, peering, hybrid connectivity), split it:
 - One **index / map-of-content note** (`NN-topic.md`, tag it `moc`) with the exam TL;DR, a master diagram, and a table linking each sub-note.
-- Several **concept notes** (`NN-topic-core.md`, `NN-topic-security.md`, …), each self-contained with its own frontmatter, worked examples, weak spots, and its own **cards file** (`cards/NN-topic-core-cards.md`).
+- Several **concept notes** (`NN-topic-core.md`, `NN-topic-security.md`, …), each self-contained with its own frontmatter, worked examples and weak spots (its revision doc and self-test are generated).
 - Cross-link liberally between them so Obsidian's graph shows the real structure.
 - **Cadence for big topics:** capture per sub-concept (build → verify → note that chunk) rather than waiting for the whole topic to finish — this overrides the "notes only at §9 step 8" rule for topics genuinely too large to hold in one session. Confirm the split with the human first.
 
-**Depth standard (single source of truth for the exam).** The notes must be complete enough that the human never needs to re-watch the videos. That means *coverage* (every sub-concept the human studied gets a section, even ones not built in Terraform — some are conceptual-only, e.g. Direct Connect) and *card density* (every exam-testable fact becomes a flashcard). Complete, not verbose — keep the recall-first discipline (§13.11); comprehensiveness is about breadth of coverage and card count, not longer prose.
+**Depth standard (single source of truth for the exam).** The notes must be complete enough that the human never needs to re-watch the videos. That means *coverage* (every sub-concept the human studied gets a section, even ones not built in Terraform — some are conceptual-only, e.g. Direct Connect) and *testable density* (every exam-testable distinction ends up in a comparison table or a trap callout, because those are what the self-test generator turns into drills — a fact stated only in prose is never drilled). Complete, not verbose — keep the recall-first discipline (§13.11); comprehensiveness is about breadth of coverage, not longer prose.
 
 **Build tiers.** Not every concept is built hands-on. Mark each concept's tier so it's clear what was verified vs learned: *build (free)*, *build (paid peek — apply briefly, destroy same session)*, or *conceptual-only* (learn from notes + Mermaid + a Terraform sketch you read but never apply — e.g. Direct Connect, Transit Gateway, Site-to-Site VPN).
 
 ### 13.4 Obsidian conventions you must follow
 
-- **YAML frontmatter** on every topic note AND every cards file (templates in §13.5 and §13.7).
-- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets|subnets]]`. Each reference note should link to its cards file: `[[cards/01-iam-cards]]`.
-- **Tags** inline: `#weak-spot`, `#trap`, `#domain/secure`, etc. Cards files use `tags: [flashcards/<topic>]` in frontmatter to be picked up by the SR plugin.
+- **YAML frontmatter** on every topic note (template in §13.5).
+- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets|subnets]]`. Each reference note links to its self-test: `[[revision/01-iam-revision#Self-test]]`.
+- **Tags** inline: `#weak-spot`, `#trap`, `#domain/secure`, etc.
 - **Callouts** for structured blocks (the `-` after `]` makes them foldable):
   - `> [!info] Exam TL;DR` — must-know-for-the-exam summary.
   - `> [!example] Worked example` — concrete scenario showing the concept in action (§13.5).
@@ -330,7 +331,7 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 
 ### 13.5 Per-topic reference note structure (template)
 
-Every reference note follows `_templates/topic-template.md`. Note: **flashcards no longer live here** — they go in the cards file (§13.7). The reference note's job is teaching and reference; the cards file's job is recall practice.
+Every reference note follows `_templates/topic-template.md`. Note: **there are no flashcards anywhere** (§13.7) — recall practice is generated. The reference note's job is teaching and reference; the cards file's job is recall practice.
 
 ````markdown
 ---
@@ -339,7 +340,7 @@ domain: secure                # one of: secure | resilient | performance | cost
 status: draft                 # draft | reviewed | mastered
 services: [IAM]
 related: [02-vpc]             # wiki-link targets (no .md extension)
-cards: cards/01-iam-cards     # the matching cards file
+revision: revision/01-iam-revision   # generated night-before read + self-test
 tags: [topic, domain/secure]
 ---
 
@@ -403,7 +404,7 @@ graph LR
 - [Terraform aws_iam_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
 
 ---
-**Cards for this topic:** [[cards/01-iam-cards]]
+**Self-test for this topic:** [[revision/01-iam-revision#Self-test]]
 ````
 
 ### 13.6 How you write a note — researcher+author mode (this is the biggest behavioral rule)
@@ -426,38 +427,41 @@ Run this checklist mentally; fix anything missing before saving:
 - [ ] At least one **failure mode** is described.
 - [ ] At least three **wiki-links** to related notes (where genuinely relevant — don't pad).
 - [ ] The "Production gap" / "in production you'd also want X" call-out is concrete with named services.
-- [ ] Cards file is updated to match the latest understanding.
+- [ ] Generators re-run (§13.7) so the revision doc and self-test match the new text.
 - [ ] No filler — every section earned its place.
 
 If you can't satisfy the checklist with what you know, **search before writing** rather than guessing.
 
-### 13.7 Per-topic cards file (template)
+### 13.7 Recall practice — the generated self-test
 
-The cards file is the *only* place SR cards live. It holds the Q/?/A pairs and nothing else.
+**There are no flashcards. Do not write any.** Recall practice is generated, not authored.
 
-````markdown
----
-topic: 01-iam
-domain: secure
-related_note: 01-iam
-tags: [flashcards/iam]
----
+Every revision doc (`revision/NN-topic-revision.md`) ends in a `## Self-test` section built by
+`_scripts/_selftest.py`. It takes two things out of the note and turns them into drills:
 
-# Cards for [[01-iam]]
-*Spaced-repetition cards. Review via the SR plugin command palette.*
+- **Every comparison table** becomes a blanked grid — row labels and column headers kept, cells
+  emptied — with the real table folded underneath as the answer.
+- **Every `> [!warning] Trap —` callout** becomes a question, with the trap body as the answer.
 
-What is IAM's policy evaluation order?
-?
-Implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything. One Deny anywhere = no access.
+Two consequences you must design notes around:
 
-Which AWS region does IAM live in?
-?
-None — IAM is global. Same identities and policies seen from every region.
+1. **A distinction that lives only in prose is never drilled.** If a fact is worth testing, it
+   belongs in a comparison table or a trap callout. That is now the main reason to reach for a
+   table — not decoration, but making the fact drillable.
+2. **The self-test cannot contradict the note**, because every answer is lifted verbatim. This is
+   the whole point. The retired cards drifted precisely because a human wrote each fact twice.
 
-(... and so on)
-````
+Regenerate after editing any note:
 
-The `tags: [flashcards/<topic>]` in frontmatter is what registers the cards with the SR plugin under that topic's sub-deck.
+```bash
+python3 _scripts/build_revision.py        # revision docs + self-tests
+python3 _scripts/build_exam_night.py      # morning skim sheet
+python3 _scripts/build_discriminators.py  # every "X vs Y" in the vault
+```
+
+Why this shape: the human's measured failure mode is **discrimination**, not recall — answers
+marked "sure" and still wrong, where the fact was known but the wrong one of two neighbours was
+retrieved. "What is X?" does not test that. "Produce both columns and the axis between them" does.
 
 ### 13.8 Cross-topic review (`aws-tf-lab/README.md`) — Dataview-powered
 
@@ -470,7 +474,7 @@ The `tags: [flashcards/<topic>]` in frontmatter is what registers the cards with
 ```dataview
 TABLE domain, status, file.mtime as "Updated"
 FROM ""
-WHERE topic AND !contains(file.path, "cards/") AND !contains(file.path, "_templates/")
+WHERE topic AND !contains(file.path, "revision/") AND !contains(file.path, "_templates/")
 SORT file.name ASC
 ```
 
@@ -484,7 +488,7 @@ FROM #weak-spot
 ```dataview
 TABLE length(rows) as "Count"
 FROM ""
-WHERE topic AND !contains(file.path, "cards/")
+WHERE topic AND !contains(file.path, "revision/")
 GROUP BY status
 ```
 ````
@@ -518,7 +522,7 @@ A sibling project holds a 1,156-question exam bank and a web app that drills it.
 **The rule, in one line: the trainer reports what the human got *wrong*. It never writes what is *true*.**
 
 - **May cross into the vault:** measurements about the human — a missed *concept* appended to `## 🔴 My weak spots`, dated and marked as trainer-sourced, one line per concept (never per question id). This is already what §13.9 does by hand.
-- **Must never cross:** facts, traps, comparison tables, `## Key facts, limits & pricing` entries, SR cards, or whole generated notes. §13.10 requires every fact to be verified against AWS docs *at the time of writing*; the bank is third-party practice-exam content that is calibrated for **exam realism, not truth** — it shipped 13 wrong answer keys and carries 223 aged questions. Different standard. The vault holds the higher one.
+- **Must never cross:** facts, traps, comparison tables, `## Key facts, limits & pricing` entries, or whole generated notes. §13.10 requires every fact to be verified against AWS docs *at the time of writing*; the bank is third-party practice-exam content that is calibrated for **exam realism, not truth** — it shipped 13 wrong answer keys and carries 223 aged questions. Different standard. The vault holds the higher one.
 - **Legitimate use of the bank:** shaping *what I ask and what I check for coverage* — "the bank has uncovered S3 encryption and Object Lock discriminators, so make sure the security note covers them." It shapes the questions, never the answers.
 - **Counting caution:** the bank's `services[]` lists every service a question *names*, including in its wrong answers. Any count must use `topics[]` and must say whether it counts questions or tag-instances. Two separate analyses have already over-reported by counting mentions instead of subject.
 

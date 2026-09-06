@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [RDS, Aurora]
 related: [06-capstone, 08-elasticache, 05-vpc-core]
-cards: cards/07-rds-aurora-cards
+revision: revision/07-rds-aurora-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -315,4 +315,4 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 - [Terraform `aws_rds_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster)
 
 ---
-**Cards for this topic:** [[cards/07-rds-aurora-cards]]
+**Self-test for this topic:** [[revision/07-rds-aurora-revision#Self-test]]

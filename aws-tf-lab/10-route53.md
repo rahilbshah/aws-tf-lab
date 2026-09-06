@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [Route53]
 related: [04-alb-asg, 05-vpc-hybrid, 09-s3-intro, 06-capstone]
-cards: cards/10-route53-cards
+revision: revision/10-route53-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -324,4 +324,4 @@ Non-obvious bits:
 - [Terraform `aws_route53_record`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)
 
 ---
-**Cards for this topic:** [[cards/10-route53-cards]]
+**Self-test for this topic:** [[revision/10-route53-revision#Self-test]]

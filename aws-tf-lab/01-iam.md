@@ -4,7 +4,7 @@ domain: secure
 status: reviewed
 services: [IAM]
 related: [02-ec2]
-cards: cards/01-iam-cards
+revision: revision/01-iam-revision
 tags: [topic, domain/secure]
 ---
 
@@ -413,4 +413,4 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 - [GitHub Actions OIDC ↔ AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) — provider URL, audience, `sub` claim format verified 2026-06
 
 ---
-**Cards for this topic:** [[cards/01-iam-cards]] · **Next:** [[01-iam-advanced]]
+**Self-test for this topic:** [[revision/01-iam-revision#Self-test]] · **Next:** [[01-iam-advanced]]

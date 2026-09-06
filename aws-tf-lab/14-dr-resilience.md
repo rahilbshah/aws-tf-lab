@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [Route53, GlobalAccelerator, Aurora, DynamoDB, S3, AWSBackup, CloudFormation]
 related: [07-rds-aurora, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced]
-cards: cards/14-dr-resilience-cards
+revision: revision/14-dr-resilience-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -263,4 +263,4 @@ For routing traffic to whichever Region is live: **Route 53 failover** with heal
 - [Terraform `aws_rds_global_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)
 
 ---
-**Cards for this topic:** [[cards/14-dr-resilience-cards]]
+**Self-test for this topic:** [[revision/14-dr-resilience-revision#Self-test]]

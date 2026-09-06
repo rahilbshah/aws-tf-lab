@@ -4,7 +4,7 @@ domain: secure
 status: reviewed
 services: [IAM, Organizations, ControlTower, IdentityCenter]
 related: [01-iam, 09-s3-security, 06-capstone]
-cards: cards/01-iam-advanced-cards
+revision: revision/01-iam-advanced-revision
 tags: [topic, domain/secure]
 ---
 
@@ -302,4 +302,4 @@ flowchart LR
 - [What is AWS Control Tower](https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html) — landing zone, controls (preventive/detective/proactive), Account Factory, drift; verified 2026-08-30
 
 ---
-**Cards for this topic:** [[cards/01-iam-advanced-cards]] · **Foundations:** [[01-iam]]
+**Self-test for this topic:** [[revision/01-iam-advanced-revision#Self-test]] · **Foundations:** [[01-iam]]

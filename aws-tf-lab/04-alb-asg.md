@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [ALB, ASG, ELB, EC2]
 related: [02-ec2, 03-ami-bake, 01-iam]
-cards: cards/04-alb-asg-cards
+revision: revision/04-alb-asg-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -373,4 +373,4 @@ Non-obvious bits:
 - [Terraform `aws_autoscaling_policy`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy)
 
 ---
-**Cards for this topic:** [[cards/04-alb-asg-cards]]
+**Self-test for this topic:** [[revision/04-alb-asg-revision#Self-test]]

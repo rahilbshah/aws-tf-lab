@@ -4,7 +4,7 @@ domain: resilient
 status: reviewed
 services: [EFS, FSx, StorageGateway, DataSync, Snow, AWSBackup]
 related: [09-s3-intro, 02-ec2, 05-vpc-hybrid, 07-rds-aurora]
-cards: cards/12-storage-extras-cards
+revision: revision/12-storage-extras-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -272,4 +272,4 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - [Terraform `aws_efs_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system) / [`aws_fsx_windows_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/fsx_windows_file_system) / [`aws_backup_plan`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_plan)
 
 ---
-**Cards for this topic:** [[cards/12-storage-extras-cards]]
+**Self-test for this topic:** [[revision/12-storage-extras-revision#Self-test]]

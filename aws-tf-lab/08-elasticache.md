@@ -4,7 +4,7 @@ domain: performance
 status: reviewed
 services: [ElastiCache, Redis, Memcached]
 related: [07-rds-aurora, 06-capstone]
-cards: cards/08-elasticache-cards
+revision: revision/08-elasticache-revision
 tags: [topic, domain/performance]
 ---
 
@@ -243,4 +243,4 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 - [Terraform `aws_elasticache_replication_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group)
 
 ---
-**Cards for this topic:** [[cards/08-elasticache-cards]]
+**Self-test for this topic:** [[revision/08-elasticache-revision#Self-test]]

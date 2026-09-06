@@ -4,7 +4,7 @@ domain: cost
 status: reviewed
 services: [EC2, SavingsPlans, CostExplorer, Budgets, ComputeOptimizer, TrustedAdvisor]
 related: [02-ec2, 09-s3-intro, 05-vpc-endpoints-peering, 01-iam-advanced, 07-rds-aurora]
-cards: cards/13-cost-optimization-cards
+revision: revision/13-cost-optimization-revision
 tags: [topic, domain/cost]
 ---
 
@@ -273,4 +273,4 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - [Terraform `aws_budgets_budget`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) / [`aws_ec2_capacity_reservation`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ec2_capacity_reservation)
 
 ---
-**Cards for this topic:** [[cards/13-cost-optimization-cards]]
+**Self-test for this topic:** [[revision/13-cost-optimization-revision#Self-test]]

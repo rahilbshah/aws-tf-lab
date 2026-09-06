@@ -4,7 +4,7 @@ domain: performance
 status: reviewed
 services: [Kinesis, Firehose]
 related: [15-decoupling, 09-s3-advanced, 12-storage-extras]
-cards: cards/16-kinesis-cards
+revision: revision/16-kinesis-revision
 tags: [topic, domain/performance]
 ---
 
@@ -221,4 +221,4 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 - [Terraform `aws_kinesis_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_stream) / [`aws_kinesis_firehose_delivery_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_firehose_delivery_stream)
 
 ---
-**Cards for this topic:** [[cards/16-kinesis-cards]]
+**Self-test for this topic:** [[revision/16-kinesis-revision#Self-test]]

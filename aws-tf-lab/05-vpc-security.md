@@ -4,7 +4,7 @@ domain: secure
 status: reviewed
 services: [Security Groups, Network ACLs, VPC Flow Logs, Network Firewall]
 related: [05-vpc, 05-vpc-core, 01-iam, 02-ec2]
-cards: cards/05-vpc-security-cards
+revision: revision/05-vpc-security-revision
 tags: [topic, domain/secure]
 ---
 
@@ -261,4 +261,4 @@ Two things learned the hard way:
 - [Terraform `aws_network_acl`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_acl) / [`aws_flow_log`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/flow_log)
 
 ---
-**Cards for this topic:** [[cards/05-vpc-security-cards]]
+**Self-test for this topic:** [[revision/05-vpc-security-revision#Self-test]]

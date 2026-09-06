@@ -4,7 +4,7 @@ domain: secure                # one of: secure | resilient | performance | cost
 status: draft                 # draft | reviewed | mastered
 services: [ServiceName]
 related: []                   # wiki-link targets, no .md extension, e.g. [01-iam, 02-ec2]
-tags: [flashcards/NN-name]    # MUST include flashcards/<topic> so the SR plugin collects cards
+tags: [topic, domain/secure]  # `topic` is what the README Dataview queries select on
 ---
 
 # NN – Topic
@@ -39,17 +39,6 @@ graph LR
 ## The Terraform I wrote
 - Path: `../NN-name/main.tf`
 - What was tricky: …
-
-## Flashcards
-*(Cards live here. Frontmatter `tags: [flashcards/<topic>]` makes the SR plugin scan them. Multi-line syntax: question, `?` on its own line, answer; blank line between cards. No blank line *inside* an answer or it ends the card early.)*
-
-Question one?
-?
-Answer one.
-
-Question two?
-?
-Answer two.
 
 ## Scenario MCQs
 > [!question]- 1. Scenario in SAA-C03 BEST/MOST framing?
