@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*53 comparison tables · 102 discriminators · ~18 min read*
+*56 comparison tables · 109 discriminators · ~19 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -330,3 +330,23 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[14-dr-resilience#Traps|note]]
 - **a DR design that depends on the control plane** — Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are control-plane operations, and control planes are less available than data planes exactly when you need them.  
   ↳ [[14-dr-resilience#Traps|note]]
+
+
+## [[15-decoupling|15 – Decoupling (SQS, SNS, Amazon MQ)]]
+
+**Compare:** [[15-decoupling#SQS vs SNS|SQS vs SNS]] · [[15-decoupling#Standard vs FIFO queues|Standard vs FIFO queues]] · [[15-decoupling#SQS vs SNS vs Amazon MQ|SQS vs SNS vs Amazon MQ]]
+
+- **"receiving a message removes it"** — It does not. A received message is hidden for the visibility timeout and comes back unless the consumer explicitly calls DeleteMessage.  
+  ↳ [[15-decoupling#Traps|note]]
+- **a queue with no dead-letter queue** — Without a DLQ there is no upper bound on retries. A message that always fails is redelivered until retention expires — up to 14 days of consumers repeatedly choking on the same thing.  
+  ↳ [[15-decoupling#Traps|note]]
+- **DLQ retention set equal to the source queue's** — For standard queues the message keeps its original enqueue timestamp when it moves.  
+  ↳ [[15-decoupling#Traps|note]]
+- **assuming an empty poll means an empty queue** — Short polling is the default, and it samples only a subset of SQS servers — so it can return nothing while messages are waiting.  
+  ↳ [[15-decoupling#Traps|note]]
+- **SNS delivering straight to a service instead of into a queue** — SNS delivers, it does not hold. Push it directly at a Lambda or HTTP endpoint that is down and the notification is lost.  
+  ↳ [[15-decoupling#Traps|note]]
+- **FIFO chosen without noticing the throughput ceiling** — FIFO's strict ordering and exactly-once cost you throughput: 300 TPS per API action, 3,000/second batched, against a standard queue's effectively unlimited rate.  
+  ↳ [[15-decoupling#Traps|note]]
+- **Amazon MQ picked for a new application** — Amazon MQ exists for migration: an existing app already speaking a standard broker protocol that you don't want to rewrite.  
+  ↳ [[15-decoupling#Traps|note]]

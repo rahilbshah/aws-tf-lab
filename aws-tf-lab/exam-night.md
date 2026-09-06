@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*111 recall hooks · 181 pointers · ~18 min read*
+*118 recall hooks · 192 pointers · ~20 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -605,3 +605,38 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[14-dr-resilience#The four strategies side by side|The four strategies side by side]]
 - [[14-dr-resilience#HA vs DR|HA vs DR]]
 - [[14-dr-resilience#Picking a cross-Region database|Picking a cross-Region database]]
+
+
+## [[15-decoupling|15 – Decoupling (SQS, SNS, Amazon MQ)]]
+
+- A queue means the two services no longer have to be healthy at the same moment, or fast at the same rate.  
+  ↳ [[15-decoupling#What problem does this solve?|explain]]
+- The producer writes and forgets, the queue holds for up to 14 days, and consumers can come and go without the producer knowing.  
+  ↳ [[15-decoupling#The queue is a shock absorber, not a pipe|explain]]
+- A received message is hidden, not deleted, and it comes back if you never delete it — which is why consumers must be idempotent.  
+  ↳ [[15-decoupling#Receiving is not deleting — and that's deliberate|explain]]
+- Without a DLQ a poison message loops until retention expires; with one it steps aside after maxReceiveCount — and the DLQ needs longer retention because a standard-queue message arrives carrying its original age.  
+  ↳ [[15-decoupling#What stops the loop: the dead-letter queue|explain]]
+- SNS pushes one message to every subscriber, SQS holds one message for one consumer, and fan-out puts a queue in front of each service so one being down doesn't lose anything.  
+  ↳ [[15-decoupling#SNS is push, SQS is pull — and the pattern that uses both|explain]]
+- FIFO buys strict ordering and exactly-once with two to three orders of magnitude less throughput, and message groups are how you buy some of it back.  
+  ↳ [[15-decoupling#Standard vs FIFO — what strict ordering costs|explain]]
+- Amazon MQ exists so a legacy app speaking a standard broker protocol can move to AWS without a rewrite — and that migration framing is the only reason to pick it.  
+  ↳ [[15-decoupling#When neither fits: Amazon MQ|explain]]
+
+**Traps** [[15-decoupling#Traps|open]]
+- "receiving a message removes it"
+- a queue with no dead-letter queue
+- DLQ retention set equal to the source queue's
+- assuming an empty poll means an empty queue
+- SNS delivering straight to a service instead of into a queue
+- FIFO chosen without noticing the throughput ceiling
+- Amazon MQ picked for a new application
+
+**Failure modes**
+- the poison message, observed both ways  ↳ [[15-decoupling#Worked examples|open]]
+
+**Comparisons**
+- [[15-decoupling#SQS vs SNS|SQS vs SNS]]
+- [[15-decoupling#Standard vs FIFO queues|Standard vs FIFO queues]]
+- [[15-decoupling#SQS vs SNS vs Amazon MQ|SQS vs SNS vs Amazon MQ]]

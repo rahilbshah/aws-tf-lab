@@ -63,8 +63,8 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [ ] ☐ Global Accelerator
 
 ### Application Integration / Messaging
-- [ ] ☐ SQS (standard / FIFO, visibility timeout, DLQ) — *high exam weight*
-- [ ] ☐ SNS (fan-out)
+- [x] ✅ SQS (standard / FIFO, visibility timeout, DLQ) — [[15-decoupling]]
+- [x] ✅ SNS (fan-out) — [[15-decoupling]]
 - [ ] ☐ EventBridge
 - [ ] ☐ Step Functions
 - [ ] ☐ Kinesis (Data Streams / Firehose)
