@@ -52,7 +52,7 @@ flowchart LR
 - **CRR use cases:** compliance/geographic distance, lower latency for users in another region, cross-region DR. **SRR use cases:** aggregate logs into one bucket, replicate prod→test accounts, data-sovereignty copies within a region.
 
 ### Big objects
-- **Multipart upload:** AWS **recommends ≥ 100 MB**; **required above 5 GB** (max single-PUT). Up to **10,000 parts** (numbers 1–10,000); max object **5 TB**. Parts upload in **parallel** and a failed part is retried alone.
+- **Multipart upload:** AWS **recommends ≥ 100 MB**; **required above 5 GB** (max single-PUT). Up to **10,000 parts** (numbers 1–10,000); max object **50 TB** (raised from 5 TB in Dec 2025 — older practice banks still say 5 TB). Parts upload in **parallel** and a failed part is retried alone.
 - **Incomplete multipart uploads keep billing you** for the stored parts until you complete or abort them — and they're invisible in a normal listing. Always add **`AbortIncompleteMultipartUpload`** to a lifecycle rule.
 - **Byte-range fetch:** request only a byte range of an object — used to read just a header/metadata, resume a broken download, or parallelize a big download into ranges.
 

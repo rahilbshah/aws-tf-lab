@@ -58,7 +58,7 @@ It is also **asynchronous** — the write succeeds immediately and the copy catc
 
 Above **5 GB** you have no choice: that is the maximum for a single `PUT`. AWS recommends switching at **100 MB**, well before you're forced to.
 
-The reason to switch early isn't the size limit. It's the failure math. One 4 GB upload is a single indivisible bet — a network blip anywhere in it costs you the whole thing. Split it and each part is its own small bet: parts go up **in parallel** (throughput), and a failed part is retried **alone**. Up to **10,000 parts**, up to a **5 TB** object.
+The reason to switch early isn't the size limit. It's the failure math. One 4 GB upload is a single indivisible bet — a network blip anywhere in it costs you the whole thing. Split it and each part is its own small bet: parts go up **in parallel** (throughput), and a failed part is retried **alone**. Up to **10,000 parts**, up to a **50 TB** object.
 
 Now the part that costs real money. A multipart upload is a conversation with three stages: start it, send the parts, complete it. If the client dies before that last step, the parts that made it are **stored and billed** — but the object doesn't exist yet, so it does **not** appear in a normal listing or the bucket's object count. You are paying for data you cannot see.
 
@@ -149,7 +149,7 @@ flowchart LR
 - **CRR use cases:** compliance/geographic distance, lower latency for users in another region, cross-region DR. **SRR use cases:** aggregate logs into one bucket, replicate prod→test accounts, data-sovereignty copies within a region.
 
 ### Big objects
-- **Multipart upload:** AWS **recommends ≥ 100 MB**; **required above 5 GB** (max single-PUT). Up to **10,000 parts** (numbers 1–10,000); max object **5 TB**. Parts upload in **parallel** and a failed part is retried alone.
+- **Multipart upload:** AWS **recommends ≥ 100 MB**; **required above 5 GB** (max single-PUT). Up to **10,000 parts** (numbers 1–10,000); max object **50 TB** (raised from 5 TB in Dec 2025 — older practice banks still say 5 TB). Parts upload in **parallel** and a failed part is retried alone.
 - **Incomplete multipart uploads keep billing you** for the stored parts until you complete or abort them — and they're invisible in a normal listing. Always add **`AbortIncompleteMultipartUpload`** to a lifecycle rule.
 - **Byte-range fetch:** request only a byte range of an object — used to read just a header/metadata, resume a broken download, or parallelize a big download into ranges.
 

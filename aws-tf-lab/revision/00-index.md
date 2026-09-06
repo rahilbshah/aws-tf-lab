@@ -4,7 +4,7 @@ tags: [revision, generated]
 
 # 🌙 Night-before revision — index
 
-**21 topics · ~192 min total.** Each is self-contained;
+**21 topics · ~193 min total.** Each is self-contained;
 you should not need the full note. Tick them off as you go.
 
 > [!tip] Order
@@ -24,7 +24,7 @@ you should not need the full note. Tick them off as you go.
 | [ ] | [[revision/06-capstone-revision\|06-capstone]] | ~8 min | [[06-capstone]] |
 | [ ] | [[revision/07-rds-aurora-revision\|07-rds-aurora]] | ~10 min | [[07-rds-aurora]] |
 | [ ] | [[revision/08-elasticache-revision\|08-elasticache]] | ~6 min | [[08-elasticache]] |
-| [ ] | [[revision/09-s3-intro-revision\|09-s3-intro]] | ~6 min | [[09-s3-intro]] |
+| [ ] | [[revision/09-s3-intro-revision\|09-s3-intro]] | ~7 min | [[09-s3-intro]] |
 | [ ] | [[revision/09-s3-advanced-revision\|09-s3-advanced]] | ~7 min | [[09-s3-advanced]] |
 | [ ] | [[revision/09-s3-security-revision\|09-s3-security]] | ~9 min | [[09-s3-security]] |
 | [ ] | [[revision/10-route53-revision\|10-route53]] | ~12 min | [[10-route53]] |

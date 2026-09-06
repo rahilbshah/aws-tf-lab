@@ -40,7 +40,7 @@ The naming rules are stricter than you'd expect. Bucket names are **globally uni
 
 But the bucket itself is **regional**. The *name* is global; the *data* sits in one region you chose. Those two facts sound contradictory and are constantly confused.
 
-Objects run from 0 bytes to **5 TB**, but a single `PUT` maxes out at **5 GB**. Anything larger has to be a multipart upload. And since December 2020 S3 gives **strong read-after-write consistency** on all PUTs and DELETEs — write it, read it back immediately, you get the new version. The old eventual-consistency caveats are gone.
+Objects run from 0 bytes to **50 TB**, but a single `PUT` maxes out at **5 GB**. Anything larger has to be a multipart upload. And since December 2020 S3 gives **strong read-after-write consistency** on all PUTs and DELETEs — write it, read it back immediately, you get the new version. The old eventual-consistency caveats are gone.
 
 > In one line: a bucket is a globally-unique name for a regional flat key→object map, and folders are a console illusion.
 
@@ -160,7 +160,7 @@ flowchart LR
 ## Key facts, limits & pricing
 
 - **Namespace:** bucket names are **globally unique across all AWS accounts**; buckets are **regional** resources. Names are DNS-compatible (3–63 chars, lowercase, no underscores).
-- **Object size:** 0 bytes to **5 TB**. A single `PUT` maxes at **5 GB** — beyond that you must use **multipart upload** (see [[09-s3-advanced]]).
+- **Object size:** 0 bytes to **50 TB** (raised from 5 TB on 2025-12-02; AWS's multipart limits table states the exact ceiling as **48.8 TiB**). Older practice questions still answer 5 TB. A single `PUT` maxes at **5 GB** — beyond that you must use **multipart upload** (see [[09-s3-advanced]]).
 - **Durability: 99.999999999% (11 nines)** — *designed for* — on **every** storage class. Achieved by redundantly storing across **≥3 AZs** (One Zone classes: **1 AZ**, same 11-nines durability but **lost if that AZ is destroyed**).
 - **Availability (designed for), verified:** Standard **99.99%** · Standard-IA **99.9%** · Intelligent-Tiering **99.9%** · One Zone-IA **99.5%** · Glacier Instant **99.9%** · Glacier Flexible / Deep Archive **99.99% (after restore)**.
 - **Minimum storage durations (billed even if you delete early):** Standard & Intelligent-Tiering **none** · Standard-IA & One Zone-IA **30 days** · Glacier Instant & Glacier Flexible **90 days** · Glacier Deep Archive **180 days**.

@@ -106,7 +106,7 @@ They work for **uploads** too — a presigned `PUT` is the standard way to let a
 
 ### Object Lock, and the delete that succeeds anyway
 
-Object Lock is WORM: write once, read many. It needs **versioning**, and it locks a specific object **version**, not "the object". `object_lock_enabled` is a **create-time** bucket property — you cannot bolt it onto a live bucket.
+Object Lock is WORM: write once, read many. It needs **versioning**, and it locks a specific object **version**, not "the object". You can enable Object Lock **either at bucket creation or on an existing versioned bucket** (console, `put-object-lock-configuration`, or the API). What you can *never* do is turn it back **off**, or suspend versioning afterwards — that is the one-way door.
 
 Two independent protections:
 

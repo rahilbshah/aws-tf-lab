@@ -112,7 +112,7 @@ Your RPO target picks the replication mechanism, and this is where everything yo
 
 | Mechanism | RPO | Notes |
 |---|---|---|
-| **Aurora Global Database** | **~1 second** | typical cross-Region latency under a second; promote a secondary in **under a minute**; up to **5** secondary Regions |
+| **Aurora Global Database** | **~1 second** | typical cross-Region latency under a second; promote a secondary in **under a minute**; up to **10** secondary Regions |
 | **DynamoDB Global Tables** | seconds | **multi-active** — read *and* write in every Region; conflicts resolved **last-writer-wins** |
 | **S3 Cross-Region Replication** | seconds–minutes | S3 RTC gives a predictable window |
 | **RDS cross-Region read replica** | seconds–minutes | promotion takes **a few minutes and includes a reboot** |
@@ -141,7 +141,7 @@ For routing traffic to whichever Region is live: **Route 53 failover** with heal
 > - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
 > - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
 > - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
-> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to 5 secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
+> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to 10 secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
 > - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
 > - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
 

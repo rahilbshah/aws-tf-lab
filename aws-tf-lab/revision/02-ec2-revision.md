@@ -76,7 +76,7 @@ flowchart TD
   - **EBS** — `gp3` ~$0.08/GB-month in `us-east-1`; ⚠️ verify current pricing.
 - **`delete_on_termination` defaults differ by volume role:**
   - **Root volume** → `true` (deleted with instance).
-  - **Additional EBS volume** → `false` (survives termination).
+  - **Additional EBS volume** → `false` (survives termination) — but that is the **console** default. At launch via **CLI/API** the default is **Delete**, and Terraform's `ebs_block_device.delete_on_termination` **defaults to `true`**. Answer `false` on the exam; set it explicitly in code.
 - **Instance type change** = **in-place** (`~`) in Terraform. Provider stops, modifies, restarts the instance. ~1–3 min downtime; instance ID, EBS, EIP preserved; auto-assigned public IP changes; instance store dies.
 - **AMI change** = **destroy-and-recreate** (`-/+`). You can't swap the OS image on a running instance. ⚠️ verify against provider source for v6 — confirmed empirically in past plans.
 - **Instance type naming:** `family.size` with a **literal period** (`t3.micro`, `t3.small`, `m5.large`). Families: `t` (burstable), `m` (general), `c` (compute), `r` (memory), `g`/`p` (GPU), `i` (storage). Generations: `t3`, `t3a` (AMD), `t4g` (Graviton/ARM). Hyphens (`t3-micro`) are rejected.
