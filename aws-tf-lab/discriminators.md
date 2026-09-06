@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*58 comparison tables · 115 discriminators · ~20 min read*
+*63 comparison tables · 121 discriminators · ~22 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -368,3 +368,21 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[16-kinesis#Traps|note]]
 - **forgetting that read throughput is shared** — A shard's 2 MB/sec read is split across all consumers using the default shared fan-out.  
   ↳ [[16-kinesis#Traps|note]]
+
+
+## [[17-containers|17 – Containers on AWS (ECS, Fargate, ECR, EKS)]]
+
+**Compare:** [[17-containers#ECS vs EKS|ECS vs EKS]] · [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]] · [[17-containers#Task execution role vs task role|Task execution role vs task role]] · [[17-containers#ALB target types|ALB target types]] · [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
+
+- **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **target_type on a Fargate service** — With awsvpc each task has its own ENI, so there is no instance ID to register. Leaving target_type at the default "instance" does not error: terraform apply succeeds, the service creates, no target ever registers, and the ALB serves 503 against a plan that looked clean.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **a green apply is not a green deployment** — Terraform reports success once the ECS API accepts the new task definition. Whether containers start is a separate control loop on its own clock.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **the execution role is not for the pull** — Nothing in AWS authenticates you to Docker Hub; a public image needs network egress, not IAM.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **rollback needs somewhere to roll back to** — The circuit breaker rolls back to the most recent COMPLETED deployment. If the first ever deployment of a new service is broken, there is no such deployment: the breaker trips and the service stalls with zero tasks.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **endpoints are not automatically cheaper than NAT** — Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]

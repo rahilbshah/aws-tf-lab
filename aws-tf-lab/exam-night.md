@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*123 recall hooks · 201 pointers · ~20 min read*
+*127 recall hooks · 213 pointers · ~21 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -669,3 +669,33 @@ For the longer night-before read see **[[revision/00-index]]**.
 **Comparisons**
 - [[16-kinesis#SQS vs SNS vs Kinesis|SQS vs SNS vs Kinesis]]
 - [[16-kinesis#Data Streams vs Firehose|Data Streams vs Firehose]]
+
+
+## [[17-containers|17 – Containers on AWS (ECS, Fargate, ECR, EKS)]]
+
+- You never tell ECS to start a container — you declare how many should be running, and a loop closes the gap forever.  
+  ↳ [[17-containers#What problem does this solve?|explain]]
+- ECS decides what runs; the launch type decides who owns the servers it runs on — two different questions, not two alternatives.  
+  ↳ [[17-containers#What problem does this solve?|explain]]
+- A task definition is an AMI for containers — immutable and versioned, and pointing the service at a new revision is the deployment.  
+  ↳ [[17-containers#How it actually works|explain]]
+- Awsvpc gives every task its own ENI, so the load balancer registers IP addresses — there is no instance to register.  
+  ↳ [[17-containers#How it actually works|explain]]
+
+**Traps** [[17-containers#⚠️ Traps — why the wrong answer looks right|open]]
+- "ECS or Fargate?"
+- target_type on a Fargate service
+- a green apply is not a green deployment
+- the execution role is not for the pull
+- rollback needs somewhere to roll back to
+- endpoints are not automatically cheaper than NAT
+
+**Failure modes**
+- the private subnet that can't pull  ↳ [[17-containers#Worked examples|open]]
+
+**Comparisons**
+- [[17-containers#ECS vs EKS|ECS vs EKS]]
+- [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]]
+- [[17-containers#Task execution role vs task role|Task execution role vs task role]]
+- [[17-containers#ALB target types|ALB target types]]
+- [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]

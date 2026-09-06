@@ -28,3 +28,8 @@
 # THEN DESTROY IT. The NAT gateway and ALB bill by the hour whether you are
 # looking at them or not.
 # ==========================================================================
+
+output "alb_url" {
+  description = "Public URL of the load balancer - hit this to test the deployment"
+  value       = "http://${aws_lb.this.dns_name}"
+}

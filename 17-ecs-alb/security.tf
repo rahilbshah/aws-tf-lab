@@ -28,3 +28,55 @@
 #   Note the shape: two security groups, one referencing the other, no CIDRs
 #   between them. That is the pattern the exam calls "security group chaining"
 #   and it is the same one you used for ALB -> ASG in 04-alb-asg.
+
+resource "aws_security_group" "alb" {
+  name        = "alb-public-http-sg"
+  description = "Public entry point - allows inbound HTTP from the internet"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "alb-public-http-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
+  security_group_id = aws_security_group.alb.id
+  description       = "Allow HTTP from anywhere - this is the one public entry point"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_all_outbound" {
+  security_group_id = aws_security_group.alb.id
+  description       = "Allow all outbound so the ALB can reach the tasks"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+resource "aws_security_group" "tasks" {
+  name        = "ecs-tasks-from-alb-sg"
+  description = "ECS tasks - only reachable from the ALB, never directly from the internet"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "ecs-tasks-from-alb-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "tasks_from_alb_only" {
+  security_group_id            = aws_security_group.tasks.id
+  description                  = "Allow container port traffic, but only from the ALBs SG"
+  referenced_security_group_id = aws_security_group.alb.id
+  from_port                    = var.container_port
+  to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "tasks_all_outbound" {
+  security_group_id = aws_security_group.tasks.id
+  description       = "Allow all outbound - required to pull the image via the NAT gateway"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
