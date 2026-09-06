@@ -54,7 +54,7 @@ flowchart TB
 | `block_public_acls` | **New** public ACLs |
 | `ignore_public_acls` | **Existing** public ACLs |
 | `block_public_policy` | **New** public bucket policies |
-| `restrict_public_buckets` | **Existing** public policies |
+| `restrict_public_buckets` | **Existing** public policies — and, once a policy counts as public, *every* cross-account grant inside it |
 
 Two ways to become public (ACL, policy) × two timings (new, existing). All four on = the bucket cannot be made public even by a valid policy. Available at **bucket** and **account** level; account level wins.
 

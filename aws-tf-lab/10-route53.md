@@ -75,7 +75,7 @@ If the scenario wants controlled proportions, that's **weighted**. If it wants r
 | | Reads | The dial you turn |
 |---|---|---|
 | **Geolocation** | where the **user** is — continent, country, US state | none; you map locations to records |
-| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment (needs Traffic Flow) |
+| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment |
 
 "German users must get the German site" is geolocation — a localization/compliance sentence. "Shift more traffic toward the bigger data centre" is geoproximity bias — a capacity sentence.
 
@@ -196,7 +196,7 @@ flowchart TB
 - **CNAME restriction beyond the apex:** if a name has a CNAME, it can have **no other records at all** at that name. That's why the apex — which must carry SOA and NS — can never be a CNAME.
 - **Private hosted zones** need a **VPC association**, and the VPC needs DNS support + DNS hostnames. Queried from outside an associated VPC, the name simply **resolves recursively on the public internet** instead of erroring. They're assigned four *reserved* nameservers (`ns-0.awsdns-00.com` and friends) that are **never actually contacted** — they exist only because DNS requires an NS record set.
 - **Record types supported:** A, AAAA, CAA, CNAME, DS, HTTPS, MX, NAPTR, NS, PTR, SOA, SPF, SRV, SSHFP, SVCB, TLSA, TXT. **SPF as a record type is deprecated** — put SPF data in a **TXT** record. **MX priority: lower number wins.** TXT strings are ≤255 chars each, ≤4,000 total.
-- ⚠️ verify: Route 53 is commonly cited as carrying a **100% availability SLA** — confirm against the current AWS SLA page before relying on it in an answer.
+- **Route 53 carries a 100% availability SLA** for hosted zones — service credits begin the moment monthly uptime drops below 100%. It covers **authoritative DNS only**, not Resolver or the other Route 53 features.
 
 ## Comparisons
 
@@ -283,7 +283,7 @@ Non-obvious bits:
 > `example.com` must carry SOA and NS records, and DNS forbids a CNAME coexisting with any other record at the same name. So a CNAME at the apex is **invalid DNS**, not an AWS limitation. Pointing `example.com` at an ALB or CloudFront is exactly what **alias** records exist for.
 
 > [!warning] Trap — geolocation vs geoproximity
-> **Geolocation = where the USER is** (continent, country, US state) — content localization, licensing, compliance. **Geoproximity = where your RESOURCES are**, with a **bias** to grow or shrink each one's catchment, and it needs **Traffic Flow**. If the scenario says "users in Germany must get the German site," that's geolocation. If it says "shift more traffic toward the bigger data centre," that's geoproximity bias.
+> **Geolocation = where the USER is** (continent, country, US state) — content localization, licensing, compliance. **Geoproximity = where your RESOURCES are**, with a **bias** to grow or shrink each one's catchment. If the scenario says "users in Germany must get the German site," that's geolocation. If it says "shift more traffic toward the bigger data centre," that's geoproximity bias.
 
 > [!warning] Trap — "we set up failover but users were down for an hour"
 > Route 53 did fail over. The **TTL** kept resolvers and browsers serving the stale answer. Failover is only as fast as `(interval × threshold) + TTL`, and the TTL term usually dominates. Any question where failover "didn't work" but the console shows a healthy failover is a TTL question.

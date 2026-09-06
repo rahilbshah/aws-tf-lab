@@ -71,7 +71,7 @@ This is the RDS confusion the exam leans on hardest, and the reason it works is 
 
 They are not interchangeable.
 
-**Multi-AZ** creates a **synchronous** standby in another AZ. Every write lands on both before it is acknowledged. If the primary dies, RDS fails over to the standby automatically. And the standby is **passive — you cannot read from it.** That feels wasteful: a full second database that serves no traffic. But that is the point of it: Multi-AZ is bought for **availability**, not capacity — the standby is there to take over, not to take load. It also doubles the cost and is **not** Free Tier.
+**Multi-AZ** creates a **synchronous** standby in another AZ. Every write lands on both before it is acknowledged. If the primary dies, RDS fails over to the standby automatically. And in a Multi-AZ **DB instance** deployment — what you built here — the standby is **passive: you cannot read from it.** That feels wasteful: a full second database that serves no traffic. But that is the point of it: Multi-AZ is bought for **availability**, not capacity — the standby is there to take over, not to take load. It also doubles the cost and is **not** Free Tier.
 
 **Read replicas** are **asynchronous** copies that you *can* read from. They exist for **read scaling** — reporting queries, read-heavy traffic you want off the primary. Because replication is async they lag slightly (eventual consistency), which is fine for read traffic. They can be same-AZ, cross-AZ or **cross-region**, and a replica can be **promoted** to a standalone database — but that promotion is **manual**, not an automatic failover.
 
@@ -169,7 +169,7 @@ flowchart TB
 - **`publicly_accessible = false`** keeps the DB off the public internet — correct for a data-tier subnet.
 - Master **username reserved words**: RDS rejects some (`root`, `rdsadmin`, `admin` on some engines) — use a custom name like `dbadmin`. *(Hit live: `root` on postgres.)*
 - Master **password constraints**: 8–128 chars, and cannot contain `/`, `"`, `@`, or spaces. *(Hit live: `@` in the first password would have been rejected.)*
-- **Free Tier**: `db.t2/t3/t4g.micro`, single-AZ, 750 hrs/month, 20 GB storage, first 12 months.
+- **Free Tier**: `db.t3/t4g.micro`, single-AZ — **6 months** on the current Free plan (accounts opened before 15 Jul 2025 keep the legacy 750 hrs/mo + 20 GB for 12 months). `db.t2.micro` can't be encrypted at all.
 
 ## Comparisons
 

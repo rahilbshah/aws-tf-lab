@@ -64,9 +64,9 @@ That is the whole design. Blocking only the new ones leaves whatever was already
 
 Now the part that trips people up. BPA does **not** lose to a bucket policy — it **overrides** it. Write a technically perfect public bucket policy with BPA on, and it simply never takes effect. That is deliberate: BPA is a guardrail, not a permission. Permissions are things you grant; a guardrail is a thing you cannot accidentally argue your way past.
 
-It can be set per-bucket **and** account-wide, and the account-level setting wins.
+It can be set per-bucket **and** account-wide (and org-wide), and S3 enforces the **most restrictive combination** — either level blocking is enough.
 
-The counter-intuitive edge: BPA only concerns itself with **public** paths. A grant to a *named* principal — a specific partner account, say — isn't public, so BPA doesn't touch it. Hence the debugging order when a cross-account grant fails: ask first whether the grant is public (BPA will kill it) or named (BPA is irrelevant, so go and look at the other account's IAM policy).
+The counter-intuitive edge: BPA only concerns itself with **public** paths, so a policy granting only to *named* principals isn't public and BPA leaves it alone. But publicness is judged on the **whole policy** — one stray `"Principal": "*"` statement makes the entire policy public, and `restrict_public_buckets` then cuts the named partner off too. So when a cross-account grant fails, read the whole bucket policy for a public statement before you go looking at the other account's IAM.
 
 > In one line: two ways to become public × two timings = four switches, and BPA overrides policy rather than the other way round.
 
@@ -192,7 +192,7 @@ flowchart TB
 | `block_public_acls` | **New** public ACLs |
 | `ignore_public_acls` | **Existing** public ACLs |
 | `block_public_policy` | **New** public bucket policies |
-| `restrict_public_buckets` | **Existing** public policies |
+| `restrict_public_buckets` | **Existing** public policies — and, once a policy counts as public, *every* cross-account grant inside it |
 
 Two ways to become public (ACL, policy) × two timings (new, existing). All four on = the bucket cannot be made public even by a valid policy. Available at **bucket** and **account** level; account level wins.
 

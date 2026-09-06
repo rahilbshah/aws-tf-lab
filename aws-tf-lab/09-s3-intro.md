@@ -46,7 +46,7 @@ Objects run from 0 bytes to **50 TB**, but a single `PUT` maxes out at **5 GB**.
 
 ### Durability and availability are two different numbers
 
-Every storage class is **99.999999999% durable** — eleven nines. Standard, IA, Glacier, all of them. That number never changes.
+Every storage class is **99.999999999% durable** — eleven nines. Standard, IA, Glacier, all of them. That number never changes. (One legacy exception: **Reduced Redundancy Storage**, 99.99%, which AWS tells you not to use.)
 
 Durability means: *will S3 lose your data?* No.
 
@@ -216,7 +216,7 @@ Code: `09-s3/` — `main.tf` (bucket + versioning + lifecycle + objects), `websi
 - Static site: second bucket + `website_configuration` (index + error), `public_access_block` all-false, a public-read `bucket_policy` (with `depends_on` on the access block so ordering is right), and objects uploaded with **`content_type = "text/html"`**. Verified in a browser, including the 404 page.
 
 Non-obvious things:
-- **Modern provider splits bucket config into separate resources** — `aws_s3_bucket` no longer takes inline `versioning`/`lifecycle_rule`/`website` blocks.
+- **Modern provider splits bucket config into separate resources** — the inline `versioning`/`lifecycle_rule`/`website` blocks on `aws_s3_bucket` are **deprecated**, not removed: v6 still accepts them, but only drift-detects what you explicitly set.
 - **`etag = filemd5(path)`** is required with `source`, or Terraform won't notice the file's *contents* changed and silently skips the upload.
 - **`content_type`** must be set or browsers download instead of rendering.
 - A public bucket policy is **rejected while Block Public Access is on** → `depends_on` the access block.

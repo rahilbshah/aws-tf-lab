@@ -156,13 +156,13 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **FIFO queues:** **300 TPS** per API action per partition; **3,000 messages/second** with batching. **High throughput FIFO** (opt-in) raises this per Region — up to **70,000 TPS** non-batched in N. Virginia / Oregon / Ireland, **19,000** in Ohio and Frankfurt, **9,000** in Mumbai / Singapore / Sydney / Tokyo / Spain, **4,500** in London and São Paulo, **2,400** elsewhere; batching multiplies by 10.
 - **`MessageGroupId`** is required on FIFO queues; the send fails without it. On **standard** queues it enables **fair queues**.
 - **Deduplication:** FIFO rejects a duplicate `MessageDeduplicationId` sent within a **5-minute** interval. **Content-based deduplication** hashes the message **body** with SHA-256 — *not* the attributes.
-- **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and the **same type** in practice (don't attach a DLQ to a FIFO queue if exact ordering matters — AWS says so explicitly). A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
+- **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and must be the **same queue type** — a FIFO queue's DLQ must be FIFO, a standard queue's DLQ must be standard. Separately, AWS advises against a DLQ on a FIFO queue at all if exact ordering matters. A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
 - **DLQ retention clock:** **standard** queues keep the **original enqueue timestamp** when a message moves to the DLQ, so set the DLQ's retention **longer** than the source's. **FIFO** queues **reset** the timestamp on the move.
 - **SNS subscribers:** Amazon SQS, Lambda, HTTP(S), email, SMS, mobile push, **Amazon Data Firehose**, and service providers such as Datadog, MongoDB and Splunk. Supports **A2A** and **A2P** messaging.
 - **SNS FIFO topics deliver only over the SQS protocol** — no email, HTTP or Lambda subscribers — and can fan out to **both FIFO and standard** queues.
 - **Subscription filter policies** let a subscriber receive only the messages it cares about, evaluated against message attributes or (with `FilterPolicyScope: MessageBody`) the body itself.
 - **Amazon MQ deployment modes:** *single-instance* — one broker, one AZ, **EBS or EFS** storage; *active/standby* — two brokers in two AZs on **EFS**, only one active, with two endpoints per wire protocol (`-1`/`-2` suffixes) and failover in seconds on reboot. RabbitMQ offers **quorum queues** (leader + followers across AZs, good for poison messages); ActiveMQ offers **cross-Region data replication** with API-triggered failover.
-- ⚠️ verify: the specific wire protocols Amazon MQ speaks (commonly cited as MQTT, AMQP, STOMP, OpenWire and WebSocket) — AWS's overview says only "industry standard messaging protocols". Confirm before relying on a named protocol in an answer.
+- **Amazon MQ wire protocols** — this is the whole point of the service, and why a migration question picks it over SQS. *ActiveMQ*: **AMQP, MQTT, OpenWire, STOMP** (plus MQTT and STOMP over WebSocket). *RabbitMQ*: **AMQP 0-9-1**. If a scenario names a protocol, the answer is Amazon MQ — SQS and SNS speak only the AWS API.
 - **Pricing:** SQS and SNS both have an always-free tier that covers lab use comfortably. **Amazon MQ bills per broker-hour** — it is a running server, not serverless.
 
 ## Comparisons
@@ -174,7 +174,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 | Model | queue | publish/subscribe |
 | Delivery | consumer **pulls** | SNS **pushes** |
 | Who gets a message | **one** consumer | **every** subscriber |
-| Holds messages | ✅ up to 14 days | ❌ delivers, doesn't hold |
+| Holds messages | ✅ up to 14 days | ❌ delivers, doesn't hold (FIFO topics can *archive* for replay) |
 | Consumer can be offline | ✅ | ❌ (unless the subscriber is a queue) |
 | Endpoints | your consumers | SQS, Lambda, HTTP(S), email, SMS, push, Firehose |
 | A2P (people) | ❌ | ✅ |

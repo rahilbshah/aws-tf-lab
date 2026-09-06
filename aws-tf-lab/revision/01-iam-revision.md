@@ -53,7 +53,7 @@ flowchart TD
 ## Key facts, limits & pricing
 
 - **Global service** — no region picker. Same IAM seen from every region. (The IAM API endpoint historically lives in `us-east-1` infrastructure, but the concept and the data are global.)
-- **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too. Only some advanced features (IAM Identity Center premium features, IAM Access Analyzer findings) have separate pricing.
+- **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. Access Analyzer's external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.
 - **Eventually consistent** — newly created users/roles/policies may take a few seconds to become globally visible. A `terraform apply` that creates a role and immediately tries to use it can race; usually a retry resolves it. Worth knowing for real-world AND exam scenarios.
 - **Principal identification is by name; policy identification is by ARN.** Reason: principals only exist within your account (name is unambiguous in that scope); policies may live in the `aws` account namespace (AWS-managed, e.g. `arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`) or your account namespace, so the full ARN with account ID is needed for disambiguation.
 - **Inline vs managed policies:**

@@ -34,7 +34,7 @@ These are the two most confused features in RDS, and they are confused because b
 
 **Multi-AZ** keeps a **synchronous** standby in another AZ. Synchronous means a write isn't finished until both copies have it. If the primary's AZ fails, AWS swaps the **DNS CNAME** to the standby — roughly **60–120 seconds** — and your app reconnects using the same endpoint name.
 
-Now the part that catches people: **that standby is not readable.** Ever. You are paying for a full second instance that answers no queries.
+Now the part that catches people: **that standby is not readable.** You are paying for a full second instance that answers no queries. (True of a Multi-AZ **DB instance** deployment — the separate Multi-AZ **DB cluster** option runs two standbys that *do* serve reads.)
 
 That feels wasteful, but it is the deal: the standby is kept synchronously identical so that failover loses nothing. Multi-AZ **doubles the cost and is not Free-Tier** — you are buying availability, and only availability.
 
@@ -53,7 +53,7 @@ They are not alternatives. A Multi-AZ primary *with* read replicas attached is a
 
 ### Why Aurora's storage layer changes everything above it
 
-Aurora stores your data as **6 copies across 3 AZs** — 2 per AZ — in one **cluster volume** that is self-healing and auto-scales from **10 GB to 128 TB** without being asked. That volume is separate from the compute instances, and compute and storage bill and scale independently.
+Aurora stores your data as **6 copies across 3 AZs** — 2 per AZ — in one **cluster volume** that is self-healing and auto-scales to **128 TiB** without being asked (256 TiB on the newest engine versions). That volume is separate from the compute instances, and compute and storage bill and scale independently.
 
 Six copies sounds like paranoia. It buys a specific property: the cluster can lose an entire AZ *plus one more copy* and still serve reads. Losing two of six copies would be an emergency on a normal system; here it is survivable by design.
 
@@ -61,7 +61,7 @@ But durability isn't the interesting consequence. This is: **the instances don't
 
 Follow what that removes:
 
-- An RDS read replica needs data shipped to it, so it lags — seconds, sometimes. An **Aurora replica copies nothing**, because the data is already there. Typical lag is **under 10 ms**.
+- An RDS read replica needs data shipped to it, so it lags — seconds, sometimes. An **Aurora replica copies nothing**, because the data is already there. Typical lag is **well under 100 ms** — AWS's own figure.
 - Adding a replica doesn't add a copy of your database, so you can run up to **15** of them. Note carefully: **RDS also allows 15**, so the *count* is not what separates them. What separates them is what a replica **is** — an RDS replica is a second copy being shipped data over the wire, an Aurora replica is another reader pointed at the volume that already exists.
 - Failover isn't "wait for a spare to catch up." A replica is already current, so promotion is fast and **automatic**, ordered by **priority tiers**.
 
@@ -81,7 +81,7 @@ RDS gives you two kinds of backup. They differ twice over: in what they are made
 
 **Automated backups** switch on when you set a retention period of **1–35 days**. Underneath it is a daily snapshot *plus* transaction logs shipped roughly every **5 minutes**. Combine the two and you get **point-in-time recovery** — replay from the last snapshot forward to **any second** inside the window.
 
-The catch is that automated backups belong to the instance. **Delete the instance and they go with it**, unless you take a final snapshot on the way out.
+The catch is that automated backups belong to the instance. **Delete the instance and they go with it** — unless you tick **Retain automated backups** (they then live out the retention period) or take a final snapshot on the way out.
 
 **Manual snapshots** are the other kind: a single snapshot you take yourself, and their lifetime is the opposite — they live until *you* delete them, and they survive the instance. So "keep this beyond the retention window" or "keep this after we tear the database down" always points at a manual snapshot.
 
@@ -188,7 +188,7 @@ flowchart TB
 - **Aurora Replicas:** up to **15**, share the cluster volume (**<10 ms** typical lag), **automatic failover** with priority tiers (much faster than RDS Multi-AZ). Aurora also keeps 6 storage copies regardless of instance count.
 - **Aurora extras:** **Backtrack** (rewind the DB in place without restore, Aurora MySQL); **Aurora Serverless v2** (fine-grained auto-scaling ACUs for variable load); **Aurora Global Database** (1 primary + up to **10 secondary read-only regions**, **<1s** replication, cross-region DR); **Aurora Machine Learning**, **RDS Proxy** (connection pooling for Lambda/serverless).
 - **Why Aurora over RDS MySQL/Postgres:** ~**5× MySQL / 3× Postgres** throughput, replicas that **share one volume instead of copying data**, faster failover, 6-copy durability, auto-scaling storage, serverless + global options. Trade-off: pricier per-hour, MySQL/Postgres-compatible only.
-- **RDS Free Tier:** `db.t2/t3/t4g.micro`, single-AZ, 750 hrs/mo, 20 GB, 12 months.
+- **RDS Free Tier (legacy, accounts activated before 2025-07-15):** `db.t2/t3/t4g.micro`, single-AZ, 750 hrs/mo, 20 GB, 12 months. Newer accounts get the **Free Plan** instead — `db.t3/t4g.micro` plus sign-up credits, with guardrails (see the backup-retention gotcha below).
 - **IAM database authentication** works on **MariaDB, MySQL, PostgreSQL** (and Aurora MySQL/PostgreSQL). You call `aws rds generate-db-auth-token` and pass the returned string **as the password**. Each token lives **15 minutes**; traffic is **always SSL/TLS**. The token is typically **~1 KB minimum** — drivers/tools that truncate long passwords will break it.
 - **IAM DB auth costs memory on the instance:** AWS states you need **300–1000 MiB of extra memory** for reliable connectivity — a real consideration on burstable `t`-class instances.
 - **CloudTrail does not log IAM DB authentication.** `generate-db-auth-token` is signed locally and is not tracked. Do not answer "use IAM DB auth to get an audit trail of database logins."

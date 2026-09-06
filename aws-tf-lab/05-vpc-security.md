@@ -59,7 +59,7 @@ Not 80. Port 80 is where the *request* went. The reply goes back to whatever por
 
 You can't know which one it picked. So you allow the whole range: **1024–65535**.
 
-That range is deliberately a superset. The real range depends on who's at the other end — Linux uses 32768–60999, Windows 2008 and later 49152–65535, and ELB, Lambda and NAT use 1024–65535. Since the other end could be any of them, you open the widest.
+That range is deliberately a superset. The real range depends on who's at the other end — Linux uses 32768–61000, Windows 2008 and later 49152–65535, and ELB, Lambda and NAT use 1024–65535. Since the other end could be any of them, you open the widest.
 
 Now the part people write backwards. The direction depends on who started the conversation.
 
@@ -70,7 +70,7 @@ Now the part people write backwards. The direction depends on who started the co
 
 An instance that does both — most do — needs both.
 
-One more thing hides in here. A NACL rule names a protocol, so a rule set written only for TCP blocks UDP outright. That quietly kills DNS on UDP 53 and NTP on UDP 123, and it surfaces as outbound `REJECT` lines in the flow logs rather than as an obvious error.
+One more thing hides in here. A NACL rule names a protocol, so a rule set written only for TCP blocks UDP outright — that quietly kills UDP to **external** DNS and NTP servers, and it surfaces as outbound `REJECT` lines in the flow logs rather than as an obvious error. It does not touch the VPC defaults: a NACL **can't filter traffic to the Amazon-provided DNS resolver (VPC+2) or the Amazon Time Sync Service** at all.
 
 > In one line: replies land on 1024–65535 — outbound if you're answering, inbound if you're asking — and a TCP-only rule set silently drops UDP.
 
@@ -106,7 +106,7 @@ Reading them is a small skill worth having. The useful split is:
 - `REJECT` + **inbound** + a port you never opened → your firewall working correctly. The internet scans every public IP constantly; this noise is normal.
 - `REJECT` + **outbound** + a port your app actually needs → *your own* rule is too strict. That one is the bug.
 
-Two practicalities. The protocol shows up as a number — 6 is TCP, 17 is UDP, 1 is ICMP. And records are batched: the aggregation interval defaults to 600 seconds, so while debugging set it to 60 and see logs in roughly two minutes instead of ten.
+Two practicalities. The protocol shows up as a number — 6 is TCP, 17 is UDP, 1 is ICMP. And records are batched: the aggregation interval defaults to 600 seconds, and **delivery adds about 5 more minutes to CloudWatch Logs (~10 to S3)** — so while debugging set the interval to 60 and expect logs in roughly six minutes, not fifteen.
 
 Some traffic never appears at all: the Amazon DNS server (a custom DNS resolver *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the Amazon Time Sync Service `169.254.169.123`, Windows license activation, and the reserved VPC router address. Silence there is not evidence that something was blocked.
 
@@ -141,7 +141,7 @@ Which is the other thing to hold on to: security groups and NACLs are free. Netw
 | Concept | Terraform | Notes |
 |---|---|---|
 | Security group | `aws_security_group` + `aws_vpc_security_group_ingress_rule`/`egress_rule` | Modern per-rule resources; source can be a CIDR or another SG (`referenced_security_group_id`). |
-| Network ACL | `aws_network_acl` (+ inline `ingress`/`egress` or separate `aws_network_acl_rule`) | `rule_no` = precedence (low first). `action = allow/deny`. `protocol = -1` for all. |
+| Network ACL | `aws_network_acl` (+ inline `ingress`/`egress` or separate `aws_network_acl_rule`) | `rule_no` = precedence (low first), `action = allow/deny` — inline names; the separate resource calls them `rule_number` / `rule_action`. `protocol = -1` for all. |
 | Associate NACL ↔ subnets | `subnet_ids` on the NACL, or `aws_network_acl_association` | Each subnet has exactly one NACL (default if unset). |
 | Flow log | `aws_flow_log` | `vpc_id`/`subnet_id`/`eni_id` (the level), `traffic_type` (ALL/ACCEPT/REJECT), `log_destination_type`, `max_aggregation_interval` (60 or 600). |
 | Log group (CloudWatch dest) | `aws_cloudwatch_log_group` | Needs an IAM **service role** (see below). S3 dest needs a bucket policy instead. |
@@ -170,8 +170,8 @@ flowchart TB
 - **Ephemeral port range = `1024–65535`** (the safe superset to allow on a NACL for return traffic). OS-specific: Linux `32768–60999`, Windows 2008+ `49152–65535`, ELB/Lambda/NAT `1024–65535`. Direction: a server *receiving* requests allows ephemeral **outbound** (its reply → client's ephemeral port); an instance *initiating* outbound allows ephemeral **inbound** (the reply → its ephemeral port).
 - **NACL rule numbers**: 1–32766 for custom rules, evaluated ascending, **first match wins**, plus an unremovable `*` rule that denies anything unmatched. Lower number = higher priority.
 - **SG evaluation**: no order/precedence — all rules are a union of allows; if any allows the traffic, it's permitted; there are no denies.
-- **One NACL per subnet, one SG-set per ENI.** A subnet uses the default NACL unless you associate a custom one. An instance can have up to (quota) SGs.
-- **Flow log fields (default v2):** `version account-id eni-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status`. Protocol numbers: **6 = TCP, 17 = UDP, 1 = ICMP**. Action = `ACCEPT`/`REJECT`.
+- **One NACL per subnet, one SG-set per ENI.** A subnet uses the default NACL unless you associate a custom one. An ENI gets up to **5** security groups by default (raisable to 16).
+- **Flow log fields (default v2):** `version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status`. Protocol numbers: **6 = TCP, 17 = UDP, 1 = ICMP**. Action = `ACCEPT`/`REJECT`.
 - **Flow logs = metadata only, never payload.** (Payload/deep inspection = Network Firewall's job — a classic distractor.)
 - **Flow log levels:** VPC, subnet, or ENI. **Destinations:** CloudWatch Logs, S3, Amazon Data Firehose (renamed from *Kinesis* Data Firehose — older material still uses the old name).
 - **Not logged by flow logs:** traffic to the Amazon DNS server (custom DNS *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the **Amazon Time Sync Service `169.254.169.123`**, Windows license activation, and the reserved VPC-router IP.

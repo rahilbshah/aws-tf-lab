@@ -16,7 +16,7 @@ Two ways to keep traffic off the public internet: **endpoints** reach *AWS servi
 
 There are two separate privacy problems in this note, and it helps to keep them apart.
 
-**Problem one — talking to an AWS service.** S3, DynamoDB, SQS, KMS are AWS services, but from your VPC's point of view they sit *outside* it, out on the public internet. So an instance that wants to read an S3 object takes the public path: out through an internet gateway, or through a NAT gateway if it's in a private subnet.
+**Problem one — talking to an AWS service.** S3, DynamoDB, SQS, KMS are AWS services, but from your VPC's point of view they sit *outside* it, behind **public service endpoints**. So an instance that wants to read an S3 object takes the public path: out through an internet gateway, or through a NAT gateway if it's in a private subnet — public addressing, though the traffic never actually leaves the AWS network.
 
 That's bad in two ways. A subnet you wanted to be fully private has to keep an internet path open just to talk to AWS. And a NAT gateway bills **hourly *and* per-GB** — for a batch worker pushing objects to S3 all day, the per-GB charge can dwarf the hourly one.
 
@@ -38,7 +38,7 @@ Three properties come with that shape, and they are the ones the exam tests:
 - **It only exists for S3 and DynamoDB.** Ask for a gateway endpoint to SQS or KMS and there isn't one. Every other service goes the interface route.
 - **A peered VPC, a VPN, or Direct Connect cannot use it** — a gateway endpoint is usable only from within the VPC that owns the route table. This is the odd rule people trip on, and peering states a matching limit from its own side: **no edge-to-edge routing**, i.e. a peer cannot use your IGW, NAT, VPN or endpoints through the peering. If you need private S3 access from a peered VPC or from on-prem, you need an interface endpoint instead.
 
-Both endpoint types also accept an **endpoint policy** — a resource-style policy narrowing which resources and actions the endpoint permits. Default is full access.
+Both endpoint types also accept an **endpoint policy** — a resource-style policy narrowing which resources and actions the endpoint permits. Default is full access, and a handful of interface-endpoint services don't support policies at all (those stay full access).
 
 > In one line: a gateway endpoint is a free route-table entry for S3/DynamoDB, usable only from inside the VPC that owns the route table.
 

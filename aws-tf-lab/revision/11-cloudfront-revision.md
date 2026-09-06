@@ -14,7 +14,7 @@ tags: [revision, generated]
 ## The shape of it
 
 > [!info] Exam TL;DR
-> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** sits between the edge and your origin, checked on a miss before the origin is.
+> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** usually sits between the edge and your origin, checked on a miss before the origin is — **dynamic requests and PUT/POST skip it** and go straight to the origin.
 > - **Not just static content.** Dynamic, uncacheable requests still benefit, because they enter the AWS backbone at the edge instead of crossing the public internet.
 > - **OAC (Origin Access Control)** locks an S3 origin so CloudFront is the only way in — Block Public Access stays **fully on**. OAC is current; **OAI is legacy**. The bucket policy trusts `cloudfront.amazonaws.com` **with an `AWS:SourceArn` condition pinning your distribution** — the confused-deputy defence again.
 > - **An S3 *website* endpoint is a custom origin and cannot use OAC or OAI at all.** OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`).

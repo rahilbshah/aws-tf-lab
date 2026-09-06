@@ -60,7 +60,7 @@ flowchart TB
 - **`publicly_accessible = false`** keeps the DB off the public internet — correct for a data-tier subnet.
 - Master **username reserved words**: RDS rejects some (`root`, `rdsadmin`, `admin` on some engines) — use a custom name like `dbadmin`. *(Hit live: `root` on postgres.)*
 - Master **password constraints**: 8–128 chars, and cannot contain `/`, `"`, `@`, or spaces. *(Hit live: `@` in the first password would have been rejected.)*
-- **Free Tier**: `db.t2/t3/t4g.micro`, single-AZ, 750 hrs/month, 20 GB storage, first 12 months.
+- **Free Tier**: `db.t3/t4g.micro`, single-AZ — **6 months** on the current Free plan (accounts opened before 15 Jul 2025 keep the legacy 750 hrs/mo + 20 GB for 12 months). `db.t2.micro` can't be encrypted at all.
 
 ## Comparisons
 

@@ -4,7 +4,7 @@ tags: [revision, generated]
 
 # 🌙 Night-before revision — index
 
-**21 topics · ~193 min total.** Each is self-contained;
+**21 topics · ~194 min total.** Each is self-contained;
 you should not need the full note. Tick them off as you go.
 
 > [!tip] Order
@@ -15,7 +15,7 @@ you should not need the full note. Tick them off as you go.
 |---|---|---|---|
 | [ ] | [[revision/01-iam-revision\|01-iam]] | ~16 min | [[01-iam]] |
 | [ ] | [[revision/01-iam-advanced-revision\|01-iam-advanced]] | ~10 min | [[01-iam-advanced]] |
-| [ ] | [[revision/02-ec2-revision\|02-ec2]] | ~12 min | [[02-ec2]] |
+| [ ] | [[revision/02-ec2-revision\|02-ec2]] | ~13 min | [[02-ec2]] |
 | [ ] | [[revision/04-alb-asg-revision\|04-alb-asg]] | ~14 min | [[04-alb-asg]] |
 | [ ] | [[revision/05-vpc-core-revision\|05-vpc-core]] | ~6 min | [[05-vpc-core]] |
 | [ ] | [[revision/05-vpc-security-revision\|05-vpc-security]] | ~6 min | [[05-vpc-security]] |

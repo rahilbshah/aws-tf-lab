@@ -176,7 +176,7 @@ flowchart LR
 |   | Redis (/ Valkey) | Memcached |
 |---|---|---|
 | Threading | **Single-threaded** | **Multi-threaded** |
-| Persistence | Yes (snapshots/AOF) | **No** (RAM only) |
+| Persistence | Yes — **snapshots** (AOF is not supported on ElastiCache) | **No** (RAM only) |
 | Replication / HA | **Yes** | No |
 | Multi-AZ auto-failover | **Yes** | No |
 | Backup & restore | **Yes** | No |

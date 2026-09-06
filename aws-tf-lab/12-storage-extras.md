@@ -21,7 +21,7 @@ You already have two kinds of storage. **EBS** is a disk bolted to one instance.
 
 Between them sits a gap, and it's a big one: **a normal file system that several machines can mount at once.** Not an API — a mount point, with directories and POSIX permissions and file locking, that ten servers can write to simultaneously.
 
-An EBS volume can't do that; it belongs to one instance. S3 can't either — your application would have to be rewritten to make API calls instead of opening files.
+An EBS volume can't do that — it's a raw disk for one instance at a time (Multi-Attach shares *block*, not a file system, and only within one AZ). S3 can't either — your application would have to be rewritten to make API calls instead of opening files.
 
 That gap is what **EFS** and **FSx** fill.
 
@@ -62,7 +62,7 @@ You choose an availability shape at creation:
 - **Regional** (recommended) — data stored redundantly across several Availability Zones, so it survives losing one.
 - **One Zone** — a single AZ, cheaper, and data may be lost if that zone is lost. The same trade you saw with S3 One Zone-IA in [[09-s3-intro]].
 
-Storage classes work like S3's: **Standard** for active files, **Infrequent Access** for files touched rarely, **Archive** for files touched almost never, each with a One Zone variant. **Lifecycle management** moves files between them based on when the file was last accessed, and reading an archived file transitions it back automatically — you don't restore it by hand the way you do with Glacier.
+Storage classes work like S3's: **Standard** for active files, **Infrequent Access** for files touched rarely, **Archive** for files touched almost never — Standard and IA have One Zone variants, **Archive is Regional-only**. Lifecycle moves files *down* on last-access age (IA at 30 days, Archive at 90 by default). Moving them back up is **not** automatic: by default an accessed file stays in IA or Archive, and you only get promotion by setting the **Transition into Standard** policy to *On first access*.
 
 Encryption at rest is enabled **at creation**; encryption in transit is enabled **when you mount**. Access is controlled by IAM and security groups on the network side, and POSIX permissions inside the file system.
 
@@ -133,7 +133,7 @@ The features that turn up in exam questions:
 - **Cross-Region copy** for the "keep backups a minimum distance from production" requirement.
 - **Cross-account copy**, which requires **AWS Organizations** ([[01-iam-advanced]]).
 - **Lifecycle to cold storage**, so old backups get cheaper automatically.
-- **AWS Backup Vault Lock**, which enforces **WORM** — nobody, including you, can delete a backup or shorten its retention. Same shape as S3 Object Lock in [[09-s3-security]].
+- **AWS Backup Vault Lock**, which enforces **WORM** — no one can delete a backup or shorten its retention while the lock holds. **Governance mode** can be unlocked by anyone with the IAM permission; **compliance mode** cannot be, by anyone including AWS, once its grace time (minimum 3 days) expires. Same shape as S3 Object Lock in [[09-s3-security]].
 - **Backup Audit Manager** for proving compliance.
 
 It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx file systems, Storage Gateway volumes, DocumentDB, Neptune, Redshift, and more.
@@ -172,7 +172,7 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - **EFS** speaks **NFSv4.1 and NFSv4.0**. Mountable from EC2, ECS, EKS, Lambda and Fargate. Capacity is elastic to petabyte scale with nothing to provision. **Using EFS with Windows EC2 instances is not supported.**
 - **EFS file system types:** *Regional* (recommended) stores data redundantly across several AZs; *One Zone* stores in a single AZ and data may be lost if that AZ is lost.
 - **EFS defaults AWS recommends:** **General Purpose** performance mode (for latency-sensitive work like web serving, CMSes, home directories) and **Elastic** throughput mode (scales automatically with the workload).
-- **EFS storage classes:** Standard, Infrequent Access, Archive, plus One Zone variants. **Lifecycle management** transitions files based on **last access time**, and accessing an archived file transitions it back automatically.
+- **EFS storage classes:** Standard, Infrequent Access, Archive. Standard and IA have One Zone variants; **Archive is Regional-only** and needs **Elastic** throughput. Lifecycle defaults: **IA at 30 days**, **Archive at 90 days** of no access. **Transition into Standard defaults to *None*** — an accessed file does **not** come back automatically (unlike Glacier, there is no restore job either; it is simply served from where it is).
 - **EFS encryption:** at rest is enabled **at creation** (encrypts data *and* metadata); in transit is enabled **at mount time**. Network access via security groups + IAM; in-file-system permissions via POSIX.
 - **FSx for Windows** speaks **SMB 2.0–3.1.1**, requires **Microsoft Active Directory**, and offers **Single-AZ or Multi-AZ** (Multi-AZ provisions a standby file server in another AZ). SSD and HDD storage; storage, SSD IOPS and throughput are provisioned independently. Encrypted at rest with KMS, in transit with SMB Kerberos session keys. Reachable from on-premises over **Direct Connect or Site-to-Site VPN**, and cross-VPC/account/Region via peering or Transit Gateway.
 - **FSx for Lustre** is POSIX-compliant and **Linux-only** (needs the Lustre client). **Scratch** file systems are **not replicated** and do not survive a file server failure; **persistent** ones are replicated and failed servers are replaced. Storage classes: SSD, Intelligent-Tiering, HDD.
@@ -218,7 +218,7 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 ## Worked examples
 
 > [!example] Worked example — a web tier that needs shared uploads
-> An application behind an ALB runs on an Auto Scaling group ([[04-alb-asg]]) and lets users upload files. Instances come and go, so anything written to an instance's EBS volume disappears with it, and two instances can't see each other's uploads. Attaching one EBS volume to all of them isn't possible — EBS belongs to a single instance. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it in `user_data`. Every instance now sees the same directory, new instances pick it up automatically, and there is no capacity to manage. (In production you'd more likely put uploads in **S3** and skip the file system entirely — EFS is the answer when the application insists on file paths and can't be changed.)
+> An application behind an ALB runs on an Auto Scaling group ([[04-alb-asg]]) and lets users upload files. Instances come and go, so anything written to an instance's EBS volume disappears with it, and two instances can't see each other's uploads. Attaching one EBS volume to all of them isn't possible — an EBS volume lives in a single AZ, and the ASG spans AZs. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it in `user_data`. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it in `user_data`. Every instance now sees the same directory, new instances pick it up automatically, and there is no capacity to manage. (In production you'd more likely put uploads in **S3** and skip the file system entirely — EFS is the answer when the application insists on file paths and can't be changed.)
 
 > [!example] Worked example — lifting a Windows application into AWS
 > A company runs a .NET application against a Windows file share, with permissions driven by Active Directory groups. They want it in AWS without rewriting it. EFS is out — it's NFS, and **AWS doesn't support EFS with Windows EC2 instances**. S3 is out — the app opens file paths, not APIs. The answer is **FSx for Windows File Server**: SMB, joined to Active Directory (either AWS Managed Microsoft AD or their own via AD Connector — see [[01-iam-advanced]]), enforcing the same Windows ACLs. Choose **Multi-AZ** so a zone failure doesn't take the share down. On-premises users can reach it over Direct Connect or Site-to-Site VPN ([[05-vpc-hybrid]]) during the migration.

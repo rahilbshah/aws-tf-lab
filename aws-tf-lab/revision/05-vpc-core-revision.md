@@ -50,7 +50,7 @@ flowchart TB
 - **VPC CIDR** must be `/16`–`/28`. CIDR blocks can't overlap if you plan to peer VPCs later.
 - **Every new VPC gets 3 freebies**: a **main route table**, a **default NACL** (allow-all in/out), and a **default security group** (self-referencing inbound + allow-all outbound). Terraform ignores these unless you adopt them with the `aws_default_*` resources. **Best practice: never add an IGW route to the main route table** — so a subnet you forget to associate fails *closed* (private), not open.
 - **IGW**: horizontally scaled, redundant, no bandwidth limit, one per VPC, free (you pay for the data transfer, not the IGW). Bidirectional.
-- **NAT gateway**: managed, ~5 Gbps scaling automatically up to a higher ceiling (⚠️ verify current bandwidth ceiling), redundant **within one AZ** but **AZ-scoped** — for real HA you deploy **one NAT gateway per AZ** and point each private subnet's RT at the NAT in its own AZ (else an AZ failure cuts egress, and cross-AZ NAT traffic is billed). Has **no security group**. Needs an EIP. Bills **~$0.045/hr + per-GB data processed** — ⚠️ check current pricing. Outbound-only; drops unsolicited inbound.
+- **NAT gateway**: managed, **5 Gbps scaling automatically to 100 Gbps**, redundant **within one AZ** but **AZ-scoped** — for real HA you deploy **one NAT gateway per AZ** and point each private subnet's RT at the NAT in its own AZ (else an AZ failure cuts egress, and cross-AZ NAT traffic is billed). Has **no security group**. Needs an EIP. Bills **~$0.045/hr + per-GB data processed** — ⚠️ check current pricing. Outbound-only; drops unsolicited inbound.
 - **Egress-only Internet Gateway (`aws_egress_only_internet_gateway`)**: the **IPv6** equivalent of a NAT gateway — outbound-only internet for IPv6 (IPv6 is globally routable, so you can't use NAT; you use this instead). IPv4 has no analog need because private IPv4 isn't routable.
 
 ## Comparisons
@@ -74,7 +74,7 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 
 |   | IGW | NAT Gateway | Egress-only IGW |
 |---|---|---|---|
-| Protocol | IPv4 + IPv6 | IPv4 | IPv6 |
+| Protocol | IPv4 + IPv6 | IPv4 (+ IPv6→IPv4 via NAT64/DNS64) | IPv6 |
 | Direction | Bidirectional | Outbound only | Outbound only |
 | Lives | VPC edge | In a public subnet | VPC edge |
 | For | public subnets | private subnets (IPv4) | private IPv6 egress |

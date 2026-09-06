@@ -116,7 +116,7 @@ One service that sounds related and isn't: **Client VPN** connects **individual 
 > - **Site-to-Site VPN** = IPsec VPN **over the internet**, **encrypted**, AWS-managed, **2 tunnels** for HA. **Fast to set up (hours)**, cheap, but performance rides the public internet (variable).
 > - **VPN endpoints:** **Virtual Private Gateway (VGW)** = AWS side (or a **Transit Gateway** for many VPCs); **Customer Gateway (CGW)** = config object representing your on-prem router.
 > - **Direct Connect (DX)** = **dedicated private physical fiber**, bypasses the internet. **Consistent low latency + guaranteed bandwidth + lower data cost**, but **expensive** and **weeks-to-months to provision**. **NOT encrypted by default** — run a VPN over it to encrypt.
-> - **DX speeds:** 1/10/100 Gbps dedicated; sub-1 Gbps hosted. **VIFs:** Private (→VPC), Public (→S3 etc.), Transit (→TGW).
+> - **DX speeds:** dedicated **1/10/100 Gbps** (400 on some); **hosted** (via a partner) **50 Mbps–25 Gbps** — the only route to a sub-1 Gbps link. **VIFs:** Private (→VPC), Public (→S3 etc.), Transit (→TGW).
 > - **Direct Connect Gateway** = one DX reaching **VPCs across multiple regions/accounts** (non-transitive).
 > - **Decisions:** need it *fast/temporary* → VPN. *Consistent high-throughput/low-latency* → DX. *Cheap DX backup* → VPN failover. *Encrypt DX* → VPN over DX.
 
@@ -155,7 +155,7 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
-- **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). ~**1.25 Gbps per tunnel** ceiling (⚠️ verify current). Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
+- **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). Up to ~**1.25 Gbps per standard tunnel**. Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
 - **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 Gbps** (400 on some); **hosted** connections (via partners) go sub-1 Gbps. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
 - **DX Virtual Interfaces (VIFs):** **Private VIF** → one VPC (via VGW); **Public VIF** → AWS public services (S3 etc.) globally; **Transit VIF** → Transit Gateway (via DX Gateway).
 - **Direct Connect Gateway:** global; a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs. **Non-transitive** (VPCs via a DXGW can't reach each other through it).

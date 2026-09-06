@@ -107,7 +107,7 @@ Plenty of exam cost questions never mention an instance. These are the levers, a
 
 **Data transfer**: inbound is generally free, **outbound to the internet costs money**, and **cross-AZ traffic is charged**. That's why an NLB with cross-zone load balancing enabled costs more than an ALB, where it's free — see [[04-alb-asg]].
 
-**Elastic IPs** are charged **when not attached to a running instance** — the classic forgotten-resource bill.
+**Elastic IPs** — and every public IPv4 address — bill **hourly whether attached or not**; an unattached one is the classic forgotten-resource bill, charging for nothing in return.
 
 **S3 storage classes** differ enormously, and **lifecycle rules** move data down the tiers automatically ([[09-s3-intro]]). Watch the minimum billable object size on the IA classes — many tiny files in IA can cost more than Standard.
 

@@ -97,7 +97,7 @@ flowchart LR
 | Identity **+ SCP + boundary** | all **three** must allow |
 | **Explicit `Deny`** in any of them | **denied**, unconditionally |
 
-*The union case is the odd one out and it's why cross-account S3 works: the bucket policy alone can grant access.*
+*The union case is the odd one out — but it's a union **within one account**. A cross-account request is evaluated twice: the caller's identity policy **and** the bucket policy must both allow it.*
 
 ### RBAC vs ABAC
 

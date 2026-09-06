@@ -66,7 +66,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
-- **All EC2 attributes can be changed in-place** — No — ami forces replacement, subnet_id forces replacement (subnet determines AZ), most network-affecting attributes force replacement.  
+- **All EC2 attributes can be changed in-place** — No — ami, subnet_id (subnet determines AZ), key_name and associate_public_ip_address all force replacement.  
   ↳ [[02-ec2|note]]
 - **ip_protocol accepts "ssh" / "http"** — No — IP-layer protocols only: tcp/udp/icmp/icmpv6/-1. Application-layer names are friendly console labels, not API inputs.  
   ↳ [[02-ec2|note]]
@@ -248,7 +248,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[10-route53#Traps|note]]
 - **CNAME at the apex** — example.com must carry SOA and NS records, and DNS forbids a CNAME coexisting with any other record at the same name.  
   ↳ [[10-route53#Traps|note]]
-- **geolocation vs geoproximity** — Geolocation = where the USER is (continent, country, US state) — content localization, licensing, compliance. Geoproximity = where your RESOURCES are, with a bias to grow or shrink each one's catchment, and it needs Traffic Flow. If the scenario says "users in Germany must get the German site," that's geolocation.  
+- **geolocation vs geoproximity** — Geolocation = where the USER is (continent, country, US state) — content localization, licensing, compliance. Geoproximity = where your RESOURCES are, with a bias to grow or shrink each one's catchment. If the scenario says "users in Germany must get the German site," that's geolocation.  
   ↳ [[10-route53#Traps|note]]
 - **"we set up failover but users were down for an hour"** — Route 53 did fail over. The TTL kept resolvers and browsers serving the stale answer. Failover is only as fast as (interval × threshold) + TTL, and the TTL term usually dominates.  
   ↳ [[10-route53#Traps|note]]
