@@ -63,12 +63,12 @@ These exist because the human explicitly asked for them. Treat them as hard cons
 
 ---
 
-## 4. Environment & tooling (verified current as of May 2026)
+## 4. Environment & tooling (versions re-verified 2026-09-06)
 
 | Tool | Version / setting | Notes |
 |---|---|---|
-| Terraform CLI | `>= 1.13`, latest stable is **1.15.x** | BUSL-licensed. OpenTofu (1.11.x, MPL-2.0) is a drop-in alternative — same HCL. We use HashiCorp Terraform here since most tutorials and the job market reference it; mention OpenTofu when license/open-source comes up. |
-| AWS provider | `hashicorp/aws` `~> 6.0` (latest 6.46.x) | Pin with the pessimistic operator so we stay on the v6 line and don't get surprised by a v7 breaking change. |
+| Terraform CLI | latest stable **1.16.1**; 1.16.0 shipped 2026-08-26. Set `required_version` to what the code NEEDS, not to the newest release. | BUSL-licensed. OpenTofu (1.11.x, MPL-2.0) is a drop-in alternative — same HCL. We use HashiCorp Terraform here since most tutorials and the job market reference it; mention OpenTofu when license/open-source comes up. |
+| AWS provider | `hashicorp/aws` `~> 6.0` (latest **6.63.0**, 2026-09-03) | Pin with the pessimistic operator so we stay on the v6 line and don't get surprised by a v7 breaking change. |
 | Default region | `us-east-1` (N. Virginia) | Matches the learner's AWS CLI profile. Also the most common region in tutorials/exam scenarios, and where some global services anchor (IAM is global; CloudFront/ACM certs and a few features are `us-east-1`-only). **Note:** it's the largest/oldest region and occasionally has the most moving parts — call out region-specific gotchas when relevant. |
 | Auth | AWS CLI **default profile** (`[default]` in `~/.aws/credentials`) | The provider picks this up automatically — no `profile` argument needed. **Never** hardcode access keys in `.tf` files or commit them. If a task ever seems to require pasting a key into a file, stop and flag it. |
 | OS | Confirm with the human on first run | Adjust shell commands accordingly (PowerShell/WSL vs bash). |
@@ -164,7 +164,7 @@ The human asked what state is — so when it comes up, **teach it, don't assume 
 **Plan for this repo:**
 - **Phase 1 — local state.** Each topic folder keeps its own `terraform.tfstate` locally. Simplest possible setup; perfect for solo learning.
 - **Phase 2 — migrate to remote state (S3 backend + state locking).** When the human is comfortable, walk them through creating an S3 bucket + enabling versioning, configuring an `s3` backend block, and running `terraform init -migrate-state`. **Doing this migration by hand is a planned lesson** — let them perform the steps; you guide.
-  - Note: modern Terraform/S3 backends support native S3 lockfile-based locking (`use_lockfile = true`), so a separate DynamoDB lock table is no longer strictly required on recent versions. Verify the current recommendation against the backend docs when you reach this stage rather than asserting from memory.
+  - **Confirmed 2026-09-06:** use `use_lockfile = true` and create **no DynamoDB table**. The S3 backend docs state that "DynamoDB-based locking is deprecated and will be removed in a future minor version". Nearly every tutorial still says to build the table; don't.
 
 **Hard state rules to enforce in every review:**
 - **Never commit state files.** `*.tfstate` and `*.tfstate.*` must be git-ignored.
