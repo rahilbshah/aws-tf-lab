@@ -24,3 +24,22 @@
 # 3 days in queue A arrives in the DLQ already 3 days old. Given that, should the
 # DLQ's retention be shorter than, equal to, or longer than queue A's? Answer it
 # to yourself, then set the number.
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 518400 # longer then Queue A's so someone can review it before it gets deleted
+}
+
+resource "aws_sqs_queue" "a" {
+  name                       = "${var.name_prefix}-a"
+  visibility_timeout_seconds = var.visibility_timeout
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+    maxReceiveCount     = var.max_receive_count
+  })
+}
+
+resource "aws_sqs_queue" "b" {
+  name                       = "${var.name_prefix}-b"
+  visibility_timeout_seconds = var.visibility_timeout
+}

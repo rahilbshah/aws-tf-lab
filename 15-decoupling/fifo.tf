@@ -16,3 +16,9 @@
 # Sending to a FIFO queue requires a message_group_id. Messages sharing a group
 # are strictly ordered; different groups are processed in parallel. Say to
 # yourself why that matters, given FIFO's 300 TPS per-partition ceiling.
+
+resource "aws_sqs_queue" "orders_fifo" {
+  name                        = "${var.name_prefix}-orders.fifo"
+  fifo_queue                  = true
+  content_based_deduplication = true
+}

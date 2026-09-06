@@ -10,3 +10,7 @@
 # A topic with no subscribers does not error and does not queue anything — it
 # silently discards what you publish. Worth knowing before you wonder where
 # your first test message went.
+
+resource "aws_sns_topic" "this" {
+  name = "${var.name_prefix}-events"
+}

@@ -34,3 +34,44 @@
 #
 # Say the answer out loud before you write it. Get it wrong and every test you
 # run still passes — that is precisely why it is worth getting right.
+
+resource "aws_sns_topic_subscription" "a" {
+  topic_arn            = aws_sns_topic.this.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.a.arn
+  raw_message_delivery = true
+}
+
+resource "aws_sns_topic_subscription" "b" {
+  topic_arn            = aws_sns_topic.this.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.b.arn
+  raw_message_delivery = true
+}
+
+data "aws_iam_policy_document" "allow_sns" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.a.arn, aws_sqs_queue.b.arn]
+    principals {
+      type        = "Service"
+      identifiers = ["sns.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      values   = [aws_sns_topic.this.arn]
+      variable = "aws:SourceArn"
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "a" {
+  queue_url = aws_sqs_queue.a.id
+  policy    = data.aws_iam_policy_document.allow_sns.json
+}
+
+resource "aws_sqs_queue_policy" "b" {
+  queue_url = aws_sqs_queue.b.id
+  policy    = data.aws_iam_policy_document.allow_sns.json
+}
