@@ -55,3 +55,27 @@
 
 # TODO(3) aws_internet_gateway.this
 #         vpc_id, tags. One per VPC, no arguments worth thinking about.
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+locals {
+  azs = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+}
+
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+  tags = {
+    Name = "${var.name}-vpc"
+  }
+}
+
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+  tags = {
+    Name = "${var.name}-ig"
+  }
+}

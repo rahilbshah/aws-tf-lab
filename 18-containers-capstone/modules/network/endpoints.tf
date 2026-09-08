@@ -28,3 +28,20 @@
 #          for ecr.api, ecr.dkr and logs. Those bill per ENI per AZ and three
 #          of them cost more than one NAT gateway - so we add them only if we
 #          decide to drop NAT entirely. Do the arithmetic then, not now.
+
+data "aws_region" "current" {}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids = concat(
+    [for rt in aws_route_table.private : rt.id],
+    [aws_route_table.isolated.id]
+  )
+
+  tags = {
+    Name = "${var.name}-s3-endpoint"
+  }
+
+}

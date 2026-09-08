@@ -32,3 +32,24 @@
 #         so 1 NAT serves both AZs, and 2 NATs serve one AZ each, with the
 #         same expression. Handle nat_gateway_count = 0 separately - then
 #         there is no default route at all.
+
+resource "aws_eip" "nat" {
+  count  = var.nat_gateway_count
+  domain = "vpc"
+  tags = {
+    Name = "${var.name}-nat-eip-${count.index}"
+  }
+}
+
+resource "aws_nat_gateway" "this" {
+  count = var.nat_gateway_count
+
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[local.azs[count.index]].id
+
+  tags = {
+    Name = "${var.name}-nat-${count.index}"
+  }
+
+  depends_on = [aws_internet_gateway.this]
+}
