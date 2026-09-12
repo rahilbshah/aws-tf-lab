@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 09.3 – S3 Security (access, encryption, immutability)
 
-> [!abstract] Night-before read · ~9 min · self-contained
+> [!abstract] Night-before read · ~10 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[09-s3-security]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -128,6 +128,16 @@ Two ways to become public (ACL, policy) × two timings (new, existing). All four
 > [!example] Worked example — sharing one private object without giving away credentials
 > A user needs to download one report from a private bucket. Options that are *wrong*: making the bucket public (exposes everything), creating an IAM user for them (a permanent identity for a one-off), or emailing the file (no audit, no revocation). The right answer is a **presigned URL**: `aws s3 presign s3://bucket/report.pdf --expires-in 3600` produces a link that works for one hour, for that one object, carrying *your* permissions. The trade-off to state out loud: it's a **bearer token** — anyone who gets the link has it until expiry, so keep the window short.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **The four Block Public Access settings** — why four (new/existing × ACL/policy), and that BPA **overrides** policy rather than the other way round.
+- [ ] **Which encryption option means what** — especially **DSSE-KMS** (two layers) and that **SSE-C is now off by default (April 2026)**.
+- [ ] **Default encryption doesn't touch existing objects** — needs S3 Batch Operations Copy.
+- [ ] **Presigned URLs carry the generator's permissions**, are bearer tokens, max 7 days CLI / 12 hours console.
+- [ ] **Object Lock delete asymmetry** — permanent delete 403, simple delete 200 + delete marker.
+- [ ] **COMPLIANCE mode is irreversible even for root** — never demo it on a real account.
+- [ ] **MFA Delete is root-only**, no Terraform path.
+
 ## Also worth carrying
 
 > [!warning] Trap — Block Public Access can be overridden by a bucket policy
@@ -152,6 +162,31 @@ Two ways to become public (ACL, policy) × two timings (new, existing). All four
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- The four Block Public Access settings
+> why four (new/existing × ACL/policy), and that BPA **overrides** policy rather than the other way round.
+
+> [!question]- Which encryption option means what
+> especially **DSSE-KMS** (two layers) and that **SSE-C is now off by default (April 2026)**.
+
+> [!question]- Default encryption doesn't touch existing objects
+> needs S3 Batch Operations Copy.
+
+> [!question]- Presigned URLs carry the generator's permissions
+> , are bearer tokens, max 7 days CLI / 12 hours console.
+
+> [!question]- Object Lock delete asymmetry
+> permanent delete 403, simple delete 200 + delete marker.
+
+> [!question]- COMPLIANCE mode is irreversible even for root
+> never demo it on a real account.
+
+> [!question]- MFA Delete is root-only
+> , no Terraform path.
 
 **1. Encryption at rest (verified 2026-08)** — fill the blank cells from memory.
 

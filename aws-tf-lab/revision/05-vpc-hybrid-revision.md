@@ -90,6 +90,14 @@ flowchart LR
 > [!example] Worked example — resilient hybrid at scale
 > An enterprise with 20 VPCs across 2 regions and 3 data centers wants one coherent network. Peering would be a 190-connection mess. Design: a **Transit Gateway** per region as the hub (all VPCs attach with one attachment each), **Direct Connect + Transit VIF via a Direct Connect Gateway** to bring the data centers onto the hubs across regions, and a **Site-to-Site VPN as failover** for the DX. This is the canonical "large hybrid network" answer — TGW for the VPC mesh, DX for the private pipe, VPN for cheap backup.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Whole topic was cold** (hadn't reviewed since the video) — learned it fresh here; needs card review to stick.
+- [ ] **DX is NOT encrypted by default** — the single most-tested nuance; encrypt via VPN-over-DX.
+- [ ] **VGW (AWS side) vs CGW (on-prem side)** — which is which.
+- [ ] **VPN = fast to set up / DX = weeks-to-months** — drives most "which connection" scenario answers.
+- [ ] **Direct Connect Gateway** = one DX to multiple regions (non-transitive).
+
 ## Also worth carrying
 
 > [!warning] Trap — "Direct Connect is encrypted because it's private"
@@ -111,6 +119,25 @@ flowchart LR
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Whole topic was cold
+> (hadn't reviewed since the video) — learned it fresh here; needs card review to stick.
+
+> [!question]- DX is NOT encrypted by default
+> the single most-tested nuance; encrypt via VPN-over-DX.
+
+> [!question]- VGW (AWS side) vs CGW (on-prem side)
+> which is which.
+
+> [!question]- VPN = fast to set up / DX = weeks-to-months
+> drives most "which connection" scenario answers.
+
+> [!question]- Direct Connect Gateway
+> = one DX to multiple regions (non-transitive).
 
 **1. Site-to-Site VPN vs Direct Connect** — fill the blank cells from memory.
 

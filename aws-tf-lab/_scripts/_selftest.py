@@ -65,10 +65,58 @@ def _traps(md):
     if cur: out.append((cur, buf))
     return [(t, b) for t, b in out if b]
 
-def section(body, note):
-    """The '## Self-test' markdown, or None if the note yields nothing to drill."""
+def _weakspots(md):
+    """(prompt, answer) for each recorded weak spot.
+
+    These are the human's OWN past mistakes, and until 2026-09-12 they were the
+    only part of a note that reached neither the revision doc nor the self-test -
+    build_revision.py dropped the section outright. A lesson written down after
+    missing a question, then never drilled, is how the same question gets missed
+    twice; 02-ec2's instance-store-vs-io2 note did exactly that.
+
+    The house bullet style splits cleanly into a drill:
+        - [ ] **the thing** - why it bites
+    so the bold lead becomes the prompt and the rest becomes the answer.
+    """
+    m = re.search(r'^##[^\n]*weak spot[^\n]*$', md, re.M | re.I)
+    if not m:
+        return []
+    body = re.split(r'^## ', md[m.end():], maxsplit=1, flags=re.M)[0]
+    out = []
+    for line in body.splitlines():
+        s = line.strip()
+        if not s.startswith('- '):
+            continue
+        s = re.sub(r'^-\s*(\[[ xX]\]\s*)?', '', s).strip()
+        if not s:
+            continue
+        # The BOLD lead is the prompt whenever there is one, whether or not a
+        # dash follows it. Splitting only on '** - ' produced prompts that
+        # restated the whole fact, which is not a drill - you cannot test
+        # recall with a question that contains its own answer.
+        bold = re.match(r'^\*\*(.+?)\*\*\s*(?:[\u2014\u2013-]\s*)?(.*)$', s)
+        if bold and bold.group(1).strip():
+            prompt = bold.group(1).strip()
+            rest = bold.group(2).strip()
+            out.append((prompt, rest if rest else s))
+        else:
+            # no bold lead at all - keep a short hook, hide the rest
+            cut = re.split(r'\s[\u2014\u2013-]\s', s, maxsplit=1)
+            hook = cut[0].strip()
+            if len(hook) > 70:
+                hook = hook[:70].rsplit(' ', 1)[0] + '…'
+            out.append((hook, s))
+    return out
+
+def section(body, note, full_text=None):
+    """The '## Self-test' markdown, or None if the note yields nothing to drill.
+
+    `full_text` is the ORIGINAL note, needed because weak spots may have been
+    filtered out of `body` by the caller's section handling.
+    """
     tabs, traps = _tables(body), _traps(body)
-    if not tabs and not traps:
+    weak = _weakspots(full_text if full_text is not None else body)
+    if not tabs and not traps and not weak:
         return None
 
     out = ['## Self-test',
@@ -79,6 +127,15 @@ def section(body, note):
            '> Say each answer out loud before you unfold it — if you can only recognise it,',
            '> you do not know it yet.',
            '']
+
+    if weak:
+        out += ['### You have got these wrong before', '',
+                '*Your own recorded misses. Answer each one before unfolding it — these are,'
+                ' by definition, the ones that have already cost you marks.*', '']
+        for prompt, answer in weak:
+            out.append(f'> [!question]- {prompt}')
+            out.append(f'> {answer}')
+            out.append('')
 
     n = 0
     for cap, hdr, sep, rows in tabs:

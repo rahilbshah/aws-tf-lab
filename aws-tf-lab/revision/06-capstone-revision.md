@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 06 – Capstone: 3-Tier VPC with Terraform Modules
 
-> [!abstract] Night-before read · ~8 min · self-contained
+> [!abstract] Night-before read · ~9 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[06-capstone]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -120,6 +120,17 @@ The DB is private (no public IP; `db-sg` allows only the app tier), so reaching 
 | Extra infra | bastion to run/patch | just an instance profile |
 | Exam framing | classic | **"access private instances without a bastion / without opening ports / auditable"** → Session Manager |
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Module outputs bubble up one level** — must re-export at the root for `terraform output` / other modules to see them.
+- [ ] **`-1` (all protocols) egress can't have a port range** — omit `from_port`/`to_port`.
+- [ ] **Empty SG `description = ""` fails at apply** (not caught by validate/plan).
+- [ ] **RDS Multi-AZ (HA, not readable) vs Read Replica (read scaling)** — the classic trap.
+- [ ] **RDS username/password constraints** — reserved names (`root`), forbidden chars (`@`).
+- [ ] **Secrets belong in tfvars (gitignored)/Secrets Manager**, never in a committed `.tf`.
+- [ ] **Reaching a private DB: bastion (public, SSH, open port) vs SSM Session Manager (no bastion, IAM auth, CloudTrail)** — SSM is the "no open ports / auditable" exam answer.
+- [ ] **`iam_instance_profile` is a BLOCK on a launch template**, a string on `aws_instance`; launch-template changes need an ASG instance refresh to take effect.
+
 ## Also worth carrying
 
 > [!warning] Trap — Multi-AZ to scale reads
@@ -138,6 +149,34 @@ The DB is private (no public IP; `db-sg` allows only the app tier), so reaching 
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Module outputs bubble up one level
+> must re-export at the root for `terraform output` / other modules to see them.
+
+> [!question]- `-1` (all protocols) egress can't have a port range
+> omit `from_port`/`to_port`.
+
+> [!question]- Empty SG `description = ""` fails at apply
+> (not caught by validate/plan).
+
+> [!question]- RDS Multi-AZ (HA, not readable) vs Read Replica (read scaling)
+> the classic trap.
+
+> [!question]- RDS username/password constraints
+> reserved names (`root`), forbidden chars (`@`).
+
+> [!question]- Secrets belong in tfvars (gitignored)/Secrets Manager
+> , never in a committed `.tf`.
+
+> [!question]- Reaching a private DB: bastion (public, SSH, open port) vs SSM Session Manager (no bastion, IAM auth, CloudTrail)
+> SSM is the "no open ports / auditable" exam answer.
+
+> [!question]- `iam_instance_profile` is a BLOCK on a launch template
+> , a string on `aws_instance`; launch-template changes need an ASG instance refresh to take effect.
 
 **1. RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)** — fill the blank cells from memory.
 

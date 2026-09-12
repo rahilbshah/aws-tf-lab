@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 08 – ElastiCache (Redis / Memcached)
 
-> [!abstract] Night-before read · ~6 min · self-contained
+> [!abstract] Night-before read · ~7 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[08-elasticache]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -86,6 +86,14 @@ flowchart LR
 > [!example] Worked example — real-time leaderboard
 > A game needs a live top-100 leaderboard updated on every score. A relational `ORDER BY score` over millions of rows per request is too slow. **Redis sorted sets** (`ZADD`/`ZREVRANGE`) maintain a ranked set in memory and return the top-N in microseconds. Memcached can't do this (simple key-value only). Trigger words "leaderboard / ranking / real-time counter" → **Redis**.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Threading:** Memcached = multi-threaded, Redis = single-threaded (had it fuzzy).
+- [ ] **Full Redis vs Memcached feature split** (HA, persistence, backup, data types, pub/sub) and the engine-choice decision.
+- [ ] **Caching strategies** — lazy loading (cache-aside) vs write-through, and TTL.
+- [ ] **Redis use cases** beyond caching: session store, leaderboards (sorted sets), pub/sub.
+- [ ] **Auto Discovery is Memcached-only** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). The discriminator was "multithreaded sub-ms session store with node discovery": I anchored on *session store → Redis* and ignored two Memcached-exclusive signals. Fix the **method**, not just the fact — scan for engine-exclusive capabilities before reading the use case.
+
 ## Also worth carrying
 
 > [!warning] Trap — Memcached for anything needing HA/persistence/complex data
@@ -107,6 +115,25 @@ flowchart LR
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Threading:
+> Memcached = multi-threaded, Redis = single-threaded (had it fuzzy).
+
+> [!question]- Full Redis vs Memcached feature split
+> (HA, persistence, backup, data types, pub/sub) and the engine-choice decision.
+
+> [!question]- Caching strategies
+> lazy loading (cache-aside) vs write-through, and TTL.
+
+> [!question]- Redis use cases
+> beyond caching: session store, leaderboards (sorted sets), pub/sub.
+
+> [!question]- Auto Discovery is Memcached-only
+> missed while marked _sure_ (mock 2026-08-28, trainer-sourced). The discriminator was "multithreaded sub-ms session store with node discovery": I anchored on *session store → Redis* and ignored two Memcached-exclusive signals. Fix the **method**, not just the fact — scan for engine-exclusive capabilities before reading the use case.
 
 **1. Redis vs Memcached (the exam table)** — fill the blank cells from memory.
 

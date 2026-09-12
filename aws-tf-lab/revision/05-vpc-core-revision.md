@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 05.1 – VPC Core (subnets, routing, IGW, NAT)
 
-> [!abstract] Night-before read · ~6 min · self-contained
+> [!abstract] Night-before read · ~7 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[05-vpc-core]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -91,6 +91,13 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 > [!failure] Failure mode — single NAT gateway as an AZ SPOF
 > Deploying one NAT gateway and routing *all* private subnets (across AZs) through it saves money but makes that AZ a single point of failure: if the NAT's AZ goes down, every private subnet in every AZ loses egress, and in normal operation cross-AZ traffic to the NAT is billed. Production fix: **one NAT gateway per AZ**, each AZ's private RT → its local NAT. Cost vs resilience tradeoff the exam probes.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **NAT gateway subnet placement** — put it in a *private* subnet on the first try; it must be **public** (that's its own door to the IGW). The private RT points *at* it.
+- [ ] **Default vs custom NACL/SG behavior flips** — default NACL allows all, custom NACL denies all; default SG self-references, new SG denies inbound. Easy to state backwards.
+- [ ] **The 3 auto-created VPC defaults** (main RT, default NACL, default SG) — didn't expect the 3rd route table in the console; they're AWS freebies, not Terraform-managed.
+- [ ] **Single-NAT AZ SPOF** — one NAT for all AZs is a resilience + cross-AZ-cost trap; production uses one per AZ.
+
 ## Also worth carrying
 
 > [!warning] Trap — "the default NACL and a new NACL behave the same"
@@ -106,6 +113,22 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- NAT gateway subnet placement
+> put it in a *private* subnet on the first try; it must be **public** (that's its own door to the IGW). The private RT points *at* it.
+
+> [!question]- Default vs custom NACL/SG behavior flips
+> default NACL allows all, custom NACL denies all; default SG self-references, new SG denies inbound. Easy to state backwards.
+
+> [!question]- The 3 auto-created VPC defaults
+> (main RT, default NACL, default SG) — didn't expect the 3rd route table in the console; they're AWS freebies, not Terraform-managed.
+
+> [!question]- Single-NAT AZ SPOF
+> one NAT for all AZs is a resilience + cross-AZ-cost trap; production uses one per AZ.
 
 **1. NAT Gateway vs NAT Instance** — fill the blank cells from memory.
 

@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 16 – Kinesis (Data Streams & Data Firehose)
 
-> [!abstract] Night-before read · ~9 min · self-contained
+> [!abstract] Night-before read · ~10 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[16-kinesis]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -100,6 +100,14 @@ tags: [revision, generated]
 > [!warning] Trap — forgetting that read throughput is shared
 > A shard's **2 MB/sec read is split across all consumers** using the default shared fan-out. Add a third consumer and each gets roughly 700 KB/sec, and they'll start hitting `ProvisionedThroughputExceeded` on reads. "Multiple consumers each needing full throughput" points at **enhanced fan-out**, not more shards.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Shards** — I knew the database-sharding idea but not that a shard is *both* a partition and a fixed throughput unit, and I had the limit as "1 MB/s equals 1,000 records/s" when it is **either/or**, whichever binds first.
+- [ ] **Data Streams vs Firehose** — I was genuinely confused between them. The resolution: **Streams stores and you build the consumer; Firehose delivers and you build nothing.**
+- [ ] **Ordering is per shard, not per stream** — and it is the same mechanic as `MessageGroupId` in FIFO SQS, which I already knew.
+- [ ] **Read throughput is shared between consumers** unless enhanced fan-out is used.
+- [ ] ⚠️ **Never built** — Kinesis and Firehose are blocked on this AWS account's Free plan (`SubscriptionRequiredException`), so none of this has been observed live.
+
 ## Also worth carrying
 
 > [!warning] Build tier — **conceptual-only (blocked on this account)**
@@ -112,6 +120,25 @@ tags: [revision, generated]
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Shards
+> I knew the database-sharding idea but not that a shard is *both* a partition and a fixed throughput unit, and I had the limit as "1 MB/s equals 1,000 records/s" when it is **either/or**, whichever binds first.
+
+> [!question]- Data Streams vs Firehose
+> I was genuinely confused between them. The resolution: **Streams stores and you build the consumer; Firehose delivers and you build nothing.**
+
+> [!question]- Ordering is per shard, not per stream
+> and it is the same mechanic as `MessageGroupId` in FIFO SQS, which I already knew.
+
+> [!question]- Read throughput is shared between consumers
+> unless enhanced fan-out is used.
+
+> [!question]- ⚠️ **Never built**
+> ⚠️ **Never built** — Kinesis and Firehose are blocked on this AWS account's Free plan (`SubscriptionRequiredException`), so none of this has been observed live.
 
 **1. SQS vs SNS vs Kinesis** — fill the blank cells from memory.
 

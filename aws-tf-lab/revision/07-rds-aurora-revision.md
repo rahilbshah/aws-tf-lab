@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 07 – RDS & Aurora
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[07-rds-aurora]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -134,6 +134,16 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > [!example] Worked example — spiky dev/test database → Aurora Serverless v2
 > A team runs dozens of dev/test databases that are idle most of the day and busy in bursts. Provisioned instances waste money sitting idle; right-sizing each by hand is toil. **Aurora Serverless v2** auto-scales each cluster's capacity (ACUs) up during bursts and down to a floor when idle, in-place, per-second billing — you pay for actual usage. Trigger phrase: "unpredictable / intermittent / variable workload, minimize cost" → Aurora Serverless.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Aurora storage architecture** (6 copies/3 AZs, shared volume, compute/storage separation) — knew replicas differ but not the why.
+- [ ] **Aurora endpoints** (writer/cluster vs reader vs custom vs instance).
+- [ ] **Aurora Serverless v2** (variable-workload auto-scaling) and **Global Database** (<1s cross-region).
+- [ ] **PITR mechanics** — daily snapshot + ~5-min transaction logs = restore to any second; restore = new instance.
+- [ ] **Encryption at creation only** — no in-place encryption.
+- [ ] **IAM database authentication — missed twice, both marked _sure_** (mock 2026-08-28, trainer-sourced). Discriminators that beat me: "short-lived IAM database credentials instead of passwords" and "token-based DB auth tied to an instance profile." The concept was **absent from this note entirely** until 2026-08-29 — see the new authentication comparison above.
+- [ ] **Aurora Replicas double as failover targets** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
+
 ## Also worth carrying
 
 > [!tip] Real gotcha — AWS Free Plan caps backup retention
@@ -164,6 +174,31 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Aurora storage architecture
+> (6 copies/3 AZs, shared volume, compute/storage separation) — knew replicas differ but not the why.
+
+> [!question]- Aurora endpoints
+> (writer/cluster vs reader vs custom vs instance).
+
+> [!question]- Aurora Serverless v2
+> (variable-workload auto-scaling) and **Global Database** (<1s cross-region).
+
+> [!question]- PITR mechanics
+> daily snapshot + ~5-min transaction logs = restore to any second; restore = new instance.
+
+> [!question]- Encryption at creation only
+> no in-place encryption.
+
+> [!question]- IAM database authentication — missed twice, both marked _sure_
+> (mock 2026-08-28, trainer-sourced). Discriminators that beat me: "short-lived IAM database credentials instead of passwords" and "token-based DB auth tied to an instance profile." The concept was **absent from this note entirely** until 2026-08-29 — see the new authentication comparison above.
+
+> [!question]- Aurora Replicas double as failover targets
+> missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
 
 **1. Multi-AZ vs Read Replica (memorize)** — fill the blank cells from memory.
 

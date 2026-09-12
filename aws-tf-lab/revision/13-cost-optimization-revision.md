@@ -114,6 +114,14 @@ tags: [revision, generated]
 > [!warning] Trap — Cost Explorer vs Budgets vs Compute Optimizer
 > Three tools, three jobs. **Cost Explorer** analyses what already happened and forecasts. **Budgets** alerts you when spend or usage crosses a threshold you set. **Compute Optimizer** looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Never studied — the vault had no EC2 purchasing content at all** until 2026-09-05, despite `exam-prep.md` wrongly ticking it as covered by [[02-ec2]]. D4 Cost fell from 85% to 54% between the two mocks, and this hole is the likely reason.
+- [ ] **Savings Plans don't reserve capacity** — the single most-missed fact in this topic.
+- [ ] **Less flexible = bigger discount** (EC2 Instance SP 72% > Compute SP 66%; Standard RI > Convertible). Counterintuitive.
+- [ ] **Standard RI can be modified but not exchanged.**
+- [ ] **Non-compute levers** — gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
+
 ## Self-test
 
 > [!question] Close the doc first.
@@ -121,6 +129,25 @@ tags: [revision, generated]
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Never studied — the vault had no EC2 purchasing content at all
+> until 2026-09-05, despite `exam-prep.md` wrongly ticking it as covered by [[02-ec2]]. D4 Cost fell from 85% to 54% between the two mocks, and this hole is the likely reason.
+
+> [!question]- Savings Plans don't reserve capacity
+> the single most-missed fact in this topic.
+
+> [!question]- Less flexible = bigger discount
+> (EC2 Instance SP 72% > Compute SP 66%; Standard RI > Convertible). Counterintuitive.
+
+> [!question]- Standard RI can be modified but not exchanged.
+> **Standard RI can be modified but not exchanged.**
+
+> [!question]- Non-compute levers
+> gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
 
 **1. Savings Plans vs Reserved Instances** — fill the blank cells from memory.
 

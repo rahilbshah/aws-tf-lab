@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)
 
-> [!abstract] Night-before read · ~6 min · self-contained
+> [!abstract] Night-before read · ~7 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[05-vpc-security]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -93,6 +93,14 @@ flowchart TB
 > [!example] Worked example — when SG can't do the job (block one bad IP)
 > A single IP is scraping your app abusively and you must block it at the **subnet** level regardless of instance SGs. A security group **can't** — it's allow-only. You add a NACL rule: `rule_no 100, action deny, cidr 203.0.113.50/32`, numbered **below** your allow rules so first-match-wins blocks it before any allow is considered. This is *the* reason NACLs exist alongside SGs — explicit deny + subnet-wide reach. (Real-world caveat: for app-layer / scaled blocking you'd reach for AWS WAF or Network Firewall; a NACL is the blunt L3/L4 instrument.)
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Trust policy vs permissions policy (again)** — wired the permissions doc into `assume_role_policy`. The [[01-iam]] distinction keeps biting; trust = who assumes, permissions = what they can do.
+- [ ] **Stateless NACL ephemeral return ports** — knew the *logic* but not the range (`1024–65535`); and a TCP-only NACL silently kills UDP DNS/NTP.
+- [ ] **`validate` ≠ correct** — it passes on logic errors (wrong-but-valid references). Need TFLint (`unused_declarations`) + plan-reading to catch them.
+- [ ] **Flow logs = metadata, not payload** — don't confuse with Network Firewall / Traffic Mirroring.
+- [ ] **VPC Flow Logs details** (had forgotten the topic): fields, levels VPC/subnet/ENI, destinations CloudWatch/S3/Firehose, excluded traffic.
+
 ## Also worth carrying
 
 > [!warning] Trap — "make the NACL match the SG rules and you're done"
@@ -111,6 +119,25 @@ flowchart TB
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Trust policy vs permissions policy (again)
+> wired the permissions doc into `assume_role_policy`. The [[01-iam]] distinction keeps biting; trust = who assumes, permissions = what they can do.
+
+> [!question]- Stateless NACL ephemeral return ports
+> knew the *logic* but not the range (`1024–65535`); and a TCP-only NACL silently kills UDP DNS/NTP.
+
+> [!question]- `validate` ≠ correct
+> it passes on logic errors (wrong-but-valid references). Need TFLint (`unused_declarations`) + plan-reading to catch them.
+
+> [!question]- Flow logs = metadata, not payload
+> don't confuse with Network Firewall / Traffic Mirroring.
+
+> [!question]- VPC Flow Logs details
+> (had forgotten the topic): fields, levels VPC/subnet/ENI, destinations CloudWatch/S3/Firehose, excluded traffic.
 
 **1. Security Group vs Network ACL (the exam's favorite table)** — fill the blank cells from memory.
 

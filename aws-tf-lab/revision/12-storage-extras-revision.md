@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 12 – Storage extras (EFS, FSx, Storage Gateway, DataSync, Snow, Backup)
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[12-storage-extras]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -104,6 +104,14 @@ tags: [revision, generated]
 > [!warning] Trap — "EFS One Zone is fine, it's still durable"
 > Same shape as the S3 One Zone-IA trap in [[09-s3-intro]]. One Zone stores in a single Availability Zone, and data may be lost if that zone is lost. It's for data you could re-create, not for the only copy.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Never studied** — written 2026-09-05 without an orientation pass; nothing here has been tested against a mock yet.
+- [ ] **EFS is Linux-only** — the single highest-value elimination in the topic.
+- [ ] **Volume Gateway cached vs stored** — anchor on which copy is authoritative, not on the word.
+- [ ] **DataSync (a transfer) vs Storage Gateway (a permanent bridge).**
+- [ ] **Lustre scratch vs persistent is a durability choice**, not a speed one.
+
 ## Also worth carrying
 
 > [!warning] Build tier — **conceptual-only**
@@ -119,6 +127,25 @@ tags: [revision, generated]
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Never studied
+> written 2026-09-05 without an orientation pass; nothing here has been tested against a mock yet.
+
+> [!question]- EFS is Linux-only
+> the single highest-value elimination in the topic.
+
+> [!question]- Volume Gateway cached vs stored
+> anchor on which copy is authoritative, not on the word.
+
+> [!question]- DataSync (a transfer) vs Storage Gateway (a permanent bridge).
+> **DataSync (a transfer) vs Storage Gateway (a permanent bridge).**
+
+> [!question]- Lustre scratch vs persistent is a durability choice
+> , not a speed one.
 
 **1. EFS vs FSx vs EBS vs S3** — fill the blank cells from memory.
 

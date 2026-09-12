@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 02 – EC2 (Elastic Compute Cloud)
 
-> [!abstract] Night-before read · ~13 min · self-contained
+> [!abstract] Night-before read · ~14 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[02-ec2]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -220,6 +220,19 @@ flowchart TD
 > [!warning] Trap — EIP is free while attached
 > Was true pre-Feb 2024. Now every public IPv4 (auto-assigned and EIP) bills hourly regardless of attachment state.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **`aws_subnets.X.id` vs `.ids`** — got bitten three times before internalizing it. Plural data source = list. The `.id` (singular) attribute literally doesn't exist.
+- [ ] **`t3.micro` vs `t3-micro`** — instance types are dot-separated. Hyphen looks plausible (e.g. AMI names use hyphens), but rejected at apply.
+- [ ] **`ip_protocol` accepts only IP-layer names** (`tcp`/`udp`/`icmp`/`icmpv6`/`-1`), not application names like `"ssh"`. Console labels mislead.
+- [ ] **IMDSv2 token flow** — IMDSv1-style raw curl returns empty silently on modern Ubuntu. PUT for token, then GET with `X-aws-ec2-metadata-token` header.
+- [ ] **`terraform console` reads state, not plan-in-memory** — needs `apply` or `apply -refresh-only` for data source values to be queryable.
+- [ ] **Ubuntu 24.04 dropped `awscli` from `apt`** — AWS official installer or snap.
+- [ ] **Stop vs terminate granularity** — which attributes persist, which change, which die. Especially auto-assigned IP changes vs EIP staying; instance store always dies; root volume default `delete_on_termination=true` vs additional `false`.
+- [ ] **Trust policy vs permissions policy on a Role** — `assume_role_policy` (on the role itself) says WHO can assume; permissions are attached separately and say WHAT they can do once assumed. Continued exam-frequent gap from [[01-iam]].
+- [ ] **Naming decision paralysis** — got slowed down picking labels. §14 of CLAUDE.md now captures the rule: describe role not type, snake_case, "this"/"main" for singletons, rename freely before apply.
+- [ ] **Storage choice when the data is regeneratable and raw throughput matters most** — instance store, NOT io2. (Missed on the 2026-07 mock.) "High provisioned IOPS" (io2) is the trap — it's the most expensive EBS type and durable, so it fails "lowest cost" when the data is throwaway. Keywords "can be regenerated" → ephemeral is fine → local NVMe instance store.
+
 ## Self-test
 
 > [!question] Close the doc first.
@@ -227,6 +240,40 @@ flowchart TD
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- `aws_subnets.X.id` vs `.ids`
+> got bitten three times before internalizing it. Plural data source = list. The `.id` (singular) attribute literally doesn't exist.
+
+> [!question]- `t3.micro` vs `t3-micro`
+> instance types are dot-separated. Hyphen looks plausible (e.g. AMI names use hyphens), but rejected at apply.
+
+> [!question]- `ip_protocol` accepts only IP-layer names
+> (`tcp`/`udp`/`icmp`/`icmpv6`/`-1`), not application names like `"ssh"`. Console labels mislead.
+
+> [!question]- IMDSv2 token flow
+> IMDSv1-style raw curl returns empty silently on modern Ubuntu. PUT for token, then GET with `X-aws-ec2-metadata-token` header.
+
+> [!question]- `terraform console` reads state, not plan-in-memory
+> needs `apply` or `apply -refresh-only` for data source values to be queryable.
+
+> [!question]- Ubuntu 24.04 dropped `awscli` from `apt`
+> AWS official installer or snap.
+
+> [!question]- Stop vs terminate granularity
+> which attributes persist, which change, which die. Especially auto-assigned IP changes vs EIP staying; instance store always dies; root volume default `delete_on_termination=true` vs additional `false`.
+
+> [!question]- Trust policy vs permissions policy on a Role
+> `assume_role_policy` (on the role itself) says WHO can assume; permissions are attached separately and say WHAT they can do once assumed. Continued exam-frequent gap from [[01-iam]].
+
+> [!question]- Naming decision paralysis
+> got slowed down picking labels. §14 of CLAUDE.md now captures the rule: describe role not type, snake_case, "this"/"main" for singletons, rename freely before apply.
+
+> [!question]- Storage choice when the data is regeneratable and raw throughput matters most
+> instance store, NOT io2. (Missed on the 2026-07 mock.) "High provisioned IOPS" (io2) is the trap — it's the most expensive EBS type and durable, so it fails "lowest cost" when the data is throwaway. Keywords "can be regenerated" → ephemeral is fine → local NVMe instance store.
 
 **1. Stop vs Terminate** — fill the blank cells from memory.
 

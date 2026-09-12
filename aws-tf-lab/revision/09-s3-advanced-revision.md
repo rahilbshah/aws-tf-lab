@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 09.2 – S3 Advanced (replication, big files, events)
 
-> [!abstract] Night-before read · ~7 min · self-contained
+> [!abstract] Night-before read · ~8 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[09-s3-advanced]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -111,6 +111,16 @@ flowchart LR
 > [!failure] Failure mode — the invisible multipart bill
 > A nightly job uploads multi-GB files and sometimes crashes mid-upload. Each crash leaves an **incomplete multipart upload**: the uploaded parts are stored and **billed**, but they don't appear in `s3 ls` or the bucket's object count. Months later, storage cost far exceeds the visible data. Diagnose with `aws s3api list-multipart-uploads`; fix permanently with a lifecycle rule containing **`abort_incomplete_multipart_upload { days_after_initiation = 7 }`**. This is why that clause is in our lifecycle rule.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **S3 Batch Replication** — the name for replicating pre-existing/failed objects (blanked on it in orient).
+- [ ] **Transfer Acceleration mechanism** — thought it fetched from a nearer bucket; it's edge entry + AWS backbone to the *same* bucket.
+- [ ] **S3 Select is deprecated for new customers** — use Athena; know the concept only.
+- [ ] **Replication is not transitive**, and **delete markers aren't replicated by default**.
+- [ ] **S3 RTC = 15-minute SLA** — the "predictable replication time" answer.
+- [ ] **Glacier retrieval tiers/times** (Expedited 1–5 min, Standard 3–5 h, Bulk 5–12 h; Deep Archive has no Expedited).
+- [ ] **Incomplete multipart uploads bill invisibly** — lifecycle abort rule is mandatory hygiene.
+
 ## Also worth carrying
 
 > [!warning] Trap — replication copies existing objects
@@ -132,6 +142,31 @@ flowchart LR
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- S3 Batch Replication
+> the name for replicating pre-existing/failed objects (blanked on it in orient).
+
+> [!question]- Transfer Acceleration mechanism
+> thought it fetched from a nearer bucket; it's edge entry + AWS backbone to the *same* bucket.
+
+> [!question]- S3 Select is deprecated for new customers
+> use Athena; know the concept only.
+
+> [!question]- Replication is not transitive
+> , and **delete markers aren't replicated by default**.
+
+> [!question]- S3 RTC = 15-minute SLA
+> the "predictable replication time" answer.
+
+> [!question]- Glacier retrieval tiers/times
+> (Expedited 1–5 min, Standard 3–5 h, Bulk 5–12 h; Deep Archive has no Expedited).
+
+> [!question]- Incomplete multipart uploads bill invisibly
+> lifecycle abort rule is mandatory hygiene.
 
 **1. Glacier retrieval tiers (verified)** — fill the blank cells from memory.
 

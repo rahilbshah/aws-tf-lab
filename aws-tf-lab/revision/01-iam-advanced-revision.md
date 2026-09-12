@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[01-iam-advanced]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -152,6 +152,14 @@ flowchart LR
 > [!warning] Trap — `aws:SourceIp` behind a VPC endpoint
 > The key is simply **absent** for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic. Use `aws:VpcSourceIp`, or scope on `aws:SourceVpce` / `aws:SourceVpc` instead.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Never studied — the Udemy "IAM Advanced" section was skipped entirely** (realised 2026-08-30). This note was written to cover it; nothing here has been tested yet.
+- [ ] **SCPs grant nothing** — the instinct to read a policy document as "granting" is strong and wrong.
+- [ ] **The root-user asymmetry** — management account exempt, member-account root capped.
+- [ ] **`Allow` needed at every level** vs `Deny` at any level.
+- [ ] **Union vs intersection** — resource policies widen, boundaries and SCPs narrow.
+
 ## Also worth carrying
 
 > [!warning] Build tier — **conceptual-only**
@@ -164,6 +172,25 @@ flowchart LR
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Never studied — the Udemy "IAM Advanced" section was skipped entirely
+> (realised 2026-08-30). This note was written to cover it; nothing here has been tested yet.
+
+> [!question]- SCPs grant nothing
+> the instinct to read a policy document as "granting" is strong and wrong.
+
+> [!question]- The root-user asymmetry
+> management account exempt, member-account root capped.
+
+> [!question]- `Allow` needed at every level
+> vs `Deny` at any level.
+
+> [!question]- Union vs intersection
+> resource policies widen, boundaries and SCPs narrow.
 
 **1. The four things that can cap a permission** — fill the blank cells from memory.
 

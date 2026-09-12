@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 04 – ALB + Auto Scaling Group
 
-> [!abstract] Night-before read · ~14 min · self-contained
+> [!abstract] Night-before read · ~16 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[04-alb-asg]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -144,6 +144,16 @@ flowchart TD
 > ```
 > …sets `max_size = 0` at 13:00 UTC, which clamps desired to 0 and **terminates the entire fleet on a schedule**, every weekday. The plan looks harmless because the resource is new and the damage happens later, at the cron time. Always write `min_size = -1` and `max_size = -1` when you mean "leave them as they are." (Also worth knowing: `recurrence` is UTC unless you set `time_zone`, so a schedule written in local-time thinking fires at the wrong hour and shifts again at DST.)
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Conflated "ALB health check fails" with "instance gets terminated."** A failed ALB health check only stops routing; termination needs the ASG with `health_check_type = "ELB"`. Two systems, one linking knob.
+- [ ] **Console staleness vs ASG detection lag** — saw an instance as "Healthy" in the ASG tab right after terminating it and thought something was broken. It was a stale page snapshot + the ASG's periodic detection cycle (1–2 min), not a bug. Use the Activity tab + refresh.
+- [ ] **Target tracking can't scale OUT from idle** — lowering `target_value` triggers scale-*in*, not out; scale-out genuinely needs load above target. (Corrected mid-session.)
+- [ ] **ASG termination order — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Discriminator: "oldest launch configuration terminated first." I had no model of scale-in ordering at all; **AZ balance first**, then outdated configurations, then billing hour.
+- [ ] **Scheduled desired capacity vs pinning min/max — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Scheduled and dynamic scaling **compose**; setting only `desired_capacity` is what preserves that.
+- [ ] **ALB `redirect` listener action — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Discriminator: "redirect action on the existing HTTP listener." The fact lived in [[05-vpc-security]] and [[06-capstone]] but not in this note, where I'd look for it.
+- [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
+
 ## Also worth carrying
 
 > [!warning] Trap — "the ALB terminates the unhealthy instance"
@@ -174,6 +184,31 @@ flowchart TD
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Conflated "ALB health check fails" with "instance gets terminated."
+> A failed ALB health check only stops routing; termination needs the ASG with `health_check_type = "ELB"`. Two systems, one linking knob.
+
+> [!question]- Console staleness vs ASG detection lag
+> saw an instance as "Healthy" in the ASG tab right after terminating it and thought something was broken. It was a stale page snapshot + the ASG's periodic detection cycle (1–2 min), not a bug. Use the Activity tab + refresh.
+
+> [!question]- Target tracking can't scale OUT from idle
+> lowering `target_value` triggers scale-*in*, not out; scale-out genuinely needs load above target. (Corrected mid-session.)
+
+> [!question]- ASG termination order — missed while marked _sure_
+> (mock 2026-08-28, trainer-sourced). Discriminator: "oldest launch configuration terminated first." I had no model of scale-in ordering at all; **AZ balance first**, then outdated configurations, then billing hour.
+
+> [!question]- Scheduled desired capacity vs pinning min/max — missed while marked _sure_
+> (mock 2026-08-28, trainer-sourced). Scheduled and dynamic scaling **compose**; setting only `desired_capacity` is what preserves that.
+
+> [!question]- ALB `redirect` listener action — missed while marked _sure_
+> (mock 2026-08-28, trainer-sourced). Discriminator: "redirect action on the existing HTTP listener." The fact lived in [[05-vpc-security]] and [[06-capstone]] but not in this note, where I'd look for it.
+
+> [!question]- Cross-zone defaults differ by LB type
+> ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 **1. ALB vs NLB vs GWLB** — fill the blank cells from memory.
 

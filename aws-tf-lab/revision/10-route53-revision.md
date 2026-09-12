@@ -156,6 +156,14 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 > [!warning] Trap — "HTTPS health checks prove the certificate is valid"
 > They don't. AWS states plainly that HTTPS health checks **do not validate SSL/TLS certificates** — an expired or invalid cert still passes. Certificate expiry monitoring is ACM + CloudWatch/EventBridge, not a Route 53 health check.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Simple routing is not load balancing and has no health checks** — I described it as "divides requests evenly." It returns everything, randomly ordered, client picks. **Multivalue answer** is the health-checked one.
+- [ ] **Geolocation vs geoproximity** — I described geolocation and called it geoproximity. Users vs resources.
+- [ ] **Only recalled 4 of 8 routing policies** on the orient. Missing: failover, geolocation, multivalue answer, IP-based.
+- [ ] **Hosted zone ≠ domain ownership** — needed the delegation-vs-discovery explanation twice before it landed. The NS record in the *parent* zone is the only thing registration buys.
+- [ ] **Fixing a slow failover** — diagnosed the TTL cause correctly but didn't name the fix (lower the TTL; and you can't set one at all on an alias).
+
 ## Self-test
 
 > [!question] Close the doc first.
@@ -163,6 +171,25 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Simple routing is not load balancing and has no health checks
+> I described it as "divides requests evenly." It returns everything, randomly ordered, client picks. **Multivalue answer** is the health-checked one.
+
+> [!question]- Geolocation vs geoproximity
+> I described geolocation and called it geoproximity. Users vs resources.
+
+> [!question]- Only recalled 4 of 8 routing policies
+> on the orient. Missing: failover, geolocation, multivalue answer, IP-based.
+
+> [!question]- Hosted zone ≠ domain ownership
+> needed the delegation-vs-discovery explanation twice before it landed. The NS record in the *parent* zone is the only thing registration buys.
+
+> [!question]- Fixing a slow failover
+> diagnosed the TTL cause correctly but didn't name the fix (lower the TTL; and you can't set one at all on an alias).
 
 **1. The eight routing policies** — fill the blank cells from memory.
 

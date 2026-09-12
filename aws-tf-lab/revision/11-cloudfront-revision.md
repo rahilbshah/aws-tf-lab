@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 11 – CloudFront (CDN)
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[11-cloudfront]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -124,6 +124,14 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > [!warning] Trap — geo restriction vs geolocation routing
 > **CloudFront geo restriction** decides *whether a country may access the content at all* (allow/block list, enforced at the edge). **Route 53 geolocation routing** ([[10-route53]]) decides *which endpoint a country is sent to*. "Block viewers in country X for licensing reasons" → CloudFront. "Send German users to the German site" → Route 53.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Reached for invalidation first** when asked how to fix a stale object. Correct, but it's the emergency tool — **versioned filenames** are the design AWS recommends.
+- [ ] **Hadn't met regional edge caches** or the fact that CloudFront accelerates **dynamic**, uncacheable content too.
+- [ ] **OAC's hard constraint** — S3 *website* endpoint = custom origin = no OAC. This is exactly why the [[10-route53]] buckets had to be public.
+- [ ] **The `us-east-1` certificate rule** — untested so far; a favourite exam detail.
+- [ ] ⚠️ Lab written but **not yet applied** — no live verification of any of this.
+
 ## Also worth carrying
 
 > [!warning] Not yet applied
@@ -136,6 +144,25 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Reached for invalidation first
+> when asked how to fix a stale object. Correct, but it's the emergency tool — **versioned filenames** are the design AWS recommends.
+
+> [!question]- Hadn't met regional edge caches
+> or the fact that CloudFront accelerates **dynamic**, uncacheable content too.
+
+> [!question]- OAC's hard constraint
+> S3 *website* endpoint = custom origin = no OAC. This is exactly why the [[10-route53]] buckets had to be public.
+
+> [!question]- The `us-east-1` certificate rule
+> untested so far; a favourite exam detail.
+
+> [!question]- ⚠️ Lab written but **not yet applied**
+> ⚠️ Lab written but **not yet applied** — no live verification of any of this.
 
 **1. CloudFront vs S3 Transfer Acceleration vs Global Accelerator** — fill the blank cells from memory.
 

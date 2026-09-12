@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 05.3 – VPC Endpoints & Peering (+ Transit Gateway)
 
-> [!abstract] Night-before read · ~5 min · self-contained
+> [!abstract] Night-before read · ~6 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[05-vpc-endpoints-peering]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -87,6 +87,13 @@ flowchart TB
 > [!example] Worked example — 4 VPCs today, 12 next quarter → Transit Gateway
 > A company has 4 VPCs (prod/staging/dev/shared) fully peered: N(N-1)/2 = **6** connections, each with routes on both sides. Manageable. Then acquisitions push it toward 12 VPCs → **66** peering connections and a route-table nightmare. Migrating to a **Transit Gateway** collapses it to **12 attachments** (one per VPC), gives transitive any-to-any (or segmented via TGW route tables), and lets the on-prem Direct Connect attach to the same hub. The trigger phrase — "growing number of VPCs, simplify connectivity, connect on-prem" — is always TGW.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Gateway vs interface endpoint** — which is which, S3/DynamoDB-only for gateway, PrivateLink/ENI for interface, and gateway-not-reachable-cross-VPC. (Fuzzy at orient.)
+- [ ] **Peering is non-transitive + no CIDR overlap** — forgot the peering limits entirely at orient; these are the two most-tested facts.
+- [ ] **Transit Gateway = hub-and-spoke fix for the N(N-1)/2 mesh** — knew the mesh math but not the TGW mechanism.
+- [ ] **"Which endpoint for which service"** decision (S3/DynamoDB → gateway/free; everything else → interface/paid).
+
 ## Also worth carrying
 
 > [!warning] Trap — "use a gateway endpoint for SQS/KMS/etc."
@@ -105,6 +112,22 @@ flowchart TB
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Gateway vs interface endpoint
+> which is which, S3/DynamoDB-only for gateway, PrivateLink/ENI for interface, and gateway-not-reachable-cross-VPC. (Fuzzy at orient.)
+
+> [!question]- Peering is non-transitive + no CIDR overlap
+> forgot the peering limits entirely at orient; these are the two most-tested facts.
+
+> [!question]- Transit Gateway = hub-and-spoke fix for the N(N-1)/2 mesh
+> knew the mesh math but not the TGW mechanism.
+
+> [!question]- "Which endpoint for which service"
+> decision (S3/DynamoDB → gateway/free; everything else → interface/paid).
 
 **1. Gateway vs Interface endpoint** — fill the blank cells from memory.
 

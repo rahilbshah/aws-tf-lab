@@ -144,14 +144,19 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > [!warning] Trap — endpoints are not automatically cheaper than NAT
 > Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr. Choose endpoints for the security posture and for per-GB data cost at volume — then do the arithmetic rather than assuming.
 
-## ⚠️ Open question — verify before relying on this
+## 🔴 My weak spots (this topic)   #weak-spot
 
-- ⚠️ verify: with the circuit breaker enabled (`enable = true, rollback = true`) and a threshold of 3, a deployment failing with **`CannotPullContainerError`** was observed on 2026-09-06 to reach **12 failed tasks while still `IN_PROGRESS`**, never transitioning to `FAILED`. The documented behaviour is that tasks failing to reach `RUNNING` increment the counter and trip at the threshold. Hypothesis, **not confirmed**: an image that cannot be resolved produces *"unable to place a task"*, which may be accounted differently from a task that starts and then fails a health check. Re-test by breaking the **container health check** rather than the image before trusting the circuit breaker to catch pull failures.
-
-## Also worth carrying
+- Believed the S3 **gateway** endpoint was unusable for ECR because it "only supports S3 and DynamoDB" — it is in fact **mandatory**, precisely because ECR keeps image layers in S3. The inversion is the thing to remember.
+- Gave "you don't need an IAM role for a public image" as a complete answer. Right about the pull, wrong about the conclusion: `awslogs` still requires the execution role.
+- Knew `least_outstanding_requests` exists but not *when* to choose it: variable or expensive request cost, or targets of differing capacity.
+- Scaled `desired_count` in the console, creating Terraform drift that the next apply silently reverted.
 
 > [!tip] Production gap
 > This lab is HTTP-only with no certificate, one NAT gateway, no autoscaling, no deployment alarm, and it pulls a public image anonymously. Production adds: **ACM + HTTPS** (or CloudFront in front), **one NAT gateway per AZ**, **Application Auto Scaling** target-tracking on the service, **EventBridge on `SERVICE_DEPLOYMENT_FAILED`**, **ECR** with lifecycle policies and scanning instead of Docker Hub, and **Secrets Manager** for anything sensitive via the task definition's `secrets` block. All of that is the `18-containers-capstone` build.
+
+## ⚠️ Open question — verify before relying on this
+
+- ⚠️ verify: with the circuit breaker enabled (`enable = true, rollback = true`) and a threshold of 3, a deployment failing with **`CannotPullContainerError`** was observed on 2026-09-06 to reach **12 failed tasks while still `IN_PROGRESS`**, never transitioning to `FAILED`. The documented behaviour is that tasks failing to reach `RUNNING` increment the counter and trip at the threshold. Hypothesis, **not confirmed**: an image that cannot be resolved produces *"unable to place a task"*, which may be accounted differently from a task that starts and then fails a health check. Re-test by breaking the **container health check** rather than the image before trusting the circuit breaker to catch pull failures.
 
 ## Self-test
 
@@ -160,6 +165,22 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Believed the S3 **gateway** endpoint was unusable for ECR because it…
+> Believed the S3 **gateway** endpoint was unusable for ECR because it "only supports S3 and DynamoDB" — it is in fact **mandatory**, precisely because ECR keeps image layers in S3. The inversion is the thing to remember.
+
+> [!question]- Gave "you don't need an IAM role for a public image" as a complete…
+> Gave "you don't need an IAM role for a public image" as a complete answer. Right about the pull, wrong about the conclusion: `awslogs` still requires the execution role.
+
+> [!question]- Knew `least_outstanding_requests` exists but not *when* to choose it:…
+> Knew `least_outstanding_requests` exists but not *when* to choose it: variable or expensive request cost, or targets of differing capacity.
+
+> [!question]- Scaled `desired_count` in the console, creating Terraform drift that…
+> Scaled `desired_count` in the console, creating Terraform drift that the next apply silently reverted.
 
 **1. Pulling from ECR with no internet** — fill the blank cells from memory.
 

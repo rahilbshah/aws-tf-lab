@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 14 – Disaster recovery & resilience
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[14-dr-resilience]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -112,6 +112,14 @@ tags: [revision, generated]
 > [!warning] Trap — a DR design that depends on the control plane
 > Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are **control-plane** operations, and control planes are less available than data planes exactly when you need them. Route 53 **health checks** and **Application Recovery Controller** are data plane. A "most resilient failover" question is usually asking you to spot this.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Never studied** — written 2026-09-06 with no orientation pass or video. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it.
+- [ ] **Pilot light vs warm standby** — the test is whether compute is *running*, not whether infrastructure exists.
+- [ ] **Data plane vs control plane** — a genuinely new idea, and the thing that separates a good failover design from a plausible one.
+- [ ] **Replication ≠ backup** — the failure mode that beats teams who think they have DR.
+- [ ] **Aurora Global Database vs RDS cross-Region read replica** — sub-second/under-a-minute vs minutes-plus-a-reboot. Aurora also regressed to **44%** in the 2026-09-01 mock.
+
 ## Also worth carrying
 
 > [!warning] Build tier — **conceptual-only**
@@ -124,6 +132,25 @@ tags: [revision, generated]
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Never studied
+> written 2026-09-06 with no orientation pass or video. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it.
+
+> [!question]- Pilot light vs warm standby
+> the test is whether compute is *running*, not whether infrastructure exists.
+
+> [!question]- Data plane vs control plane
+> a genuinely new idea, and the thing that separates a good failover design from a plausible one.
+
+> [!question]- Replication ≠ backup
+> the failure mode that beats teams who think they have DR.
+
+> [!question]- Aurora Global Database vs RDS cross-Region read replica
+> sub-second/under-a-minute vs minutes-plus-a-reboot. Aurora also regressed to **44%** in the 2026-09-01 mock.
 
 **1. The four strategies side by side** — fill the blank cells from memory.
 

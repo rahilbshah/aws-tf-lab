@@ -88,6 +88,15 @@ flowchart LR
 > [!failure] Failure mode — One Zone-IA for the only copy
 > One Zone-IA is ~20% cheaper than Standard-IA and equally durable *on paper* (11 nines) — so a team moves its only backup copy there. Both classes are 11-nines durable, but One Zone-IA stores in a **single AZ**: if that AZ is physically destroyed, **the data is gone**, and its availability is only 99.5%. Rule: One Zone-IA is only for **re-creatable** data (thumbnails, derived files, secondary replicas). The primary/only copy belongs in a ≥3-AZ class.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **"Key" = the object's full name/path**, not an encryption key. Bucket + key identifies an object; the leading part is a **prefix**.
+- [ ] **Durability 11 nines / ≥3 AZs, and availability differs per class** (Standard 99.99, IA 99.9, One Zone-IA 99.5) — needed the numbers.
+- [ ] **Minimum storage durations** (IA 30 d, Glacier 90 d, Deep Archive 180 d) + **128 KB minimum billable size** — the cost traps.
+- [ ] **Glacier Instant Retrieval is millisecond access** — not all Glacier tiers are slow.
+- [ ] **Versioned buckets need noncurrent-version expiration** (cost) and can't be destroyed while versions/markers remain.
+- [ ] **`etag = filemd5()`** required with `source`, and **`content_type`** required for browser rendering.
+
 ## Also worth carrying
 
 > [!warning] Trap — "S3 has folders"
@@ -109,6 +118,28 @@ flowchart LR
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- "Key" = the object's full name/path
+> , not an encryption key. Bucket + key identifies an object; the leading part is a **prefix**.
+
+> [!question]- Durability 11 nines / ≥3 AZs, and availability differs per class
+> (Standard 99.99, IA 99.9, One Zone-IA 99.5) — needed the numbers.
+
+> [!question]- Minimum storage durations
+> (IA 30 d, Glacier 90 d, Deep Archive 180 d) + **128 KB minimum billable size** — the cost traps.
+
+> [!question]- Glacier Instant Retrieval is millisecond access
+> not all Glacier tiers are slow.
+
+> [!question]- Versioned buckets need noncurrent-version expiration
+> (cost) and can't be destroyed while versions/markers remain.
+
+> [!question]- `etag = filemd5()`
+> required with `source`, and **`content_type`** required for browser rendering.
 
 **1. Storage classes (verified against AWS docs 2026-08)** — fill the blank cells from memory.
 

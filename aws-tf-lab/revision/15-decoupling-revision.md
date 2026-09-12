@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 15 – Decoupling (SQS, SNS, Amazon MQ)
 
-> [!abstract] Night-before read · ~10 min · self-contained
+> [!abstract] Night-before read · ~11 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[15-decoupling]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -117,6 +117,14 @@ tags: [revision, generated]
 > [!warning] Trap — Amazon MQ picked for a new application
 > Amazon MQ exists for **migration**: an existing app already speaking a standard broker protocol that you don't want to rewrite. For anything new on AWS, SQS and SNS are cheaper, serverless and scale far better. If the question has no legacy system and no protocol requirement, MQ is the distractor.
 
+## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **Max SQS message size is 1 MiB, not 256 KB** — nearly all course material is stale here. Know both, since a practice question may still key the old figure.
+- [ ] **Short polling is the DEFAULT** — I'd have assumed long polling was, and the "empty response with messages present" behaviour follows from it.
+- [ ] **DLQ retention must exceed the source's** because of the original-enqueue-timestamp rule on standard queues.
+- [ ] **Amazon MQ is a migration answer, not a design answer.**
+- [ ] Got right first time and worth keeping: the SNS→SQS queue policy needs `sns.amazonaws.com` pinned with **`ArnEquals` on `aws:SourceArn`** — fourth appearance of the confused-deputy shape.
+
 ## Self-test
 
 > [!question] Close the doc first.
@@ -124,6 +132,25 @@ tags: [revision, generated]
 > only the second one survives a question written to make two answers look alike.
 > Say each answer out loud before you unfold it — if you can only recognise it,
 > you do not know it yet.
+
+### You have got these wrong before
+
+*Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
+
+> [!question]- Max SQS message size is 1 MiB, not 256 KB
+> nearly all course material is stale here. Know both, since a practice question may still key the old figure.
+
+> [!question]- Short polling is the DEFAULT
+> I'd have assumed long polling was, and the "empty response with messages present" behaviour follows from it.
+
+> [!question]- DLQ retention must exceed the source's
+> because of the original-enqueue-timestamp rule on standard queues.
+
+> [!question]- Amazon MQ is a migration answer, not a design answer.
+> **Amazon MQ is a migration answer, not a design answer.**
+
+> [!question]- Got right first time and worth keeping: the SNS→SQS queue policy…
+> Got right first time and worth keeping: the SNS→SQS queue policy needs `sns.amazonaws.com` pinned with **`ArnEquals` on `aws:SourceArn`** — fourth appearance of the confused-deputy shape.
 
 **1. SQS vs SNS** — fill the blank cells from memory.
 

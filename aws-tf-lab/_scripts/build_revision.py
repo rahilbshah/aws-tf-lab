@@ -23,8 +23,14 @@ VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT   = os.path.join(VAULT, 'revision')
 
 # sections that are NOT exam material — everything else is kept
+# NOTE 'weak spot' is deliberately NOT here. It used to be, and that was a bug:
+# the one section recording what the human has already got WRONG was the one
+# section guaranteed never to be revised or drilled. 02-ec2 recorded the
+# instance-store-vs-io2 lesson in July 2026 and the same question was missed
+# again in August, because the lesson never left the note. 127 recorded weak
+# spots across 22 notes were reaching nothing. See _selftest.py.
 DROP = ['what problem does this solve', 'how it actually works',
-        'console', 'terraform i wrote', 'weak spot', 'docs', 'concept']
+        'console', 'terraform i wrote', 'docs', 'concept']
 # self-test callouts promised as dropped in the docstring
 DRILL = re.compile(r'^>\s*\[!example\]-?\s*(Recreate-from-memory|Recall) drill', re.I)
 
@@ -87,7 +93,7 @@ def build(path, text):
     mins = max(1, round(words / 200))
 
     # the self-test replaces the deleted SR cards — see _selftest.py
-    st = _selftest.section('\n\n'.join(body), name)
+    st = _selftest.section('\n\n'.join(body), name, full_text=text)
     if st: body.append(st)
     hdr = ['---', f'topic: {name}', 'type: revision', f'source: {name}',
            'tags: [revision, generated]', '---', '',
