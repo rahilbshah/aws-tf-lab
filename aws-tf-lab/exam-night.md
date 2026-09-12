@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*127 recall hooks · 218 pointers · ~21 min read*
+*130 recall hooks · 231 pointers · ~22 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -704,3 +704,32 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[17-containers#Task execution role vs task role|Task execution role vs task role]]
 - [[17-containers#ALB target types|ALB target types]]
 - [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
+
+
+## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]
+
+- Serverless trades control for the ability to cost nothing when idle.  
+  ↳ [[19-serverless#What problem does this solve?|explain]]
+- Memory is the only performance dial, and it moves CPU with it.  
+  ↳ [[19-serverless#How it actually works|explain]]
+- The partition key is not a column name, it is the physical layout of your data.  
+  ↳ [[19-serverless#How it actually works|explain]]
+
+**Traps** [[19-serverless#⚠️ Traps — why the wrong answer looks right|open]]
+- Lambda in a public subnet
+- ENI per concurrent execution
+- SQS is not an asynchronous invocation
+- API keys are not authentication
+- "ECS-style" two roles on Lambda
+- more memory is always more expensive
+
+**Failure modes**
+- the deployment that silently ships nothing  ↳ [[19-serverless#Worked examples|open]]
+
+**Comparisons**
+- [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]]
+- [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]]
+- [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]]
+- [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]]
+- [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]]
+- [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]

@@ -16,6 +16,7 @@ Notice what the code does for each:
 Those two calls are only possible if the key schema is shaped a particular
 way. Work out which way before you write dynamodb.tf - that is the exercise.
 """
+import base64
 import json
 import os
 import time
@@ -42,7 +43,14 @@ def handler(event, context):
 
     try:
         if route.startswith("POST /notes"):
-            body = json.loads(event.get("body") or "{}")
+            # API Gateway base64-encodes the body whenever it does not recognise
+            # the content type as text — so a curl without an explicit
+            # `content-type: application/json` arrives here as base64 and
+            # json.loads() fails with "Expecting value: line 1 column 1".
+            raw = event.get("body") or "{}"
+            if event.get("isBase64Encoded"):
+                raw = base64.b64decode(raw).decode("utf-8")
+            body = json.loads(raw)
             if not body.get("userId"):
                 return _resp(400, {"error": "userId is required"})
 

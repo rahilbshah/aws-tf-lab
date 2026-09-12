@@ -63,3 +63,35 @@
 #         forces a function update, not a replacement.
 #
 #         NOTE what is absent: no vpc_config. Deliberate. See the note in (4).
+
+
+data "archive_file" "handler" {
+  type        = "zip"
+  source_file = "${path.module}/app/handler.py"
+  output_path = "${path.module}/build/handler.zip"
+}
+
+resource "aws_cloudwatch_log_group" "lambda" {
+  name              = "/aws/lambda/${var.name}"
+  retention_in_days = var.log_retention_days
+}
+
+resource "aws_lambda_function" "notes" {
+  function_name    = var.name
+  role             = aws_iam_role.lambda.arn
+  filename         = data.archive_file.handler.output_path
+  source_code_hash = data.archive_file.handler.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  memory_size      = var.lambda_memory_mb
+  timeout          = var.lambda_timeout_seconds
+
+  environment {
+    variables = {
+      TABLE_NAME = aws_dynamodb_table.notes.name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.lambda]
+}

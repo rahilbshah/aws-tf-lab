@@ -71,3 +71,23 @@
 #         change-data-capture idea concrete: turn it on, write an item, and
 #         look at the stream in the console. Remember you CANNOT change
 #         stream_view_type later without disabling and recreating the stream.
+
+resource "aws_dynamodb_table" "notes" {
+  name         = var.name
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key  = "userId"
+  range_key = "noteId"
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "noteId"
+    type = "S"
+  }
+}
+
+

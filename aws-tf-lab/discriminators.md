@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*65 comparison tables · 124 discriminators · ~22 min read*
+*71 comparison tables · 130 discriminators · ~23 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -392,3 +392,21 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **endpoints are not automatically cheaper than NAT** — Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+
+
+## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]
+
+**Compare:** [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]] · [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]] · [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]] · [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]] · [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]] · [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
+
+- **Lambda in a public subnet** — "Give the VPC-attached function internet access" is not answered by moving it to a public subnet.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **ENI per concurrent execution** — Older material teaches that a VPC Lambda creates one ENI per concurrent execution, making IP exhaustion a scaling risk.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **SQS is not an asynchronous invocation** — S3 and SNS invoke Lambda asynchronously, so Lambda retries twice and then uses a DLQ. SQS is an event source mapping — Lambda polls it — so retry behaviour comes from the queue's visibility timeout and maxReceiveCount, exactly as in [[15-decoupling]].  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **API keys are not authentication** — Usage plans and API keys "track and limit usage". They identify a caller for metering and throttling; they prove nothing about identity.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **"ECS-style" two roles on Lambda** — ECS splits an execution role (the agent: pull the image, ship logs) from a task role (your code's AWS permissions).  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **more memory is always more expensive** — Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]

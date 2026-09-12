@@ -45,3 +45,46 @@
 #         managed policy (aws_iam_policy + attachment). Inline is right when
 #         the permissions are meaningless outside this one role, which is the
 #         case here. Reach for a managed policy when several roles share it.
+
+resource "aws_iam_role" "lambda" {
+  name = "lambda_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      },
+    ]
+  })
+
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda.name
+}
+
+resource "aws_iam_role_policy" "lambda_dynamodb" {
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.notes.arn
+      },
+    ]
+  })
+
+}

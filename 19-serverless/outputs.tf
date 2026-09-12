@@ -7,9 +7,14 @@
 #   API=$(terraform output -raw api_url)
 #
 #   # create two notes for one user, one for another
-#   curl -s -XPOST $API/notes -d '{"userId":"rahil","title":"first","body":"hello"}'
-#   curl -s -XPOST $API/notes -d '{"userId":"rahil","title":"second","body":"again"}'
-#   curl -s -XPOST $API/notes -d '{"userId":"someone-else","title":"theirs"}'
+#   H='content-type: application/json'      # <- REQUIRED, see below
+#   curl -s -XPOST $API/notes -H "$H" -d '{"userId":"rahil","title":"first","body":"hello"}'
+#   curl -s -XPOST $API/notes -H "$H" -d '{"userId":"rahil","title":"second","body":"again"}'
+#   curl -s -XPOST $API/notes -H "$H" -d '{"userId":"someone-else","title":"theirs"}'
+#
+#   Drop the header and the POST fails: API Gateway base64-encodes the body for
+#   any content type it does not recognise as text, and the handler has to check
+#   event['isBase64Encoded'] and decode. Worth doing once deliberately to see it.
 #
 #   # list one user's notes — ONE partition, one Query
 #   curl -s $API/notes/rahil | python3 -m json.tool
@@ -42,3 +47,11 @@
 # 5. Then destroy it. Nothing here bills hourly, so there is no rush - but
 #    the DynamoDB table is the one thing holding state you might miss later.
 # ==========================================================================
+
+output "api_url" {
+  value = aws_apigatewayv2_api.this.api_endpoint
+}
+
+output "table_name" {
+  value = aws_dynamodb_table.notes.name
+}
