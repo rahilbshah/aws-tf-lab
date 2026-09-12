@@ -12,11 +12,11 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*63 comparison tables · 121 discriminators · ~22 min read*
+*65 comparison tables · 124 discriminators · ~22 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
-**Compare:** [[01-iam#User vs Role|User vs Role]] · [[01-iam#Inline vs Managed policy|Inline vs Managed policy]] · [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]] · [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
+**Compare:** [[01-iam#User vs Role|User vs Role]] · [[01-iam#Inline vs Managed policy|Inline vs Managed policy]] · [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]] · [[01-iam#How an application authenticates to RDS|How an application authenticates to RDS]] · [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
 
 - **"the plan showed the policy was fine"** — It didn't, and it couldn't. Because the policy document interpolates aws_s3_bucket.this.arn, Terraform reports data.aws_iam_policy_document.permissions will be read during apply and the policy renders as (known after apply) — while the trust policy, which references nothing, renders in full.  
   ↳ [[01-iam|note]]
@@ -38,15 +38,19 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[01-iam|note]]
 - **"create IAM users for the on-premises staff"** — Any question that establishes users already exist in Active Directory (or any corporate IdP) and asks how to give them AWS access is testing federation.  
   ↳ [[01-iam|note]]
+- **"IAM Groups" in a federation question** — The word group carries two meanings in these questions and only one of them is an answer.  
+  ↳ [[01-iam|note]]
 - **AD Connector vs AWS Managed Microsoft AD** — If the requirement is "don't store directory data in AWS" or "keep managing users on-premises with our existing tools," that's AD Connector — a proxy that forwards authentication and synchronizes nothing. If they need AD-aware workloads in AWS (RDS for SQL Server, .NET apps, EC2 Windows domain join with a standalone directory) or a trust with on-prem, that's AWS Managed Microsoft AD.  
   ↳ [[01-iam|note]]
 - **rds: vs rds-db: for database login** — Giving an application rds:* does not let it log in to a database — that's the RDS management API (create/describe/modify instances). Logging in with IAM auth requires rds-db:connect on an arn:aws:rds-db:…:dbuser:… resource. See [[07-rds-aurora]].  
+  ↳ [[01-iam|note]]
+- **SSL/TLS is not authentication** — "The application must connect without a stored database password" is answered by IAM database authentication, never by an SSL/TLS option.  
   ↳ [[01-iam|note]]
 
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
-**Compare:** [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
+**Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
 
 - **"attach an SCP to give that account access"** — SCPs never grant. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes.  
   ↳ [[01-iam-advanced#Traps|note]]
@@ -94,7 +98,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[04-alb-asg#The Terraform I wrote|note]]
 - **"a failed ALB health check means users get errors"** — Only if no targets are healthy. With ≥1 healthy target the ALB quietly routes around the bad one and users are fine — you're at reduced capacity with nobody alerted.  
   ↳ [[04-alb-asg#The Terraform I wrote|note]]
-- **NLB vs ALB for a static IP / source-IP** — "Need a static IP for the LB" or "must preserve client source IP with no app changes" → NLB (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs X-Forwarded-For. Frequent distractor pairing.  
+- **NLB vs ALB for a static IP / source-IP / PrivateLink** — "Need a static IP for the LB" or "must preserve client source IP with no app changes" → NLB (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs X-Forwarded-For. Frequent distractor pairing. Third trigger, same pairing: "expose one service to another VPC or account without exposing the rest of the VPC" → PrivateLink, and an endpoint service must be fronted by an NLB or a GWLB — never an ALB directly.  
   ↳ [[04-alb-asg#The Terraform I wrote|note]]
 - **cross-zone billing** — Cross-zone is free & always-on for ALB, but off by default and inter-AZ-billed for NLB.  
   ↳ [[04-alb-asg#The Terraform I wrote|note]]
@@ -168,6 +172,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
+- **an IAM role on the app is not, by itself, database authentication** — The distractors are "attach an IAM role to the EC2 instance / Lambda function" and "restrict the security group to the app tier", offered on their own.  
+  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
 - **"IAM database authentication controls what the user can do in the database"** — It does not. IAM decides whether you may connect as a given database user; everything after that is still the database's own GRANTs.  
   ↳ [[07-rds-aurora#The Terraform I wrote|note]]
 - **rds-db: vs rds:** — rds-db:connect is the only action with the rds-db: prefix and it exists solely for IAM DB auth. Everything else (rds:CreateDBInstance, rds:DescribeDBInstances…) is the rds: management API and has nothing to do with logging into the database. An answer that grants rds:* to let an app "connect to the database" is wrong.  

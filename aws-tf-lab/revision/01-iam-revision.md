@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 01 – IAM (Identity and Access Management)
 
-> [!abstract] Night-before read · ~17 min · self-contained
+> [!abstract] Night-before read · ~21 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[01-iam]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -92,6 +92,19 @@ flowchart TD
 | Answers | **Who is allowed to assume me?** | **What can I do once assumed?** |
 | Without it | Nobody can assume the role | Role can be assumed but does nothing |
 | Common values | `Service: ec2.amazonaws.com`, `Service: lambda.amazonaws.com`, `AWS: arn:aws:iam::<acct>:root` (cross-account), `Federated: <SAML/OIDC provider ARN>` | Standard policy JSON over S3, DynamoDB, etc. |
+
+### How an application authenticates to RDS
+
+|   | Password in config | Password in Secrets Manager | **IAM database authentication** |
+|---|---|---|---|
+| What the app presents to the DB | a long-lived password | a password fetched at runtime from the secret | an **authentication token, lifetime 15 minutes** |
+| Credential stored anywhere? | yes, forever | yes — but Secrets Manager rotates it on a schedule (a **Lambda rotation function** for application credentials; **managed rotation**, no Lambda, for RDS/Aurora *master user* credentials) | **no password at all** |
+| Who the DB is really trusting | whoever holds the password | whoever may read the secret | the caller's **IAM role** — e.g. the EC2 instance profile or the Lambda role |
+| IAM action required | — | `secretsmanager:GetSecretValue` | **`rds-db:connect`** on `arn:aws:rds-db:…:dbuser:…` |
+| Traffic encrypted in transit? | only if you configure SSL/TLS yourself | only if you configure SSL/TLS yourself | **yes** — AWS lists it as a benefit: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"*. Not the same as "no TLS setup": the client still points at the RDS CA bundle (`--ssl-ca` / `sslrootcert`) |
+| Extra setup beyond IAM | — | rotation function with network access to the DB | **enable IAM DB auth on the instance/cluster**, **create the DB user** — MySQL/MariaDB `CREATE USER 'jane_doe' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`, PostgreSQL `CREATE USER db_userx; GRANT rds_iam TO db_userx;` — and pass the CA bundle from the client |
+| Engines | all | all | **RDS MariaDB, MySQL, PostgreSQL; Aurora MySQL, Aurora PostgreSQL** — not Oracle, not SQL Server |
+| Exam trigger | — | "rotate the database password automatically" | "**short-lived / temporary credentials** to the database", "**no password stored** in the application", "use the **EC2 instance's profile credentials** to reach the database" |
 
 ### Bringing existing corporate identities into AWS (Directory Service + federation)
 
@@ -209,11 +222,21 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > [!warning] Trap — "create IAM users for the on-premises staff"
 > Any question that establishes users **already exist** in Active Directory (or any corporate IdP) and asks how to give them AWS access is testing federation. Creating IAM users duplicates the identity source, and you now have two places to deprovision someone — the exact failure the question is built around. Correct shape: directory (AWS Managed Microsoft AD / AD Connector) → **IAM Identity Center** → AD group mapped to a permission set → **IAM role**. "No new IAM users / no long-term credentials / use existing corporate credentials" are all the same trigger.
 
+> [!warning] Trap — "IAM Groups" in a federation question
+> The word *group* carries two meanings in these questions and only one of them is an answer. An **IAM group is a container of IAM users and nothing else** — AWS: *"User groups can't be nested; they can contain only users, not other IAM groups"*, and *"You cannot identify a user group as a `Principal` in a policy … because groups relate to permissions, not authentication."* So a federated identity — an AD user arriving via IAM Identity Center or SAML — can **never** land in an IAM group; there is no IAM user for it to be a member of.
+> In "our users already exist in Active Directory", the group being mapped is the **AD group**, and the thing it maps to is always an **IAM role** (via IAM Identity Center: *"When you assign a permission set, IAM Identity Center creates corresponding IAM Identity Center-controlled IAM roles in each account"*). If an option offers "IAM Groups" as the identity landing point, it is the distractor; if an option offers "configure an IAM role and a policy", that is the half of the answer you must select, not skip.
+
 > [!warning] Trap — AD Connector vs AWS Managed Microsoft AD
 > If the requirement is "**don't store directory data in AWS**" or "keep managing users on-premises with our existing tools," that's **AD Connector** — a proxy that forwards authentication and synchronizes nothing. If they need AD-aware workloads *in* AWS (RDS for SQL Server, .NET apps, EC2 Windows domain join with a standalone directory) or a **trust** with on-prem, that's **AWS Managed Microsoft AD**. **Simple AD** is the cheap one, and it's disqualified the moment a question mentions **trusts, MFA, schema extensions, LDAPS, or RDS SQL Server** — it supports none of them.
 
 > [!warning] Trap — `rds:` vs `rds-db:` for database login
 > Giving an application `rds:*` does **not** let it log in to a database — that's the RDS *management* API (create/describe/modify instances). Logging in with IAM auth requires `rds-db:connect` on an `arn:aws:rds-db:…:dbuser:…` resource. See [[07-rds-aurora]].
+
+> [!warning] Trap — SSL/TLS is not authentication
+> "The application must connect **without a stored database password**" is answered by **IAM database authentication**, never by an SSL/TLS option. `--ssl-ca`, "configure SSL", "force TLS" change how the connection is *encrypted*; they say nothing about *who may log in*. IAM DB auth brings the encryption with it — AWS: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"* — but that is **not** the same as "no TLS setup": AWS's own connect command still passes the RDS CA bundle (`mysql … --ssl-ca=global-bundle.pem --enable-cleartext-plugin`). The point is which *question* the option answers, not that TLS configuration disappears.
+> Two sibling distractors on the same stem:
+> - **"Create an IAM role and attach it to the EC2 instances"** — only half the answer. You must also **enable IAM DB authentication on the DB instance** *and* **create the matching DB user** (`IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS'` for MySQL/MariaDB, `GRANT rds_iam` for PostgreSQL). A role alone logs in to nothing.
+> - **"Use STS"** — what the database sees is not an STS token. It is an RDS auth token (`aws rds generate-db-auth-token`), SigV4-signed, **valid 15 minutes**, passed as the password. STS is still upstream — the instance-profile credentials that sign the token are STS credentials, and they must still be valid at connect time — but STS is not what you present to the database.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -331,7 +354,32 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > | Without it | Nobody can assume the role | Role can be assumed but does nothing |
 > | Common values | `Service: ec2.amazonaws.com`, `Service: lambda.amazonaws.com`, `AWS: arn:aws:iam::<acct>:root` (cross-account), `Federated: <SAML/OIDC provider ARN>` | Standard policy JSON over S3, DynamoDB, etc. |
 
-**4. Fill in the grid** — fill the blank cells from memory.
+**4. How an application authenticates to RDS** — fill the blank cells from memory.
+
+|   | Password in config | Password in Secrets Manager | **IAM database authentication** |
+|---|---|---|---|
+| What the app presents to the DB |   |   |   |
+| Credential stored anywhere? |   |   |   |
+| Who the DB is really trusting |   |   |   |
+| IAM action required |   |   |   |
+| Traffic encrypted in transit? |   |   |   |
+| Extra setup beyond IAM |   |   |   |
+| Engines |   |   |   |
+| Exam trigger |   |   |   |
+
+> [!success]- Answer
+> |   | Password in config | Password in Secrets Manager | **IAM database authentication** |
+> |---|---|---|---|
+> | What the app presents to the DB | a long-lived password | a password fetched at runtime from the secret | an **authentication token, lifetime 15 minutes** |
+> | Credential stored anywhere? | yes, forever | yes — but Secrets Manager rotates it on a schedule (a **Lambda rotation function** for application credentials; **managed rotation**, no Lambda, for RDS/Aurora *master user* credentials) | **no password at all** |
+> | Who the DB is really trusting | whoever holds the password | whoever may read the secret | the caller's **IAM role** — e.g. the EC2 instance profile or the Lambda role |
+> | IAM action required | — | `secretsmanager:GetSecretValue` | **`rds-db:connect`** on `arn:aws:rds-db:…:dbuser:…` |
+> | Traffic encrypted in transit? | only if you configure SSL/TLS yourself | only if you configure SSL/TLS yourself | **yes** — AWS lists it as a benefit: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"*. Not the same as "no TLS setup": the client still points at the RDS CA bundle (`--ssl-ca` / `sslrootcert`) |
+> | Extra setup beyond IAM | — | rotation function with network access to the DB | **enable IAM DB auth on the instance/cluster**, **create the DB user** — MySQL/MariaDB `CREATE USER 'jane_doe' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`, PostgreSQL `CREATE USER db_userx; GRANT rds_iam TO db_userx;` — and pass the CA bundle from the client |
+> | Engines | all | all | **RDS MariaDB, MySQL, PostgreSQL; Aurora MySQL, Aurora PostgreSQL** — not Oracle, not SQL Server |
+> | Exam trigger | — | "rotate the database password automatically" | "**short-lived / temporary credentials** to the database", "**no password stored** in the application", "use the **EC2 instance's profile credentials** to reach the database" |
+
+**5. Fill in the grid** — fill the blank cells from memory.
 
 | | **AWS Managed Microsoft AD** | **AD Connector** | **Simple AD** |
 |---|---|---|---|
@@ -385,11 +433,21 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > [!question]- "create IAM users for the on-premises staff"
 > Any question that establishes users **already exist** in Active Directory (or any corporate IdP) and asks how to give them AWS access is testing federation. Creating IAM users duplicates the identity source, and you now have two places to deprovision someone — the exact failure the question is built around. Correct shape: directory (AWS Managed Microsoft AD / AD Connector) → **IAM Identity Center** → AD group mapped to a permission set → **IAM role**. "No new IAM users / no long-term credentials / use existing corporate credentials" are all the same trigger.
 
+> [!question]- "IAM Groups" in a federation question
+> The word *group* carries two meanings in these questions and only one of them is an answer. An **IAM group is a container of IAM users and nothing else** — AWS: *"User groups can't be nested; they can contain only users, not other IAM groups"*, and *"You cannot identify a user group as a `Principal` in a policy … because groups relate to permissions, not authentication."* So a federated identity — an AD user arriving via IAM Identity Center or SAML — can **never** land in an IAM group; there is no IAM user for it to be a member of.
+> In "our users already exist in Active Directory", the group being mapped is the **AD group**, and the thing it maps to is always an **IAM role** (via IAM Identity Center: *"When you assign a permission set, IAM Identity Center creates corresponding IAM Identity Center-controlled IAM roles in each account"*). If an option offers "IAM Groups" as the identity landing point, it is the distractor; if an option offers "configure an IAM role and a policy", that is the half of the answer you must select, not skip.
+
 > [!question]- AD Connector vs AWS Managed Microsoft AD
 > If the requirement is "**don't store directory data in AWS**" or "keep managing users on-premises with our existing tools," that's **AD Connector** — a proxy that forwards authentication and synchronizes nothing. If they need AD-aware workloads *in* AWS (RDS for SQL Server, .NET apps, EC2 Windows domain join with a standalone directory) or a **trust** with on-prem, that's **AWS Managed Microsoft AD**. **Simple AD** is the cheap one, and it's disqualified the moment a question mentions **trusts, MFA, schema extensions, LDAPS, or RDS SQL Server** — it supports none of them.
 
 > [!question]- `rds:` vs `rds-db:` for database login
 > Giving an application `rds:*` does **not** let it log in to a database — that's the RDS *management* API (create/describe/modify instances). Logging in with IAM auth requires `rds-db:connect` on an `arn:aws:rds-db:…:dbuser:…` resource. See [[07-rds-aurora]].
+
+> [!question]- SSL/TLS is not authentication
+> "The application must connect **without a stored database password**" is answered by **IAM database authentication**, never by an SSL/TLS option. `--ssl-ca`, "configure SSL", "force TLS" change how the connection is *encrypted*; they say nothing about *who may log in*. IAM DB auth brings the encryption with it — AWS: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"* — but that is **not** the same as "no TLS setup": AWS's own connect command still passes the RDS CA bundle (`mysql … --ssl-ca=global-bundle.pem --enable-cleartext-plugin`). The point is which *question* the option answers, not that TLS configuration disappears.
+> Two sibling distractors on the same stem:
+> - **"Create an IAM role and attach it to the EC2 instances"** — only half the answer. You must also **enable IAM DB authentication on the DB instance** *and* **create the matching DB user** (`IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS'` for MySQL/MariaDB, `GRANT rds_iam` for PostgreSQL). A role alone logs in to nothing.
+> - **"Use STS"** — what the database sees is not an STS token. It is an RDS auth token (`aws rds generate-db-auth-token`), SigV4-signed, **valid 15 minutes**, passed as the password. STS is still upstream — the instance-profile credentials that sign the token are STS credentials, and they must still be valid at connect time — but STS is not what you present to the database.
 
 > [!question]- "the plan showed the policy was fine"
 > It didn't, and it couldn't. Because the policy document interpolates `aws_s3_bucket.this.arn`, Terraform reports `data.aws_iam_policy_document.permissions will be read during apply` and the policy renders as `(known after apply)` — while the **trust** policy, which references nothing, renders in full. For any IAM policy built from references to resources created in the same apply, **the plan is not the artifact**. Read it after apply with `aws iam get-policy-version`, or simulate it.

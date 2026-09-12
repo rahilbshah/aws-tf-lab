@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)
 
-> [!abstract] Night-before read · ~11 min · self-contained
+> [!abstract] Night-before read · ~12 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[01-iam-advanced]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -77,6 +77,16 @@ flowchart LR
 - **Control Tower is free itself**; you pay for what it provisions (CloudTrail, Config, S3 logging).
 
 ## Comparisons
+
+### Which multi-account requirement does this solve?
+
+| The requirement in the stem | The answer | The detail that decides it |
+|---|---|---|
+| "one bill across all our accounts", volume discounts, shared RIs / Savings Plans | **AWS Organizations — consolidated billing** | the **management account becomes responsible for all charges** accrued by member accounts; the member's own payment method stops being used. Combined usage *"shares the volume pricing discounts, Reserved Instance discounts, and Savings Plans"* |
+| "bring our **existing** accounts under one organization" | **Invite** each account from the management account; its owner accepts | invitations can be sent **only from the management account**, expire after **15 days**, and an account can join **only one organization**. Accounts *created* by Organizations join automatically |
+| "one sign-on for all accounts, using our on-prem AD" | **IAM Identity Center**, with **AD Connector** (or AWS Managed Microsoft AD) as the identity source | an **organization instance must be enabled in the Organizations management account**; **permission sets** — which become IAM roles in each account — need one, since *"Account instances do not support permission sets and therefore do not support access to AWS accounts"*. The directory must reside in the management account (or the delegated admin account, if one exists) |
+| "divisions keep their own accounts, corporate IT keeps oversight" | **cross-account IAM role** in each member account trusting the management account | the built-in one is **`OrganizationAccountAccessRole`** — created automatically for accounts Organizations **creates**, and **not** created for **invited** accounts, where you add it yourself |
+| "stop anyone in these accounts from doing X" | **SCP** | caps only — it answers **none of the rows above**. No billing, no sign-on, no access granted |
 
 ### The four things that can cap a permission
 
@@ -192,7 +202,26 @@ flowchart LR
 > [!question]- Union vs intersection
 > resource policies widen, boundaries and SCPs narrow.
 
-**1. The four things that can cap a permission** — fill the blank cells from memory.
+**1. Which multi-account requirement does this solve?** — fill the blank cells from memory.
+
+| The requirement in the stem | The answer | The detail that decides it |
+|---|---|---|
+| "one bill across all our accounts", volume discounts, shared RIs / Savings Plans |   |   |
+| "bring our **existing** accounts under one organization" |   |   |
+| "one sign-on for all accounts, using our on-prem AD" |   |   |
+| "divisions keep their own accounts, corporate IT keeps oversight" |   |   |
+| "stop anyone in these accounts from doing X" |   |   |
+
+> [!success]- Answer
+> | The requirement in the stem | The answer | The detail that decides it |
+> |---|---|---|
+> | "one bill across all our accounts", volume discounts, shared RIs / Savings Plans | **AWS Organizations — consolidated billing** | the **management account becomes responsible for all charges** accrued by member accounts; the member's own payment method stops being used. Combined usage *"shares the volume pricing discounts, Reserved Instance discounts, and Savings Plans"* |
+> | "bring our **existing** accounts under one organization" | **Invite** each account from the management account; its owner accepts | invitations can be sent **only from the management account**, expire after **15 days**, and an account can join **only one organization**. Accounts *created* by Organizations join automatically |
+> | "one sign-on for all accounts, using our on-prem AD" | **IAM Identity Center**, with **AD Connector** (or AWS Managed Microsoft AD) as the identity source | an **organization instance must be enabled in the Organizations management account**; **permission sets** — which become IAM roles in each account — need one, since *"Account instances do not support permission sets and therefore do not support access to AWS accounts"*. The directory must reside in the management account (or the delegated admin account, if one exists) |
+> | "divisions keep their own accounts, corporate IT keeps oversight" | **cross-account IAM role** in each member account trusting the management account | the built-in one is **`OrganizationAccountAccessRole`** — created automatically for accounts Organizations **creates**, and **not** created for **invited** accounts, where you add it yourself |
+> | "stop anyone in these accounts from doing X" | **SCP** | caps only — it answers **none of the rows above**. No billing, no sign-on, no access granted |
+
+**2. The four things that can cap a permission** — fill the blank cells from memory.
 
 |   | **SCP** | **RCP** | **Permissions boundary** | **Session policy** |
 |---|---|---|---|---|
@@ -211,7 +240,7 @@ flowchart LR
 > | Needs Organizations | ✅ (all features) | ✅ (all features) | ❌ | ❌ |
 > | Typical use | "no one may leave the org / use other regions" | "only our org's identities may touch our buckets" | "you may create users, but not admins" | temporary least-privilege on assume |
 
-**2. RBAC vs ABAC** — fill the blank cells from memory.
+**3. RBAC vs ABAC** — fill the blank cells from memory.
 
 |   | RBAC (roles) | **ABAC (tags)** |
 |---|---|---|
@@ -228,7 +257,7 @@ flowchart LR
 > | Key condition keys | — | `aws:PrincipalTag/x`, `aws:ResourceTag/x`, `aws:RequestTag/x` |
 > | Exam trigger | "separate permissions per job function" | "**scales** as teams grow / avoid policy sprawl / permissions based on project or cost-centre **tags**" |
 
-**3. Condition keys worth memorising** — fill the blank cells from memory.
+**4. Condition keys worth memorising** — fill the blank cells from memory.
 
 | Key | Matches | Use it for |
 |---|---|---|

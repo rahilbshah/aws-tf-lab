@@ -4,7 +4,7 @@ tags: [revision, generated]
 
 # 🌙 Night-before revision — index
 
-**22 topics · ~222 min total.** Each is self-contained;
+**22 topics · ~228 min total.** Each is self-contained;
 you should not need the full note. Tick them off as you go.
 
 > [!tip] Order
@@ -13,8 +13,8 @@ you should not need the full note. Tick them off as you go.
 
 | ✓ | Topic | Read | Full note |
 |---|---|---|---|
-| [ ] | [[revision/01-iam-revision\|01-iam]] | ~17 min | [[01-iam]] |
-| [ ] | [[revision/01-iam-advanced-revision\|01-iam-advanced]] | ~11 min | [[01-iam-advanced]] |
+| [ ] | [[revision/01-iam-revision\|01-iam]] | ~21 min | [[01-iam]] |
+| [ ] | [[revision/01-iam-advanced-revision\|01-iam-advanced]] | ~12 min | [[01-iam-advanced]] |
 | [ ] | [[revision/02-ec2-revision\|02-ec2]] | ~14 min | [[02-ec2]] |
 | [ ] | [[revision/04-alb-asg-revision\|04-alb-asg]] | ~16 min | [[04-alb-asg]] |
 | [ ] | [[revision/05-vpc-core-revision\|05-vpc-core]] | ~7 min | [[05-vpc-core]] |
@@ -22,7 +22,7 @@ you should not need the full note. Tick them off as you go.
 | [ ] | [[revision/05-vpc-endpoints-peering-revision\|05-vpc-endpoints-peering]] | ~6 min | [[05-vpc-endpoints-peering]] |
 | [ ] | [[revision/05-vpc-hybrid-revision\|05-vpc-hybrid]] | ~6 min | [[05-vpc-hybrid]] |
 | [ ] | [[revision/06-capstone-revision\|06-capstone]] | ~9 min | [[06-capstone]] |
-| [ ] | [[revision/07-rds-aurora-revision\|07-rds-aurora]] | ~11 min | [[07-rds-aurora]] |
+| [ ] | [[revision/07-rds-aurora-revision\|07-rds-aurora]] | ~12 min | [[07-rds-aurora]] |
 | [ ] | [[revision/08-elasticache-revision\|08-elasticache]] | ~7 min | [[08-elasticache]] |
 | [ ] | [[revision/09-s3-intro-revision\|09-s3-intro]] | ~7 min | [[09-s3-intro]] |
 | [ ] | [[revision/09-s3-advanced-revision\|09-s3-advanced]] | ~8 min | [[09-s3-advanced]] |

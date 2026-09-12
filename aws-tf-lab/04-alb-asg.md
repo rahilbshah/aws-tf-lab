@@ -328,8 +328,8 @@ Non-obvious bits:
 > [!warning] Trap — "a failed ALB health check means users get errors"
 > Only if **no** targets are healthy. With ≥1 healthy target the ALB quietly routes around the bad one and users are fine — you're at reduced capacity with nobody alerted. Silence is the danger.
 
-> [!warning] Trap — NLB vs ALB for a static IP / source-IP
-> "Need a static IP for the LB" or "must preserve client source IP with no app changes" → **NLB** (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs `X-Forwarded-For`. Frequent distractor pairing.
+> [!warning] Trap — NLB vs ALB for a static IP / source-IP / PrivateLink
+> "Need a static IP for the LB" or "must preserve client source IP with no app changes" → **NLB** (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs `X-Forwarded-For`. Frequent distractor pairing. Third trigger, same pairing: **"expose one service to another VPC or account without exposing the rest of the VPC" → PrivateLink, and an endpoint service must be fronted by an NLB or a GWLB** — never an ALB directly. Security groups narrow *who may reach* something already reachable; they create no route, so "tighten the security group" is the wrong shape of answer. Need Layer 7 routing behind PrivateLink? Register the ALB as a target of the NLB (target group `target_type = "alb"`, protocol TCP, one ALB per target group).
 
 > [!warning] Trap — cross-zone billing
 > Cross-zone is free & always-on for ALB, but **off by default and inter-AZ-billed for NLB**. "Cheapest option that spreads evenly across AZs" nuances hinge on this.

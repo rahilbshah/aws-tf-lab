@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 07 – RDS & Aurora
 
-> [!abstract] Night-before read · ~11 min · self-contained
+> [!abstract] Night-before read · ~12 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[07-rds-aurora]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -149,6 +149,15 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > [!tip] Real gotcha — AWS Free Plan caps backup retention
 > On the new AWS **Free Tier "Free Plan"**, `backup_retention_period = 7` failed with `FreeTierRestrictionError`; had to drop to `1`. The current free tier has service guardrails (backup retention, sometimes instance types) the old 12-month one didn't — dial settings down rather than upgrading the plan.
 
+> [!warning] Trap — an IAM role on the app is not, by itself, database authentication
+> The distractors are **"attach an IAM role to the EC2 instance / Lambda function"** and **"restrict
+> the security group to the app tier"**, offered *on their own*. A role is an **identity** control and
+> a security group is a **network** control; neither authenticates anyone to a database. The role is
+> genuinely needed — it is what carries the `rds-db:connect` policy — but it does nothing until the
+> feature itself is switched on, and **the feature is off by default**. So the answer that earns the
+> mark **names the feature**: *enable IAM database authentication*. The three parts it then requires
+> are in the authentication comparison table above.
+
 > [!warning] Trap — "IAM database authentication controls what the user can do in the database"
 > It does not. IAM decides **whether you may connect as a given database user**; everything after that is still the database's own `GRANT`s. AWS says it plainly: a role that connects as `jane_doe` gets exactly the tables and schemas `jane_doe` has. So IAM DB auth is **authentication**, not in-database **authorization** — pairing it with an over-privileged DB user gains you nothing.
 
@@ -268,6 +277,15 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 ### The traps
 
 *Each of these is a place a plausible-looking answer is wrong. Say why before unfolding.*
+
+> [!question]- an IAM role on the app is not, by itself, database authentication
+> The distractors are **"attach an IAM role to the EC2 instance / Lambda function"** and **"restrict
+> the security group to the app tier"**, offered *on their own*. A role is an **identity** control and
+> a security group is a **network** control; neither authenticates anyone to a database. The role is
+> genuinely needed — it is what carries the `rds-db:connect` policy — but it does nothing until the
+> feature itself is switched on, and **the feature is off by default**. So the answer that earns the
+> mark **names the feature**: *enable IAM database authentication*. The three parts it then requires
+> are in the authentication comparison table above.
 
 > [!question]- "IAM database authentication controls what the user can do in the database"
 > It does not. IAM decides **whether you may connect as a given database user**; everything after that is still the database's own `GRANT`s. AWS says it plainly: a role that connects as `jane_doe` gets exactly the tables and schemas `jane_doe` has. So IAM DB auth is **authentication**, not in-database **authorization** — pairing it with an over-privileged DB user gains you nothing.

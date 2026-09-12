@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*127 recall hooks · 213 pointers · ~21 min read*
+*127 recall hooks · 218 pointers · ~21 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -40,8 +40,10 @@ For the longer night-before read see **[[revision/00-index]]**.
 - All name arguments on IAM resources behave the same
 - validate/plan catch reference bugs (.arn vs .name, quoted strings)
 - "create IAM users for the on-premises staff"
+- "IAM Groups" in a federation question
 - AD Connector vs AWS Managed Microsoft AD
 - rds: vs rds-db: for database login
+- SSL/TLS is not authentication
 
 **Failure modes**
 - confused deputy (the missing ExternalId)  ↳ [[01-iam#Worked examples|open]]
@@ -50,6 +52,7 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[01-iam#User vs Role|User vs Role]]
 - [[01-iam#Inline vs Managed policy|Inline vs Managed policy]]
 - [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]]
+- [[01-iam#How an application authenticates to RDS|How an application authenticates to RDS]]
 - [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
 
 
@@ -80,6 +83,7 @@ For the longer night-before read see **[[revision/00-index]]**.
 - the deny-only SCP that locked out the whole organization  ↳ [[01-iam-advanced#Worked examples|open]]
 
 **Comparisons**
+- [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]]
 - [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]]
 - [[01-iam-advanced#How policy types combine|How policy types combine]]
 - [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
@@ -140,7 +144,7 @@ For the longer night-before read see **[[revision/00-index]]**.
 **Traps** [[04-alb-asg#The Terraform I wrote|open]]
 - "the ALB terminates the unhealthy instance"
 - "a failed ALB health check means users get errors"
-- NLB vs ALB for a static IP / source-IP
+- NLB vs ALB for a static IP / source-IP / PrivateLink
 - cross-zone billing
 - "scale-in terminates the oldest instance"
 - a scheduled action that also pins min and max
@@ -310,6 +314,7 @@ For the longer night-before read see **[[revision/00-index]]**.
   ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
 
 **Traps** [[07-rds-aurora#The Terraform I wrote|open]]
+- an IAM role on the app is not, by itself, database authentication
 - "IAM database authentication controls what the user can do in the database"
 - rds-db: vs rds:
 - "use IAM DB auth so database logins show up in CloudTrail"

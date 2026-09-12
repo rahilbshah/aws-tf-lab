@@ -271,6 +271,15 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 > [!failure] Failure mode — the connection pool that dies 15 minutes after deploy
 > A team enables IAM DB auth and their app works perfectly in testing. Fifteen minutes after each deploy, new database connections start failing with an authentication error while **existing connections keep working fine** — which makes it look like a random, partial outage. The cause: the connection pool minted **one** token at startup and cached it as "the password." AWS is explicit that the token is used only to *establish* the session and has a **15-minute lifetime** — an open session is unaffected, but every new connection needs a **fresh** token. Fix: generate the token inside the pool's connection factory, not once at boot. (Related: if you mint the token with temporary role credentials, those credentials must still be valid at connect time.)
 
+> [!warning] Trap — an IAM role on the app is not, by itself, database authentication
+> The distractors are **"attach an IAM role to the EC2 instance / Lambda function"** and **"restrict
+> the security group to the app tier"**, offered *on their own*. A role is an **identity** control and
+> a security group is a **network** control; neither authenticates anyone to a database. The role is
+> genuinely needed — it is what carries the `rds-db:connect` policy — but it does nothing until the
+> feature itself is switched on, and **the feature is off by default**. So the answer that earns the
+> mark **names the feature**: *enable IAM database authentication*. The three parts it then requires
+> are in the authentication comparison table above.
+
 > [!warning] Trap — "IAM database authentication controls what the user can do in the database"
 > It does not. IAM decides **whether you may connect as a given database user**; everything after that is still the database's own `GRANT`s. AWS says it plainly: a role that connects as `jane_doe` gets exactly the tables and schemas `jane_doe` has. So IAM DB auth is **authentication**, not in-database **authorization** — pairing it with an over-privileged DB user gains you nothing.
 
