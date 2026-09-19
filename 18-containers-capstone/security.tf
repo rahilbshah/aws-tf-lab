@@ -34,3 +34,114 @@
 #   Note what 19 and 20 mean together with the isolated route table: the
 #   database has no route out AND no rule allowing it out. Two independent
 #   controls. If someone deletes one, the other still holds.
+
+resource "aws_security_group" "alb" {
+  name        = "alb-sg"
+  description = "ALB tier: allows HTTP (80) from the internet"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "alb-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb" {
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront.id
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  security_group_id = aws_security_group.alb.id
+
+  tags = {
+    Name = "alb-http-from-cloudfront"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb" {
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = aws_security_group.app.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.container_port
+  to_port                      = var.container_port
+
+  tags = {
+    Name = "alb-all-egress"
+  }
+}
+
+resource "aws_security_group" "app" {
+  name        = "app-sg"
+  description = "App tier: allows traffic only from the ALB security group"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "app-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app" {
+  from_port                    = var.container_port
+  to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+  security_group_id            = aws_security_group.app.id
+  referenced_security_group_id = aws_security_group.alb.id
+
+  tags = {
+    Name = "app-http-from-alb"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "app" {
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # all protocols -> must NOT set from_port/to_port
+  security_group_id = aws_security_group.app.id
+
+  tags = {
+    Name = "app-all-egress"
+  }
+}
+
+
+resource "aws_security_group" "db" {
+  name        = "db-sg"
+  description = "DB tier: allows traffic only from the App security group"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "db-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db" {
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  security_group_id            = aws_security_group.db.id
+  referenced_security_group_id = aws_security_group.app.id
+
+  tags = {
+    Name = "db-port-from-app"
+  }
+}
+
+resource "aws_security_group" "cache" {
+  name        = "cache-sg"
+  description = "CACHE tier: allows traffic only from the App security group"
+  vpc_id      = aws_vpc.this.id
+
+  tags = {
+    Name = "cache-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "cache" {
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  security_group_id            = aws_security_group.cache.id
+  referenced_security_group_id = aws_security_group.app.id
+
+  tags = {
+    Name = "cache-port-from-app"
+  }
+}

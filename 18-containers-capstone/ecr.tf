@@ -35,3 +35,12 @@
 # would get x86_64, the task definition would say arm64, and the task would
 # fail with "exec format error" - a runtime failure that looks nothing like an
 # architecture mismatch. Set --platform explicitly, always.
+
+resource "aws_ecr_repository" "app" {
+  name                 = var.name
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  force_delete = true
+}

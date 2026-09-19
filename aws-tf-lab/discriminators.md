@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*71 comparison tables · 130 discriminators · ~23 min read*
+*76 comparison tables · 136 discriminators · ~24 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -392,6 +392,24 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **endpoints are not automatically cheaper than NAT** — Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+
+
+## [[18-containers-capstone|18 – Containers capstone (the services meeting each other)]]
+
+**Compare:** [[18-containers-capstone#Where a task's configuration lives|Where a task's configuration lives]] · [[18-containers-capstone#The two ECS roles, as used in this build|The two ECS roles, as used in this build]] · [[18-containers-capstone#Two independent controls on the isolated tier|Two independent controls on the isolated tier]] · [[18-containers-capstone#Three ways to keep a DB password out of Terraform|Three ways to keep a DB password out of Terraform]] · [[18-containers-capstone#The perpetual-drift pattern — two instances from this build|The perpetual-drift pattern — two instances from this build]]
+
+- **the ALB timed out, so something's broken** — After locking the ALB's ingress to the CloudFront prefix list, a direct curl to the ALB DNS name hangs and times out.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
+- **the autoscaler scaled to 1, so the ALB isn't load balancing** — With no traffic, target-tracking on 50% CPU scaled the service in to its minimum of 1, so every request hit the same task.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
+- **.id on a task definition** — aws_ecs_task_definition.x.id is the family (capstone). ECS accepts a bare family and resolves it to the latest revision — then reads back capstone:1, and the plan drifts forever.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
+- **putting the secret grant on the task role** — The execution role fetches secrets, because the agent injects them before the container exists.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
+- **health check on /** — The ALB health check targets /health, which has no dependencies. Point it at / or /db and a slow RDS marks every task unhealthy, the ALB drains them all, and an outage in one dependency takes down the whole service.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
+- **"the S3 upload went through the NAT gateway"** — It didn't. The S3 gateway endpoint is attached to the private route table, so S3 traffic takes the prefix-list route and never touches the NAT — and never pays $0.045/GB for it.  
+  ↳ [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|note]]
 
 
 ## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]

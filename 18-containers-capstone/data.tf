@@ -70,3 +70,39 @@
 #                        curl /cache  -> {"cache":"redis","counter":N}
 #                        and:  grep -r password *.tf   returns NOTHING
 #                        and:  terraform state show aws_db_instance.this | grep -i password  shows only the secret ARN
+
+resource "aws_db_subnet_group" "this" {
+  subnet_ids = [aws_subnet.isolated_a.id, aws_subnet.isolated_b.id]
+}
+
+resource "aws_db_instance" "this" {
+  identifier             = var.name
+  engine                 = "postgres"
+  instance_class         = var.db_instance_class
+  allocated_storage      = 20
+  db_name                = var.db_name
+  username               = var.db_username
+  db_subnet_group_name   = aws_db_subnet_group.this.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  publicly_accessible    = false
+  multi_az               = false
+  skip_final_snapshot    = true
+  storage_encrypted      = true
+
+  manage_master_user_password = true
+}
+
+resource "aws_elasticache_subnet_group" "this" {
+  name       = "${var.name}-cache"
+  subnet_ids = [aws_subnet.isolated_a.id, aws_subnet.isolated_b.id]
+}
+
+resource "aws_elasticache_cluster" "this" {
+  cluster_id         = var.name
+  engine             = "redis"
+  node_type          = var.cache_node_type
+  num_cache_nodes    = 1
+  port               = 6379
+  subnet_group_name  = aws_elasticache_subnet_group.this.name
+  security_group_ids = [aws_security_group.cache.id]
+}

@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*130 recall hooks · 231 pointers · ~22 min read*
+*132 recall hooks · 243 pointers · ~22 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -704,6 +704,32 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[17-containers#Task execution role vs task role|Task execution role vs task role]]
 - [[17-containers#ALB target types|ALB target types]]
 - [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
+
+
+## [[18-containers-capstone|18 – Containers capstone (the services meeting each other)]]
+
+- The capstone's lessons are all about the joints, because the bones were already known.  
+  ↳ [[18-containers-capstone#What problem does this solve?|explain]]
+- The execution role is the plumbing, the task role is the app, and the password only ever flows through the plumbing.  
+  ↳ [[18-containers-capstone#How it actually works|explain]]
+
+**Traps** [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|open]]
+- the ALB timed out, so something's broken
+- the autoscaler scaled to 1, so the ALB isn't load balancing
+- .id on a task definition
+- putting the secret grant on the task role
+- health check on /
+- "the S3 upload went through the NAT gateway"
+
+**Failure modes**
+- the plan that never goes clean  ↳ [[18-containers-capstone#Worked examples|open]]
+
+**Comparisons**
+- [[18-containers-capstone#Where a task's configuration lives|Where a task's configuration lives]]
+- [[18-containers-capstone#The two ECS roles, as used in this build|The two ECS roles, as used in this build]]
+- [[18-containers-capstone#Two independent controls on the isolated tier|Two independent controls on the isolated tier]]
+- [[18-containers-capstone#Three ways to keep a DB password out of Terraform|Three ways to keep a DB password out of Terraform]]
+- [[18-containers-capstone#The perpetual-drift pattern — two instances from this build|The perpetual-drift pattern — two instances from this build]]
 
 
 ## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]

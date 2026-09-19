@@ -67,3 +67,154 @@
 # PHASE 3 IS DONE when:  curl http://<alb-dns>/         -> served_by alternates between two hostnames
 #                        curl http://<alb-dns>/db       -> 503 "not configured yet", missing DB_HOST...
 # That 503 is CORRECT at this phase. The app is telling you what phase 4 will add.
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.name}"
+  retention_in_days = var.log_retention_days
+}
+
+resource "aws_ecs_cluster" "this" {
+  name = var.name
+}
+
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "task_execution" {
+  name               = "${var.name}-task-execution"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+
+resource "aws_iam_role_policy_attachment" "task_execution" {
+  role       = aws_iam_role.task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+data "aws_iam_policy_document" "execution_read_secret" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_db_instance.this.master_user_secret[0].secret_arn]
+  }
+}
+
+
+resource "aws_iam_role_policy" "execution_read_secret" {
+  name   = "${var.name}-read-db-secret"
+  role   = aws_iam_role.task_execution.id
+  policy = data.aws_iam_policy_document.execution_read_secret.json
+}
+
+
+resource "aws_iam_role" "task" {
+  name               = "${var.name}-task"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+data "aws_iam_policy_document" "task_s3" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.uploads.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "task_s3" {
+  name   = "${var.name}-upload-s3"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.task_s3.json
+}
+
+
+data "aws_region" "current" {}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = var.name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
+  execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+  container_definitions = jsonencode([{
+    name      = "app"
+    image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+    essential = true
+
+    portMappings = [{
+      containerPort = var.container_port
+    }]
+
+    environment = [
+      { name = "IMAGE_TAG", value = var.image_tag },
+      { name = "DB_HOST", value = aws_db_instance.this.address },
+      { name = "DB_NAME", value = var.db_name },
+      { name = "DB_USER", value = var.db_username },
+      { name = "REDIS_HOST", value = aws_elasticache_cluster.this.cache_nodes[0].address },
+      { name = "UPLOAD_BUCKET", value = aws_s3_bucket.uploads.id },
+    ]
+
+    secrets = [{
+      name      = "DB_PASSWORD"
+      valueFrom = "${aws_db_instance.this.master_user_secret[0].secret_arn}:password::"
+    }]
+
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.app.name
+        "awslogs-region"        = data.aws_region.current.region
+        "awslogs-stream-prefix" = "app"
+      }
+    }
+
+  }])
+}
+
+resource "aws_ecs_service" "app" {
+  name            = var.name
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+    security_groups  = [aws_security_group.app.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "app"
+    container_port   = var.container_port
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  depends_on = [aws_lb_listener.http]
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
+}

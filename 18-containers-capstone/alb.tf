@@ -22,3 +22,35 @@
 #          port 80, HTTP, default_action forward -> the target group
 #          HTTP only. CloudFront provides HTTPS to the user in phase 6; the
 #          CloudFront -> ALB leg stays HTTP inside AWS's network.
+
+resource "aws_lb" "this" {
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+}
+
+resource "aws_lb_target_group" "app" {
+  port                 = var.container_port
+  protocol             = "HTTP"
+  vpc_id               = aws_vpc.this.id
+  target_type          = "ip"
+  deregistration_delay = 30
+
+  health_check {
+    path              = "/health"
+    interval          = 10
+    healthy_threshold = 2
+    matcher           = "200"
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  port              = 80
+  protocol          = "HTTP"
+  load_balancer_arn = aws_lb.this.arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
