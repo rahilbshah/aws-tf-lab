@@ -4,7 +4,7 @@ tags: [revision, generated]
 
 # 🌙 Night-before revision — index
 
-**26 topics · ~269 min total.** Each is self-contained;
+**26 topics · ~273 min total.** Each is self-contained;
 you should not need the full note. Tick them off as you go.
 
 > [!tip] Order
@@ -31,7 +31,7 @@ you should not need the full note. Tick them off as you go.
 | [ ] | [[revision/11-cloudfront-revision\|11-cloudfront]] | ~11 min | [[11-cloudfront]] |
 | [ ] | [[revision/12-storage-extras-revision\|12-storage-extras]] | ~11 min | [[12-storage-extras]] |
 | [ ] | [[revision/13-cost-optimization-revision\|13-cost-optimization]] | ~10 min | [[13-cost-optimization]] |
-| [ ] | [[revision/14-dr-resilience-revision\|14-dr-resilience]] | ~11 min | [[14-dr-resilience]] |
+| [ ] | [[revision/14-dr-resilience-revision\|14-dr-resilience]] | ~15 min | [[14-dr-resilience]] |
 | [ ] | [[revision/15-decoupling-revision\|15-decoupling]] | ~11 min | [[15-decoupling]] |
 | [ ] | [[revision/16-kinesis-revision\|16-kinesis]] | ~10 min | [[16-kinesis]] |
 | [ ] | [[revision/17-containers-revision\|17-containers]] | ~10 min | [[17-containers]] |

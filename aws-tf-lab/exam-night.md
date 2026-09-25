@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*138 recall hooks · 268 pointers · ~24 min read*
+*139 recall hooks · 271 pointers · ~24 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -594,6 +594,8 @@ For the longer night-before read see **[[revision/00-index]]**.
   ↳ [[14-dr-resilience#Data plane vs control plane — why some failovers are more reliable|explain]]
 - Your RPO target picks the replication mechanism, and Aurora Global Database is the strongest answer whenever the question pairs cross-Region with a tight recovery window.  
   ↳ [[14-dr-resilience#Which service buys you which RPO|explain]]
+- Detection time is spent out of your RTO budget, and the only recovery path that works is one you run often enough to trust.  
+  ↳ [[14-dr-resilience#Detection and testing — the two halves everyone skips|explain]]
 
 **Traps** [[14-dr-resilience#Traps|open]]
 - pilot light vs warm standby
@@ -602,6 +604,9 @@ For the longer night-before read see **[[revision/00-index]]**.
 - automatic failover assumed to be the better answer
 - an RDS read replica used where Aurora Global Database belongs
 - a DR design that depends on the control plane
+- the RTO clock starts before anyone notices
+- a recovery path that has never been run
+- assuming DR always means a second Region
 
 **Failure modes**
 - replication that faithfully copied the disaster  ↳ [[14-dr-resilience#Worked examples|open]]

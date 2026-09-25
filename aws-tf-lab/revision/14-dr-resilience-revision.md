@@ -7,7 +7,7 @@ tags: [revision, generated]
 
 # Revision — 14 – Disaster recovery & resilience
 
-> [!abstract] Night-before read · ~11 min · self-contained
+> [!abstract] Night-before read · ~15 min · self-contained
 > Everything you need is here — no need to jump back mid-revision.
 > Full teaching explanations, Terraform and diagrams: **[[14-dr-resilience]]**
 > Ends with a **self-test** — close the doc and answer it before you sleep.
@@ -23,9 +23,13 @@ tags: [revision, generated]
 > - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
 > - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
 > - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
-> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to 10 secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
+> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to **10** secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
 > - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
 > - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
+> - **Detection time is spent out of your RTO.** Detect → notify → escalate → evaluate → declare → recover, all inside the budget. Aggressive RTO ⇒ **deep health checks**, not heartbeats.
+> - **Only the recovery path you test frequently works.** Keep recovery paths few; manage **DR-Region configuration drift** (stale AMIs, unraised **service quotas**) with **AWS Config** + **SSM Automation** + **CloudFormation drift detection**.
+> - **All four strategies can be built across AZs instead of Regions** — the answer when **data residency** pins you to a single Region.
+> - **Backup & restore is the corruption answer**, not just the cheap one — it's the only copy the disaster didn't reach.
 
 ## Key facts, limits & pricing
 
@@ -36,16 +40,25 @@ tags: [revision, generated]
 - **Auto Scaling is a control-plane dependency.** Provisioning full capacity instead — **static stability** — removes it, at the cost of paying for idle capacity.
 - **Automatic failover carries false-alarm risk.** AWS advises caution; a common pattern is fully scripted but **manually triggered** failover.
 - **Continuous cross-Region replication is available from:** S3 Replication, RDS read replicas, **Aurora Global Databases**, **DynamoDB Global Tables**, DocumentDB global clusters, and **ElastiCache Global Datastore**.
-- **Aurora Global Database:** typical cross-Region replication latency **under one second** (and well under 100 ms within a Region); a secondary can be promoted to read/write in **less than one minute**, even during a full regional outage; up to **five** secondary Regions; supports **write forwarding** from secondaries to the primary; can monitor RPO lag against a target.
+- **Aurora Global Database:** typical cross-Region replication latency **under one second** (and well under 100 ms within a Region); a secondary can be promoted to read/write in **less than one minute**, even during a full regional outage; up to **10** secondary Regions; supports **write forwarding** from secondaries to the primary; can monitor RPO lag against a target.
 - **RDS (non-Aurora) read replica promotion takes a few minutes and involves a reboot** — materially worse than Aurora Global Database for DR.
 - **DynamoDB Global Tables** allow reads *and* writes in every Region, reconciling concurrent updates with **last writer wins**.
-- **S3 Cross-Region Replication does not replicate delete markers by default**, protecting the DR Region from deletions in the source. **S3 Replication Time Control (RTC)** gives a measurable replication window. **Versioning** protects against human error.
+- **S3 Cross-Region Replication does not replicate delete markers by default**, protecting the DR Region from deletions in the source. **S3 Replication Time Control (RTC)** replicates **99.9% of objects within 15 minutes**, backed by an SLA — the only way to put a contractual number on your S3 RPO. **Versioning** protects against human error.
 - **AWS Backup supports cross-Region and cross-account copy**; cross-account protects against insider threat or account compromise. It also has **restore testing**: a schedule that periodically restores from your recovery points and reports whether the restore actually worked, so "we have backups" and "we can recover" stop being the same claim.
 - **AWS Backup's extra EC2 metadata** (instance type, VPC, security group, IAM role, monitoring config, tags) is **only used when restoring to the same Region**.
-- **AWS Elastic Disaster Recovery (DRS)** continuously replicates whole servers at block level from on-premises, another cloud, or EC2 — and implements a **pilot light** strategy with switched-off resources in a staging VPC. It does not cover RDS.
-- **Multi-site write strategies:** *write global* (all writes to one Region — Aurora Global Database), *write local* (write anywhere — DynamoDB Global Tables), *write partitioned* (writes routed by partition key — bidirectional S3 replication, currently two Regions).
+- **AWS Elastic Disaster Recovery (DRS)** continuously replicates whole servers at block level from on-premises, another cloud, or EC2 — and implements a **pilot light** strategy with switched-off resources in a staging VPC. AWS states recovery instances launch with an **RTO of minutes and an RPO of seconds**. It does not cover RDS.
+- **Multi-site write strategies:** *write global* (all writes to one Region — Aurora Global Database), *write local* (write anywhere — DynamoDB Global Tables), *write partitioned* (writes routed by partition key — bidirectional S3 replication, which works across two **or more** buckets/Regions).
 - **CloudFront origin failover** switches **per request** — subsequent requests still try the primary first, unlike a DNS or Global Accelerator failover which moves everything.
 - **AWS Resilience Hub** continuously validates whether a workload is likely to meet its RTO and RPO targets.
+- **Detection, notification, escalation, evaluation and declaration all consume the recovery window** — the RTO clock starts at the failure, not at the decision to fail over. For aggressive objectives AWS recommends automated failover driven by **deep health checks** (representative of user experience, based on KPIs, using multiple signals) rather than shallow heartbeats — while cautioning that false alarms cause a needless failover, which is itself an availability risk.
+- **The AWS Health Dashboard** reports AWS-side events affecting your account, and is the first place to look when deciding whether an incident is yours or AWS's.
+- **"The only error recovery that works is the path you test frequently"** (AWS's wording) — so keep the number of recovery paths **small**, and execute complex or critical recovery paths regularly, in production, to prove they work.
+- **Manage configuration drift in the DR Region**: check AMIs and **service quotas** are current. **AWS Config** continuously records and detects drift and can trigger **AWS Systems Manager Automation** to fix it; **CloudFormation drift detection** covers deployed stacks.
+- **The four strategies can be implemented across Availability Zones instead of Regions.** This is the standard answer when **data residency** rules confine a workload to a locality with only one AWS Region — the AZs become the discrete locations.
+- **Backup & restore is AWS's stated mitigation for data loss *and* data corruption**, and can also cover the lack of redundancy in a single-AZ deployment — not only a cheap answer to a Region outage.
+- **If the recovery strategy costs more than the loss it prevents, don't build it** — unless a secondary driver such as a regulatory requirement demands it.
+- **A separate AWS account per Region is recommended for pilot light** (and multi-Region DR generally), for resource and security isolation — it keeps compromised credentials in one Region from being part of the disaster in the other.
+- **Pilot light / warm standby / hot standby are all active/passive**; only multi-site is **active/active**. Hot standby = full capacity deployed, still only one Region serving.
 
 ## Comparisons
 
@@ -69,6 +82,7 @@ tags: [revision, generated]
 | Typical tools | Multi-AZ, ASG across AZs, ALB, EFS Regional | cross-Region replication, Route 53/GA failover, backups |
 | Failover | automatic, seconds | strategy-dependent, seconds to hours |
 | Always paying for it | yes, and it's cheap | yes, and it's the whole cost question |
+| Measured by | `MTBF / (MTBF + MTTR)`, or successful ÷ valid requests | RTO and RPO |
 
 ### Picking a cross-Region database
 
@@ -77,7 +91,7 @@ tags: [revision, generated]
 | Replication lag | **< 1 second** typical | seconds to minutes | seconds |
 | Promotion / failover | **< 1 minute** | **minutes, plus a reboot** | none needed — already writable |
 | Writes in the DR Region | after promotion (or write forwarding) | after promotion | **always** |
-| Secondary Regions | up to **5** | multiple | many |
+| Secondary Regions | up to **10** | multiple | many |
 | Conflict handling | single writer | single writer | **last writer wins** |
 
 ## Worked examples
@@ -112,9 +126,19 @@ tags: [revision, generated]
 > [!warning] Trap — a DR design that depends on the control plane
 > Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are **control-plane** operations, and control planes are less available than data planes exactly when you need them. Route 53 **health checks** and **Application Recovery Controller** are data plane. A "most resilient failover" question is usually asking you to spot this.
 
+> [!warning] Trap — the RTO clock starts before anyone notices
+> Candidates budget the RTO for the failover itself and forget everything in front of it. **Detection, notification, escalation, evaluation and declaring the disaster are all inside the RTO.** A one-hour RTO with a 25-minute alarm has already spent nearly half its budget before a human is involved. Scenarios with aggressive RTOs are usually asking for **deep health checks** based on real KPIs — and a shallow heartbeat that returns 200 while the database is unreachable is the distractor.
+
+> [!warning] Trap — a recovery path that has never been run
+> "We have a DR Region" is not the same as "we can recover." Untested paths fail on the details: stale AMIs, **service quotas in the DR Region that were never raised**, a read-only secondary nobody has ever written to. AWS's position is that only the path you test *frequently* works, so keep recovery paths **few** and run them. Where a question hints at drift or an untested failover, the answer involves **AWS Config** (detect), **SSM Automation** (remediate) or **CloudFormation drift detection** — not a bigger DR Region.
+
+> [!warning] Trap — assuming DR always means a second Region
+> The four strategies are about **discrete locations**, not Regions specifically. When data-residency or sovereignty rules confine a workload to a country with a single AWS Region, the correct answer implements the same strategy across that Region's **Availability Zones**. You give up protection against a Region-wide event and keep compliance — and "we can't leave the country, so DR is impossible" is the wrong conclusion.
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
-- [ ] **Never studied** — written 2026-09-06 with no orientation pass or video. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it.
+- [ ] **Written before the video** — first drafted 2026-09-06 with no orientation pass. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it. Reconciled against the AWS DR whitepaper on 2026-09-25 while I was part-way through the course section — the *strategy* content held up, the *operational* content (detection, testing) was missing entirely.
+- [ ] **Detection and testing** — new as of 2026-09-25 and untested on me. The RTO clock starting at the failure rather than at the failover decision is the idea I'm most likely to lose marks on.
 - [ ] **Pilot light vs warm standby** — the test is whether compute is *running*, not whether infrastructure exists.
 - [ ] **Data plane vs control plane** — a genuinely new idea, and the thing that separates a good failover design from a plausible one.
 - [ ] **Replication ≠ backup** — the failure mode that beats teams who think they have DR.
@@ -137,8 +161,11 @@ tags: [revision, generated]
 
 *Your own recorded misses. Answer each one before unfolding it — these are, by definition, the ones that have already cost you marks.*
 
-> [!question]- Never studied
-> written 2026-09-06 with no orientation pass or video. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it.
+> [!question]- Written before the video
+> first drafted 2026-09-06 with no orientation pass. D2 Resilient is my weakest domain (62%) and barely moved during the recap; this note is aimed directly at it. Reconciled against the AWS DR whitepaper on 2026-09-25 while I was part-way through the course section — the *strategy* content held up, the *operational* content (detection, testing) was missing entirely.
+
+> [!question]- Detection and testing
+> new as of 2026-09-25 and untested on me. The RTO clock starting at the failure rather than at the failover decision is the idea I'm most likely to lose marks on.
 
 > [!question]- Pilot light vs warm standby
 > the test is whether compute is *running*, not whether infrastructure exists.
@@ -183,6 +210,7 @@ tags: [revision, generated]
 | Typical tools |   |   |
 | Failover |   |   |
 | Always paying for it |   |   |
+| Measured by |   |   |
 
 > [!success]- Answer
 > |   | **High availability** | **Disaster recovery** |
@@ -191,6 +219,7 @@ tags: [revision, generated]
 > | Typical tools | Multi-AZ, ASG across AZs, ALB, EFS Regional | cross-Region replication, Route 53/GA failover, backups |
 > | Failover | automatic, seconds | strategy-dependent, seconds to hours |
 > | Always paying for it | yes, and it's cheap | yes, and it's the whole cost question |
+> | Measured by | `MTBF / (MTBF + MTTR)`, or successful ÷ valid requests | RTO and RPO |
 
 **3. Picking a cross-Region database** — fill the blank cells from memory.
 
@@ -208,7 +237,7 @@ tags: [revision, generated]
 > | Replication lag | **< 1 second** typical | seconds to minutes | seconds |
 > | Promotion / failover | **< 1 minute** | **minutes, plus a reboot** | none needed — already writable |
 > | Writes in the DR Region | after promotion (or write forwarding) | after promotion | **always** |
-> | Secondary Regions | up to **5** | multiple | many |
+> | Secondary Regions | up to **10** | multiple | many |
 > | Conflict handling | single writer | single writer | **last writer wins** |
 
 ### The traps
@@ -232,6 +261,15 @@ tags: [revision, generated]
 
 > [!question]- a DR design that depends on the control plane
 > Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are **control-plane** operations, and control planes are less available than data planes exactly when you need them. Route 53 **health checks** and **Application Recovery Controller** are data plane. A "most resilient failover" question is usually asking you to spot this.
+
+> [!question]- the RTO clock starts before anyone notices
+> Candidates budget the RTO for the failover itself and forget everything in front of it. **Detection, notification, escalation, evaluation and declaring the disaster are all inside the RTO.** A one-hour RTO with a 25-minute alarm has already spent nearly half its budget before a human is involved. Scenarios with aggressive RTOs are usually asking for **deep health checks** based on real KPIs — and a shallow heartbeat that returns 200 while the database is unreachable is the distractor.
+
+> [!question]- a recovery path that has never been run
+> "We have a DR Region" is not the same as "we can recover." Untested paths fail on the details: stale AMIs, **service quotas in the DR Region that were never raised**, a read-only secondary nobody has ever written to. AWS's position is that only the path you test *frequently* works, so keep recovery paths **few** and run them. Where a question hints at drift or an untested failover, the answer involves **AWS Config** (detect), **SSM Automation** (remediate) or **CloudFormation drift detection** — not a bigger DR Region.
+
+> [!question]- assuming DR always means a second Region
+> The four strategies are about **discrete locations**, not Regions specifically. When data-residency or sovereignty rules confine a workload to a country with a single AWS Region, the correct answer implements the same strategy across that Region's **Availability Zones**. You give up protection against a Region-wide event and keep compliance — and "we can't leave the country, so DR is impossible" is the wrong conclusion.
 
 > [!question]- Build tier — **conceptual-only**
 > A real multi-Region DR setup means paying for a second environment. This one is learned, not built — and the exam tests the *strategy choice*, not the HCL.

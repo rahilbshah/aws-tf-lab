@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*86 comparison tables · 149 discriminators · ~27 min read*
+*86 comparison tables · 152 discriminators · ~28 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -335,6 +335,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **an RDS read replica used where Aurora Global Database belongs** — Both give cross-Region replication. But an RDS read replica promotion takes a few minutes and includes a reboot, while Aurora Global Database replicates in under a second and promotes in under a minute.  
   ↳ [[14-dr-resilience#Traps|note]]
 - **a DR design that depends on the control plane** — Auto Scaling, Route 53 weight changes and Global Accelerator traffic dials are control-plane operations, and control planes are less available than data planes exactly when you need them.  
+  ↳ [[14-dr-resilience#Traps|note]]
+- **the RTO clock starts before anyone notices** — Candidates budget the RTO for the failover itself and forget everything in front of it. Detection, notification, escalation, evaluation and declaring the disaster are all inside the RTO. A one-hour RTO with a 25-minute alarm has already spent nearly half its budget before a human is involved.  
+  ↳ [[14-dr-resilience#Traps|note]]
+- **a recovery path that has never been run** — "We have a DR Region" is not the same as "we can recover." Untested paths fail on the details: stale AMIs, service quotas in the DR Region that were never raised, a read-only secondary nobody has ever written to.  
+  ↳ [[14-dr-resilience#Traps|note]]
+- **assuming DR always means a second Region** — The four strategies are about discrete locations, not Regions specifically. When data-residency or sovereignty rules confine a workload to a country with a single AWS Region, the correct answer implements the same strategy across that Region's Availability Zones.  
   ↳ [[14-dr-resilience#Traps|note]]
 
 
