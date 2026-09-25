@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*76 comparison tables · 136 discriminators · ~24 min read*
+*86 comparison tables · 149 discriminators · ~27 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -428,3 +428,41 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **more memory is always more expensive** — Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+
+
+## [[20-monitoring|20 – Monitoring (CloudWatch, CloudTrail, Config, EventBridge)]]
+
+**Compare:** [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+
+- **CloudTrail for "what did this resource look like"** — CloudTrail records the API call, not the resulting state. "Was this bucket public at any point last quarter?" or "produce evidence that all volumes have been encrypted since January" is AWS Config — it stores configuration items over time and evaluates rules against them.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **memory utilisation in the EC2 console** — There is no default memory or disk-space metric for EC2, because the hypervisor cannot see inside the guest.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **"enable CloudTrail to see who read the S3 object"** — CloudTrail is on by default only for management events. Object-level reads and writes are data events, which "trails and event data stores" do not log by default.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **CloudWatch Events versus EventBridge** — They are the same service; CloudWatch Events was renamed to EventBridge. If a question offers both as separate options, they are not testing a distinction — look at what else the options differ on.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **the 90 days** — "CloudTrail keeps 90 days" is true of the free Event history view, per Region, management events only.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **composite alarms doing Auto Scaling** — Composite alarms exist to reduce noise by combining other alarms' states. They "can send Amazon SNS notifications when they change state... but can't perform EC2 actions or Auto Scaling actions." If the stem needs a scaling action, the alarm doing it must be a metric alarm.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+
+
+## [[21-security|21 – Security & Encryption]]
+
+**Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
+
+- **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **"rotate this asymmetric key automatically"** — Automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates." Asymmetric keys, HMAC keys and custom-key-store keys cannot auto-rotate — the answer is manual rotation (create a new key, repoint the alias).  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **Parameter Store for a rotating password** — Parameter Store has no rotation. SecureString encrypts a value with KMS; it does not change it on a schedule.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **Macie on anything other than S3** — Macie is "a data security service that discovers sensitive data" in Amazon S3. It does not scan RDS, EBS, DynamoDB or EFS.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **WAF on a Network Load Balancer** — A web ACL attaches to an ALB, API Gateway REST API, AppSync, Cognito user pool, App Runner, Amplify, Verified Access — or CloudFront.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **Shield Advanced to block SQL injection** — Shield is DDoS. SQL injection, XSS and bad bots are WAF. Shield Advanced adds layer-7 DDoS mitigation and covers your standard WAF costs on protected resources, but it is not where you write "block requests containing ' OR 1=1".  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **GuardDuty needs you to turn on flow logs** — It does not. GuardDuty consumes "an independent and duplicated stream" of CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — "You don't need to enable anything else", and enabling or disabling your own flow logs changes nothing about GuardDuty.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

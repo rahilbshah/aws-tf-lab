@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*132 recall hooks · 243 pointers · ~22 min read*
+*138 recall hooks · 268 pointers · ~24 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -759,3 +759,60 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]]
 - [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]]
 - [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
+
+
+## [[20-monitoring|20 – Monitoring (CloudWatch, CloudTrail, Config, EventBridge)]]
+
+- CloudWatch watches behaviour, CloudTrail watches callers, Config watches configuration, EventBridge reacts.  
+  ↳ [[20-monitoring#What problem does this solve?|explain]]
+- If the metric requires looking inside the operating system, it needs the agent.  
+  ↳ [[20-monitoring#How it actually works|explain]]
+- CloudTrail's free 90-day Event history is management events only — everything else is a trail you configure.  
+  ↳ [[20-monitoring#How it actually works|explain]]
+
+**Traps** [[20-monitoring#⚠️ Traps — why the wrong answer looks right|open]]
+- CloudTrail for "what did this resource look like"
+- memory utilisation in the EC2 console
+- "enable CloudTrail to see who read the S3 object"
+- CloudWatch Events versus EventBridge
+- the 90 days
+- composite alarms doing Auto Scaling
+
+**Failure modes**
+- the alarm that never fires, and the one that fires constantly  ↳ [[20-monitoring#Worked examples|open]]
+
+**Comparisons**
+- [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]]
+- [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]]
+- [[20-monitoring#CloudWatch event types|CloudWatch event types]]
+- [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]]
+- [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+
+
+## [[21-security|21 – Security & Encryption]]
+
+- KMS protects keys, not data — you encrypt data with a data key, and KMS protects that.  
+  ↳ [[21-security#What problem does this solve?|explain]]
+- KMS's 4 KB limit is not a restriction, it is the design — KMS encrypts keys, and keys are small.  
+  ↳ [[21-security#How it actually works|explain]]
+- GuardDuty watches logs, Inspector watches software, Macie watches data, Security Hub aggregates, Detective investigates.  
+  ↳ [[21-security#How it actually works|explain]]
+
+**Traps** [[21-security#⚠️ Traps — why the wrong answer looks right|open]]
+- rotation re-encrypts your data
+- "rotate this asymmetric key automatically"
+- Parameter Store for a rotating password
+- Macie on anything other than S3
+- WAF on a Network Load Balancer
+- Shield Advanced to block SQL injection
+- GuardDuty needs you to turn on flow logs
+
+**Failure modes**
+- the cross-account restore that cannot decrypt  ↳ [[21-security#Worked examples|open]]
+
+**Comparisons**
+- [[21-security#KMS key types|KMS key types]]
+- [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]]
+- [[21-security#Which detection service|Which detection service]]
+- [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]]
+- [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
