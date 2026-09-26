@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*153 recall hooks · 294 pointers · ~26 min read*
+*168 recall hooks · 313 pointers · ~28 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -892,3 +892,72 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[23-machine-learning#The four modality neighbours|The four modality neighbours]]
 - [[23-machine-learning#Text services — analyse, search, converse, translate|Text services — analyse, search, converse, translate]]
 - [[23-machine-learning#Kendra vs OpenSearch|Kendra vs OpenSearch]]
+
+
+## [[24-other-services|24 – Other Services]]
+
+- Seven small services with real exam weight and no home elsewhere in the vault.  
+  ↳ [[24-other-services#What problem does this solve?|explain]]
+- DMS moves the data (and keeps it in sync with CDC); SCT converts the schema when the engines differ.  
+  ↳ [[24-other-services#AWS DMS — the migration answer, and the biggest gap here|explain]]
+- Standard is exactly-once and runs up to a year; Express is at-least-once, capped at five minutes, and built for volume.  
+  ↳ [[24-other-services#Step Functions — orchestration, and one table that gets tested|explain]]
+- GraphQL means AppSync, and it brings real-time subscriptions over WebSockets for free.  
+  ↳ [[24-other-services#AWS AppSync — managed GraphQL|explain]]
+- Batch is for containerised jobs too long or too heavy for Lambda, and Spot is its natural home.  
+  ↳ [[24-other-services#AWS Batch — containerised batch jobs at any scale|explain]]
+- Beanstalk provisions and manages a standard web stack for you, costs nothing extra, and leaves the resources visible in your account.  
+  ↳ [[24-other-services#Elastic Beanstalk — PaaS with the lid off|explain]]
+- Transfer Family is managed SFTP/FTPS/FTP/AS2 into S3 or EFS, for partners whose clients can't change.  
+  ↳ [[24-other-services#AWS Transfer Family — SFTP as a managed service|explain]]
+- Managed Microsoft AD is real AD (and the only one that does RDS SQL Server), AD Connector proxies to on-prem, Simple AD is a cheap Samba-based imitation.  
+  ↳ [[24-other-services#AWS Directory Service — three options, one real discriminator|explain]]
+- For the long tail, knowing the one-line purpose is enough to eliminate them as distractors.  
+  ↳ [[24-other-services#The long tail — recognise and eliminate|explain]]
+
+**Traps** [[24-other-services#Traps|open]]
+- DMS alone for a heterogeneous migration
+- Standard vs Express workflows
+- AD Connector or Simple AD where RDS for SQL Server is involved
+- Lambda for a job that outgrows 15 minutes
+- Transfer Family confused with DataSync
+- assuming Elastic Beanstalk costs extra or hides the resources
+- reaching for Directory Service for a SaaS app's end users
+
+**Failure modes**
+- the SFTP server nobody wanted to run  ↳ [[24-other-services#Worked examples|open]]
+
+**Comparisons**
+- [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]]
+- [[24-other-services#Directory Service options|Directory Service options]]
+- [[24-other-services#Batch vs Lambda|Batch vs Lambda]]
+- [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
+
+
+## [[25-well-architected|25 – Well-Architected Framework]]
+
+- The six pillars are the exam's skeleton — four of them are literally the four scored domains.  
+  ↳ [[25-well-architected#What problem does this solve?|explain]]
+- Six pillars — operational excellence, security, reliability, performance efficiency, cost optimization, sustainability — and reliability ≠ performance.  
+  ↳ [[25-well-architected#The six pillars|explain]]
+- Whitepapers are where the exam's "best practice" answers come from — trust their concepts, check their numbers.  
+  ↳ [[25-well-architected#What a "whitepaper" actually is, and which ones matter|explain]]
+- The WA Tool is a free, question-driven self-assessment of a workload against the pillars, extensible with lenses.  
+  ↳ [[25-well-architected#AWS Well-Architected Tool — the free self-assessment|explain]]
+- Trusted Advisor inspects what's deployed across six categories; Basic/Developer gets service limits plus a handful of security and fault-tolerance checks, everything else needs a paid plan.  
+  ↳ [[25-well-architected#AWS Trusted Advisor — the automated inspection|explain]]
+- WA Tool reviews design, Trusted Advisor inspects resources, Config continuously evaluates and remediates.  
+  ↳ [[25-well-architected#WA Tool vs Trusted Advisor vs Config — three things that "check your account"|explain]]
+
+**Traps** [[25-well-architected#Traps|open]]
+- five pillars instead of six
+- Reliability and Performance Efficiency treated as one thing
+- Trusted Advisor assumed to be fully available on any account
+- Trusted Advisor asked to do continuous compliance
+
+**Failure modes**
+- treating the framework as paperwork  ↳ [[25-well-architected#Worked examples|open]]
+
+**Comparisons**
+- [[25-well-architected#The six pillars, and where each lives in this vault|The six pillars, and where each lives in this vault]]
+- [[25-well-architected#WA Tool vs Trusted Advisor vs AWS Config|WA Tool vs Trusted Advisor vs AWS Config]]

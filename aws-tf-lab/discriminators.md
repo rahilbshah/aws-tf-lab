@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*94 comparison tables · 165 discriminators · ~31 min read*
+*100 comparison tables · 176 discriminators · ~33 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -510,3 +510,37 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[23-machine-learning#Traps|note]]
 - **assuming a retired service is a wrong answer** — Forecast, Fraud Detector and Kendra are all closed to new customers, but all three are still in the SAA-C03 exam guide's in-scope list.  
   ↳ [[23-machine-learning#Traps|note]]
+
+
+## [[24-other-services|24 – Other Services]]
+
+**Compare:** [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]] · [[24-other-services#Directory Service options|Directory Service options]] · [[24-other-services#Batch vs Lambda|Batch vs Lambda]] · [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
+
+- **DMS alone for a heterogeneous migration** — DMS moves data. It does not translate a schema between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs AWS SCT / DMS Schema Conversion first, then DMS.  
+  ↳ [[24-other-services#Traps|note]]
+- **Standard vs Express workflows** — Decide on duration and volume, not sophistication. Express caps at five minutes and is at-least-once — so anything long-running, anything needing exactly-once, and anything waiting on a human approval (.waitForTaskToken, which Express doesn't support) must be Standard.  
+  ↳ [[24-other-services#Traps|note]]
+- **AD Connector or Simple AD where RDS for SQL Server is involved** — Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server. AD Connector and Simple AD are both explicitly incompatible.  
+  ↳ [[24-other-services#Traps|note]]
+- **Lambda for a job that outgrows 15 minutes** — Lambda's 15-minute maximum is a hard ceiling, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it.  
+  ↳ [[24-other-services#Traps|note]]
+- **Transfer Family confused with DataSync** — Both move files into AWS and both appear together as options. Transfer Family is a standing endpoint speaking SFTP/FTPS/FTP/AS2, for external parties using their own clients. DataSync is a transfer job you run to move a dataset between storage systems.  
+  ↳ [[24-other-services#Traps|note]]
+- **assuming Elastic Beanstalk costs extra or hides the resources** — Beanstalk itself is free — you pay only for the EC2, ELB and other resources it creates, so "additional service cost" is never a reason to reject it.  
+  ↳ [[24-other-services#Traps|note]]
+- **reaching for Directory Service for a SaaS app's end users** — Directory Service is for corporate/workforce identity — employees, domain-joined machines, AD-aware applications.  
+  ↳ [[24-other-services#Traps|note]]
+
+
+## [[25-well-architected|25 – Well-Architected Framework]]
+
+**Compare:** [[25-well-architected#The six pillars, and where each lives in this vault|The six pillars, and where each lives in this vault]] · [[25-well-architected#WA Tool vs Trusted Advisor vs AWS Config|WA Tool vs Trusted Advisor vs AWS Config]]
+
+- **five pillars instead of six** — Sustainability is a full pillar, and it's the newest. Course material, blog posts and older practice banks written before it was added say five.  
+  ↳ [[25-well-architected#Traps|note]]
+- **Reliability and Performance Efficiency treated as one thing** — They sound adjacent and are tested apart. Reliability is about surviving and recovering from failure — Multi-AZ, health checks, backups, DR strategy.  
+  ↳ [[25-well-architected#Traps|note]]
+- **Trusted Advisor assumed to be fully available on any account** — On Basic or Developer Support you get only the full Service Limits category plus a fixed handful of Security and Fault Tolerance checks (MFA on root account, S3 bucket permissions, public EBS/RDS snapshots, unrestricted specific ports, STS global endpoint).  
+  ↳ [[25-well-architected#Traps|note]]
+- **Trusted Advisor asked to do continuous compliance** — Trusted Advisor recommends; it does not enforce, and on Basic it doesn't even refresh Security checks automatically.  
+  ↳ [[25-well-architected#Traps|note]]
