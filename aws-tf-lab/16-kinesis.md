@@ -3,7 +3,7 @@ topic: 16-kinesis
 domain: performance
 status: reviewed
 services: [Kinesis, Firehose]
-related: [15-decoupling, 09-s3-advanced, 12-storage-extras]
+related: [15-decoupling, 09-s3-advanced, 12-storage-extras, 22-analytics]
 revision: revision/16-kinesis-revision
 tags: [topic, domain/performance]
 ---

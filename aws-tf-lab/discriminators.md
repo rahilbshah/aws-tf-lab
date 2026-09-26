@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*86 comparison tables · 152 discriminators · ~28 min read*
+*94 comparison tables · 165 discriminators · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -472,3 +472,41 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **GuardDuty needs you to turn on flow logs** — It does not. GuardDuty consumes "an independent and duplicated stream" of CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — "You don't need to enable anything else", and enabling or disabling your own flow logs changes nothing about GuardDuty.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+
+
+## [[22-analytics|22 – Data & Analytics]]
+
+**Compare:** [[22-analytics#The four query engines|The four query engines]] · [[22-analytics#Which engine does the exam mean?|Which engine does the exam mean?]] · [[22-analytics#Redshift vs RDS/Aurora|Redshift vs RDS/Aurora]] · [[22-analytics#Kinesis vs MSK|Kinesis vs MSK]]
+
+- **Athena vs Redshift** — Both run SQL over big data, so scenarios are written to make you pick on familiarity. The axis is infrastructure and frequency, not capability. Ad-hoc, intermittent, "no infrastructure to manage", "pay only for what you query" → Athena. Sustained load, many concurrent BI users, complex multi-table joins, a dedicated warehouse → Redshift. If the scenario mentions loading/ETL into the engine first, that's Redshift; if the data stays in S3, that's Athena.  
+  ↳ [[22-analytics#Traps|note]]
+- **reducing Athena cost by resizing something** — Athena has nothing to resize — it's serverless and billed on bytes scanned. Any option offering a bigger instance, more nodes, or provisioned capacity is wrong by construction.  
+  ↳ [[22-analytics#Traps|note]]
+- **Redshift Spectrum as a standalone service** — Spectrum is a feature of Redshift, not an alternative to it. It requires a running cluster, and the cluster must be in the same Region as the S3 data.  
+  ↳ [[22-analytics#Traps|note]]
+- **OpenSearch vs Athena for "analyse our logs"** — Both can touch log data and the wording is deliberately close. OpenSearch is for full-text search, relevance ranking, and live operational dashboards over recent logs — near-real-time, always-on cluster. Athena is for SQL aggregates over historical logs already in S3 — nothing running between queries.  
+  ↳ [[22-analytics#Traps|note]]
+- **EMR core nodes on Spot** — Task nodes are the Spot answer because they store no HDFS data — losing one costs compute only.  
+  ↳ [[22-analytics#Traps|note]]
+- **AWS Data Pipeline as a live answer** — It still appears in the SAA-C03 exam guide's in-scope list and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, with console access removed in April 2023.  
+  ↳ [[22-analytics#Traps|note]]
+- **building a second catalog per engine** — Athena, EMR and Redshift Spectrum all read the same AWS Glue Data Catalog. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did.  
+  ↳ [[22-analytics#Traps|note]]
+
+
+## [[23-machine-learning|23 – Machine Learning]]
+
+**Compare:** [[23-machine-learning#Pre-trained AI service vs SageMaker|Pre-trained AI service vs SageMaker]] · [[23-machine-learning#The four modality neighbours|The four modality neighbours]] · [[23-machine-learning#Text services — analyse, search, converse, translate|Text services — analyse, search, converse, translate]] · [[23-machine-learning#Kendra vs OpenSearch|Kendra vs OpenSearch]]
+
+- **Rekognition where Textract belongs** — Both take things that look like images, so scenarios use "scanned" and "uploaded image" interchangeably to bait you.  
+  ↳ [[23-machine-learning#Traps|note]]
+- **SageMaker as the serious-sounding answer** — SageMaker is correct only when the question calls for a custom model trained on the customer's own data, or says the pre-trained options don't fit.  
+  ↳ [[23-machine-learning#Traps|note]]
+- **Transcribe and Polly reversed** — They're one word apart in a question and opposite in direction. Transcribe consumes audio and produces text (call recordings, subtitles, meeting notes).  
+  ↳ [[23-machine-learning#Traps|note]]
+- **Comprehend asked to search, Kendra asked to analyse** — Both take text and both sound like "understand our documents". **Comprehend extracts insights about text** — sentiment, entities, PII, topics — and returns no ranked results.  
+  ↳ [[23-machine-learning#Traps|note]]
+- **synchronous ML APIs on large inputs** — Textract's synchronous operations handle single-page documents only; multi-page PDFs require the asynchronous API, and long audio in Transcribe works the same way.  
+  ↳ [[23-machine-learning#Traps|note]]
+- **assuming a retired service is a wrong answer** — Forecast, Fraud Detector and Kendra are all closed to new customers, but all three are still in the SAA-C03 exam guide's in-scope list.  
+  ↳ [[23-machine-learning#Traps|note]]

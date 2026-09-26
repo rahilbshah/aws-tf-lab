@@ -12,7 +12,7 @@ If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
 For the longer night-before read see **[[revision/00-index]]**.
 
-*139 recall hooks · 271 pointers · ~24 min read*
+*153 recall hooks · 294 pointers · ~26 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -821,3 +821,74 @@ For the longer night-before read see **[[revision/00-index]]**.
 - [[21-security#Which detection service|Which detection service]]
 - [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]]
 - [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
+
+
+## [[22-analytics|22 – Data & Analytics]]
+
+- Analytics is one pipeline — ingest, store, catalog, query, visualise — and the exam tests which service occupies which slot.  
+  ↳ [[22-analytics#What problem does this solve?|explain]]
+- Sources → S3 → Glue Data Catalog → whichever query engine fits → QuickSight, and the catalog is shared by all the engines.  
+  ↳ [[22-analytics#The pipeline, once, so the rest makes sense|explain]]
+- Athena is serverless SQL over S3 at $5/TB scanned, so every optimisation is about scanning fewer bytes — Parquet, compression, partitioning.  
+  ↳ [[22-analytics#Athena — SQL on S3, and you pay per byte you touch|explain]]
+- Redshift is OLAP (columnar + MPP), Spectrum extends it to query S3 in place, and it still needs a cluster in the same Region as the data.  
+  ↳ [[22-analytics#Redshift — the warehouse, and when you actually need one|explain]]
+- OpenSearch is for search and log analytics — reach for it when the question says "search", "logs" or "observability dashboard", not "SQL report".  
+  ↳ [[22-analytics#OpenSearch — search and logs, not reporting|explain]]
+- EMR is managed Hadoop/Spark on visible EC2 nodes; task nodes hold no HDFS so they're the Spot target, and transient clusters are the cheap batch pattern.  
+  ↳ [[22-analytics#EMR — when you genuinely need the Hadoop/Spark ecosystem|explain]]
+- QuickSight is the dashboard, and SPICE is its in-memory cache that also saves you re-paying per-query source costs.  
+  ↳ [[22-analytics#QuickSight — the dashboard at the end, and SPICE|explain]]
+- Lake Formation governs the catalog, MSK is Kafka-when-you-need-Kafka, Flink is stream processing, and Data Pipeline is a legacy answer.  
+  ↳ [[22-analytics#The remaining in-scope names, briefly|explain]]
+
+**Traps** [[22-analytics#Traps|open]]
+- Athena vs Redshift
+- reducing Athena cost by resizing something
+- Redshift Spectrum as a standalone service
+- OpenSearch vs Athena for "analyse our logs"
+- EMR core nodes on Spot
+- AWS Data Pipeline as a live answer
+- building a second catalog per engine
+
+**Failure modes**
+- the warehouse nobody needed  ↳ [[22-analytics#Worked examples|open]]
+
+**Comparisons**
+- [[22-analytics#The four query engines|The four query engines]]
+- [[22-analytics#Which engine does the exam mean?|Which engine does the exam mean?]]
+- [[22-analytics#Redshift vs RDS/Aurora|Redshift vs RDS/Aurora]]
+- [[22-analytics#Kinesis vs MSK|Kinesis vs MSK]]
+
+
+## [[23-machine-learning|23 – Machine Learning]]
+
+- ML is in scope as a service list but has no task statement, so it shows up as distractors — learn one sentence each, nothing deeper.  
+  ↳ [[23-machine-learning#What problem does this solve?|explain]]
+- Every AI service is a fixed input type mapped to a fixed output type — match the noun in the question to the noun in the table.  
+  ↳ [[23-machine-learning#The whole topic, as a recognition table|explain]]
+- Pre-trained API unless the question says "custom model" or "our own data", in which case SageMaker.  
+  ↳ [[23-machine-learning#The two splits that actually get tested|explain]]
+- Document vs scene (Textract/Rekognition), audio direction (Transcribe/Polly), analyse vs search (Comprehend/Kendra).  
+  ↳ [[23-machine-learning#The near-neighbours, resolved|explain]]
+- S3 → Lambda → AI service → store, with async APIs plus SNS for anything multi-page or long-running, and services chained when the scenario has two verbs.  
+  ↳ [[23-machine-learning#The pipeline pattern, because that's how scenarios are written|explain]]
+- SageMaker is now "SageMaker AI", and Forecast, Fraud Detector and Kendra are closed to new customers but still exam-answerable.  
+  ↳ [[23-machine-learning#Names and availability have moved — this matters|explain]]
+
+**Traps** [[23-machine-learning#Traps|open]]
+- Rekognition where Textract belongs
+- SageMaker as the serious-sounding answer
+- Transcribe and Polly reversed
+- Comprehend asked to search, Kendra asked to analyse
+- synchronous ML APIs on large inputs
+- assuming a retired service is a wrong answer
+
+**Failure modes**
+- reaching for SageMaker because the problem sounds hard  ↳ [[23-machine-learning#Worked examples|open]]
+
+**Comparisons**
+- [[23-machine-learning#Pre-trained AI service vs SageMaker|Pre-trained AI service vs SageMaker]]
+- [[23-machine-learning#The four modality neighbours|The four modality neighbours]]
+- [[23-machine-learning#Text services — analyse, search, converse, translate|Text services — analyse, search, converse, translate]]
+- [[23-machine-learning#Kendra vs OpenSearch|Kendra vs OpenSearch]]
