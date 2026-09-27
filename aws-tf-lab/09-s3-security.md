@@ -56,8 +56,10 @@ Four settings looks fussy until you see the grid. There are **two ways a bucket 
 
 | | Public via an **ACL** | Public via a **policy** |
 |---|---|---|
-| **New** ones | `block_public_acls` | `block_public_policy` |
-| **Existing** ones | `ignore_public_acls` | `restrict_public_buckets` |
+| **New** ones | `block_public_acls` · API `BlockPublicAcls` | `block_public_policy` · API `BlockPublicPolicy` |
+| **Existing** ones | `ignore_public_acls` · API `IgnorePublicAcls` | `restrict_public_buckets` · API `RestrictPublicBuckets` |
+
+The console and AWS docs use the API spellings; Terraform uses snake_case. Same four switches ([verified 2026-09-27](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)).
 
 That is the whole design. Blocking only the new ones leaves whatever was already public still public, which is why the "existing" column exists at all.
 
