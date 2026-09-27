@@ -115,6 +115,30 @@ Notice that this is the trust-policy mechanic again. AD group, EC2 instance, Git
 
 > In one line: if the users already exist, don't copy them — federate, and the AD group ends up wearing an IAM role.
 
+### Reading a policy document in twenty seconds
+
+Nearly a quarter of the IAM questions in the practice bank show you a JSON policy and ask
+what it does. It is a **skill**, not a fact, and it is worth drilling as one. Read the
+elements in this order — the answer usually falls out before you reach the end:
+
+1. **`Effect`** — `Allow` or `Deny`. A `Deny` anywhere wins, so read denies first.
+2. **`Action`** — what verb, and is it wildcarded? `s3:*Object` is not `s3:DeleteObject`.
+3. **`Resource`** — and specifically **where the `/*` sits**. `arn:aws:s3:::bucket` is the
+   *bucket*; `arn:aws:s3:::bucket/*` is the *objects*. `bucket*` is neither — it is a
+   prefix match on bucket **names**. Bucket-level actions like `s3:ListBucket` need the
+   bare bucket ARN; object actions need `/*`. A policy that gets this wrong fails silently.
+4. **`Condition`** — which key, and what does it actually measure?
+   - `aws:SourceIp` — the IP the **API call originates from**. Not the instance's public
+     IP, not an Elastic IP, not a private IP.
+   - `aws:RequestedRegion` — the region the **API call targets**. The caller can sit
+     anywhere; this constrains *where the resource goes*, not *where you are*.
+   - `aws:MultiFactorAuthPresent` — MFA used for this session.
+5. **`Principal`** — present only in a **resource-based** policy. If you see one, you are
+   reading a bucket policy or a trust policy, not an identity policy.
+
+> In one line: read Effect → Action → Resource (watch the `/*`) → Condition, and the
+> condition key is almost always the thing being tested.
+
 ## Exam recap
 
 *Now that the mechanisms are clear, this is the compressed version to revise from.*
@@ -173,6 +197,9 @@ flowchart TD
 ```
 
 ## Key facts, limits & pricing
+
+- **The trust policy is the only resource-based policy IAM itself supports.** AWS's wording: *"The IAM service supports only one type of resource-based policy called a role trust policy, which is attached to an IAM role."* A role is therefore **both an identity and a resource**, which is why it needs two policies. If a question asks "which is the only resource-based policy in IAM", the answer is the **trust policy** — permissions boundaries, SCPs and ACLs are all something else.
+- **AWS now lists nine policy types:** identity-based · resource-based · VPC endpoint policies · permissions boundaries · SCPs · **RCPs** · ACLs · **RAM resource shares** · session policies. Only identity-based and resource-based ones *grant*; the rest only ever **cap**.
 
 - **Global service** — no region picker. Same IAM seen from every region. (The IAM API endpoint historically lives in `us-east-1` infrastructure, but the concept and the data are global.)
 - **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. Access Analyzer's external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.

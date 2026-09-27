@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*168 recall hooks · 313 pointers · ~28 min read*
+*169 recall hooks · 314 pointers · ~28 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -26,6 +26,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam#Why a principal is named but a policy is an ARN|explain]]
 - If the users already exist, don't copy them — federate, and the AD group ends up wearing an IAM role.  
   ↳ [[01-iam#When the users already exist somewhere else|explain]]
+- Read Effect → Action → Resource (watch the /*) → Condition, and the  
+  ↳ [[01-iam#Reading a policy document in twenty seconds|explain]]
 
 **Traps** [[01-iam|open]]
 - "the plan showed the policy was fine"
@@ -227,7 +229,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Peering is O(N²) and non-transitive, so at many VPCs / hybrid at scale the answer becomes one Transit Gateway hub.  
   ↳ [[05-vpc-endpoints-peering#The mesh math, and what Transit Gateway replaces|explain]]
 
-**Traps** [[05-vpc-endpoints-peering#The Terraform I wrote|open]]
+**Traps** [[05-vpc-endpoints-peering#Key facts, limits & pricing|open]]
+- VPC sharing confused with peering, or "share the VPC"
 - "use a gateway endpoint for SQS/KMS/etc."
 - "reach the S3 gateway endpoint from a peered VPC / on-prem"
 - "peering scales fine, just add connections"

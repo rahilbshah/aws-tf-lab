@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*100 comparison tables · 176 discriminators · ~33 min read*
+*100 comparison tables · 177 discriminators · ~33 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -136,6 +136,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[05-vpc-endpoints-peering#Gateway vs Interface endpoint|Gateway vs Interface endpoint]] · [[05-vpc-endpoints-peering#VPC Peering vs Transit Gateway|VPC Peering vs Transit Gateway]]
 
+- **VPC sharing confused with peering, or "share the VPC"** — Two errors in one family. **VPC sharing shares subnets, never the whole VPC — an option saying "share the VPC" is wrong even when sharing is the right idea. And sharing is not peering**: peering connects two separate VPCs, while sharing puts several accounts inside one VPC, using its implicit routing.  
+  ↳ [[05-vpc-endpoints-peering#Key facts, limits & pricing|note]]
 - **"use a gateway endpoint for SQS/KMS/etc."** — Gateway endpoints only exist for S3 and DynamoDB. Every other service uses an interface endpoint (PrivateLink).  
   ↳ [[05-vpc-endpoints-peering#The Terraform I wrote|note]]
 - **"reach the S3 gateway endpoint from a peered VPC / on-prem"** — No. Gateway endpoints work only within the same VPC. If you need S3 access from a peered VPC or over VPN/DX, you use an interface endpoint (which is reachable across those).  

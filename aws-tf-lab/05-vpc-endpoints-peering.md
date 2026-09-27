@@ -140,12 +140,23 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
+- **VPC sharing (via AWS RAM)** lets the VPC **owner** share **one or more subnets** — *not the VPC itself* — with **participant** accounts in the **same AWS Organization**. Participants create their own EC2, RDS, Redshift and Lambda resources in those subnets, and **cannot view, modify or delete** resources belonging to other participants or to the owner. It is the cheapest way to get many accounts onto one network: no peering mesh, no Transit Gateway, and traffic uses the VPC's **implicit routing** rather than crossing an attachment.
+- **AWS Resource Access Manager (RAM)** is the sharing mechanism — it shares resources across accounts/OUs/an organization without writing a resource-based policy per resource. Commonly shared: **VPC subnets, Transit Gateway attachments, Route 53 Resolver rules, License Manager configurations**.
+
 - **Gateway endpoints: S3 and DynamoDB only. Free.** Route-table based (a prefix-list route `pl-xxxx → vpce-xxxx`). **Cannot** be accessed from a peered VPC, VPN, or Direct Connect — only from within the same VPC.
 - **Interface endpoints (PrivateLink):** an **ENI with a private IP** in each chosen subnet, for most AWS services + partner/your-own services. **Reachable across peering / VPN / Direct Connect** (unlike gateway). Uses **private DNS** so the normal service hostname resolves to the ENI. ~**$0.01/hr per endpoint per AZ + ~$0.01/GB** — ⚠️ check current pricing. Secured by a **security group**.
 - **Endpoint policies:** both types support a resource-style policy to restrict which resources/actions the endpoint allows (default = full access).
 - **VPC peering:** private, uses AWS backbone, **cross-account and cross-region** supported. Limits: **non-transitive**, **no overlapping CIDRs**, **no edge-to-edge routing** (you can't use a peer's IGW, NAT, VPN, or endpoints through the peering). Both route tables must be updated.
 - **Mesh math:** a full mesh of N VPCs needs **N(N-1)/2** peering connections (5→10, 6→15, 10→45). O(N²).
 - **Transit Gateway:** regional hub; each VPC/VPN/DX = **one attachment**; connectivity is **transitive**; supports **TGW route tables** for segmentation and **inter-region TGW peering**. Scales to thousands of attachments. Costs: **per-attachment/hour + per-GB data**. Overkill for 2–3 VPCs; the answer for many/at-scale/hybrid.
+
+> [!warning] Trap — VPC sharing confused with peering, or "share the VPC"
+> Two errors in one family. **VPC sharing shares *subnets*, never the whole VPC** — an
+> option saying "share the VPC" is wrong even when sharing is the right idea. And sharing
+> is **not peering**: peering connects two *separate* VPCs, while sharing puts several
+> accounts *inside one* VPC, using its implicit routing. "Many accounts, same network,
+> lowest complexity, same Organization" → **VPC sharing via RAM**, not peering and not
+> Transit Gateway.
 
 ## Comparisons
 
