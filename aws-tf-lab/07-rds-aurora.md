@@ -124,6 +124,27 @@ Two boundaries on what the feature gives you. It is **authentication, not author
 
 > In one line: a 15-minute signed token used as the password, gated by `rds-db:connect` on the instance's resource id — nothing stored, nothing rotated, nothing in CloudTrail.
 
+### RDS Proxy — the connection pool in front of the database
+
+A managed, fully-serverless **connection pool** that sits between the application and RDS or
+Aurora. It exists because databases are bad at absorbing large numbers of short-lived
+connections, and **Lambda** produces exactly that — every concurrent execution opening its own
+connection, exhausting `max_connections` under a spike.
+
+Three things it buys, and each is a separate exam angle:
+
+- **Pooling and reuse** — many application connections multiplexed onto few database ones.
+  The Lambda-at-scale answer.
+- **Faster failover** — the proxy holds the client connection open and repoints it, cutting
+  failover time versus every client rediscovering the endpoint through DNS.
+- **No credentials in the application** — it integrates with **Secrets Manager** and **IAM
+  authentication**, so the function authenticates to the proxy rather than holding a password.
+
+It runs **inside your VPC** and is not publicly reachable.
+
+> In one line: RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens
+> failover while keeping credentials in Secrets Manager.
+
 ## Exam recap
 
 *Now that the mechanisms are clear, this is the compressed version to revise from.*

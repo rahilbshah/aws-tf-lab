@@ -2,7 +2,7 @@
 topic: 08-elasticache
 domain: performance
 status: reviewed
-services: [ElastiCache, Redis, Memcached]
+services: [ElastiCache, Redis, Memcached, DAX]
 related: [07-rds-aurora, 06-capstone]
 tags: [topic, domain/performance]
 ---
@@ -117,6 +117,32 @@ One exclusive signal decides it. And when a question additionally says data loss
 One more piece of vocabulary, since it appears alongside the other two: **Valkey** is the open-source Redis fork AWS backs after Redis's licence change, and ElastiCache now offers Valkey, Redis OSS and Memcached. For the exam, treat Valkey as Redis — same feature profile, often cheaper — with the single carve-out that Auto Discovery does not apply to it either.
 
 > In one line: find the capability only one engine has; the use case is the distractor.
+
+### DAX — the cache that only fronts DynamoDB
+
+This note is about caching in front of a relational database. There is a second cache in the
+exam and confusing the two is the point of the question: **DynamoDB Accelerator (DAX)** is a
+managed, in-memory, write-through cache that fronts **DynamoDB and nothing else**.
+
+What makes it an easy pick when it is right: it is **API-compatible with DynamoDB**, so the
+application changes almost nothing — swap the client, keep the calls. It takes reads from
+**single-digit milliseconds to microseconds**.
+
+The constraint that decides the question: **DAX serves eventually consistent reads.** AWS
+lists strongly consistent reads among the cases DAX is *not* for — a strongly consistent read
+passes straight through. It is also wrong for **write-heavy** workloads, and it wants a cache
+hit rate above ~90% to be worth it.
+
+> [!warning] Trap — DAX and ElastiCache offered for the same workload
+> They front different databases and that alone usually settles it. **DAX only accelerates
+> DynamoDB**; **ElastiCache** fronts RDS/Aurora and anything else you write caching logic
+> for. So "cache in front of DynamoDB with no application rewrite" is **DAX** — ElastiCache
+> would mean writing your own cache-aside logic. Reverse it and ElastiCache wins, because DAX
+> cannot front a relational database at all. The second discriminator is consistency: if the
+> stem insists on **strongly consistent reads**, DAX does not help, whatever else fits.
+
+> In one line: DAX is a drop-in microsecond cache for DynamoDB only, and only for eventually
+> consistent reads.
 
 ## Exam recap
 

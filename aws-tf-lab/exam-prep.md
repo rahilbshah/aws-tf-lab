@@ -50,6 +50,8 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ Aurora (6-copy storage, endpoints, Serverless v2, Global DB) — [[07-rds-aurora]]
 - [x] ✅ DynamoDB (DAX, GSI vs LSI, streams, on-demand vs provisioned) — [[19-serverless]]
 - [x] ✅ ElastiCache (Redis vs Memcached, caching strategies) — [[08-elasticache]]
+- [x] ✅ **DAX (DynamoDB-only, eventually consistent, API-compatible)** — [[08-elasticache]] *(gap found 2026-09-27; was a frontmatter entry and a diagram label.)*
+- [x] ✅ **RDS Proxy (connection pooling for Lambda, faster failover, Secrets Manager)** — [[07-rds-aurora]] *(gap found 2026-09-27; never claimed.)*
 - [x] ✅ Redshift (warehouse vs Athena, when you actually need one) — [[22-analytics]]
 
 ### Networking & Content Delivery
@@ -75,10 +77,10 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ **IAM advanced** (Organizations, SCPs, permissions boundaries, ABAC, condition keys, Control Tower) — [[01-iam-advanced]] *(conceptual-only — never build SCPs in a learning account)*
 - [x] ✅ KMS (key types, envelope encryption, rotation, multi-Region, CloudHSM) — [[21-security]]
 - [x] ✅ Secrets Manager vs SSM Parameter Store — [[21-security]]
-- [x] ✅ Cognito (user pools vs identity pools) — [[21-security]] + [[19-serverless]]
+- [x] ✅ **Cognito (user pools vs identity pools)** — [[24-other-services]] *(gap found 2026-09-27, same pattern as SSM: it had been ticked against [[21-security]] and [[19-serverless]], but 21-security only names it as a **WAF attachment target** and nothing taught the two pools. Written up the same day.)*
 - [x] ✅ WAF / Shield (Standard vs Advanced, WAF vs Shield, Firewall Manager) — [[21-security]]
 - [x] ✅ GuardDuty / Inspector / Macie / Security Hub / Detective — [[21-security]]
-- [x] ✅ ACM (certificates, Private CA) — [[11-cloudfront]] + [[21-security]]
+- [x] ✅ **ACM (regional vs us-east-1 for CloudFront, DNS vs email validation, Private CA)** — [[21-security]] *(was only ever an incidental mention; taught from 2026-09-27)*
 
 ### Management & Governance
 - [x] ✅ CloudWatch (metrics/alarms/logs, event types, getting an alert out of a log line) — [[20-monitoring]]
@@ -87,6 +89,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ Organizations / SCPs / Control Tower — [[01-iam-advanced]] *(was the biggest untracked gap; the Udemy IAM Advanced section had been skipped)*
 - [x] ✅ **Systems Manager (Session Manager, Patch Manager, Run Command, Automation)** — [[20-monitoring]] *(gap found 2026-09-27: it had been ticked against two notes that never taught it. Written up the same day — Session Manager is the high-yield one: no inbound port, no bastion, no SSH key. Parameter Store remains in [[21-security]]. **10 bank questions, still never served.**)*
 - [x] ✅ Well-Architected Tool / Trusted Advisor — [[25-well-architected]]
+- [x] ✅ **CloudFormation (stacks, StackSets, change sets, drift, `DeletionPolicy`) + Service Catalog** — [[24-other-services]] *(gap found 2026-09-27; never claimed. 6 bank questions.)*
 
 ### Analytics
 - [x] ✅ Athena (SQL on S3, pay per byte scanned) — [[22-analytics]]

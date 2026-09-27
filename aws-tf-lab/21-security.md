@@ -161,6 +161,37 @@ graph TB
 | Supports | symmetric, asymmetric, HMAC | full suite incl. **SSL offload, custom crypto** |
 | Exam trigger | almost everything | "**we must control the keys**", "FIPS 140-3 **Level 3**", regulatory requirement for dedicated hardware |
 
+### ACM — where the certificate has to live
+
+AWS Certificate Manager issues and **auto-renews** free public TLS certificates. Two facts
+carry almost every ACM question:
+
+**Region.** A certificate is **regional**, and it can only be attached to something in its own
+Region — except for **CloudFront**, which is global and requires its certificate in
+**us-east-1 (N. Virginia)**. An ALB in `eu-west-1` needs its certificate in `eu-west-1`; a
+CloudFront distribution serving the same site needs one in `us-east-1`. The same site can
+therefore need two.
+
+**Validation.** You prove you own the domain by **DNS validation** (add a CNAME — and if the
+zone is in Route 53, ACM can write it for you) or **email validation**. DNS validation is the
+one to pick, because it is what lets ACM **renew automatically** and forever; email validation
+needs a human every time.
+
+Public certificates from ACM are **free**; **ACM Private CA** is a separate, paid service for
+issuing internal certificates, and it is the answer only when the scenario says *internal* or
+*private PKI*.
+
+> [!warning] Trap — a regional certificate offered for CloudFront
+> CloudFront is global and takes its certificate **only from us-east-1**, no matter where the
+> origin or the bucket sits. An option that requests the certificate "in the same Region as
+> the ALB" and attaches it to a distribution is wrong by construction. The inverse is also
+> offered: a certificate in us-east-1 attached to a regional ALB somewhere else — equally
+> wrong. And if a question mentions certificates **expiring**, the answer is usually to move
+> from **email to DNS validation** so renewal stops needing a human.
+
+> In one line: certificates are regional and auto-renew with DNS validation, but CloudFront
+> takes its certificate from us-east-1 only.
+
 ## Worked examples
 
 > [!example] Worked example — encrypting a 500 MB object with a 4 KB limit

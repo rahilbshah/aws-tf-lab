@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*172 recall hooks · 319 pointers · ~29 min read*
+*177 recall hooks · 323 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -321,6 +321,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[07-rds-aurora#Backups, restores, and the encryption rule with no undo|explain]]
 - A 15-minute signed token used as the password, gated by rds-db:connect on the instance's resource id — nothing stored, nothing rotated, nothing in CloudTrail.  
   ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
+- RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens  
+  ↳ [[07-rds-aurora#RDS Proxy — the connection pool in front of the database|explain]]
 
 **Traps** [[07-rds-aurora#The Terraform I wrote|open]]
 - an IAM role on the app is not, by itself, database authentication
@@ -355,8 +357,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[08-elasticache#Auto Discovery, the odd Memcached-only feature|explain]]
 - Find the capability only one engine has; the use case is the distractor.  
   ↳ [[08-elasticache#Reading the engine question the right way round|explain]]
+- DAX is a drop-in microsecond cache for DynamoDB only, and only for eventually  
+  ↳ [[08-elasticache#DAX — the cache that only fronts DynamoDB|explain]]
 
-**Traps** [[08-elasticache#The Terraform I wrote|open]]
+**Traps** [[08-elasticache#How it actually works|open]]
+- DAX and ElastiCache offered for the same workload
 - Memcached for anything needing HA/persistence/complex data
 - a question that mixes Redis-sounding use cases with Memcached-only features
 - "add a cache" when the problem is writes
@@ -814,8 +819,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[21-security#How it actually works|explain]]
 - GuardDuty watches logs, Inspector watches software, Macie watches data, Security Hub aggregates, Detective investigates.  
   ↳ [[21-security#How it actually works|explain]]
+- Certificates are regional and auto-renew with DNS validation, but CloudFront  
+  ↳ [[21-security#ACM — where the certificate has to live|explain]]
 
 **Traps** [[21-security#⚠️ Traps — why the wrong answer looks right|open]]
+- a regional certificate offered for CloudFront
 - rotation re-encrypts your data
 - "rotate this asymmetric key automatically"
 - Parameter Store for a rotating password
@@ -833,6 +841,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[21-security#Which detection service|Which detection service]]
 - [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]]
 - [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
+- [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]]
 
 
 ## [[22-analytics|22 – Data & Analytics]]
@@ -924,10 +933,15 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[24-other-services#AWS Transfer Family — SFTP as a managed service|explain]]
 - Managed Microsoft AD is real AD (and the only one that does RDS SQL Server), AD Connector proxies to on-prem, Simple AD is a cheap Samba-based imitation.  
   ↳ [[24-other-services#AWS Directory Service — three options, one real discriminator|explain]]
+- User pool authenticates people and hands out JWTs; identity pool converts a  
+  ↳ [[24-other-services#Amazon Cognito — two pools that do different jobs|explain]]
+- CloudFormation manages a stack as one unit, StackSets spans accounts and  
+  ↳ [[24-other-services#AWS CloudFormation — the standardisation answer|explain]]
 - For the long tail, knowing the one-line purpose is enough to eliminate them as distractors.  
   ↳ [[24-other-services#The long tail — recognise and eliminate|explain]]
 
 **Traps** [[24-other-services#Traps|open]]
+- user pool offered where an identity pool is needed
 - DMS alone for a heterogeneous migration
 - Standard vs Express workflows
 - AD Connector or Simple AD where RDS for SQL Server is involved

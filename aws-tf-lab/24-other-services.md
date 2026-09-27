@@ -2,7 +2,7 @@
 topic: 24-other-services
 domain: performance
 status: reviewed
-services: [DMS, StepFunctions, AppSync, Batch, ElasticBeanstalk, TransferFamily, DirectoryService]
+services: [DMS, StepFunctions, AppSync, Batch, ElasticBeanstalk, TransferFamily, DirectoryService, Cognito, CloudFormation, ServiceCatalog]
 related: [19-serverless, 15-decoupling, 07-rds-aurora, 01-iam-advanced, 12-storage-extras]
 tags: [topic, domain/performance]
 ---
@@ -138,6 +138,61 @@ Don't confuse it with **DataSync** ([[12-storage-extras]]): DataSync is for bulk
 And the fourth answer that isn't Directory Service at all: for a **SaaS application's own end users**, the answer is **Amazon Cognito**, not a directory.
 
 > In one line: Managed Microsoft AD is real AD (and the only one that does RDS SQL Server), AD Connector proxies to on-prem, Simple AD is a cheap Samba-based imitation.
+
+### Amazon Cognito — two pools that do different jobs
+
+The previous section ends by saying a SaaS app's own users are a Cognito question, not a
+Directory Service one. This is that answer. Cognito has **two independent components**, and
+telling them apart *is* the exam question:
+
+- **User pool** — a **user directory and authentication server**. Users sign up and sign in;
+  it issues **JWTs** (ID and access tokens). It can federate to Google, Apple, Facebook, or
+  to SAML/OIDC corporate IdPs, and supports **MFA**. This is the one that answers *"who are
+  you"*.
+- **Identity pool** — issues **temporary AWS credentials via STS** so the app can call AWS
+  services directly. It takes a trusted token — often from a user pool, but a SAML or social
+  token works too — and exchanges it for a role session. It can also issue **guest
+  (unauthenticated) credentials**. This is the one that answers *"what may you touch in my
+  account"*.
+
+They **work independently or together**. The combined flow is the one scenarios describe:
+sign in at the **user pool** → exchange the token at the **identity pool** → get temporary
+credentials → call **S3 or DynamoDB directly from the mobile app**.
+
+> [!warning] Trap — user pool offered where an identity pool is needed
+> The tell is what the app does *after* signing in. If it only needs to know who the user is,
+> or to put a token in front of an API, that is a **user pool**. The moment the scenario says
+> the app calls **an AWS service directly** — uploads to S3, reads DynamoDB from the phone —
+> it needs **AWS credentials**, and only an **identity pool** mints those. "Guest/unauthenticated
+> access to a bucket" is identity pool by definition. And neither is **Directory Service**:
+> that is workforce identity ([[24-other-services]] above), Cognito is customer identity.
+
+> In one line: user pool authenticates people and hands out JWTs; identity pool converts a
+> token into temporary AWS credentials.
+
+### AWS CloudFormation — the standardisation answer
+
+AWS's own IaC. A **template** describes the resources; a **stack** is what that template
+creates, managed **as a single unit** — delete the stack and it deletes the resources. There
+is **no charge for CloudFormation itself** with `AWS::*` resources; you pay for what it
+builds.
+
+Four features carry the exam weight:
+
+| Feature | What it answers |
+|---|---|
+| **StackSets** | deploy one template across **many accounts and Regions in a single operation** — the multi-account standardisation answer, driven from an admin account or via Organizations |
+| **Change sets** | **preview** what an update would add, modify or delete before applying it |
+| **Drift detection** | has someone changed these resources **outside** CloudFormation? |
+| **`DeletionPolicy`** | what happens to a resource when the stack is deleted — default is **Delete**; `Retain` keeps it, `Snapshot` takes one first (RDS, EBS and friends) |
+
+**AWS Service Catalog** sits above it: administrators publish **approved products** as
+portfolios, and end users launch only those, within the constraints set for them. "Let teams
+self-serve, but only pre-approved configurations" is Service Catalog, not raw CloudFormation.
+
+> In one line: CloudFormation manages a stack as one unit, StackSets spans accounts and
+> Regions, drift detection catches out-of-band edits, and Service Catalog is the approved-
+> products layer on top.
 
 ### The long tail — recognise and eliminate
 

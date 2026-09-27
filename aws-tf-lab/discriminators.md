@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*102 comparison tables · 180 discriminators · ~34 min read*
+*103 comparison tables · 183 discriminators · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -198,6 +198,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[08-elasticache#Redis vs Memcached (the exam table)|Redis vs Memcached (the exam table)]] · [[08-elasticache#Caching strategies|Caching strategies]]
 
+- **DAX and ElastiCache offered for the same workload** — They front different databases and that alone usually settles it. DAX only accelerates DynamoDB; ElastiCache fronts RDS/Aurora and anything else you write caching logic for.  
+  ↳ [[08-elasticache#How it actually works|note]]
 - **Memcached for anything needing HA/persistence/complex data** — Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → Redis.  
   ↳ [[08-elasticache#The Terraform I wrote|note]]
 - **a question that mixes Redis-sounding use cases with Memcached-only features** — The hard version of the engine question doesn't say "pick a cache" — it describes a session store (which your instinct maps to Redis) while also specifying multi-threaded and automatic node discovery (both Memcached-only).  
@@ -464,8 +466,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[21-security|21 – Security & Encryption]]
 
-**Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
+**Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]]
 
+- **a regional certificate offered for CloudFront** — CloudFront is global and takes its certificate only from us-east-1, no matter where the origin or the bucket sits.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **"rotate this asymmetric key automatically"** — Automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates." Asymmetric keys, HMAC keys and custom-key-store keys cannot auto-rotate — the answer is manual rotation (create a new key, repoint the alias).  
@@ -524,6 +528,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]] · [[24-other-services#Directory Service options|Directory Service options]] · [[24-other-services#Batch vs Lambda|Batch vs Lambda]] · [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
 
+- **user pool offered where an identity pool is needed** — The tell is what the app does after signing in. If it only needs to know who the user is, or to put a token in front of an API, that is a user pool.  
+  ↳ [[24-other-services#Traps|note]]
 - **DMS alone for a heterogeneous migration** — DMS moves data. It does not translate a schema between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs AWS SCT / DMS Schema Conversion first, then DMS.  
   ↳ [[24-other-services#Traps|note]]
 - **Standard vs Express workflows** — Decide on duration and volume, not sophistication. Express caps at five minutes and is at-least-once — so anything long-running, anything needing exactly-once, and anything waiting on a human approval (.waitForTaskToken, which Express doesn't support) must be Standard.  
