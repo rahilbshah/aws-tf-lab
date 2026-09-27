@@ -15,7 +15,7 @@ The single dashboard for "how ready am I?" Covered topics link to their vault no
 
 - **Breadth:** Stephane Maarek Udemy course (owned) — **complete**, all 25 sections noted in this vault.
 - **Depth (career-grade):** Adrian Cantrill SAA-C03 (optional now) — the "understand, not just pass" layer for Backend+DevOps.
-- **Readiness:** `../aws-saa-trainer` — **1,159 serveable questions** (1,168 in the bank, less quarantined and duplicates) from three third-party practice sets (Tutorials Dojo / Jon Bonso included), audited against AWS docs. This replaced the planned TD purchase.
+- **Readiness:** `../aws-saa-trainer` — **1,156 serveable questions** (1,168 in the bank, less 7 quarantined and 5 near-duplicates) from three third-party practice sets (Tutorials Dojo / Jon Bonso included), audited against AWS docs. This replaced the planned TD purchase.
 - **Reference:** this vault, in three tiers — **notes** (`NN-topic.md`, how it works) → **decision pages** (`decisions/`, 13 pages routing you to which service) → **[[cheatsheet]]** (677 exact facts). Plus [[discriminators]], [[exam-night]], AWS FAQs (S3/EC2/VPC/RDS) and the Well-Architected whitepaper. *`revision/` was deleted 2026-09-27 — it was the note with the explanation removed, i.e. summarization + rereading, both rated low-utility.*
 - **Retention / real skill:** this vault + the Terraform builds (the hands-on layer).
 
@@ -85,7 +85,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ CloudTrail (API audit, management vs data events) — [[20-monitoring]]
 - [x] ✅ AWS Config (configuration drift; CloudTrail vs Config on the same change) — [[20-monitoring]]
 - [x] ✅ Organizations / SCPs / Control Tower — [[01-iam-advanced]] *(was the biggest untracked gap; the Udemy IAM Advanced section had been skipped)*
-- [x] ✅ Systems Manager (Session Manager, Parameter Store, Patch) — [[20-monitoring]] + [[14-dr-resilience]]
+- [ ] ☐ Systems Manager (Session Manager, Patch Manager, Run Command) — *wrongly ticked on 2026-09-27 and corrected the same day. `20-monitoring` does not mention SSM at all (`services: [CloudWatch, CloudTrail, Config, EventBridge, XRay]`) and [[14-dr-resilience]] has only two passing mentions of SSM **Automation** inside a drift bullet. **Parameter Store is genuinely covered — in [[21-security]]**, not in either note originally cited. **10 questions in the bank, never served.** Session Manager is the high-yield one: reach a private instance with no bastion, no SSH key and no inbound rule.*
 - [x] ✅ Well-Architected Tool / Trusted Advisor — [[25-well-architected]]
 
 ### Analytics
@@ -120,25 +120,25 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 _Reconciled against the vault and the trainer's `state/mastery.json` on 2026-09-27. The tracker had drifted six sections behind reality: sections 17–25 were all written but none were ticked, and the snapshot still listed S3, DynamoDB, Route 53, CloudFront, SQS/SNS, Lambda and KMS as un-started._
 
-- **Reading coverage: complete.** All 25 sections have notes. The last gaps — monitoring, security, analytics, ML, other services, Well-Architected — were written 25–26 Sept. There is no longer a *syllabus* gap.
-- **Testing coverage: 23.3%.** 269 of 1,159 serveable questions answered, at **71.4%** overall.
-- **The real gap is now tested-vs-untested, not read-vs-unread.** 15 topics have never been served a single question — **185 questions** — and the largest block is security and monitoring, i.e. D1.
+- **Reading coverage: all 25 sections have notes**, the last of them — monitoring, security, analytics, ML, other services, Well-Architected — written 25–26 Sept. **One topic gap remains: Systems Manager** (see Management & Governance above). Otherwise the syllabus is read.
+- **Testing coverage: 23.3%.** 269 of 1,156 serveable questions answered, at **71.4%** overall.
+- **The real gap is now tested-vs-untested, not read-vs-unread.** 15 topics have never been served a single question — **183 questions** — and the largest block is security and monitoring, i.e. D1.
 
-**Never served a single question** *(recounted 2026-09-27)*
+**Never served a single question** *(recounted 2026-09-27; serveable pool only — excludes the 7 quarantined and 5 near-duplicate questions, which §3.1 forbids serving)*
 
 | Topic | Pool | Topic | Pool |
 |---|---:|---|---:|
 | KMS | 25 | Config | 10 |
-| WAF/Shield | 23 | Glue | 10 |
-| CloudWatch | 23 | SSM | 10 |
+| CloudWatch | 23 | Glue | 10 |
+| WAF/Shield | 22 | SSM | 10 |
 | DMS | 15 | Athena | 10 |
-| GuardDuty/Inspector/Macie | 13 | Secrets Manager | 6 |
-| CloudTrail | 13 | Cognito | 5 |
+| CloudTrail | 13 | Secrets Manager | 6 |
+| GuardDuty/Inspector/Macie | 12 | Cognito | 5 |
 | EventBridge | 12 | Redshift | 5 |
 | | | EMR | 5 |
 
 - **Domains (trainer):** D1 **70.7%** · D2 **69%** · D3 **74.6%** · D4 **71.7%**. Flat, and all four below the 80% bar.
-- **Weakest topics:** **IAM 54.8%** (31 answered) · Aurora 53.8% (26) · Route 53 53.8% (13) · Cost 58.3% (12) · Organizations/SCP 50% (8) · DataSync 50% (8) · Snow 50% (8). Sample sizes matter here — SG/NACL 50% is 4 questions and Kinesis 50% is **2**, which is noise, not a signal. Rank by *answered count × miss rate*, and **IAM is the clear top of that list**. Perfect so far: EFS, FSx, Backup, DynamoDB, SQS, SNS.
+- **Weakest topics, ranked by questions actually missed** (= answered × miss rate): **IAM 14 missed** (54.8% of 31) · Aurora 12 (53.8% of 26) · **AutoScaling 10** (66.7% of 30) · Route 53 6 (53.8% of 13) · Cost 5 (58.3% of 12) · Organizations/SCP · DataSync · Snow 4 each (50% of 8). Sample sizes matter — SG/NACL 50% is 4 questions and Kinesis 50% is **2**, which is noise, not a signal. **AutoScaling is the third-worst topic and was missing from this list until 2026-09-27**; it is also where 6 of the 22 multi-response misses sit. Perfect so far: EFS, FSx, Backup, DynamoDB, SQS, SNS.
 - **Session trend:** 67.7 → 75.0 → 72.3 → 75.4. Four review exams, no upward trend — which is why the next step is timed mocks, not a fifth review paper.
 - **Thin-bank warning:** Secrets Manager has 6 questions and only **2** survive concept-collision filtering — the six test essentially one idea. Cost-optimized database (15) and network (25) are similarly thin. These areas have to be *read*; drilling cannot cover them.
 
