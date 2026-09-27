@@ -226,11 +226,6 @@ Non-obvious things hit:
 > [!tip] Production gap
 > Real version adds: HTTPS listener (ACM cert) + HTTP→HTTPS redirect, RDS **Multi-AZ** + automated backups + `deletion_protection`, the password in **Secrets Manager** (not tfvars), one **NAT gateway per AZ**, remote **S3 state backend** with locking, and the modules pulled from a registry/git with pinned versions.
 
-> [!example]- Recreate-from-memory drill
-> Build a 3-module capstone: `vpc` (public/app/data subnets + NAT, outputs subnet IDs), `compute` (ALB public + ASG private + SG chain, outputs app_sg_id), `database` (RDS private, ingress from app_sg_id, sensitive password from tfvars). Wire outputs→inputs in the root, re-export `alb_dns_name` at root. Goal: browse the ALB; instances have no public IP; DB reachable only from app tier.
-> > [!success]- Reference solution
-> > See `06-capstone/`. Gotchas: `-1` egress omits ports; non-empty SG descriptions; RDS username not `root`, password no `@`; re-export module outputs at root; `terraform init` after adding each module.
-
 ## Accessing the private database (bastion vs SSM)
 
 The DB is private (no public IP; `db-sg` allows only the app tier), so reaching it from a laptop needs a jump path. Both were built and tested on this stack.

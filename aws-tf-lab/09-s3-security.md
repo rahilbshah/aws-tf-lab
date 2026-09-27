@@ -293,11 +293,6 @@ Non-obvious things:
 > [!warning] Trap — MFA Delete can be set up like any other bucket setting
 > Only the **root account** with an MFA device can enable it, via CLI. Not IAM users, not the console, not Terraform.
 
-> [!example]- Recreate-from-memory drill
-> Build a bucket that: blocks all public access, disables ACLs, encrypts by default with a KMS key, refuses non-HTTPS requests, and refuses any upload that isn't SSE-KMS. Then prove the last one by uploading with `--sse AES256` and getting denied. Separately, build an Object Lock bucket in GOVERNANCE mode and demonstrate that a permanent delete fails while a simple delete adds a marker.
-> > [!success]- Reference solution
-> > `09-s3/security.tf` + `09-s3/objectlock.tf`. Key points: all four BPA flags, `BucketOwnerEnforced`, two Deny statements (`aws:SecureTransport`, `s3:x-amz-server-side-encryption`), `depends_on` the BPA before the policy, `object_lock_enabled` at create time with versioning.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **The four Block Public Access settings** — why four (new/existing × ACL/policy), and that BPA **overrides** policy rather than the other way round.

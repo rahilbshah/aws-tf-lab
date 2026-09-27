@@ -246,11 +246,6 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 > [!warning] Trap — Cost Explorer vs Budgets vs Compute Optimizer
 > Three tools, three jobs. **Cost Explorer** analyses what already happened and forecasts. **Budgets** alerts you when spend or usage crosses a threshold you set. **Compute Optimizer** looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.
 
-> [!example]- Recall drill
-> (1) Which Savings Plan gives the bigger discount, and what does it lock you to? (2) Does a Savings Plan reserve capacity? What does? (3) Standard vs Convertible RI — which can be exchanged? (4) How long is the Spot interruption notice, how is it delivered, and which behaviour doesn't get it? (5) Dedicated Host or Dedicated Instance for per-core BYOL? (6) Which tool alerts you before you cross a spend threshold?
-> > [!success]- Answers
-> > (1) **EC2 Instance Savings Plans**, up to 72%, locked to one instance family in one Region. Compute SP is up to 66% and flexible everywhere including Fargate and Lambda. (2) No — never. Capacity Reservations or zonal RIs do. (3) **Convertible**. Standard can only be modified (or sold on the Marketplace). (4) **Two minutes**, via EventBridge and instance metadata `spot/instance-action`; **hibernate** gets a notice but not the two minutes. (5) **Dedicated Host**. (6) **AWS Budgets**.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Never studied — the vault had no EC2 purchasing content at all** until 2026-09-05, despite `exam-prep.md` wrongly ticking it as covered by [[02-ec2]]. D4 Cost fell from 85% to 54% between the two mocks, and this hole is the likely reason.

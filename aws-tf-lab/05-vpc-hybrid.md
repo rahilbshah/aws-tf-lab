@@ -216,11 +216,6 @@ None — **conceptual-only** (build tier: no apply). A real setup requires a phy
 > [!warning] Trap — "Client VPN = Site-to-Site VPN"
 > **Client VPN** = individual users' devices (OpenVPN). **Site-to-Site VPN** = whole network ↔ VPC (IPsec). Different services for different needs.
 
-> [!example]- Recall drill (no build)
-> Without looking: (1) name the AWS-side and on-prem-side VPN endpoints; (2) is Direct Connect encrypted, and how do you encrypt it; (3) DX vs VPN for "temporary connection in 5 days"; (4) what a Direct Connect Gateway buys you; (5) DX provisioning time.
-> > [!success]- Answers
-> > (1) VGW (AWS) + CGW (on-prem). (2) No — run a Site-to-Site VPN over it. (3) VPN (DX takes weeks-months). (4) One DX reaching VPCs across multiple regions/accounts (non-transitive). (5) Weeks to months.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Whole topic was cold** (hadn't reviewed since the video) — learned it fresh here; needs card review to stick.

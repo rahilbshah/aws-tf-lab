@@ -223,11 +223,6 @@ Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../
 > [!warning] Trap — "add the IGW route to the main route table to make setup simpler"
 > Never. That makes every unassociated subnet public by default — a subnet you forget to wire becomes internet-exposed. Keep custom route tables and explicit associations so forgotten subnets fail closed.
 
-> [!example]- Recreate-from-memory drill
-> Build a 2-AZ VPC (`10.0.0.0/16`): 2 public + 2 private subnets, an IGW, a public RT (`0.0.0.0/0 → IGW`) associated to the public subnets, a private RT associated to the private subnets, then a NAT gateway (public subnet + EIP) with the private RT routing `0.0.0.0/0 → NAT`. Confirm in the console: public subnets auto-assign public IPs; the route-table Subnet-associations tabs match; NAT sits in a public subnet.
-> > [!success]- Reference solution
-> > See `05-vpc/network.tf` + `nat.tf`. The one people get wrong is the NAT gateway's `subnet_id` — it must be a **public** subnet.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **NAT gateway subnet placement** — put it in a *private* subnet on the first try; it must be **public** (that's its own door to the IGW). The private RT points *at* it.

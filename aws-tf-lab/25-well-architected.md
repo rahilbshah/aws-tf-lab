@@ -186,11 +186,6 @@ These three get offered together and are genuinely different jobs:
 > [!warning] Trap — Trusted Advisor asked to do continuous compliance
 > Trusted Advisor **recommends**; it does not enforce, and on Basic it doesn't even refresh Security checks automatically. Any scenario wanting **continuous evaluation, configuration history, drift detection or automatic remediation** is describing **AWS Config** (with SSM Automation), not Trusted Advisor. Likewise, a *design* review is the **Well-Architected Tool**, not Trusted Advisor — Trusted Advisor never sees your intent, only your resources.
 
-> [!example]- Recall drill
-> (1) Name all six pillars. (2) Which two pillars have no exam domain? (3) Reliability vs Performance Efficiency in one line each? (4) How many Trusted Advisor categories, and which was added last? (5) What does a Basic Support account get from Trusted Advisor? (6) Review a design / inspect resources / continuously remediate — which service each? (7) What does the Well-Architected Tool cost?
-> > [!success]- Answers
-> > (1) Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, **Sustainability**. (2) **Operational Excellence and Sustainability**. (3) Reliability = survives and recovers from failure; Performance Efficiency = right resource, used efficiently. (4) **Six**; **Operational Excellence** was added last. (5) All **Service Limits** checks plus a fixed handful of Security/Fault Tolerance checks (MFA on root, S3 bucket permissions, public EBS/RDS snapshots, unrestricted ports, STS global endpoint). (6) **WA Tool** / **Trusted Advisor** / **AWS Config**. (7) **Free.**
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Written 2026-09-26** from the framework docs and the exam guide; not drilled yet.

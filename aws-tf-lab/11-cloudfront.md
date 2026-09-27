@@ -112,7 +112,6 @@ CloudFront has its own failover, and it is worth not confusing with either of th
 > - **CloudFront Functions** (JS, sub-ms, viewer events only, no network) vs **Lambda@Edge** (Node/Python, up to 30 s, all four events, network + request body).
 > - **CloudFront vs Global Accelerator:** CloudFront caches HTTP at the edge. Global Accelerator gives **two static anycast IPs**, works at **TCP/UDP**, **caches nothing**, and fails over **without DNS or TTL** because the IPs never change.
 
-
 ## AWS console ↔ Terraform map
 
 | Concept | Terraform | Notes |
@@ -235,11 +234,6 @@ Provenance: Claude wrote this lab at the human's request, to keep pace toward ex
 
 > [!warning] Trap — geo restriction vs geolocation routing
 > **CloudFront geo restriction** decides *whether a country may access the content at all* (allow/block list, enforced at the edge). **Route 53 geolocation routing** ([[10-route53]]) decides *which endpoint a country is sent to*. "Block viewers in country X for licensing reasons" → CloudFront. "Send German users to the German site" → Route 53.
-
-> [!example]- Recreate-from-memory drill
-> From scratch: a completely private S3 bucket (BPA fully on), an OAC, a distribution with a short-TTL default behaviour and a long-TTL `/static/*` behaviour, and the bucket policy that trusts only that distribution. Verify: the CloudFront URL returns 200, the direct S3 URL returns 403, and `X-Cache` flips from `Miss` to `Hit` on the second request.
-> > [!success]- Reference solution
-> > See `11-cloudfront/cloudfront.tf`. The line people forget is the `condition` block on `AWS:SourceArn` — and forgetting it breaks nothing visible.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 

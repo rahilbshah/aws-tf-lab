@@ -232,11 +232,6 @@ Non-obvious things:
 > [!warning] Trap — moving to IA/Glacier always saves money
 > Minimum storage durations (IA 30 d, Glacier 90 d, Deep Archive 180 d) and a **128 KB minimum billable size** mean short-lived or tiny objects can cost **more** in IA than Standard. Transition only data that will genuinely sit there.
 
-> [!example]- Recreate-from-memory drill
-> Build a bucket with versioning + a lifecycle rule (30 d → IA, 90 d → Glacier, expire 365 d, noncurrent 30 d), upload an object from a file (with `etag`), then edit + re-apply and prove two versions exist. Delete the object and find the delete marker; restore it. Then a second bucket serving a static site (index + error, public policy, `content_type`).
-> > [!success]- Reference solution
-> > See `09-s3/main.tf` + `website.tf`. Gotchas: globally-unique bucket name, `etag = filemd5(...)`, `content_type`, `depends_on` the public-access block, and `force_destroy`/manual purge to delete a versioned bucket.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **"Key" = the object's full name/path**, not an encryption key. Bucket + key identifies an object; the leading part is a **prefix**.

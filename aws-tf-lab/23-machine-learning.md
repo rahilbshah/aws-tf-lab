@@ -239,11 +239,6 @@ Mostly not a Terraform topic — these are API calls from application code, not 
 > [!warning] Trap — assuming a retired service is a wrong answer
 > **Forecast, Fraud Detector and Kendra are all closed to new customers**, but all three are still in the SAA-C03 exam guide's in-scope list. If a question describes time-series demand prediction and offers **Amazon Forecast**, that is still the intended answer — don't talk yourself out of it because you know the service is legacy. The retirement matters for real-world design, not for scoring the exam.
 
-> [!example]- Recall drill
-> (1) Scanned invoice, extract the total — which service? (2) Which direction does Transcribe go? (3) The single phrase that makes SageMaker correct? (4) Sentiment of 10,000 reviews — which service? (5) Kendra vs OpenSearch in one line? (6) Multi-page PDF through Textract — what must you use? (7) Name the three in-scope ML services closed to new customers. (8) "Transcribe calls, then flag angry customers" — how many services, and which?
-> > [!success]- Answers
-> > (1) **Textract** — document with structure, not a scene. (2) **Audio → text** (Polly is the reverse). (3) **"Train a custom model on our own data"** — otherwise a pre-trained API. (4) **Comprehend**. (5) Kendra answers **natural-language questions** over documents; OpenSearch is the **keyword/log search cluster you operate**. (6) The **asynchronous** API — sync is single-page only. (7) **Forecast, Fraud Detector, Kendra**. (8) **Two** — Transcribe, then Comprehend.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Written from docs 2026-09-26**, not yet drilled or mocked. Lowest-stakes topic in the vault — if revision time is short, this is the first thing to cut.

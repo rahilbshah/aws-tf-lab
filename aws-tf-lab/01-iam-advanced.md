@@ -287,11 +287,6 @@ flowchart LR
 > [!warning] Trap — `aws:SourceIp` behind a VPC endpoint
 > The key is simply **absent** for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic. Use `aws:VpcSourceIp`, or scope on `aws:SourceVpce` / `aws:SourceVpc` instead.
 
-> [!example]- Recall drill
-> (1) Does an SCP grant permissions? (2) Which account is exempt from SCPs, and is a *member* account's root user exempt? (3) What must be true at every level of the OU path for an action to be allowed? (4) Identity policy + resource policy — union or intersection? Identity + boundary? (5) Which condition key trusts an entire organization in one line? (6) Why `BoolIfExists` for MFA?
-> > [!success]- Answers
-> > (1) Never — it only caps; you still need an IAM policy. (2) The **management** account is exempt; a **member** account's root user is **not**. (3) An explicit `Allow` covering the action, at root, every OU in the path, and the account — which is what `FullAWSAccess` provides by default. (4) Resource policy = **union**; boundary = **intersection**. (5) `aws:PrincipalOrgID`. (6) The key is absent for long-term access keys, so plain `Bool` produces denials you didn't intend.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Never studied — the Udemy "IAM Advanced" section was skipped entirely** (realised 2026-08-30). This note was written to cover it; nothing here has been tested yet.

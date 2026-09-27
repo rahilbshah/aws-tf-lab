@@ -233,11 +233,6 @@ Non-obvious things:
 > [!warning] Trap — "use S3 Select" on a new account
 > S3 Select is **no longer available to new customers**. The modern answer for SQL over S3 is **Athena** (and it queries many objects, not one).
 
-> [!example]- Recall drill
-> (1) What must be enabled on both buckets for replication, and what copies pre-existing objects? (2) Multipart: recommended vs required size? (3) What does Transfer Acceleration actually change? (4) Name the four event destinations. (5) Glacier Flexible retrieval times for Expedited/Standard/Bulk?
-> > [!success]- Answers
-> > (1) Versioning on both (+ an IAM role); **S3 Batch Replication**. (2) ≥100 MB recommended, >5 GB required. (3) The network path — nearest edge then AWS backbone; the bucket stays put. (4) SNS, SQS, Lambda, EventBridge. (5) 1–5 min / 3–5 h / 5–12 h.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **S3 Batch Replication** — the name for replicating pre-existing/failed objects (blanked on it in orient).

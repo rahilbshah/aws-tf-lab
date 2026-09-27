@@ -394,21 +394,6 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 > - **"Create an IAM role and attach it to the EC2 instances"** — only half the answer. You must also **enable IAM DB authentication on the DB instance** *and* **create the matching DB user** (`IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS'` for MySQL/MariaDB, `GRANT rds_iam` for PostgreSQL). A role alone logs in to nothing.
 > - **"Use STS"** — what the database sees is not an STS token. It is an RDS auth token (`aws rds generate-db-auth-token`), SigV4-signed, **valid 15 minutes**, passed as the password. STS is still upstream — the instance-profile credentials that sign the token are STS credentials, and they must still be valid at connect time — but STS is not what you present to the database.
 
-## 🛠️ Recreate-from-memory drill
-
-> [!example]- Recreate-from-memory drill
-> Without looking at `01-iam/main.tf`, write a Terraform config in a fresh directory that:
-> 1. Creates an IAM user named `bob`.
-> 2. Creates an IAM group named `analysts`.
-> 3. Adds `bob` to `analysts` *additively* (don't kick out anyone else).
-> 4. Creates a customer-managed policy allowing `s3:GetObject` and `s3:ListBucket` on a bucket named `analytics-data`.
-> 5. Attaches the policy to `analysts` using the principal-prefixed (safe) attachment resource.
->
-> Use `data "aws_iam_policy_document"` to build the JSON. Run `fmt` → `validate` → `plan`. Goal: a clean plan with `5 to add, 0 to change, 0 to destroy`. No need to apply.
->
-> > [!success]- Reference solution
-> > See `01-iam/main.tf` — substitute `bob` for `alice`, `analysts` for `developers`, `analytics-data` for `my-bucket`. Structure (5 resources, identical types and reference patterns) is the same.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Enumerating IAM core objects under "list them" framing** — forgot Role in the orient step, even though I clearly knew it (used it correctly in the very next answer). Quick recall under enumeration is a different muscle than recognising/using a concept.

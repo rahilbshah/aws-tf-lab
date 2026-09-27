@@ -282,11 +282,6 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > [!warning] Trap — reaching for Directory Service for a SaaS app's end users
 > Directory Service is for **corporate/workforce** identity — employees, domain-joined machines, AD-aware applications. For a **consumer or SaaS application's own users**, including social sign-in and scaling to millions, the answer is **Amazon Cognito**. AWS's own guidance makes this split explicitly.
 
-> [!example]- Recall drill
-> (1) Oracle → Aurora PostgreSQL — which two services, in order? (2) Step Functions Express: max duration and execution semantics? (3) Which workflow type supports human approval, and via what? (4) Which Directory Service option works with RDS for SQL Server? (5) Job runs 3 hours in a Docker image — Lambda or Batch? (6) Partners upload over SFTP and can't change clients — which service? (7) What does Elastic Beanstalk cost? (8) GraphQL API — which service?
-> > [!success]- Answers
-> > (1) **AWS SCT** to convert the schema, then **DMS** with full load + **CDC**. (2) **5 minutes**, **at-least-once**. (3) **Standard**, via **`.waitForTaskToken`** (Wait for Callback). (4) **AWS Managed Microsoft AD** only. (5) **Batch** — Lambda caps at 15 minutes. (6) **AWS Transfer Family**. (7) **Nothing** — you pay only for the underlying resources. (8) **AWS AppSync**.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Written 2026-09-26 from a coverage audit** — these are the seven in-scope services the vault had missed. Not drilled or mocked yet.

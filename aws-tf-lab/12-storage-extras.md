@@ -245,11 +245,6 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 > [!warning] Trap — "EFS One Zone is fine, it's still durable"
 > Same shape as the S3 One Zone-IA trap in [[09-s3-intro]]. One Zone stores in a single Availability Zone, and data may be lost if that zone is lost. It's for data you could re-create, not for the only copy.
 
-> [!example]- Recall drill
-> (1) Which storage service can't be used with Windows EC2 instances, and what replaces it? (2) Volume Gateway cached vs stored — where does the primary copy live in each? (3) FSx for Lustre scratch vs persistent — what actually differs? (4) DataSync or Storage Gateway for "our tape backup software must keep working"? (5) Which FSx speaks both NFS and SMB? (6) What does AWS Backup Vault Lock give you, and what does cross-account backup require?
-> > [!success]- Answers
-> > (1) EFS — it's NFS/Linux only; use FSx for Windows File Server. (2) Cached = primary in S3 with a hot subset local; stored = primary on-premises with snapshots to S3. (3) Durability — scratch isn't replicated and doesn't survive a file server failure. (4) Storage Gateway, specifically **Tape Gateway**. (5) FSx for NetApp ONTAP. (6) WORM immutability on backups; cross-account requires AWS Organizations.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Never studied** — written 2026-09-05 without an orientation pass; nothing here has been tested against a mock yet.

@@ -282,11 +282,6 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 > [!warning] Trap — building a second catalog per engine
 > Athena, EMR and Redshift Spectrum all read the **same AWS Glue Data Catalog**. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did. One crawler, one catalog, three engines.
 
-> [!example]- Recall drill
-> (1) Athena's pricing unit, and the three ways to cut it? (2) Redshift vs RDS in one word each? (3) What does Redshift Spectrum require that Athena doesn't? (4) Which EMR node type is safe on Spot, and why? (5) What does SPICE stand for and what is it for? (6) Which service gives column-level permissions on a data lake? (7) Kafka already in use — Kinesis or MSK? (8) What was Managed Service for Apache Flink called before?
-> > [!success]- Answers
-> > (1) **Data scanned, $5/TB** — cut it with **Parquet/ORC**, **compression**, **partitioning**. (2) Redshift **OLAP**, RDS **OLTP**. (3) **A Redshift cluster**, in the **same Region** as the S3 data. (4) **Task nodes** — they store no HDFS data, so an interruption loses compute only. (5) **Super-fast, Parallel, In-memory Calculation Engine** — QuickSight's in-memory store for imported data, as opposed to direct query. (6) **AWS Lake Formation**, layered over the Glue Data Catalog. (7) **MSK**. (8) **Amazon Kinesis Data Analytics** (renamed 30 Aug 2023).
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Written from docs, not yet drilled** — authored 2026-09-26 from the AWS documentation and the SAA-C03 exam guide while I was working through the course section. No build, no mock yet.

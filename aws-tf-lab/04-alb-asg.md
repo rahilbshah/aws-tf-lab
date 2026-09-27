@@ -342,11 +342,6 @@ Non-obvious bits:
 > [!warning] Trap — redirect on the wrong load balancer, or the wrong direction
 > `redirect` is an **ALB** (Layer 7) listener action; an **NLB** operates at Layer 4 and cannot inspect or rewrite HTTP, so "redirect HTTP to HTTPS on an NLB" is always wrong. And the redirect only runs one way: HTTP→HTTPS is supported, **HTTPS→HTTP is not**.
 
-> [!example]- Recreate-from-memory drill
-> From scratch (default VPC ok), build: golden-AMI launch template → ALB (2 AZ) + target group + listener → ASG (min 1/max 3/desired 2, `health_check_type = "ELB"`) auto-registered to the target group → target-tracking CPU-50 policy → the two SGs (ALB open on 80, instance SG from ALB SG only). Goal: browse the ALB DNS, see the served instance-id flip; terminate one instance and watch the ASG replace it in the Activity tab. `destroy` after.
-> > [!success]- Reference solution
-> > See `04-alb-asg/main.tf` — 13 resources in dependency order (data → SGs → launch template → ALB → TG → listener → ASG → policy). The one line people forget is `health_check_type = "ELB"` on the ASG.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Conflated "ALB health check fails" with "instance gets terminated."** A failed ALB health check only stops routing; termination needs the ASG with `health_check_type = "ELB"`. Two systems, one linking knob.

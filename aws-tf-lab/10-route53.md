@@ -296,11 +296,6 @@ Non-obvious bits:
 > [!warning] Trap — "HTTPS health checks prove the certificate is valid"
 > They don't. AWS states plainly that HTTPS health checks **do not validate SSL/TLS certificates** — an expired or invalid cert still passes. Certificate expiry monitoring is ACM + CloudWatch/EventBridge, not a Route 53 health check.
 
-> [!example]- Recreate-from-memory drill
-> Without looking: build a hosted zone for a reserved-TLD domain you don't own; add (1) a weighted pair 80/20, (2) a failover pair driven by a health check on a real endpoint, (3) a geolocation set with a proper default. Then verify **only** with `dig @<nameserver>`, including `+subnet=` from an unmatched country. Predict every answer before running it.
-> > [!success]- Reference solution
-> > See `10-route53/records.tf`. The lines people forget: `set_identifier` on every record that shares a name, `country = "*"` for the geolocation default, and a TTL low enough (60) that failover is observable.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Simple routing is not load balancing and has no health checks** — I described it as "divides requests evenly." It returns everything, randomly ordered, client picks. **Multivalue answer** is the health-checked one.

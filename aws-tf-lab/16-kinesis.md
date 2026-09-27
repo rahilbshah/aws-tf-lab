@@ -198,11 +198,6 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 > [!warning] Trap — forgetting that read throughput is shared
 > A shard's **2 MB/sec read is split across all consumers** using the default shared fan-out. Add a third consumer and each gets roughly 700 KB/sec, and they'll start hitting `ProvisionedThroughputExceeded` on reads. "Multiple consumers each needing full throughput" points at **enhanced fan-out**, not more shards.
 
-> [!example]- Recall drill
-> (1) What happens to a Kinesis record once a consumer reads it? (2) A shard's write and read limits? (3) How is a record assigned to a shard, and what does that mean for ordering? (4) Data Streams or Firehose: "land these logs in S3, we don't want to write or run anything"? (5) Why might adding shards fail to fix throttling? (6) What does enhanced fan-out change?
-> > [!success]- Answers
-> > (1) Nothing — it stays until the retention period expires (24 h default, up to 365 days). There is no delete. (2) Write **1 MB/sec or 1,000 records/sec**; read **2 MB/sec**, shared across consumers. (3) The **partition key** is MD5-hashed onto the shards; ordering is guaranteed **only within a shard**. (4) **Firehose** — no code, no consumers, no shards. (5) A **low-cardinality partition key** still hashes to only a few shards, so the new ones stay empty. (6) Each registered consumer gets its **own 2 MB/sec per shard**, pushed rather than polled, up to 20 consumers.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Shards** — I knew the database-sharding idea but not that a shard is *both* a partition and a fixed throughput unit, and I had the limit as "1 MB/s equals 1,000 records/s" when it is **either/or**, whichever binds first.

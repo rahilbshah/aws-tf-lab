@@ -238,11 +238,6 @@ Two things learned the hard way:
 > [!warning] Trap — "a higher NACL rule number can override a lower deny"
 > No — **first match wins, low number first**. A `deny` at #100 is final; #200 allow never gets evaluated for that packet.
 
-> [!example]- Recreate-from-memory drill
-> On a public subnet: write a NACL that (a) denies one specific IP, (b) allows inbound HTTP/HTTPS from anywhere, (c) allows SSH only from your IP, (d) allows the ephemeral return range in the correct direction(s). Then add a VPC flow log to CloudWatch with a 60s aggregation interval and the required IAM service role. Confirm you can predict which of your rules blocks a packet from the denied IP and why.
-> > [!success]- Reference solution
-> > See `05-vpc/security.tf` + `flow-logs.tf`. Gotchas: deny rule gets the **lowest** number; ephemeral `1024–65535` on **both** egress (server replies) and ingress (returns for instance-initiated); flow-log role trusts `vpc-flow-logs.amazonaws.com`.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Trust policy vs permissions policy (again)** — wired the permissions doc into `assume_role_policy`. The [[01-iam]] distinction keeps biting; trust = who assumes, permissions = what they can do.

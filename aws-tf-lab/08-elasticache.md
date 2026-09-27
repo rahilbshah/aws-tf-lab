@@ -220,11 +220,6 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 > [!warning] Trap — Redis is multi-threaded because it's fast
 > Redis command execution is **single-threaded** (one core per node); it scales via **cluster-mode sharding**, not more cores. **Memcached** is the multi-threaded one. Reversed often.
 
-> [!example]- Recall drill
-> (1) Redis vs Memcached: which is multi-threaded, which has HA/persistence? (2) What is lazy loading (cache-aside)? (3) Which engine for a session store, and why? (4) Which engine for a leaderboard, and what feature?
-> > [!success]- Answers
-> > (1) Memcached multi-threaded; Redis has HA/persistence (single-threaded). (2) Populate the cache only on a miss (read DB then store, with TTL). (3) Redis — replication/Multi-AZ/persistence so sessions survive node failure. (4) Redis — sorted sets.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Threading:** Memcached = multi-threaded, Redis = single-threaded (had it fuzzy).

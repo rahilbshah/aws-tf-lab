@@ -297,11 +297,6 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 > [!warning] Trap — "RDS is serverless / auto-scales like Aurora"
 > Plain RDS is provisioned instances. True serverless + auto-scaling storage + global <1s replication are **Aurora** features. "Serverless relational" → Aurora Serverless v2.
 
-> [!example]- Recall drill
-> (1) Multi-AZ vs read replica — purpose + readable? (2) How many storage copies/AZs does Aurora keep? (3) Aurora's four endpoint types? (4) When Aurora Serverless v2? (5) How do you encrypt an existing unencrypted RDS?
-> > [!success]- Answers
-> > (1) Multi-AZ = HA/failover, NOT readable; read replica = read scaling, readable. (2) 6 copies / 3 AZs. (3) writer/cluster, reader, custom, instance. (4) variable/unpredictable/spiky workloads, pay-per-use. (5) snapshot → copy with encryption → restore.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Aurora storage architecture** (6 copies/3 AZs, shared volume, compute/storage separation) — knew replicas differ but not the why.

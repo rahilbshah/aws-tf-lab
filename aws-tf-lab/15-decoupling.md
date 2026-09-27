@@ -232,11 +232,6 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 > [!warning] Trap — Amazon MQ picked for a new application
 > Amazon MQ exists for **migration**: an existing app already speaking a standard broker protocol that you don't want to rewrite. For anything new on AWS, SQS and SNS are cheaper, serverless and scale far better. If the question has no legacy system and no protocol requirement, MQ is the distractor.
 
-> [!example]- Recall drill
-> (1) What happens to a received message that is never deleted, and what does that imply about consumers? (2) What stops a poison message looping forever, and why should that queue's retention be longer? (3) Why put an SQS queue between SNS and each consumer? (4) Which polling mode is the default, and why is that a trap? (5) What does FIFO cost you, and how do you get some of it back? (6) When is Amazon MQ the right answer?
-> > [!success]- Answers
-> > (1) It becomes visible again after the visibility timeout — delivery is at-least-once, so consumers must be **idempotent**. (2) A **dead-letter queue** with `maxReceiveCount`; longer retention because a standard-queue message keeps its **original enqueue timestamp**. (3) SNS delivers but doesn't hold — the queue is the buffer, so a consumer being down loses nothing. (4) **Short polling** is the default and samples a subset of servers, so it can return empty while messages exist; long polling (up to 20s) fixes it. (5) Throughput — 300 TPS vs unlimited; use **multiple message groups** (they run in parallel) or high-throughput mode. (6) Migrating an existing app that speaks a standard broker protocol, without rewriting its messaging code.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Max SQS message size is 1 MiB, not 256 KB** — nearly all course material is stale here. Know both, since a practice question may still key the old figure.

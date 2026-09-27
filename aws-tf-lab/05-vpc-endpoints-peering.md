@@ -199,11 +199,6 @@ Code: [`05-vpc/endpoints.tf`](../05-vpc/endpoints.tf) + [`05-vpc/peering.tf`](..
 > [!warning] Trap — "peering scales fine, just add connections"
 > Full mesh is **N(N-1)/2** and non-transitive — it explodes past a few VPCs. The intended answer for "many VPCs" is **Transit Gateway**, not more peerings.
 
-> [!example]- Recreate-from-memory drill
-> On an existing VPC: (a) add an S3 gateway endpoint to the private route table and confirm the prefix-list route appears; (b) create a second VPC with a non-overlapping CIDR, peer them, and add the correct route on each side. Predict, before applying, which CIDR each route's destination should be.
-> > [!success]- Reference solution
-> > See `05-vpc/endpoints.tf` + `peering.tf`. Key: gateway endpoint `route_table_ids`; peering routes each target the **other** VPC's CIDR; CIDRs must not overlap; `auto_accept` only for same account+region.
-
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Gateway vs interface endpoint** — which is which, S3/DynamoDB-only for gateway, PrivateLink/ENI for interface, and gateway-not-reachable-cross-VPC. (Fuzzy at orient.)
