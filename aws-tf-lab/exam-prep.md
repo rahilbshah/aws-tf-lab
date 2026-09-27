@@ -85,7 +85,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 - [x] ✅ CloudTrail (API audit, management vs data events) — [[20-monitoring]]
 - [x] ✅ AWS Config (configuration drift; CloudTrail vs Config on the same change) — [[20-monitoring]]
 - [x] ✅ Organizations / SCPs / Control Tower — [[01-iam-advanced]] *(was the biggest untracked gap; the Udemy IAM Advanced section had been skipped)*
-- [ ] ☐ Systems Manager (Session Manager, Patch Manager, Run Command) — *wrongly ticked on 2026-09-27 and corrected the same day. `20-monitoring` does not mention SSM at all (`services: [CloudWatch, CloudTrail, Config, EventBridge, XRay]`) and [[14-dr-resilience]] has only two passing mentions of SSM **Automation** inside a drift bullet. **Parameter Store is genuinely covered — in [[21-security]]**, not in either note originally cited. **10 questions in the bank, never served.** Session Manager is the high-yield one: reach a private instance with no bastion, no SSH key and no inbound rule.*
+- [x] ✅ **Systems Manager (Session Manager, Patch Manager, Run Command, Automation)** — [[20-monitoring]] *(gap found 2026-09-27: it had been ticked against two notes that never taught it. Written up the same day — Session Manager is the high-yield one: no inbound port, no bastion, no SSH key. Parameter Store remains in [[21-security]]. **10 bank questions, still never served.**)*
 - [x] ✅ Well-Architected Tool / Trusted Advisor — [[25-well-architected]]
 
 ### Analytics
@@ -120,7 +120,7 @@ Legend: ✅ built + noted in this vault · 🔨 in progress · ☐ not started
 
 _Reconciled against the vault and the trainer's `state/mastery.json` on 2026-09-27. The tracker had drifted six sections behind reality: sections 17–25 were all written but none were ticked, and the snapshot still listed S3, DynamoDB, Route 53, CloudFront, SQS/SNS, Lambda and KMS as un-started._
 
-- **Reading coverage: all 25 sections have notes**, the last of them — monitoring, security, analytics, ML, other services, Well-Architected — written 25–26 Sept. **One topic gap remains: Systems Manager** (see Management & Governance above). Otherwise the syllabus is read.
+- **Reading coverage: all 25 sections have notes**, the last of them — monitoring, security, analytics, ML, other services, Well-Architected — written 25–26 Sept. **Systems Manager was the last gap and was closed 2026-09-27.** The syllabus is fully read.
 - **Testing coverage: 23.3%.** 269 of 1,156 serveable questions answered, at **71.4%** overall.
 - **The real gap is now tested-vs-untested, not read-vs-unread.** 15 topics have never been served a single question — **183 questions** — and the largest block is security and monitoring, i.e. D1.
 

@@ -2,7 +2,7 @@
 topic: 20-monitoring
 domain: resilient
 status: reviewed
-services: [CloudWatch, CloudTrail, Config, EventBridge, XRay]
+services: [CloudWatch, CloudTrail, Config, EventBridge, XRay, SystemsManager]
 related: [04-alb-asg, 19-serverless, 13-cost-optimization, 01-iam-advanced]
 tags: [topic, domain/resilient]
 ---
@@ -63,6 +63,42 @@ Metrics can't be deleted; they expire after 15 months with no new data.
 
 > In one line: CloudTrail's free 90-day Event history is management events only — everything else is a trail you configure.
 
+### Systems Manager — the one that reaches *into* the instance
+
+The four services above watch from outside. **AWS Systems Manager (SSM)** is the one that
+acts *on* the node. Everything it does requires the **SSM Agent** installed and able to
+reach the service; a node that meets both is a **managed node**.
+
+The exam almost only asks about **Session Manager**, and always the same way: *"connect to
+an instance in a private subnet"*. AWS's own wording is the answer:
+
+> *"Session Manager provides secure node management **without the need to open inbound
+> ports, maintain bastion hosts, or manage SSH keys**."*
+
+That sentence kills three distractors at once — a bastion host, an inbound SSH rule, and a
+key pair. Access is granted by **IAM policy**, not by a key, which is also why "revoke this
+engineer's access" is a policy change rather than a key rotation.
+
+The rest, one line each:
+
+| Tool | What it does |
+|---|---|
+| **Session Manager** | browser/CLI shell to a node — no inbound port, no bastion, no key |
+| **Patch Manager** | scans and installs OS/application patches on a schedule |
+| **Run Command** | runs a command across a fleet without logging in |
+| **Automation** | runbooks for multi-step ops tasks (the DR-drift remediation in [[14-dr-resilience]]) |
+| **Parameter Store** | config and secrets — see [[21-security]] for the Secrets Manager comparison |
+| **State Manager** · **Inventory** · **Fleet Manager** | hold nodes at a desired state · collect software inventory · manage nodes from a console |
+
+Two details worth carrying. A node **with no public IP and no NAT** can still be managed by
+adding **interface VPC endpoints** for Systems Manager ([[05-vpc-endpoints-peering]]) — that
+is the fully-private answer. And sessions can be **logged to S3 or CloudWatch Logs**, with
+EventBridge + SNS notifying on session start and stop, which is what makes it acceptable to
+auditors who liked having bastion logs.
+
+> In one line: SSM acts on the instance rather than watching it, and Session Manager is the
+> answer whenever a stem wants shell access without a bastion, an open port or a key.
+
 ## AWS console ↔ Terraform map
 
 | Console action | Terraform resource | Key arguments |
@@ -96,6 +132,12 @@ graph TB
 ```
 
 ## Key facts, limits & pricing
+
+- **Systems Manager requires the SSM Agent** on the node plus network reachability to the service; both together make it a **managed node**. Preinstalled on Amazon Linux 2/2023, Ubuntu and Windows Server AMIs, and it needs an **instance profile** granting `AmazonSSMManagedInstanceCore`.
+- **Session Manager** gives *"secure node management without the need to open inbound ports, maintain bastion hosts, or manage SSH keys"*. Access is controlled entirely by **IAM policy**; traffic is **TLS 1.2** and requests are SigV4-signed. Supports **Windows, Linux and macOS**, plus **port forwarding/tunnelling**.
+- **Session logging** goes to **Amazon S3** or **CloudWatch Logs** (optionally KMS-encrypted), API calls to **CloudTrail**, and **EventBridge → SNS** can notify on session start/stop. ⚠️ **Logging is not available for sessions that use port forwarding or SSH** — Session Manager is only a tunnel there.
+- **Nodes with no public IP and no NAT** can still be managed via **interface VPC endpoints (PrivateLink)** for Systems Manager — the fully-private pattern.
+- **"SSM" is a naming fossil**: the service was formerly *Amazon EC2 Systems Manager*, which is why the agent, endpoints, CLI (`aws ssm …`) and ARNs all still say `ssm`.
 *Verified against AWS docs 2026-09-25.*
 
 - **Resolution:** *"Standard resolution, with data having a one-minute granularity"*; *"High resolution, with data at a granularity of one second."* AWS-service metrics are standard resolution by default.
@@ -170,6 +212,15 @@ graph TB
 > **Fires constantly:** you alarm on a metric that a resource stops publishing when idle — an unattached EBS volume, a service with no traffic. The state flips to `INSUFFICIENT_DATA` and back. The fix is the alarm's **missing-data treatment**, not a different threshold.
 
 ## ⚠️ Traps — why the wrong answer looks right
+
+> [!warning] Trap — a bastion host offered for private-instance access
+> Any stem asking to reach an instance in a **private subnet** lists a bastion/jump host, an
+> inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme. All three are
+> the old answer. **Session Manager needs none of them** — no inbound port, no bastion, no
+> key — and satisfies the audit requirement too, because sessions log to S3 or CloudWatch
+> Logs. If the stem adds *"no internet access at all"*, the answer gains **interface VPC
+> endpoints** for Systems Manager; it does not revert to a bastion.
+
 
 > [!warning] Trap — CloudTrail for "what did this resource look like"
 > CloudTrail records **the API call**, not the resulting state. "Was this bucket public at any point last quarter?" or "produce evidence that all volumes have been encrypted since January" is **AWS Config** — it stores configuration items over time and evaluates rules against them. CloudTrail can tell you `PutBucketAcl` was called; only Config tells you what the ACL then *was*.

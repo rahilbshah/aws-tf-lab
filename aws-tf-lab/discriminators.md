@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*100 comparison tables · 177 discriminators · ~33 min read*
+*101 comparison tables · 179 discriminators · ~33 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -92,8 +92,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
 
-**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
+**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]] · [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
 
+- **minimum capacity set to N when an AZ must be survivable** — The stem gives a required capacity and an AZ count, and the wrong options are near-misses on the same arithmetic: min set to N (right total, no spare zone) · the correct total parked in one AZ · one instance per AZ across N AZs (total right, per-AZ wrong) · max below the stated peak.  
+  ↳ [[04-alb-asg#Comparisons|note]]
 - **"the ALB terminates the unhealthy instance"** — It doesn't. The ALB only stops routing to it. Termination is the ASG's job, and only if health_check_type = "ELB".  
   ↳ [[04-alb-asg#The Terraform I wrote|note]]
 - **"a failed ALB health check means users get errors"** — Only if no targets are healthy. With ≥1 healthy target the ALB quietly routes around the bad one and users are fine — you're at reduced capacity with nobody alerted.  
@@ -442,6 +444,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
 
+- **a bastion host offered for private-instance access** — Any stem asking to reach an instance in a private subnet lists a bastion/jump host, an inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **CloudTrail for "what did this resource look like"** — CloudTrail records the API call, not the resulting state. "Was this bucket public at any point last quarter?" or "produce evidence that all volumes have been encrypted since January" is AWS Config — it stores configuration items over time and evaluates rules against them.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **memory utilisation in the EC2 console** — There is no default memory or disk-space metric for EC2, because the hypervisor cannot see inside the guest.  

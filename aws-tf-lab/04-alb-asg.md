@@ -159,6 +159,46 @@ resource "aws_autoscaling_schedule" "morning" {
 
 > In one line: schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write `min_size = -1` / `max_size = -1`, because omitted means zero, not unchanged.
 
+### Sizing min / desired / max for the loss of an AZ
+
+An ASG spread over two AZs is not the same thing as an ASG that still works when one of them
+is gone. Spreading is **placement**; surviving is **how much**. AWS calls the property
+**static stability** — pre-provision the capacity you will need *during* the failure, so
+recovery needs no control-plane call.
+
+You don't place instances per AZ yourself: the ASG maintains equivalent numbers in each
+enabled AZ and launches into the zone with the fewest. So the **total** is the only dial, and
+`min_size` is the floor no scale-in policy can breach.
+
+The arithmetic. If the app needs **N** instances to serve its load across **A** AZs, one
+zone's worth must be spare:
+
+> **per-AZ = N ÷ (A − 1)**  ·  **total = A × N ÷ (A − 1)**
+
+Set `min_size` to that **total**, not to N, and start `desired_capacity` there. `max_size`
+goes at or above the stated peak. The overhead is **1 ÷ (A − 1)** — **+100% across 2 AZs,
++50% across 3, +33% across 4** — which is the concrete reason to span three zones rather
+than two.
+
+AWS's own worked example, worth memorising because it is the shape the scenarios use:
+
+> *"your workload requires **six** instances to serve customer traffic across **three**
+> Availability Zones. To be statically-stable against a single Availability Zone failure, you
+> would deploy **three instances in each**, for a total of **nine**… you are running **50%
+> additional instances**."*
+
+Read the requirement, not the adjective — "highly available" and "fault tolerant" get used
+interchangeably. The question to extract is: must the fleet still serve **N** with a zone
+gone (→ raise the minimum), or merely be spread so one zone's loss isn't total (→ ≥2 AZs,
+desired = N)?
+
+And note what the ASG does *after* a zone fails: it launches replacements in the survivors.
+Correct behaviour — and an **EC2 control-plane call at the worst possible moment**, which is
+the whole argument for paying up front ([[14-dr-resilience]]).
+
+> In one line: spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and
+> the minimum is A times that.
+
 ## Exam recap
 
 *Now that the mechanisms are clear, this is the compressed version to revise from.*
@@ -271,6 +311,29 @@ flowchart TD
 
 *Zonal balance is applied before **all** of these, so you can legitimately see a newer instance terminated before an older one when one AZ is over-weighted.*
 
+### Sizing for AZ loss — required capacity × AZ count
+
+| Requirement | AZs | Per AZ | `min` / `desired` | Overhead |
+|---|---:|---:|---|---:|
+| serve **2** with a zone gone | 2 | 2 | `4` / `4` | **+100%** |
+| serve **4** with a zone gone | 3 | 2 | `6` / `6` | **+50%** |
+| serve **6** with a zone gone | 3 | 3 | `9` / `9` | **+50%** (AWS's example) |
+| serve **6** with a zone gone | 4 | 2 | `8` / `8` | **+33%** |
+| serve **2**, spread only | 2 | 1 | `2` / `2` | none |
+
+*`max` sits at or above the stated peak in every row. The last row is what the wrong answers
+are built from: it satisfies "spread across two AZs" and fails "still serving 2 after one is gone."*
+
+> [!warning] Trap — minimum capacity set to N when an AZ must be survivable
+> The stem gives a required capacity and an AZ count, and the wrong options are near-misses on
+> the same arithmetic: **min set to N** (right total, no spare zone) · the correct total parked
+> in **one AZ** · **one instance per AZ across N AZs** (total right, per-AZ wrong) · **max below
+> the stated peak**. A whole zone's worth must be spare: per-AZ = **N ÷ (A − 1)**, minimum =
+> **A ×** that. For N=2 over two AZs the minimum is **4**, not 2. The other recurring decoy is
+> spreading across **Regions** instead of AZs — that is disaster recovery, a different question
+> ([[14-dr-resilience]]), and it does not satisfy a single-Region AZ-loss requirement.
+
+
 ## Worked examples
 
 > [!example] Worked example — the ALB↔ASG health-check split that saves (or sinks) you
@@ -353,6 +416,9 @@ Non-obvious bits:
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+
+- [Zonal services — static stability capacity example](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/zonal-services.html) — the six-across-three-AZs → nine total example and the "50% additional instances" cost; verified 2026-09-27
+- [REL11-BP05 Use static stability to prevent bimodal behavior](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_withstand_component_failures_static_stability.html) — pre-provision for the loss of an AZ; verified 2026-09-27
 
 - [How ELB works — cross-zone, routing, schemes](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html) — ALB cross-zone always-on, NLB/GWLB off by default; round-robin default; verified 2026-06
 - [Target group attributes — deregistration delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html) — default 300s draining; verified 2026-06

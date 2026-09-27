@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*169 recall hooks · 314 pointers · ~28 min read*
+*171 recall hooks · 317 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -140,8 +140,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#Which instance dies when it scales in|explain]]
 - Schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write min_size = -1 / max_size = -1, because omitted means zero, not unchanged.  
   ↳ [[04-alb-asg#Scheduling capacity without freezing the group|explain]]
+- Spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and  
+  ↳ [[04-alb-asg#Sizing min / desired / max for the loss of an AZ|explain]]
 
-**Traps** [[04-alb-asg#The Terraform I wrote|open]]
+**Traps** [[04-alb-asg#Comparisons|open]]
+- minimum capacity set to N when an AZ must be survivable
 - "the ALB terminates the unhealthy instance"
 - "a failed ALB health check means users get errors"
 - NLB vs ALB for a static IP / source-IP / PrivateLink
@@ -158,6 +161,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
 - [[04-alb-asg#Scaling policy types|Scaling policy types]]
 - [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
+- [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
 
 
 ## [[05-vpc-core|05.1 – VPC Core (subnets, routing, IGW, NAT)]]
@@ -775,8 +779,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[20-monitoring#How it actually works|explain]]
 - CloudTrail's free 90-day Event history is management events only — everything else is a trail you configure.  
   ↳ [[20-monitoring#How it actually works|explain]]
+- SSM acts on the instance rather than watching it, and Session Manager is the  
+  ↳ [[20-monitoring#Systems Manager — the one that reaches *into* the instance|explain]]
 
 **Traps** [[20-monitoring#⚠️ Traps — why the wrong answer looks right|open]]
+- a bastion host offered for private-instance access
 - CloudTrail for "what did this resource look like"
 - memory utilisation in the EC2 console
 - "enable CloudTrail to see who read the S3 object"
