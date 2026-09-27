@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [CloudFront, GlobalAccelerator, ACM]
 related: [09-s3-security, 10-route53, 04-alb-asg, 01-iam]
-revision: revision/11-cloudfront-revision
 tags: [topic, domain/performance]
 ---
 
@@ -260,6 +259,3 @@ Provenance: Claude wrote this lab at the human's request, to keep pace toward ex
 - [Serve private content](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html) — signed URLs/cookies, trusted key groups; verified 2026-09-04
 - [What is AWS Global Accelerator](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html) — two static anycast IPs, endpoint types, instant health reaction; verified 2026-09-04
 - [Terraform `aws_cloudfront_distribution`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution) / [`aws_cloudfront_origin_access_control`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_origin_access_control)
-
----
-**Self-test for this topic:** [[revision/11-cloudfront-revision#Self-test]]

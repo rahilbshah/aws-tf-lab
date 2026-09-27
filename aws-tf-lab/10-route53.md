@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [Route53]
 related: [04-alb-asg, 05-vpc-hybrid, 09-s3-intro, 06-capstone]
-revision: revision/10-route53-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -322,6 +321,3 @@ Non-obvious bits:
 - [Route 53 VPC Resolver](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver.html) — VPC+2, inbound/outbound direction, resolver rules, rename note; verified 2026-09-04
 - [Route 53 pricing](https://aws.amazon.com/route53/pricing/) — $0.50/zone, 12-hour deletion waiver, 50 free AWS health checks, $1/$2 optional features, $0.40/million queries; verified 2026-09-03
 - [Terraform `aws_route53_record`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)
-
----
-**Self-test for this topic:** [[revision/10-route53-revision#Self-test]]

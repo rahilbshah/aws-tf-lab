@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [VPC, ALB, ASG, RDS, Terraform Modules]
 related: [05-vpc-core, 04-alb-asg, 02-ec2, 01-iam, 03-ami-bake]
-revision: revision/06-capstone-revision
 tags: [topic, domain/resilient, capstone]
 ---
 
@@ -275,6 +274,3 @@ The DB is private (no public IP; `db-sg` allows only the app tier), so reaching 
 - [RDS Multi-AZ](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html) / [Read Replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html)
 - [RDS encryption at rest](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html)
 - [Terraform `aws_db_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) / [`aws_db_subnet_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group)
-
----
-**Self-test for this topic:** [[revision/06-capstone-revision#Self-test]]

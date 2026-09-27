@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [SQS, SNS, AmazonMQ]
 related: [04-alb-asg, 14-dr-resilience, 09-s3-advanced, 08-elasticache]
-revision: revision/15-decoupling-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -258,6 +257,3 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - [What is Amazon MQ](https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/welcome.html) — ActiveMQ/RabbitMQ, migrate without rewriting messaging code, quorum queues, CRDR; verified 2026-09-06
 - [Amazon MQ deployment options](https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/amazon-mq-broker-architecture.html) — single-instance vs active/standby, EBS vs EFS storage; verified 2026-09-06
 - [Terraform `aws_sqs_queue`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) / [`aws_sns_topic_subscription`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription)
-
----
-**Self-test for this topic:** [[revision/15-decoupling-revision#Self-test]]

@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [Kinesis, Firehose]
 related: [15-decoupling, 09-s3-advanced, 12-storage-extras, 22-analytics]
-revision: revision/16-kinesis-revision
 tags: [topic, domain/performance]
 ---
 
@@ -219,6 +218,3 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 - [What is Amazon Data Firehose](https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html) — destinations, buffer size and interval, Lambda transform, the Redshift-via-S3 path, reading from a data stream; verified 2026-09-06
 - [Kinesis Data Streams pricing](https://aws.amazon.com/kinesis/data-streams/pricing/) — $0.015/shard-hour, on-demand rates, **no free tier**; verified 2026-09-06
 - [Terraform `aws_kinesis_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_stream) / [`aws_kinesis_firehose_delivery_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_firehose_delivery_stream)
-
----
-**Self-test for this topic:** [[revision/16-kinesis-revision#Self-test]]

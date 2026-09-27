@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [Route53, GlobalAccelerator, Aurora, DynamoDB, S3, AWSBackup, CloudFormation]
 related: [07-rds-aurora, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced]
-revision: revision/14-dr-resilience-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -312,6 +311,3 @@ Two consequences that read like exam answers:
 - [S3 Replication Time Control](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html) — 99.9% of objects within 15 minutes, SLA-backed; verified 2026-09-25
 - [DynamoDB Global Tables](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html) · [S3 Replication](https://aws.amazon.com/s3/features/replication/) · [AWS Elastic Disaster Recovery](https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html)
 - [Terraform `aws_rds_global_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)
-
----
-**Self-test for this topic:** [[revision/14-dr-resilience-revision#Self-test]]

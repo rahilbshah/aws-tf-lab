@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [WellArchitectedTool, TrustedAdvisor]
 related: [14-dr-resilience, 13-cost-optimization, 21-security, 20-monitoring, 24-other-services]
-revision: revision/25-well-architected-revision
 tags: [topic, domain/secure]
 ---
 
@@ -206,6 +205,3 @@ These three get offered together and are genuinely different jobs:
 - [AWS Trusted Advisor](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html) · [Trusted Advisor check reference](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor-check-reference.html) — the six categories, the Basic/Developer check list, and the 2027 support-plan changes; verified 2026-09-26
 - [Disaster Recovery of Workloads on AWS](https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html) — the worked example of a whitepaper as a source, and of one that has aged; see [[14-dr-resilience]]
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — domain weightings 30/26/24/20 and the 14 task statements; verified 2026-09-26
-
----
-**Self-test for this topic:** [[revision/25-well-architected-revision#Self-test]]

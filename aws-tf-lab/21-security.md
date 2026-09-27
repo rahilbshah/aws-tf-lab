@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [KMS, CloudHSM, SecretsManager, ParameterStore, ACM, GuardDuty, Inspector, Macie, SecurityHub, Shield, WAF, FirewallManager, Detective]
 related: [01-iam, 01-iam-advanced, 09-s3-security, 11-cloudfront, 18-containers-capstone]
-revision: revision/21-security-revision
 tags: [topic, domain/secure]
 ---
 
@@ -226,6 +225,3 @@ graph TB
 - [What is Amazon Macie](https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html) — S3 only; verified 2026-09-25
 - [Associating a web ACL with a resource](https://docs.aws.amazon.com/waf/latest/developerguide/web-acl-associating-aws-resource.html) — supported targets; verified 2026-09-25
 - [AWS Shield pricing](https://aws.amazon.com/shield/pricing/) — Standard free, Advanced $3,000/mo + 1-year commitment; verified 2026-09-25
-
----
-**Self-test for this topic:** [[revision/21-security-revision#Self-test]]

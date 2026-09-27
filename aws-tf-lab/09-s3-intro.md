@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [S3]
 related: [09-s3, 09-s3-security, 05-vpc-endpoints-peering]
-revision: revision/09-s3-intro-revision
 tags: [topic, domain/performance]
 ---
 
@@ -254,6 +253,3 @@ Non-obvious things:
 - [Managing object lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
 - [Hosting a static website](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html)
 - [Terraform `aws_s3_bucket`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) / [`aws_s3_object`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object)
-
----
-**Self-test for this topic:** [[revision/09-s3-intro-revision#Self-test]]

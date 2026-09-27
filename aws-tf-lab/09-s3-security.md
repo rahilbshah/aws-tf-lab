@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [S3, KMS]
 related: [09-s3, 09-s3-intro, 09-s3-advanced, 01-iam]
-revision: revision/09-s3-security-revision
 tags: [topic, domain/secure]
 ---
 
@@ -317,6 +316,3 @@ Non-obvious things:
 - [Blocking public access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)
 - [Bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html) / [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
 - [Terraform `aws_s3_bucket_public_access_block`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) / [`aws_s3_bucket_object_lock_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_object_lock_configuration)
-
----
-**Self-test for this topic:** [[revision/09-s3-security-revision#Self-test]]

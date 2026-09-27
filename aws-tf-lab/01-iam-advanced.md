@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [IAM, Organizations, ControlTower, IdentityCenter]
 related: [01-iam, 09-s3-security, 06-capstone]
-revision: revision/01-iam-advanced-revision
 tags: [topic, domain/secure]
 ---
 
@@ -310,6 +309,3 @@ flowchart LR
 - [Organizations terminology & concepts](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_getting-started_concepts.html) — feature sets, OU depth, management vs member, SCP/RCP/declarative policy types; verified 2026-08-30
 - [Global condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html) — `aws:PrincipalOrgID`, `aws:RequestedRegion`, `aws:MultiFactorAuthPresent`, tag keys, `aws:SourceIp` VPC-endpoint caveat; verified 2026-08-30
 - [What is AWS Control Tower](https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html) — landing zone, controls (preventive/detective/proactive), Account Factory, drift; verified 2026-08-30
-
----
-**Self-test for this topic:** [[revision/01-iam-advanced-revision#Self-test]] · **Foundations:** [[01-iam]]

@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [VPC Endpoints, PrivateLink, VPC Peering, Transit Gateway]
 related: [05-vpc, 05-vpc-core, 05-vpc-security, 05-vpc-hybrid]
-revision: revision/05-vpc-endpoints-peering-revision
 tags: [topic, domain/secure]
 ---
 
@@ -219,6 +218,3 @@ Code: [`05-vpc/endpoints.tf`](../05-vpc/endpoints.tf) + [`05-vpc/peering.tf`](..
 - [VPC peering — what it is + limitations](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html)
 - [Transit Gateway](https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html)
 - [Terraform `aws_vpc_endpoint`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) / [`aws_vpc_peering_connection`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_peering_connection)
-
----
-**Self-test for this topic:** [[revision/05-vpc-endpoints-peering-revision#Self-test]]

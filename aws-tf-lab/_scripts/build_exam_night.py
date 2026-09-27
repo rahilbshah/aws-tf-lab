@@ -74,8 +74,7 @@ def main():
            '**How to use it.** Read a hook. If the concept comes straight back, move on.',
            "If it doesn't, follow the ↳ link — it lands on the section that *explains*",
            'that idea. Trap and comparison entries are titles only, on purpose.',
-           'For the longer night-before read see **[[revision/00-index]]**.', '',
-           f'*{n_hooks} recall hooks · {n_ptrs} pointers · ~{max(1, words//200)} min read*',
+              f'*{n_hooks} recall hooks · {n_ptrs} pointers · ~{max(1, words//200)} min read*',
            ] + body
     io.open(os.path.join(VAULT, 'exam-night.md'), 'w', encoding='utf-8').write(
         '\n'.join(out).rstrip() + '\n')

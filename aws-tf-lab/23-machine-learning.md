@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [Rekognition, Transcribe, Polly, Translate, Comprehend, Textract, Lex, Kendra, SageMaker, Forecast, FraudDetector]
 related: [22-analytics, 19-serverless, 09-s3-advanced, 15-decoupling]
-revision: revision/23-machine-learning-revision
 tags: [topic, domain/performance]
 ---
 
@@ -261,6 +260,3 @@ Mostly not a Terraform topic — these are API calls from application code, not 
 - [Amazon Forecast availability change](https://aws.amazon.com/blogs/machine-learning/transition-your-amazon-forecast-usage-to-amazon-sagemaker-canvas/) · [Amazon Fraud Detector availability change](https://docs.aws.amazon.com/frauddetector/latest/ug/frauddetector-availability-change.html) — closure dates and migration paths; verified 2026-09-26
 - [What is Amazon SageMaker AI?](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) · [Next generation of Amazon SageMaker](https://aws.amazon.com/blogs/aws/introducing-the-next-generation-of-amazon-sagemaker-the-center-for-all-your-data-analytics-and-ai/) — the 3 Dec 2024 rename; verified 2026-09-26
 - [Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) · [Amazon Transcribe](https://docs.aws.amazon.com/transcribe/latest/dg/what-is.html) · [Amazon Polly](https://docs.aws.amazon.com/polly/latest/dg/what-is.html) · [Amazon Lex V2](https://docs.aws.amazon.com/lexv2/latest/dg/what-is.html)
-
----
-**Self-test for this topic:** [[revision/23-machine-learning-revision#Self-test]]

@@ -47,4 +47,3 @@ flowchart TB
 `05-vpc/` — split by concern: `network.tf` (core), `nat.tf` (paid peek), plus per-increment files as topics are added. This VPC is the network you'd later drop the [[04-alb-asg]] stack into (ALB in the public pair, ASG in the private pair).
 
 ---
-**Self-test:** each sub-note's revision doc ends with one (e.g. [[revision/05-vpc-core-revision#Self-test]]).

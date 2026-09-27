@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [VPC, NAT Gateway, Internet Gateway]
 related: [05-vpc, 05-vpc-security, 04-alb-asg, 02-ec2]
-revision: revision/05-vpc-core-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -244,6 +243,3 @@ Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../
 - [NAT gateway vs NAT instance comparison](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-comparison.html)
 - [Egress-only internet gateways (IPv6)](https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html)
 - [Terraform `aws_vpc`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) / [`aws_nat_gateway`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway)
-
----
-**Self-test for this topic:** [[revision/05-vpc-core-revision#Self-test]]

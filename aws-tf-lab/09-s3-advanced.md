@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [S3]
 related: [09-s3, 09-s3-intro, 09-s3-security, 01-iam]
-revision: revision/09-s3-advanced-revision
 tags: [topic, domain/performance]
 ---
 
@@ -257,6 +256,3 @@ Non-obvious things:
 - [S3 Select](https://docs.aws.amazon.com/AmazonS3/latest/userguide/selecting-content-from-objects.html) — *"no longer available to new customers"*; **verified 2026-08**
 - [Event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) / [Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
 - [Terraform `aws_s3_bucket_replication_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_replication_configuration) / [`aws_s3_bucket_notification`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_notification)
-
----
-**Self-test for this topic:** [[revision/09-s3-advanced-revision#Self-test]]

@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [EFS, FSx, StorageGateway, DataSync, Snow, AWSBackup]
 related: [09-s3-intro, 02-ec2, 05-vpc-hybrid, 07-rds-aurora]
-revision: revision/12-storage-extras-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -270,6 +269,3 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - [What is Snowball Edge](https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html) — 210 TB Storage Optimized, clustering, protocols, **and the notice that it is closed to new customers**; verified 2026-09-05
 - [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) — backup plans/vaults, tag-based assignment, cross-Region and cross-account, Vault Lock WORM, supported services; verified 2026-09-05
 - [Terraform `aws_efs_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system) / [`aws_fsx_windows_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/fsx_windows_file_system) / [`aws_backup_plan`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_plan)
-
----
-**Self-test for this topic:** [[revision/12-storage-extras-revision#Self-test]]

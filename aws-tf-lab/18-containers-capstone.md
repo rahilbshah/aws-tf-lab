@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [ECS, Fargate, ECR, ALB, CloudFront, RDS, ElastiCache, S3, SecretsManager, ApplicationAutoScaling]
 related: [17-containers, 05-vpc-core, 07-rds-aurora, 08-elasticache, 11-cloudfront, 01-iam]
-revision: revision/18-containers-capstone-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -178,6 +177,3 @@ graph TB
 - [Terraform `aws_route_table` — route argument reference](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table)
 - [Terraform `aws_ecs_task_definition` attributes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_task_definition)
 - [Terraform `lifecycle` meta-argument](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle) — verified 2026-09-06
-
----
-**Self-test for this topic:** [[revision/18-containers-capstone-revision#Self-test]]

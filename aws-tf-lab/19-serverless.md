@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [Lambda, DynamoDB, APIGateway, DAX]
 related: [17-containers, 15-decoupling, 07-rds-aurora, 01-iam]
-revision: revision/19-serverless-revision
 tags: [topic, domain/performance]
 ---
 
@@ -205,6 +204,3 @@ graph LR
 - [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html) — 24h, view types; verified 2026-09-12
 - [REST vs HTTP APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html) — feature comparison; verified 2026-09-12
 - [Control access to REST APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html) — authorizers; verified 2026-09-12
-
----
-**Self-test for this topic:** [[revision/19-serverless-revision#Self-test]]

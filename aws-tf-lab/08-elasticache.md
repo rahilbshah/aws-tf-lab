@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [ElastiCache, Redis, Memcached]
 related: [07-rds-aurora, 06-capstone]
-revision: revision/08-elasticache-revision
 tags: [topic, domain/performance]
 ---
 
@@ -241,6 +240,3 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 - [Redis replication & Multi-AZ](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.html)
 - [Auto Discovery (Memcached)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/AutoDiscovery.html) — Memcached-only, not available for Valkey/Redis OSS; verified 2026-08-29
 - [Terraform `aws_elasticache_replication_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group)
-
----
-**Self-test for this topic:** [[revision/08-elasticache-revision#Self-test]]

@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [Athena, Glue, LakeFormation, Redshift, OpenSearch, EMR, QuickSight, MSK, DataPipeline, DataExchange]
 related: [16-kinesis, 09-s3-advanced, 07-rds-aurora, 12-storage-extras, 13-cost-optimization]
-revision: revision/22-analytics-revision
 tags: [topic, domain/performance]
 ---
 
@@ -308,6 +307,3 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 - [Migrating workloads from AWS Data Pipeline](https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/migration.html) — closed to new customers, maintenance mode, console removed Apr 2023, use Glue/Step Functions/MWAA; verified 2026-09-26
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — Task Statement 3.5 and the in-scope Analytics service list; verified 2026-09-26
 - Terraform: [`aws_glue_crawler`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_crawler) · [`aws_athena_workgroup`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_workgroup) · [`aws_emr_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/emr_cluster)
-
----
-**Self-test for this topic:** [[revision/22-analytics-revision#Self-test]]

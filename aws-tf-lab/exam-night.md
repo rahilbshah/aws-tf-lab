@@ -10,8 +10,6 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-For the longer night-before read see **[[revision/00-index]]**.
-
 *168 recall hooks · 313 pointers · ~28 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]

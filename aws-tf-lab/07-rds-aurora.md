@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [RDS, Aurora]
 related: [06-capstone, 08-elasticache, 05-vpc-core]
-revision: revision/07-rds-aurora-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -322,6 +321,3 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 - [IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) — engines, 15-min token lifetime, SSL/TLS, 300–1000 MiB memory, CloudTrail non-logging, unsupported condition keys; verified 2026-08-29
 - [IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) — `rds-db:connect`, the `dbuser` ARN format, DbiResourceId; verified 2026-08-29
 - [Terraform `aws_rds_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster)
-
----
-**Self-test for this topic:** [[revision/07-rds-aurora-revision#Self-test]]

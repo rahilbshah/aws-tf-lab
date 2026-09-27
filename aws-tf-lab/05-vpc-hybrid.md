@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [Site-to-Site VPN, Direct Connect, Virtual Private Gateway, Transit Gateway]
 related: [05-vpc, 05-vpc-endpoints-peering, 05-vpc-core]
-revision: revision/05-vpc-hybrid-revision
 tags: [topic, domain/secure]
 ---
 
@@ -236,6 +235,3 @@ None — **conceptual-only** (build tier: no apply). A real setup requires a phy
 - [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — VIF types, speeds, not-encrypted; verified 2026-07
 - [What is Site-to-Site VPN](https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html)
 - [Direct Connect Gateway](https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-gateways.html)
-
----
-**Self-test for this topic:** [[revision/05-vpc-hybrid-revision#Self-test]]

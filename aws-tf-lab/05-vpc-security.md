@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [Security Groups, Network ACLs, VPC Flow Logs, Network Firewall]
 related: [05-vpc, 05-vpc-core, 01-iam, 02-ec2]
-revision: revision/05-vpc-security-revision
 tags: [topic, domain/secure]
 ---
 
@@ -259,6 +258,3 @@ Two things learned the hard way:
 - [Flow log record fields](https://docs.aws.amazon.com/vpc/latest/userguide/flow-log-records.html)
 - [AWS Network Firewall — what is it](https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html) — Suricata IPS, firewall subnet, domain filtering, deep packet inspection; verified 2026-07
 - [Terraform `aws_network_acl`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_acl) / [`aws_flow_log`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/flow_log)
-
----
-**Self-test for this topic:** [[revision/05-vpc-security-revision#Self-test]]

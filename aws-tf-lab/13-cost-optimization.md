@@ -4,7 +4,6 @@ domain: cost
 status: reviewed
 services: [EC2, SavingsPlans, CostExplorer, Budgets, ComputeOptimizer, TrustedAdvisor]
 related: [02-ec2, 09-s3-intro, 05-vpc-endpoints-peering, 01-iam-advanced, 07-rds-aurora]
-revision: revision/13-cost-optimization-revision
 tags: [topic, domain/cost]
 ---
 
@@ -271,6 +270,3 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - [What is AWS Compute Optimizer](https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html) — supported resources, 14-day CloudWatch lookback, opt-in; verified 2026-09-05
 - [AWS Billing and Cost Management](https://docs.aws.amazon.com/cost-management/latest/userguide/what-is-costmanagement.html) — Cost Explorer, Budgets, Cost Anomaly Detection, cost allocation tags, cost categories, Cost Optimization Hub, consolidated billing benefits; verified 2026-09-05
 - [Terraform `aws_budgets_budget`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) / [`aws_ec2_capacity_reservation`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ec2_capacity_reservation)
-
----
-**Self-test for this topic:** [[revision/13-cost-optimization-revision#Self-test]]

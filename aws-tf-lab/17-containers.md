@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [ECS, Fargate, ECR, EKS]
 related: [02-ec2, 04-alb-asg, 05-vpc-core, 01-iam]
-revision: revision/17-containers-revision
 tags: [topic, domain/performance]
 ---
 
@@ -215,6 +214,3 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 - [ALB target groups](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html) — target types and algorithms, verified 2026-09-06
 - [EKS pricing](https://aws.amazon.com/eks/pricing/) · [Fargate pricing](https://aws.amazon.com/fargate/pricing/) — verified 2026-09-06
 - [Terraform `aws_ecs_service`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service)
-
----
-**Self-test for this topic:** [[revision/17-containers-revision#Self-test]]

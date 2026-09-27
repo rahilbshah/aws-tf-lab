@@ -4,7 +4,6 @@ domain: performance
 status: reviewed
 services: [DMS, StepFunctions, AppSync, Batch, ElasticBeanstalk, TransferFamily, DirectoryService]
 related: [19-serverless, 15-decoupling, 07-rds-aurora, 01-iam-advanced, 12-storage-extras]
-revision: revision/24-other-services-revision
 tags: [topic, domain/performance]
 ---
 
@@ -306,6 +305,3 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [What is AWS Transfer Family?](https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html) — SFTP/FTPS/FTP/AS2, S3 and EFS targets, 3 AZs, managed workflows; verified 2026-09-26
 - [What is AWS Directory Service?](https://docs.aws.amazon.com/directoryservice/latest/admin-guide/what_is.html) — the three options, edition object limits, Simple AD's unsupported features, RDS SQL Server compatibility, Cognito for SaaS; verified 2026-09-26
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — the in-scope service list this note was audited against; verified 2026-09-26
-
----
-**Self-test for this topic:** [[revision/24-other-services-revision#Self-test]]

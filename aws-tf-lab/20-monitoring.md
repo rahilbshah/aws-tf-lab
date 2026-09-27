@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [CloudWatch, CloudTrail, Config, EventBridge, XRay]
 related: [04-alb-asg, 19-serverless, 13-cost-optimization, 01-iam-advanced]
-revision: revision/20-monitoring-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -210,6 +209,3 @@ graph TB
 - [CloudTrail concepts](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html) — 90-day event history, event types, Insights; verified 2026-09-25
 - [Terraform `aws_cloudwatch_metric_alarm`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm)
 - [Terraform `aws_cloudtrail`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudtrail)
-
----
-**Self-test for this topic:** [[revision/20-monitoring-revision#Self-test]]

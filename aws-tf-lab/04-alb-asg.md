@@ -4,7 +4,6 @@ domain: resilient
 status: reviewed
 services: [ALB, ASG, ELB, EC2]
 related: [02-ec2, 03-ami-bake, 01-iam]
-revision: revision/04-alb-asg-revision
 tags: [topic, domain/resilient]
 ---
 
@@ -371,6 +370,3 @@ Non-obvious bits:
 - [ALB rule action types](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-action-types.html) — `redirect` config, 301/302, `#{host}`/`#{path}`/`#{query}` keywords, no HTTPS→HTTP; verified 2026-08-29
 - [Terraform `aws_autoscaling_schedule`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule) — min/max/desired default to `0`; use `-1` to leave unchanged
 - [Terraform `aws_autoscaling_policy`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy)
-
----
-**Self-test for this topic:** [[revision/04-alb-asg-revision#Self-test]]

@@ -4,7 +4,6 @@ domain: secure
 status: reviewed
 services: [IAM]
 related: [02-ec2]
-revision: revision/01-iam-revision
 tags: [topic, domain/secure]
 ---
 
@@ -434,6 +433,3 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 - [ExternalId for third-party access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html) — confused-deputy mitigation; condition syntax verified 2026-06
 - [What is AWS Directory Service?](https://docs.aws.amazon.com/directoryservice/latest/admin-guide/what_is.html) — Managed Microsoft AD vs AD Connector vs Simple AD, trust/MFA/LDAPS/RDS-SQL-Server support matrix; verified 2026-08-29
 - [GitHub Actions OIDC ↔ AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) — provider URL, audience, `sub` claim format verified 2026-06
-
----
-**Self-test for this topic:** [[revision/01-iam-revision#Self-test]] · **Next:** [[01-iam-advanced]]
