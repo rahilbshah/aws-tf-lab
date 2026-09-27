@@ -311,6 +311,33 @@ flowchart TD
 
 *Zonal balance is applied before **all** of these, so you can legitimately see a newer instance terminated before an older one when one AZ is over-weighted.*
 
+### What cross-zone actually changes — the arithmetic
+
+The defaults are covered above; this is how to *compute* a distribution, which is how the
+question is actually asked.
+
+DNS hands traffic to **one load balancer node per AZ, evenly**. Two AZs means **50% each**,
+before any target is considered. What cross-zone decides is what a node does next:
+
+- **Cross-zone ON** — a node may forward to targets in **any** AZ. Every target in the load
+  balancer gets an equal share: *1 ÷ total targets*.
+- **Cross-zone OFF** — a node forwards **only to targets in its own AZ**. Each AZ's 50% is
+  split among *that AZ's* targets alone: *1 ÷ (AZs × targets in this AZ)*.
+
+So with **4 targets in AZ-A and 6 in AZ-B**, cross-zone **off**: AZ-A's four each get
+50% ÷ 4 = **12.5%**, AZ-B's six each get 50% ÷ 6 ≈ **8.3%**. The smaller AZ's targets work
+*harder* — which is the whole hazard of uneven AZs with cross-zone off, and the reason the
+answer is never "everything gets 10%".
+
+Cross-zone **on**, the same fleet: 1 ÷ 10 = **10%** each.
+
+> [!warning] Trap — cross-zone distribution computed as if the AZs were merged
+> With cross-zone **off**, traffic splits **per AZ first**, then within the AZ. The wrong
+> answer divides by the total target count and gives every target the same share — which is
+> the **cross-zone-on** answer. Remember which default you are in: **ALB cross-zone is always
+> on**, **NLB is off by default**. An NLB question with unequal targets per AZ is almost
+> always testing this arithmetic.
+
 ### Sizing for AZ loss — required capacity × AZ count
 
 | Requirement | AZs | Per AZ | `min` / `desired` | Overhead |

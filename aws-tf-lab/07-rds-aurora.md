@@ -145,6 +145,35 @@ It runs **inside your VPC** and is not publicly reachable.
 > In one line: RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens
 > failover while keeping credentials in Secrets Manager.
 
+### Four different things called "securing the database"
+
+Three sure-wrong answers in one mock came from picking the wrong *layer*. A database question
+that says "secure" or "protect" is asking about exactly one of these four, and they are not
+interchangeable:
+
+| Layer | The question it answers | The control |
+|---|---|---|
+| **Network reachability** | *can this host even open a socket?* | **security group** on the DB (source = the app's SG) |
+| **AWS API permissions** | *may this principal call the RDS **API** — describe, snapshot, modify?* | **IAM role/policy** (`rds:*`) |
+| **Database login** | *may this principal log in as a database user?* | **IAM database authentication** (`rds-db:connect`) — or a password in **Secrets Manager** |
+| **Data on the wire** | *is the connection encrypted in flight?* | **SSL/TLS**, forced with the **`rds.force_ssl`** parameter |
+
+The traps are all substitutions between adjacent rows:
+
+- **A security group is not authentication.** Restricting the DB's SG to the application's SG
+  is good practice and answers *reachability* — it does nothing about *who logs in*. A stem
+  asking to avoid storing database credentials wants **IAM database authentication**.
+- **An IAM role on the instance is not database access.** Attaching a role lets the code call
+  AWS APIs. Logging in to the engine still needs a database credential, unless IAM DB auth is
+  enabled — and then you need **both**: the role *and* the feature.
+- **TDE is at rest, `rds.force_ssl` is in flight.** "All in-flight data must be encrypted"
+  is the SSL parameter plus the **RDS root CA** on the client; TDE encrypts stored data and
+  answers a different question.
+
+> In one line: reachability is the security group, API permission is the IAM policy, logging
+> in is IAM DB authentication, and encrypting the wire is `rds.force_ssl` — four layers, and
+> questions swap them deliberately.
+
 ## Exam recap
 
 *Now that the mechanisms are clear, this is the compressed version to revise from.*

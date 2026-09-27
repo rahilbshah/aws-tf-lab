@@ -183,6 +183,25 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - **AWS Backup** supports EC2, EBS, S3, RDS (all engines, incl. Multi-AZ clusters), Aurora, DynamoDB, EFS, all four FSx types, Storage Gateway volumes, DocumentDB, Neptune, Redshift, Timestream, EKS, CloudFormation, SAP HANA on EC2, and VMware Cloud on AWS. Backups are **incremental for supported resource types** (others are full copies each time — a real cost consideration). **Cross-account** backup requires an **AWS Organizations** structure.
 - ⚠️ Pricing for EFS, FSx, Storage Gateway, DataSync and Snow changes; check current rates rather than memorising figures. The exam tests *service choice*, not price points.
 
+### Which Snow device — storage volume, or compute at the edge?
+
+Four of these questions in one mock went wrong on device choice, so the selection rule is
+worth more than the specs. Ask **what the device is for**, not how big the data is:
+
+| The scenario needs | Device | Why |
+|---|---|---|
+| to move **bulk data**, nothing else | **Snowball Edge Storage Optimized** | **210 TB** usable — the data-transfer device |
+| to **process data where it is collected** before or instead of shipping it | **Snowball Edge Compute Optimized** | same 104 vCPU / 416 GB, but **28 TB** — the storage is sacrificed for compute |
+| the smallest, most **portable/rugged** unit — a vehicle, a drone kit, a space-constrained site | **Snowcone** | the little one; capacity is a fraction of a Snowball |
+
+Both Snowball Edge options carry **104 vCPUs and 416 GB of usable memory**; the difference is
+**210 TB versus 28 TB of storage**. So "which has the most compute functionality" is
+**Compute Optimized** — not because it has more vCPUs, but because that is the configuration
+AWS designates for compute, and it is the one with EC2-compatible instances as the point.
+
+⚠️ Currency, already noted above: **Snowball Edge is closed to new customers** — AWS points new
+users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam still asks it.
+
 ## Comparisons
 
 ### EFS vs FSx vs EBS vs S3

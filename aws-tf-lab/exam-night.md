@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*177 recall hooks · 324 pointers · ~29 min read*
+*178 recall hooks · 326 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -148,6 +148,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#Sizing min / desired / max for the loss of an AZ|explain]]
 
 **Traps** [[04-alb-asg#Comparisons|open]]
+- cross-zone distribution computed as if the AZs were merged
 - minimum capacity set to N when an AZ must be survivable
 - "the ALB terminates the unhealthy instance"
 - "a failed ALB health check means users get errors"
@@ -165,6 +166,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
 - [[04-alb-asg#Scaling policy types|Scaling policy types]]
 - [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
+- [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]]
 - [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
 
 
@@ -323,6 +325,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
 - RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens  
   ↳ [[07-rds-aurora#RDS Proxy — the connection pool in front of the database|explain]]
+- Reachability is the security group, API permission is the IAM policy, logging  
+  ↳ [[07-rds-aurora#Four different things called "securing the database"|explain]]
 
 **Traps** [[07-rds-aurora#The Terraform I wrote|open]]
 - an IAM role on the app is not, by itself, database authentication
