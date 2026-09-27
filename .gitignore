@@ -45,3 +45,13 @@ aws-tf-lab/.obsidian/cache
 
 # Human-readable plan dumps (terraform show > plan.txt) — workspace artifacts
 plan.txt
+
+# Python bytecode from the vault generators
+__pycache__/
+*.pyc
+
+# Retired 2026-09-06 (CLAUDE.md 13.1) - plugin no longer used, pure git churn
+aws-tf-lab/.obsidian/plugins/obsidian-spaced-repetition/
+
+# Downloaded source PDFs - notes cite the live docs URL, not the local copy
+*.pdf
