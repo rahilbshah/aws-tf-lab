@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*171 recall hooks · 317 pointers · ~29 min read*
+*172 recall hooks · 319 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -104,8 +104,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[02-ec2#Giving the instance an identity without putting a secret on it|explain]]
 - IMDSv2 wants a PUT for a token before any GET, and skipping it fails quietly instead of loudly.  
   ↳ [[02-ec2#Why a plain curl to the metadata endpoint returns nothing|explain]]
+- Cluster buys latency at the cost of one AZ, spread buys isolation capped at  
+  ↳ [[02-ec2#Placement groups — telling EC2 where to put the instances relative to each other|explain]]
 
 **Traps** [[02-ec2|open]]
+- cluster chosen for availability, or spread for scale
 - All EC2 attributes can be changed in-place
 - ip_protocol accepts "ssh" / "http"
 - t3-micro works
@@ -122,6 +125,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[02-ec2#Stop vs Terminate|Stop vs Terminate]]
 - [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]]
+- [[02-ec2#The three placement strategies|The three placement strategies]]
 - [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]]
 - [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 

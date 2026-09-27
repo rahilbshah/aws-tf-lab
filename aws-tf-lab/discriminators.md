@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*101 comparison tables · 179 discriminators · ~33 min read*
+*102 comparison tables · 180 discriminators · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -68,8 +68,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
-**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
+**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
+- **cluster chosen for availability, or spread for scale** — They pull in opposite directions and the wrong one is always offered. Cluster is a single AZ — picking it for "high availability" actively concentrates risk; it is a performance choice.  
+  ↳ [[02-ec2|note]]
 - **All EC2 attributes can be changed in-place** — No — ami, subnet_id (subnet determines AZ), key_name and associate_public_ip_address all force replacement.  
   ↳ [[02-ec2|note]]
 - **ip_protocol accepts "ssh" / "http"** — No — IP-layer protocols only: tcp/udp/icmp/icmpv6/-1. Application-layer names are friendly console labels, not API inputs.  
