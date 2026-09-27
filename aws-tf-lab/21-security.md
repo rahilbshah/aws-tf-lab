@@ -36,6 +36,23 @@ The genuinely important idea in the first half is **envelope encryption**, becau
 
 **KMS key types.** *Customer managed* — you create it, you own the key policy, you choose rotation, it costs ~$1/month. *AWS managed* (`aws/s3`, `aws/rds`) — created for you, free, rotated yearly, and **you cannot change its policy**. *AWS owned* — entirely inside the service, invisible to you.
 
+**AWS managed keys are legacy.** This is the sentence that settles a whole family of
+questions: *"AWS managed keys are a legacy key type that is **no longer being created for new
+AWS services as of 2021**. Instead, new (and legacy) AWS services are using what's known as an
+**AWS owned key** to encrypt customer data by default."* So when a stem asks what a service
+encrypts with **by default**, the modern answer is **AWS owned**, not AWS managed — and
+because AWS owned key usage is *"not viewable by the customer"*, **nothing appears in
+CloudTrail**. Those two facts travel together and are asked together.
+
+Default encryption by service, where it gets tested:
+
+| Service | Default key | Notes |
+|---|---|---|
+| **DynamoDB** | **AWS owned** | *"Default encryption type."* All data is **always** encrypted — there is no off switch. You may switch to AWS managed or customer managed at any time. |
+| **DAX cluster** (encryption at rest) | **AWS managed** | the exception sitting right next to DynamoDB |
+| **S3** | **SSE-S3** (AES256) since Jan 2023 | see [[09-s3-security]] |
+| **EBS, RDS, EFS** | AWS managed (`aws/ebs`, `aws/rds`…) when you tick "encrypt" | these predate the 2021 change |
+
 That "cannot change its policy" line is the practical discriminator: the moment a stem mentions cross-account access to encrypted data, or an audit trail of key usage, or controlling exactly who may decrypt, the answer is a **customer managed key**.
 
 **Envelope encryption, concretely.** `GenerateDataKey` returns two things — a plaintext data key and the same key encrypted under your KMS key. You encrypt your object locally with the plaintext key, discard it from memory, and store the encrypted copy alongside the ciphertext. To read it back, you send the encrypted key to KMS's `Decrypt`, get the plaintext key back, and decrypt locally. Your data never crosses the KMS API.
@@ -122,6 +139,9 @@ graph TB
 | Rotation | optional; default **365 days**, configurable, plus on-demand | **every year**, not controllable | the service decides |
 | Cost | ~$1/month + requests | **free** | free |
 | Visible in your account | yes | yes | **no** |
+| **Usage auditable in CloudTrail** | **yes** | **yes** | **no** — *"not viewable by the customer"* |
+| Counts against your KMS key quota | **yes** | no | no |
+| Cross-account sharing of encrypted data | **yes** | **no** | yes (service handles it) |
 | Choose this when | cross-account, custom policy, audit, compliance, BYOK | you just want encryption on | never — you don't choose it |
 
 ### Secrets Manager vs SSM Parameter Store
@@ -192,6 +212,16 @@ issuing internal certificates, and it is the answer only when the scenario says 
 > In one line: certificates are regional and auto-renew with DNS validation, but CloudFront
 > takes its certificate from us-east-1 only.
 
+> [!warning] Trap — "AWS managed" chosen as a service's default encryption key
+> The three key types are near-identical strings and the question is usually *"why is there
+> no encryption detail in CloudTrail?"*. The answer is that the default is an **AWS owned**
+> key, and AWS owned key usage is **not visible to you at all** — not in the console, not in
+> CloudTrail. **AWS managed** keys *are* auditable in CloudTrail, so picking them makes the
+> scenario's symptom impossible. The rule behind it: **AWS managed is a legacy type, not
+> created for new services since 2021**, so "the default" for anything modern is AWS owned.
+> **DynamoDB is the canonical example** — always encrypted, no off switch, AWS owned by
+> default. And "Customer managed" is never a default anywhere, because you have to create it.
+
 ## Worked examples
 
 > [!example] Worked example — encrypting a 500 MB object with a 4 KB limit
@@ -247,6 +277,9 @@ issuing internal certificates, and it is the answer only when the scenario says 
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+
+- [AWS KMS keys — concepts](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html) — the three key types side by side; "AWS managed keys are a legacy key type that is no longer being created for new AWS services as of 2021"; AWS owned logging "Not viewable by the customer"; verified 2026-09-27
+- [DynamoDB encryption at rest](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EncryptionAtRest.html) — "AWS owned key – Default encryption type"; all data always encrypted; DAX uses an AWS managed key; verified 2026-09-27
 - [KMS key rotation](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html) — 365-day default, configurable, on-demand, what cannot rotate; verified 2026-09-25
 - [KMS `Encrypt` API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html) — the 4,096-byte limit; verified 2026-09-25
 - [KMS resource quotas](https://docs.aws.amazon.com/kms/latest/developerguide/resource-limits.html) — keys, aliases, grants; verified 2026-09-25

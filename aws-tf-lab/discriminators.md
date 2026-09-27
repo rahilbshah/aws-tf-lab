@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*103 comparison tables · 183 discriminators · ~34 min read*
+*103 comparison tables · 184 discriminators · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -469,6 +469,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]]
 
 - **a regional certificate offered for CloudFront** — CloudFront is global and takes its certificate only from us-east-1, no matter where the origin or the bucket sits.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **"AWS managed" chosen as a service's default encryption key** — The three key types are near-identical strings and the question is usually "why is there no encryption detail in CloudTrail?".  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

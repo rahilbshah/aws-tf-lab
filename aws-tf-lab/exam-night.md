@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*177 recall hooks · 323 pointers · ~29 min read*
+*177 recall hooks · 324 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -824,6 +824,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[21-security#⚠️ Traps — why the wrong answer looks right|open]]
 - a regional certificate offered for CloudFront
+- "AWS managed" chosen as a service's default encryption key
 - rotation re-encrypts your data
 - "rotate this asymmetric key automatically"
 - Parameter Store for a rotating password
