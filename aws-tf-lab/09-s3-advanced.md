@@ -11,6 +11,18 @@ tags: [topic, domain/performance]
 
 Moving data around and reacting to it: replication for DR/latency, multipart & byte-range for big objects, Transfer Acceleration for distance, and event notifications for automation. Part of [[09-s3]].
 
+> [!info] Exam TL;DR
+> - **Replication:** **CRR** = different region (DR, latency, compliance), **SRR** = same region (log aggregation, prod↔test). Requires **versioning on BOTH buckets** + an **IAM role**. It is **asynchronous**.
+> - Live replication only copies **new/updated** objects. Pre-existing objects (or previously failed ones) need **S3 Batch Replication** — an on-demand job.
+> - **Replication is not chained**: A→B and B→C does *not* get A's objects to C.
+> - **S3 RTC** = SLA-backed **99.99% replicated within 15 minutes** (the "predictable replication time / compliance" answer).
+> - **Multipart upload:** recommended ≥ **100 MB**, **required > 5 GB** (single-PUT max). Parallel parts, retry only the failed part. **Incomplete parts keep billing** → lifecycle `AbortIncompleteMultipartUpload`.
+> - **Byte-range fetch** = the download mirror: fetch only part of an object (headers, or parallel chunks).
+> - **Transfer Acceleration:** upload to the nearest **CloudFront edge**, then over AWS's **private backbone** to the bucket's region. Same bucket, faster path — for long-distance/large uploads.
+> - **Event notifications:** on object created/removed/restored → **SNS, SQS, Lambda, EventBridge**. Destination needs a **resource policy** allowing S3.
+> - **Glacier retrieval tiers** (Flexible): Expedited **1–5 min**, Standard **3–5 h**, Bulk **5–12 h**. Deep Archive: **no Expedited**, Standard **~12 h**, Bulk **~48 h**.
+> - ⚠️ **S3 Select is no longer available to new customers** — learn the concept; use **Athena** in practice.
+
 ## What problem does this solve?
 
 A bucket that just holds objects is easy to reason about. The trouble starts once the data matters, or gets big, or has to make something else happen.
@@ -92,22 +104,6 @@ The triggers are `s3:ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload)
 One more shape worth holding: delivery is typically seconds but **not guaranteed instant**, so design consumers to be **idempotent**.
 
 > In one line: the destination must grant S3 permission, and the output must never land where the trigger is watching.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Replication:** **CRR** = different region (DR, latency, compliance), **SRR** = same region (log aggregation, prod↔test). Requires **versioning on BOTH buckets** + an **IAM role**. It is **asynchronous**.
-> - Live replication only copies **new/updated** objects. Pre-existing objects (or previously failed ones) need **S3 Batch Replication** — an on-demand job.
-> - **Replication is not chained**: A→B and B→C does *not* get A's objects to C.
-> - **S3 RTC** = SLA-backed **99.99% replicated within 15 minutes** (the "predictable replication time / compliance" answer).
-> - **Multipart upload:** recommended ≥ **100 MB**, **required > 5 GB** (single-PUT max). Parallel parts, retry only the failed part. **Incomplete parts keep billing** → lifecycle `AbortIncompleteMultipartUpload`.
-> - **Byte-range fetch** = the download mirror: fetch only part of an object (headers, or parallel chunks).
-> - **Transfer Acceleration:** upload to the nearest **CloudFront edge**, then over AWS's **private backbone** to the bucket's region. Same bucket, faster path — for long-distance/large uploads.
-> - **Event notifications:** on object created/removed/restored → **SNS, SQS, Lambda, EventBridge**. Destination needs a **resource policy** allowing S3.
-> - **Glacier retrieval tiers** (Flexible): Expedited **1–5 min**, Standard **3–5 h**, Bulk **5–12 h**. Deep Archive: **no Expedited**, Standard **~12 h**, Bulk **~48 h**.
-> - ⚠️ **S3 Select is no longer available to new customers** — learn the concept; use **Athena** in practice.
 
 ## AWS console ↔ Terraform map
 

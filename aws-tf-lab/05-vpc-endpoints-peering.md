@@ -11,6 +11,13 @@ tags: [topic, domain/secure]
 
 Two ways to keep traffic off the public internet: **endpoints** reach *AWS services* privately; **peering / Transit Gateway** connect *VPCs* privately. Part of [[05-vpc]].
 
+> [!info] Exam TL;DR
+> - **Gateway endpoint** = a **route-table** entry for **S3 & DynamoDB only**, **free**. Lets a fully-private subnet reach S3/DynamoDB with no NAT/IGW.
+> - **Interface endpoint** = an **ENI with a private IP** in your subnet, powered by **PrivateLink**, for **almost every other service**, **~$0.01/hr/AZ + data**. Reachable over peering/VPN/DX (gateway endpoints are **not**).
+> - **VPC peering** = private 1-to-1 link between two VPCs. **Non-transitive** (A–B + B–C ≠ A–C) and **no overlapping CIDRs**. Cross-account & cross-region OK. Update route tables **on both sides**.
+> - **Full mesh of N VPCs = N(N-1)/2 peerings** → explodes. **Transit Gateway** = hub-and-spoke: each VPC gets **one attachment**, connectivity is **transitive**, and on-prem (VPN/DX) attaches to the same hub. Scales to thousands.
+> - Decision: **S3/DynamoDB privately → gateway endpoint (free)**; other service → interface endpoint; **2 VPCs → peering**; **many VPCs / hybrid at scale → Transit Gateway**.
+
 ## What problem does this solve?
 
 There are two separate privacy problems in this note, and it helps to keep them apart.
@@ -93,17 +100,6 @@ Four VPCs at 6 connections is fine. Twelve VPCs at 66 connections — each needi
 The tradeoff is cost and weight: TGW bills **per attachment per hour plus per-GB**, where peering itself is free (you pay for data). For two or three VPCs it's overkill and peering is the right answer. The exam signal is the phrasing — *growing number of VPCs, simplify connectivity, connect on-prem* is always Transit Gateway.
 
 > In one line: peering is O(N²) and non-transitive, so at **many VPCs / hybrid at scale** the answer becomes one Transit Gateway hub.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Gateway endpoint** = a **route-table** entry for **S3 & DynamoDB only**, **free**. Lets a fully-private subnet reach S3/DynamoDB with no NAT/IGW.
-> - **Interface endpoint** = an **ENI with a private IP** in your subnet, powered by **PrivateLink**, for **almost every other service**, **~$0.01/hr/AZ + data**. Reachable over peering/VPN/DX (gateway endpoints are **not**).
-> - **VPC peering** = private 1-to-1 link between two VPCs. **Non-transitive** (A–B + B–C ≠ A–C) and **no overlapping CIDRs**. Cross-account & cross-region OK. Update route tables **on both sides**.
-> - **Full mesh of N VPCs = N(N-1)/2 peerings** → explodes. **Transit Gateway** = hub-and-spoke: each VPC gets **one attachment**, connectivity is **transitive**, and on-prem (VPN/DX) attaches to the same hub. Scales to thousands.
-> - Decision: **S3/DynamoDB privately → gateway endpoint (free)**; other service → interface endpoint; **2 VPCs → peering**; **many VPCs / hybrid at scale → Transit Gateway**.
 
 ## AWS console ↔ Terraform map
 

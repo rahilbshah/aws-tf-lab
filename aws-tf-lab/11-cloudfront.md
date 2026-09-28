@@ -11,6 +11,16 @@ tags: [topic, domain/performance]
 
 AWS's content delivery network. Caches your content at edge locations worldwide so users fetch it from nearby instead of from your origin — and, less obviously, accelerates even *uncacheable* traffic by pulling it onto the AWS backbone at the edge.
 
+> [!info] Exam TL;DR
+> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** usually sits between the edge and your origin, checked on a miss before the origin is — **dynamic requests and PUT/POST skip it** and go straight to the origin.
+> - **Not just static content.** Dynamic, uncacheable requests still benefit, because they enter the AWS backbone at the edge instead of crossing the public internet.
+> - **OAC (Origin Access Control)** locks an S3 origin so CloudFront is the only way in — Block Public Access stays **fully on**. OAC is current; **OAI is legacy**. The bucket policy trusts `cloudfront.amazonaws.com` **with an `AWS:SourceArn` condition pinning your distribution** — the confused-deputy defence again.
+> - **An S3 *website* endpoint is a custom origin and cannot use OAC or OAI at all.** OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`).
+> - **Versioned filenames beat invalidation.** Invalidation is the emergency tool: **1,000 paths/month free** per account, `/*` counts as **one path**.
+> - **An ACM certificate for CloudFront must live in `us-east-1`**, no matter where the origin is.
+> - **CloudFront Functions** (JS, sub-ms, viewer events only, no network) vs **Lambda@Edge** (Node/Python, up to 30 s, all four events, network + request body).
+> - **CloudFront vs Global Accelerator:** CloudFront caches HTTP at the edge. Global Accelerator gives **two static anycast IPs**, works at **TCP/UDP**, **caches nothing**, and fails over **without DNS or TTL** because the IPs never change.
+
 ## What problem does this solve?
 
 Distance is the problem. A request from Mumbai to a server in Virginia crosses the public internet twice — once out, once back — and every hop adds latency. Nothing about your code is slow. The map is slow.
@@ -97,20 +107,6 @@ The discriminator that actually decides exam questions is failover speed, and it
 CloudFront has its own failover, and it is worth not confusing with either of the above: an **origin group** holds a primary and a secondary origin and switches when the primary returns configured HTTP failure codes. Per request, inside CloudFront, no DNS involved.
 
 > In one line: CloudFront caches, Global Accelerator doesn't — its trick is IPs that never change, so DNS never has to catch up.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** usually sits between the edge and your origin, checked on a miss before the origin is — **dynamic requests and PUT/POST skip it** and go straight to the origin.
-> - **Not just static content.** Dynamic, uncacheable requests still benefit, because they enter the AWS backbone at the edge instead of crossing the public internet.
-> - **OAC (Origin Access Control)** locks an S3 origin so CloudFront is the only way in — Block Public Access stays **fully on**. OAC is current; **OAI is legacy**. The bucket policy trusts `cloudfront.amazonaws.com` **with an `AWS:SourceArn` condition pinning your distribution** — the confused-deputy defence again.
-> - **An S3 *website* endpoint is a custom origin and cannot use OAC or OAI at all.** OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`).
-> - **Versioned filenames beat invalidation.** Invalidation is the emergency tool: **1,000 paths/month free** per account, `/*` counts as **one path**.
-> - **An ACM certificate for CloudFront must live in `us-east-1`**, no matter where the origin is.
-> - **CloudFront Functions** (JS, sub-ms, viewer events only, no network) vs **Lambda@Edge** (Node/Python, up to 30 s, all four events, network + request body).
-> - **CloudFront vs Global Accelerator:** CloudFront caches HTTP at the edge. Global Accelerator gives **two static anycast IPs**, works at **TCP/UDP**, **caches nothing**, and fails over **without DNS or TTL** because the IPs never change.
 
 ## AWS console ↔ Terraform map
 

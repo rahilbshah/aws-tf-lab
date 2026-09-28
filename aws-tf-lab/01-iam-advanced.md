@@ -11,6 +11,17 @@ tags: [topic, domain/secure]
 
 The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do?"* — this note answers a different question: *"what is anyone in this account **permitted to be allowed** to do?"*
 
+> [!info] Exam TL;DR
+> - **An SCP never grants anything.** It sets a **ceiling**. Effective permissions = **intersection** of the SCP and the identity/resource policies. A user with no IAM policy still has no access, however permissive the SCP.
+> - **SCPs do not affect the management account** — member accounts only. But they **do** cap the **root user of a member account**. That asymmetry is the single most tested SCP fact.
+> - **An `Allow` must exist at *every* level** root → OU → account. A **`Deny` at *any* level** kills it for everything beneath. This is why **`FullAWSAccess`** is attached by default — remove it without replacing it and every action in that subtree fails.
+> - SCPs require **all features enabled**; they don't exist in consolidated-billing-only mode.
+> - **Permissions boundary** = a managed policy setting the max an **identity-based policy** can grant to **one user or role**. Also grants nothing. Effective = **intersection**.
+> - **Combining rules:** identity + resource-based = **UNION**. identity + boundary = **INTERSECTION**. identity + SCP = **INTERSECTION**. **Explicit `Deny` anywhere wins, always.**
+> - **ABAC** = access by **tags** — `aws:PrincipalTag/x` compared against `aws:ResourceTag/x`. Scales where RBAC needs a new policy per team.
+> - **`aws:PrincipalOrgID`** lets one resource policy trust a whole organization without listing account IDs.
+> - **MFA conditions must use `BoolIfExists`**, not `Bool` — the key is absent for long-term access keys, so plain `Bool` denies things you didn't mean to.
+
 > [!warning] Build tier — **conceptual-only**
 > Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from notes + the exam framing, not from `terraform apply`.
 
@@ -122,21 +133,6 @@ That exception looks inconsistent until you notice what a resource policy actual
 Above all of it: an **explicit `Deny` anywhere wins.** In any policy, of any type, at any level. Nothing overrides it.
 
 > In one line: resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **An SCP never grants anything.** It sets a **ceiling**. Effective permissions = **intersection** of the SCP and the identity/resource policies. A user with no IAM policy still has no access, however permissive the SCP.
-> - **SCPs do not affect the management account** — member accounts only. But they **do** cap the **root user of a member account**. That asymmetry is the single most tested SCP fact.
-> - **An `Allow` must exist at *every* level** root → OU → account. A **`Deny` at *any* level** kills it for everything beneath. This is why **`FullAWSAccess`** is attached by default — remove it without replacing it and every action in that subtree fails.
-> - SCPs require **all features enabled**; they don't exist in consolidated-billing-only mode.
-> - **Permissions boundary** = a managed policy setting the max an **identity-based policy** can grant to **one user or role**. Also grants nothing. Effective = **intersection**.
-> - **Combining rules:** identity + resource-based = **UNION**. identity + boundary = **INTERSECTION**. identity + SCP = **INTERSECTION**. **Explicit `Deny` anywhere wins, always.**
-> - **ABAC** = access by **tags** — `aws:PrincipalTag/x` compared against `aws:ResourceTag/x`. Scales where RBAC needs a new policy per team.
-> - **`aws:PrincipalOrgID`** lets one resource policy trust a whole organization without listing account IDs.
-> - **MFA conditions must use `BoolIfExists`**, not `Bool` — the key is absent for long-term access keys, so plain `Bool` denies things you didn't mean to.
 
 ## AWS console ↔ Terraform map
 

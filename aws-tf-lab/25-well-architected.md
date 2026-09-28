@@ -11,6 +11,16 @@ tags: [topic, domain/secure]
 
 The course calls this section "WhitePapers and Architectures". It isn't new services — it's the framework the **entire exam is structured around**, plus the two tools that measure against it.
 
+> [!info] Exam TL;DR
+> - **Six pillars:** Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, **Sustainability**. Six, not five — Sustainability is the newest.
+> - **Four of them are the four exam domains:** Security (30%), Reliability (26%), Performance Efficiency (24%), Cost Optimization (20%). Operational Excellence and Sustainability have no domain of their own.
+> - **Reliability ≠ Performance Efficiency.** Reliability = survives and recovers from failure. Performance = right resource, used efficiently.
+> - **Well-Architected Tool** = **free**, console-based, question-driven review of a **workload**; extensible with **lenses** (AWS-provided or **custom**); integrates with Trusted Advisor.
+> - **Trusted Advisor** = inspects **deployed resources**. **Six categories:** cost optimization, performance, security, fault tolerance, **service limits**, operational excellence.
+> - **Basic/Developer Support** → all **Service Limits** checks plus a fixed handful of Security/Fault Tolerance checks (incl. **MFA on root account**, **S3 Bucket Permissions**, public EBS/RDS snapshots). **All checks require a paid support plan.**
+> - **WA Tool = review the design. Trusted Advisor = inspect the resources. AWS Config = continuously evaluate and remediate.**
+> - **Whitepapers** are the source of the exam's "best practice" answers — and they age; verify their numbers.
+
 > [!warning] Build tier — **conceptual-only**
 > The Well-Architected Tool is free and worth ten minutes clicking through in the console if you're curious. There is nothing to build and no Terraform.
 
@@ -113,18 +123,6 @@ These three get offered together and are genuinely different jobs:
 "Continuously evaluate and remediate" is **Config**. "Am I over-provisioned / is root MFA on?" is **Trusted Advisor**. "Review this architecture against best practices" is the **WA Tool**.
 
 > In one line: WA Tool reviews design, Trusted Advisor inspects resources, Config continuously evaluates and remediates.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **Six pillars:** Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, **Sustainability**. Six, not five — Sustainability is the newest.
-> - **Four of them are the four exam domains:** Security (30%), Reliability (26%), Performance Efficiency (24%), Cost Optimization (20%). Operational Excellence and Sustainability have no domain of their own.
-> - **Reliability ≠ Performance Efficiency.** Reliability = survives and recovers from failure. Performance = right resource, used efficiently.
-> - **Well-Architected Tool** = **free**, console-based, question-driven review of a **workload**; extensible with **lenses** (AWS-provided or **custom**); integrates with Trusted Advisor.
-> - **Trusted Advisor** = inspects **deployed resources**. **Six categories:** cost optimization, performance, security, fault tolerance, **service limits**, operational excellence.
-> - **Basic/Developer Support** → all **Service Limits** checks plus a fixed handful of Security/Fault Tolerance checks (incl. **MFA on root account**, **S3 Bucket Permissions**, public EBS/RDS snapshots). **All checks require a paid support plan.**
-> - **WA Tool = review the design. Trusted Advisor = inspect the resources. AWS Config = continuously evaluate and remediate.**
-> - **Whitepapers** are the source of the exam's "best practice" answers — and they age; verify their numbers.
 
 ## Key facts, limits & pricing
 

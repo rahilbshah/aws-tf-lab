@@ -11,6 +11,19 @@ tags: [topic, domain/performance]
 
 Eleven one-line services. The exam never asks you to train a model — it asks whether you can tell Rekognition from Textract fast enough to eliminate three wrong answers.
 
+> [!info] Exam TL;DR
+> - **ML is in scope** (11 named services) but **no task statement covers it** — it appears as distractors and one-line answers. Learn one sentence per service; go no deeper.
+> - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Train a custom model on our data"* → **SageMaker**.
+> - **Rekognition = images/video** (objects, faces, moderation). **Textract = documents** (text + **forms + tables** + handwriting). Document vs scene.
+> - **Transcribe = audio → text. Polly = text → audio.** Opposite directions.
+> - **Translate** = language → language. **Comprehend** = NLP insights: **sentiment, entities, key phrases, PII, language, topic modeling**.
+> - **Lex** = chatbots (intents/slots). **Kendra** = natural-language enterprise **search** over documents.
+> - **Forecast** = time-series prediction. **Fraud Detector** = fraud risk scoring. **Amazon Personalize is explicitly OUT of scope** — the course covers it, the exam guide excludes it.
+> - **Comprehend analyses text; Kendra searches it.** **Kendra is natural-language Q&A; OpenSearch is the keyword/log engine you run.**
+> - **Chain services** when the scenario has two verbs: Transcribe → Comprehend (call sentiment), Textract → Comprehend (extract then redact PII).
+> - **Use async APIs + SNS** for multi-page documents and long audio — sync APIs are single-page/short only.
+> - **Renamed/retired:** SageMaker → **SageMaker AI** (Dec 2024). **Forecast, Fraud Detector and Kendra are closed to new customers** — still exam-answerable.
+
 > [!warning] Build tier — **conceptual-only, deliberately**
 > Nothing here is worth building. The exam's ML questions are recognition questions, and the return on an hour of hands-on SageMaker is close to zero for SAA-C03. Read this note, drill the table, move on.
 
@@ -125,21 +138,6 @@ This is the part your course video will not have.
 They remain in the SAA-C03 exam guide's in-scope list, and existing customers keep using them. So: **still answer them on the exam**, but know they're legacy in the real world. If a question offers Forecast for time-series prediction, it's still the intended answer.
 
 > In one line: SageMaker is now "SageMaker AI", and Forecast, Fraud Detector and Kendra are closed to new customers but still exam-answerable.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **ML is in scope** (11 named services) but **no task statement covers it** — it appears as distractors and one-line answers. Learn one sentence per service; go no deeper.
-> - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Train a custom model on our data"* → **SageMaker**.
-> - **Rekognition = images/video** (objects, faces, moderation). **Textract = documents** (text + **forms + tables** + handwriting). Document vs scene.
-> - **Transcribe = audio → text. Polly = text → audio.** Opposite directions.
-> - **Translate** = language → language. **Comprehend** = NLP insights: **sentiment, entities, key phrases, PII, language, topic modeling**.
-> - **Lex** = chatbots (intents/slots). **Kendra** = natural-language enterprise **search** over documents.
-> - **Forecast** = time-series prediction. **Fraud Detector** = fraud risk scoring. **Amazon Personalize is explicitly OUT of scope** — the course covers it, the exam guide excludes it.
-> - **Comprehend analyses text; Kendra searches it.** **Kendra is natural-language Q&A; OpenSearch is the keyword/log engine you run.**
-> - **Chain services** when the scenario has two verbs: Transcribe → Comprehend (call sentiment), Textract → Comprehend (extract then redact PII).
-> - **Use async APIs + SNS** for multi-page documents and long audio — sync APIs are single-page/short only.
-> - **Renamed/retired:** SageMaker → **SageMaker AI** (Dec 2024). **Forecast, Fraud Detector and Kendra are closed to new customers** — still exam-answerable.
 
 ## AWS console ↔ Terraform map
 

@@ -11,6 +11,18 @@ tags: [topic, domain/performance]
 
 Streaming data: a continuous, ordered log that several consumers read independently and can re-read. The service SQS is most often confused with, and the confusion is worth resolving precisely.
 
+> [!info] Exam TL;DR
+> - **SQS deletes on processing; Kinesis keeps everything for its retention period.** Multiple consumers read the same records independently, and can **replay**. There is no delete-a-record operation.
+> - **Retention: default and minimum 24 hours, maximum 8,760 hours (365 days).** Anything above 24 hours costs extra.
+> - **Per shard: 1 MB/sec _or_ 1,000 records/sec in; 2 MB/sec out** (max 5 `GetRecords`/sec). Read throughput is **shared across all consumers** unless you use enhanced fan-out.
+> - **Partition key → MD5 hash → shard.** **Ordering is guaranteed within a shard, not across the stream** — the same idea as `MessageGroupId` in FIFO SQS. Low-cardinality keys create a **hot shard**.
+> - **Capacity modes:** *provisioned* (you set shard count, billed per shard-hour) or *on-demand* (AWS manages shards, billed per GB). You may switch **twice per 24 hours**.
+> - **Data Streams = a store you build consumers for. Firehose = a delivery pipe with nothing to manage.** Firehose has **no shards and no retention**, buffers by **size or interval**, and can run a **Lambda transform**.
+> - **Firehose destinations:** S3, Redshift (via S3 then `COPY`), OpenSearch, Splunk, Iceberg, HTTP endpoints, partners. **Firehose can read from a Data Stream** — the two are usually combined.
+> - **Enhanced fan-out** = each registered consumer gets its own 2 MB/sec per shard, pushed; up to **20** consumers.
+> - The **KCL tracks progress in DynamoDB** (three tables per application).
+> - **SQS vs Kinesis:** one consumer per message and delete-when-done → SQS. Several independent consumers, ordering, or replay → Kinesis.
+
 > [!warning] Build tier — **conceptual-only (blocked on this account)**
 > Kinesis Data Streams and Amazon Data Firehose are **both unavailable on this AWS account's Free plan** — even a read-only `ListStreams` returns `SubscriptionRequiredException`. This is a plan-level block, not a quota or a cost limit. Learned from the docs; the exam tests the *decisions* here, not the HCL.
 
@@ -100,20 +112,6 @@ The trigger in a question: *"multiple consumers, each needing full throughput"* 
 One operational detail worth knowing because it surprises people: the **Kinesis Client Library stores its consumption state in DynamoDB** — it creates three tables per application. So a Kinesis consumer quietly has a DynamoDB dependency, and its IAM role needs DynamoDB permissions.
 
 > In one line: shared fan-out splits one shard's 2 MB/sec between all consumers; enhanced fan-out gives each registered consumer its own 2 MB/sec, pushed rather than polled.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **SQS deletes on processing; Kinesis keeps everything for its retention period.** Multiple consumers read the same records independently, and can **replay**. There is no delete-a-record operation.
-> - **Retention: default and minimum 24 hours, maximum 8,760 hours (365 days).** Anything above 24 hours costs extra.
-> - **Per shard: 1 MB/sec _or_ 1,000 records/sec in; 2 MB/sec out** (max 5 `GetRecords`/sec). Read throughput is **shared across all consumers** unless you use enhanced fan-out.
-> - **Partition key → MD5 hash → shard.** **Ordering is guaranteed within a shard, not across the stream** — the same idea as `MessageGroupId` in FIFO SQS. Low-cardinality keys create a **hot shard**.
-> - **Capacity modes:** *provisioned* (you set shard count, billed per shard-hour) or *on-demand* (AWS manages shards, billed per GB). You may switch **twice per 24 hours**.
-> - **Data Streams = a store you build consumers for. Firehose = a delivery pipe with nothing to manage.** Firehose has **no shards and no retention**, buffers by **size or interval**, and can run a **Lambda transform**.
-> - **Firehose destinations:** S3, Redshift (via S3 then `COPY`), OpenSearch, Splunk, Iceberg, HTTP endpoints, partners. **Firehose can read from a Data Stream** — the two are usually combined.
-> - **Enhanced fan-out** = each registered consumer gets its own 2 MB/sec per shard, pushed; up to **20** consumers.
-> - The **KCL tracks progress in DynamoDB** (three tables per application).
-> - **SQS vs Kinesis:** one consumer per message and delete-when-done → SQS. Several independent consumers, ordering, or replay → Kinesis.
 
 ## AWS console ↔ Terraform map
 

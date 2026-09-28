@@ -11,6 +11,20 @@ tags: [topic, domain/performance]
 
 Eleven services that look like a pile of products and are actually one pipeline. The exam almost never asks how any of them work — it asks **which box** you put in the diagram.
 
+> [!info] Exam TL;DR
+> - **One pipeline:** ingest (Kinesis/MSK/DataSync) → store (**S3 data lake**) → catalog (**Glue Crawler → Glue Data Catalog**) → query (Athena/Redshift/EMR/OpenSearch) → visualise (QuickSight).
+> - **The Glue Data Catalog is shared** by Athena, EMR and Redshift Spectrum. Define a table once.
+> - **Athena** = serverless SQL on S3, **$5/TB scanned**. Cheaper = scan less: **Parquet/ORC + compression + partitioning** (AWS's own example: $15 → $1.25). Federated queries have a **10 MB per-query minimum**.
+> - **Redshift** = OLAP warehouse: **MPP + columnar + compression**. **RDS is OLTP, Redshift is OLAP** — never swap them.
+> - **Redshift Spectrum** queries S3 in place via **external tables**, but **requires a cluster** and **same Region** as the data. Best practice: **big fact tables in S3, small dimension tables in the cluster**.
+> - **Athena vs Redshift:** ad-hoc/occasional/no-infrastructure → **Athena**. Sustained, complex joins, many concurrent BI users → **Redshift**.
+> - **OpenSearch** = full-text **search** + **log analytics** (formerly Elasticsearch Service). **UltraWarm/cold** tier old indices cheaply.
+> - **EMR** = managed Hadoop/**Spark**. **Primary** (coordinates) · **Core** (tasks + **HDFS**) · **Task** (tasks only, no HDFS → **the Spot node**). **Transient** cluster auto-terminates = cheap batch.
+> - **QuickSight** = BI dashboards; **SPICE** = *Super-fast Parallel In-memory Calculation Engine*, imported data vs direct query, capacity **per Region**.
+> - **Lake Formation** = fine-grained permissions layer **over the Glue Data Catalog**.
+> - **MSK** = managed Kafka (pick when the scenario already says Kafka). **Managed Service for Apache Flink** = renamed Kinesis Data Analytics.
+> - **"Least operational overhead" + analytics ⇒ the serverless option** (Athena, Glue, QuickSight) over the cluster option (Redshift, EMR, OpenSearch).
+
 > [!warning] Build tier — **mostly conceptual-only**
 > **Athena + Glue are genuinely cheap to try** (Athena is $5/TB scanned; a few MB of test data costs fractions of a cent). **Redshift is blocked at plan level on this account** — same `SubscriptionRequiredException` as Kinesis ([[16-kinesis]]). **EMR and OpenSearch bill hourly per node** and are not free tier. So: build Athena/Glue if you want the muscle memory, learn the rest from this note.
 
@@ -148,22 +162,6 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 - **AWS Data Pipeline** — see the trap below. It's in the exam guide and it's effectively dead.
 
 > In one line: Lake Formation governs the catalog, MSK is Kafka-when-you-need-Kafka, Flink is stream processing, and Data Pipeline is a legacy answer.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **One pipeline:** ingest (Kinesis/MSK/DataSync) → store (**S3 data lake**) → catalog (**Glue Crawler → Glue Data Catalog**) → query (Athena/Redshift/EMR/OpenSearch) → visualise (QuickSight).
-> - **The Glue Data Catalog is shared** by Athena, EMR and Redshift Spectrum. Define a table once.
-> - **Athena** = serverless SQL on S3, **$5/TB scanned**. Cheaper = scan less: **Parquet/ORC + compression + partitioning** (AWS's own example: $15 → $1.25). Federated queries have a **10 MB per-query minimum**.
-> - **Redshift** = OLAP warehouse: **MPP + columnar + compression**. **RDS is OLTP, Redshift is OLAP** — never swap them.
-> - **Redshift Spectrum** queries S3 in place via **external tables**, but **requires a cluster** and **same Region** as the data. Best practice: **big fact tables in S3, small dimension tables in the cluster**.
-> - **Athena vs Redshift:** ad-hoc/occasional/no-infrastructure → **Athena**. Sustained, complex joins, many concurrent BI users → **Redshift**.
-> - **OpenSearch** = full-text **search** + **log analytics** (formerly Elasticsearch Service). **UltraWarm/cold** tier old indices cheaply.
-> - **EMR** = managed Hadoop/**Spark**. **Primary** (coordinates) · **Core** (tasks + **HDFS**) · **Task** (tasks only, no HDFS → **the Spot node**). **Transient** cluster auto-terminates = cheap batch.
-> - **QuickSight** = BI dashboards; **SPICE** = *Super-fast Parallel In-memory Calculation Engine*, imported data vs direct query, capacity **per Region**.
-> - **Lake Formation** = fine-grained permissions layer **over the Glue Data Catalog**.
-> - **MSK** = managed Kafka (pick when the scenario already says Kafka). **Managed Service for Apache Flink** = renamed Kinesis Data Analytics.
-> - **"Least operational overhead" + analytics ⇒ the serverless option** (Athena, Glue, QuickSight) over the cluster option (Redshift, EMR, OpenSearch).
 
 ## AWS console ↔ Terraform map
 

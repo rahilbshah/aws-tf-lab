@@ -11,6 +11,17 @@ tags: [topic, domain/performance]
 
 The catch-all. Seven services that are individually too small for their own note and collectively worth about **120 bank questions** — more than Route 53.
 
+> [!info] Exam TL;DR
+> - **DMS** migrates data and can **keep replicating (CDC)** so downtime is minimal; it runs on a **replication instance**. **Different engines ⇒ convert the schema first with AWS SCT / DMS Schema Conversion.** Oracle → Aurora PostgreSQL = **SCT + DMS**.
+> - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** at-least-once, **5 minutes**, 100,000/sec, priced by count+duration, **Request Response only**.
+> - **AppSync = managed GraphQL** with real-time **WebSocket subscriptions**; API Gateway = REST/HTTP/WebSocket. Amplify is built on AppSync.
+> - **AWS Batch** runs **containerised** jobs on ECS/EKS across EC2/Fargate/**Spot**, with **no time limit** — the answer when Lambda's **15 minutes** isn't enough.
+> - **Elastic Beanstalk** provisions EC2 + ELB + ASG + health monitoring from uploaded code. **No charge for Beanstalk itself — only the underlying resources.** You still control the resources.
+> - **Transfer Family** = managed **SFTP / FTPS / FTP / AS2** into **S3 or EFS**, when partners' clients can't change. **AS2 = B2B/EDI.** Not the same as DataSync.
+> - **Directory Service:** **Managed Microsoft AD** = real AD, trusts, MFA, schema extensions, **works with RDS SQL Server**. **AD Connector** = proxy to on-premises AD, stores nothing. **Simple AD** = Samba 4, basic, **no MFA/trusts/schema extensions**. Neither AD Connector nor Simple AD supports RDS SQL Server.
+> - For a **SaaS app's own users**, the answer is **Cognito**, not Directory Service.
+> - **QLDB** = immutable verifiable ledger. **AppFlow** = SaaS↔AWS data transfer. **Wavelength** = 5G edge. **License Manager** = BYOL tracking.
+
 > [!warning] Build tier — **conceptual-only**
 > Nothing here is free-tier friendly (DMS replication instances, Beanstalk environments and Directory Service directories all bill hourly) and none of it is Terraform-interesting. Read, drill, move on.
 
@@ -222,19 +233,6 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 | **AWS Serverless Application Repository / Device Farm** | share serverless apps / test on real mobile devices |
 
 > In one line: for the long tail, knowing the one-line purpose is enough to eliminate them as distractors.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **DMS** migrates data and can **keep replicating (CDC)** so downtime is minimal; it runs on a **replication instance**. **Different engines ⇒ convert the schema first with AWS SCT / DMS Schema Conversion.** Oracle → Aurora PostgreSQL = **SCT + DMS**.
-> - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** at-least-once, **5 minutes**, 100,000/sec, priced by count+duration, **Request Response only**.
-> - **AppSync = managed GraphQL** with real-time **WebSocket subscriptions**; API Gateway = REST/HTTP/WebSocket. Amplify is built on AppSync.
-> - **AWS Batch** runs **containerised** jobs on ECS/EKS across EC2/Fargate/**Spot**, with **no time limit** — the answer when Lambda's **15 minutes** isn't enough.
-> - **Elastic Beanstalk** provisions EC2 + ELB + ASG + health monitoring from uploaded code. **No charge for Beanstalk itself — only the underlying resources.** You still control the resources.
-> - **Transfer Family** = managed **SFTP / FTPS / FTP / AS2** into **S3 or EFS**, when partners' clients can't change. **AS2 = B2B/EDI.** Not the same as DataSync.
-> - **Directory Service:** **Managed Microsoft AD** = real AD, trusts, MFA, schema extensions, **works with RDS SQL Server**. **AD Connector** = proxy to on-premises AD, stores nothing. **Simple AD** = Samba 4, basic, **no MFA/trusts/schema extensions**. Neither AD Connector nor Simple AD supports RDS SQL Server.
-> - For a **SaaS app's own users**, the answer is **Cognito**, not Directory Service.
-> - **QLDB** = immutable verifiable ledger. **AppFlow** = SaaS↔AWS data transfer. **Wavelength** = 5G edge. **License Manager** = BYOL tracking.
 
 ## AWS console ↔ Terraform map
 

@@ -11,6 +11,17 @@ tags: [topic, domain/resilient]
 
 Everything in AWS storage that isn't S3 or EBS. Shared file systems, the bridge to on-premises, and the two ways to move bulk data in.
 
+> [!info] Exam TL;DR
+> - **Block / file / object.** EBS = one disk, one instance. EFS + FSx = a shared file system many machines mount. S3 = an API. "Mount", "shared across instances" → file.
+> - **EFS** = elastic **NFS** for **Linux**, mounted by many instances across AZs, no capacity to provision. **Not supported with Windows EC2 instances.** Regional vs One Zone; Standard / IA / Archive with lifecycle on last access.
+> - **FSx for Windows File Server** = **SMB + Active Directory + Windows ACLs**. The lift-and-shift-a-Windows-app answer. Single-AZ or Multi-AZ.
+> - **FSx for Lustre** = HPC/ML speed, sub-ms latency, **links to an S3 bucket and presents objects as files**. **Scratch** = not replicated; **Persistent** = replicated.
+> - **FSx for NetApp ONTAP** = the one that speaks **both NFS and SMB**. **OpenZFS** = NFS with cheap snapshots/clones.
+> - **Storage Gateway** = on-prem appliance. **S3 File Gateway** (NFS/SMB→S3) · **FSx File Gateway** · **Volume Gateway** (iSCSI) · **Tape Gateway** (virtual tape library).
+> - **Volume Gateway: cached** = primary in **S3**, hot subset local (shrink on-prem storage). **stored** = primary **on-prem**, snapshots to S3 (low-latency for everything + offsite backup).
+> - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object → S3/EFS/FSx, integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
+> - **AWS Backup** = central backup plans, tag-based assignment, cross-Region **and** cross-account (needs Organizations), and **Vault Lock = WORM**.
+
 > [!warning] Build tier — **conceptual-only**
 > EFS is nearly free at lab scale, but FSx, Storage Gateway and Snow all bill meaningfully and several take 20+ minutes to provision. This topic is learned from notes; the exam tests *which service you pick*, not the HCL.
 
@@ -138,19 +149,6 @@ The features that turn up in exam questions:
 It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx file systems, Storage Gateway volumes, DocumentDB, Neptune, Redshift, and more.
 
 > In one line: AWS Backup is a policy engine over every service's own backups, with tag-based assignment, cross-Region and cross-account copies, and a vault lock that makes them WORM.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **Block / file / object.** EBS = one disk, one instance. EFS + FSx = a shared file system many machines mount. S3 = an API. "Mount", "shared across instances" → file.
-> - **EFS** = elastic **NFS** for **Linux**, mounted by many instances across AZs, no capacity to provision. **Not supported with Windows EC2 instances.** Regional vs One Zone; Standard / IA / Archive with lifecycle on last access.
-> - **FSx for Windows File Server** = **SMB + Active Directory + Windows ACLs**. The lift-and-shift-a-Windows-app answer. Single-AZ or Multi-AZ.
-> - **FSx for Lustre** = HPC/ML speed, sub-ms latency, **links to an S3 bucket and presents objects as files**. **Scratch** = not replicated; **Persistent** = replicated.
-> - **FSx for NetApp ONTAP** = the one that speaks **both NFS and SMB**. **OpenZFS** = NFS with cheap snapshots/clones.
-> - **Storage Gateway** = on-prem appliance. **S3 File Gateway** (NFS/SMB→S3) · **FSx File Gateway** · **Volume Gateway** (iSCSI) · **Tape Gateway** (virtual tape library).
-> - **Volume Gateway: cached** = primary in **S3**, hot subset local (shrink on-prem storage). **stored** = primary **on-prem**, snapshots to S3 (low-latency for everything + offsite backup).
-> - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object → S3/EFS/FSx, integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
-> - **AWS Backup** = central backup plans, tag-based assignment, cross-Region **and** cross-account (needs Organizations), and **Vault Lock = WORM**.
 
 ## AWS console ↔ Terraform map
 

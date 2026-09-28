@@ -11,6 +11,18 @@ tags: [topic, domain/resilient]
 
 The two halves of horizontal scaling on EC2: an **Application Load Balancer** spreads incoming traffic across many instances (Layer 7), and an **Auto Scaling Group** keeps the right number of instances running and replaces the dead ones. Together they turn a single fragile server into a self-healing, elastic fleet.
 
+> [!info] Exam TL;DR
+> - **ALB = Layer 7** (reads the HTTP request → routes on host / path / header / method / query-string / source-IP). **NLB = Layer 4** (TCP/UDP, flow-hash, ultra-low latency, millions of connections, static IP / EIP per AZ). **GWLB = Layer 3** (GENEVE, for inline appliances).
+> - ALB routes to a **target group**, not to instances directly. An **ASG registers its instances into the target group automatically** via `target_group_arns` — never attach by hand.
+> - **`health_check_type` decides self-healing.** Default `EC2` only checks the VM is alive; a failed *ALB* health check won't replace it → zombie serving 500s. Set **`ELB`** so the load balancer's verdict triggers ASG replacement.
+> - **ASG = min / desired / max.** `max` caps scale-out, `min` floors scale-in. Unhealthy instance → terminate + launch replacement to restore `desired`.
+> - **Scaling policies:** *dynamic* (target-tracking → recommended, step, simple), *predictive* (ML on history), *scheduled* (known times). **Target tracking auto-creates & manages the CloudWatch alarms** — don't hand-edit them.
+> - **ALB needs ≥ 2 AZs.** Cross-zone load balancing is **always on** for ALB (free); **off by default** for NLB (and enabling it adds inter-AZ data charges).
+> - **Scale-in order:** **Availability-Zone balance wins first**, then instances on **outdated configurations**, then closest to the next billing hour, then random. It is *not* simply "the oldest instance."
+> - **Scheduled scaling** sets `desired_capacity` at a wall-clock time, and *optionally* min/max. Setting only desired leaves dynamic scaling free to keep adjusting afterwards; pinning `min = max` freezes the group.
+> - **HTTP→HTTPS redirect is a native ALB listener action** (`redirect`, `HTTP_301`) — no instance, Lambda, or second load balancer needed. NLB can't do it (Layer 4).
+> - Production tiering: **ALB in public subnets, instances in private subnets** (only the ALB SG can reach them) + NAT/VPC-endpoints for outbound.
+
 ## What problem does this solve?
 
 One EC2 instance gives you two problems that look like one.
@@ -199,22 +211,6 @@ the whole argument for paying up front ([[14-dr-resilience]]).
 > In one line: spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and
 > the minimum is A times that.
 
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **ALB = Layer 7** (reads the HTTP request → routes on host / path / header / method / query-string / source-IP). **NLB = Layer 4** (TCP/UDP, flow-hash, ultra-low latency, millions of connections, static IP / EIP per AZ). **GWLB = Layer 3** (GENEVE, for inline appliances).
-> - ALB routes to a **target group**, not to instances directly. An **ASG registers its instances into the target group automatically** via `target_group_arns` — never attach by hand.
-> - **`health_check_type` decides self-healing.** Default `EC2` only checks the VM is alive; a failed *ALB* health check won't replace it → zombie serving 500s. Set **`ELB`** so the load balancer's verdict triggers ASG replacement.
-> - **ASG = min / desired / max.** `max` caps scale-out, `min` floors scale-in. Unhealthy instance → terminate + launch replacement to restore `desired`.
-> - **Scaling policies:** *dynamic* (target-tracking → recommended, step, simple), *predictive* (ML on history), *scheduled* (known times). **Target tracking auto-creates & manages the CloudWatch alarms** — don't hand-edit them.
-> - **ALB needs ≥ 2 AZs.** Cross-zone load balancing is **always on** for ALB (free); **off by default** for NLB (and enabling it adds inter-AZ data charges).
-> - **Scale-in order:** **Availability-Zone balance wins first**, then instances on **outdated configurations**, then closest to the next billing hour, then random. It is *not* simply "the oldest instance."
-> - **Scheduled scaling** sets `desired_capacity` at a wall-clock time, and *optionally* min/max. Setting only desired leaves dynamic scaling free to keep adjusting afterwards; pinning `min = max` freezes the group.
-> - **HTTP→HTTPS redirect is a native ALB listener action** (`redirect`, `HTTP_301`) — no instance, Lambda, or second load balancer needed. NLB can't do it (Layer 4).
-> - Production tiering: **ALB in public subnets, instances in private subnets** (only the ALB SG can reach them) + NAT/VPC-endpoints for outbound.
-
 ## AWS console ↔ Terraform map
 
 | Console / what you want | Terraform | Notes |
@@ -359,7 +355,6 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 > **A ×** that. For N=2 over two AZs the minimum is **4**, not 2. The other recurring decoy is
 > spreading across **Regions** instead of AZs — that is disaster recovery, a different question
 > ([[14-dr-resilience]]), and it does not satisfy a single-Region AZ-loss requirement.
-
 
 ## Worked examples
 

@@ -11,6 +11,17 @@ tags: [topic, domain/cost]
 
 The fourth exam domain, worth **20%**. Not a service — a way of reading questions. Every "MOST cost-effective" question is asking you to compare options on price, which is a different retrieval path from "what does this service do."
 
+> [!info] Exam TL;DR
+> - **Seven ways to pay:** On-Demand · Savings Plans · Reserved Instances · Spot · Dedicated Hosts · Dedicated Instances · Capacity Reservations.
+> - **Savings Plans commit to a $/hour spend. Reserved Instances commit to a configuration.** AWS now recommends Savings Plans over RIs.
+> - **Compute Savings Plans: up to 66%**, flexible across family, size, **Region**, OS, tenancy — **and covers Fargate and Lambda**. **EC2 Instance Savings Plans: up to 72%**, but locked to **one family in one Region**. Less flexible = bigger discount.
+> - **Standard RI** = bigger discount, **can be modified but not exchanged**. **Convertible RI** = smaller discount, **can be exchanged**.
+> - **A Savings Plan does not reserve capacity.** For guaranteed capacity in an AZ you need a **Capacity Reservation** or a **zonal Reserved Instance**.
+> - **Spot** = spare capacity, steepest discount, **two-minute interruption notice** via **EventBridge** and **instance metadata** (`spot/instance-action`). Hibernate gets a notice but **no two minutes**. For fault-tolerant, interruptible work only.
+> - **Dedicated Hosts** for **BYOL per-socket/per-core licensing**; Dedicated Instances for single-tenant hardware without host visibility.
+> - **Cost Explorer** analyses and forecasts · **Budgets** alerts on a threshold · **Cost Anomaly Detection** watches for the unexpected · **Compute Optimizer** rightsizes from 14 days of CloudWatch metrics · **cost allocation tags** slice the bill.
+> - **Non-compute levers:** gateway endpoints are free vs NAT per-hour+per-GB · outbound and cross-AZ data transfer is charged · unattached EIPs cost money · S3 lifecycle · `gp3` · orphaned EBS snapshots · consolidated billing shares volume/RI/SP discounts.
+
 ## What problem does this solve?
 
 On-Demand pricing is the rate you pay for saying nothing in advance. You start an instance, you're charged by the second, you stop it, the charge stops. Nothing is committed and nothing is promised.
@@ -131,19 +142,6 @@ Five, and the exam mostly wants you to pick the right one for a described job.
 The discriminator that matters: **Cost Explorer explains the past, Budgets warn about the future, Compute Optimizer tells you the resource is the wrong size.**
 
 > In one line: Cost Explorer analyses, Budgets alert, Anomaly Detection watches, tags slice, and Compute Optimizer says the instance is too big.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **Seven ways to pay:** On-Demand · Savings Plans · Reserved Instances · Spot · Dedicated Hosts · Dedicated Instances · Capacity Reservations.
-> - **Savings Plans commit to a $/hour spend. Reserved Instances commit to a configuration.** AWS now recommends Savings Plans over RIs.
-> - **Compute Savings Plans: up to 66%**, flexible across family, size, **Region**, OS, tenancy — **and covers Fargate and Lambda**. **EC2 Instance Savings Plans: up to 72%**, but locked to **one family in one Region**. Less flexible = bigger discount.
-> - **Standard RI** = bigger discount, **can be modified but not exchanged**. **Convertible RI** = smaller discount, **can be exchanged**.
-> - **A Savings Plan does not reserve capacity.** For guaranteed capacity in an AZ you need a **Capacity Reservation** or a **zonal Reserved Instance**.
-> - **Spot** = spare capacity, steepest discount, **two-minute interruption notice** via **EventBridge** and **instance metadata** (`spot/instance-action`). Hibernate gets a notice but **no two minutes**. For fault-tolerant, interruptible work only.
-> - **Dedicated Hosts** for **BYOL per-socket/per-core licensing**; Dedicated Instances for single-tenant hardware without host visibility.
-> - **Cost Explorer** analyses and forecasts · **Budgets** alerts on a threshold · **Cost Anomaly Detection** watches for the unexpected · **Compute Optimizer** rightsizes from 14 days of CloudWatch metrics · **cost allocation tags** slice the bill.
-> - **Non-compute levers:** gateway endpoints are free vs NAT per-hour+per-GB · outbound and cross-AZ data transfer is charged · unattached EIPs cost money · S3 lifecycle · `gp3` · orphaned EBS snapshots · consolidated billing shares volume/RI/SP discounts.
 
 ## AWS console ↔ Terraform map
 

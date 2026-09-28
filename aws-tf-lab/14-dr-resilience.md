@@ -11,6 +11,23 @@ tags: [topic, domain/resilient]
 
 The cross-cutting note. Almost no new services — this is how the pieces you already know assemble into an architecture that survives losing a Region.
 
+> [!info] Exam TL;DR
+> - **RTO = how long you're down. RPO = how much data you lose.** Both set by the business. RPO is bought with replication; RTO is bought with pre-provisioned capacity.
+> - **HA survives a component or AZ. DR survives a Region** (or data corruption).
+> - **Four strategies, by how much is running in the DR Region:** backup & restore (nothing) → pilot light (data + core infra, **servers off**) → warm standby (**scaled-down but working**) → multi-site active/active (full, serving). Cost and speed rise together.
+> - **Pilot light vs warm standby:** pilot light **cannot serve a request without action first**; warm standby **can serve immediately, at reduced capacity**. It's about whether compute is *running*.
+> - **Backup & restore needs infrastructure as code** — you must rebuild infra, config and code, not just data. Back up and copy **AMIs** too.
+> - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
+> - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
+> - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
+> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to **10** secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
+> - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
+> - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
+> - **Detection time is spent out of your RTO.** Detect → notify → escalate → evaluate → declare → recover, all inside the budget. Aggressive RTO ⇒ **deep health checks**, not heartbeats.
+> - **Only the recovery path you test frequently works.** Keep recovery paths few; manage **DR-Region configuration drift** (stale AMIs, unraised **service quotas**) with **AWS Config** + **SSM Automation** + **CloudFormation drift detection**.
+> - **All four strategies can be built across AZs instead of Regions** — the answer when **data residency** pins you to a single Region.
+> - **Backup & restore is the corruption answer**, not just the cheap one — it's the only copy the disaster didn't reach.
+
 > [!warning] Build tier — **conceptual-only**
 > A real multi-Region DR setup means paying for a second environment. This one is learned, not built — and the exam tests the *strategy choice*, not the HCL.
 
@@ -151,25 +168,6 @@ Two consequences that read like exam answers:
 - **Manage configuration drift in the DR Region.** The DR Region silently rots: AMIs go stale, **service quotas** were never raised, security groups drift from the primary. **AWS Config** records and detects the drift, **Systems Manager Automation** remediates it, and **CloudFormation drift detection** catches stacks that no longer match their template.
 
 > In one line: detection time is spent out of your RTO budget, and the only recovery path that works is one you run often enough to trust.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **RTO = how long you're down. RPO = how much data you lose.** Both set by the business. RPO is bought with replication; RTO is bought with pre-provisioned capacity.
-> - **HA survives a component or AZ. DR survives a Region** (or data corruption).
-> - **Four strategies, by how much is running in the DR Region:** backup & restore (nothing) → pilot light (data + core infra, **servers off**) → warm standby (**scaled-down but working**) → multi-site active/active (full, serving). Cost and speed rise together.
-> - **Pilot light vs warm standby:** pilot light **cannot serve a request without action first**; warm standby **can serve immediately, at reduced capacity**. It's about whether compute is *running*.
-> - **Backup & restore needs infrastructure as code** — you must rebuild infra, config and code, not just data. Back up and copy **AMIs** too.
-> - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
-> - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
-> - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
-> - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to **10** secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
-> - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
-> - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
-> - **Detection time is spent out of your RTO.** Detect → notify → escalate → evaluate → declare → recover, all inside the budget. Aggressive RTO ⇒ **deep health checks**, not heartbeats.
-> - **Only the recovery path you test frequently works.** Keep recovery paths few; manage **DR-Region configuration drift** (stale AMIs, unraised **service quotas**) with **AWS Config** + **SSM Automation** + **CloudFormation drift detection**.
-> - **All four strategies can be built across AZs instead of Regions** — the answer when **data residency** pins you to a single Region.
-> - **Backup & restore is the corruption answer**, not just the cheap one — it's the only copy the disaster didn't reach.
 
 ## AWS console ↔ Terraform map
 

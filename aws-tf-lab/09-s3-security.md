@@ -11,6 +11,15 @@ tags: [topic, domain/secure]
 
 Who can reach an object, how it's encrypted, and how to make it undeletable. The largest exam domain (Secure, 30%) leans on this heavily. Part of [[09-s3]].
 
+> [!info] Exam TL;DR
+> - **Three access mechanisms:** **IAM policies** (identity-based — "what may *this principal* do?"), **bucket policies** (resource-based — "who may touch *this bucket*?"), **ACLs** (legacy, now discouraged — disable with `BucketOwnerEnforced`).
+> - **Block Public Access = 4 settings** (new/existing × ACL/policy). It **overrides policy** — a valid public policy simply won't take effect. Settable per-bucket **and account-wide**.
+> - **Encryption at rest:** **SSE-S3** (AWS keys, AES-256, the automatic default since Jan 2023) · **SSE-KMS** (your KMS key, CloudTrail-audited) · **DSSE-KMS** (two independent AES-256 layers) · **SSE-C** (you supply the key per request) · **client-side** (encrypt before upload). ⚠️ **SSE-C is disabled by default on new buckets since April 2026.**
+> - **Changing default encryption does NOT re-encrypt existing objects** — use **S3 Batch Operations Copy**.
+> - **Presigned URL** carries the **permissions of whoever generated it**, is time-limited, and works for **anyone holding the link**. Max **7 days** via CLI/SDK, **12 hours** via console.
+> - **Object Lock = WORM.** **GOVERNANCE** = overridable with `s3:BypassGovernanceRetention`; **COMPLIANCE** = nobody can delete, *including root*. **Legal hold** = no expiry, removed explicitly. Requires **versioning**.
+> - **MFA Delete** can only be configured by the **root account** with an MFA device — not via IAM users, not via Terraform.
+
 ## What problem does this solve?
 
 An S3 object is private by default. Nobody but the account that owns it can read it until somebody deliberately widens that. So the whole topic is really about *deliberate widening and narrowing* — and about what stops an accidental widening from becoming a headline.
@@ -131,19 +140,6 @@ The simple delete didn't destroy anything. It laid a delete marker *on top*, so 
 Finally **MFA Delete**, which protects permanent version deletion and turning versioning off. It can only be configured by the **root account** holding an MFA device, via the CLI. Not an IAM user, not the console, not Terraform — and that root-only constraint is the entire reason it shows up on the exam.
 
 > In one line: the lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Three access mechanisms:** **IAM policies** (identity-based — "what may *this principal* do?"), **bucket policies** (resource-based — "who may touch *this bucket*?"), **ACLs** (legacy, now discouraged — disable with `BucketOwnerEnforced`).
-> - **Block Public Access = 4 settings** (new/existing × ACL/policy). It **overrides policy** — a valid public policy simply won't take effect. Settable per-bucket **and account-wide**.
-> - **Encryption at rest:** **SSE-S3** (AWS keys, AES-256, the automatic default since Jan 2023) · **SSE-KMS** (your KMS key, CloudTrail-audited) · **DSSE-KMS** (two independent AES-256 layers) · **SSE-C** (you supply the key per request) · **client-side** (encrypt before upload). ⚠️ **SSE-C is disabled by default on new buckets since April 2026.**
-> - **Changing default encryption does NOT re-encrypt existing objects** — use **S3 Batch Operations Copy**.
-> - **Presigned URL** carries the **permissions of whoever generated it**, is time-limited, and works for **anyone holding the link**. Max **7 days** via CLI/SDK, **12 hours** via console.
-> - **Object Lock = WORM.** **GOVERNANCE** = overridable with `s3:BypassGovernanceRetention`; **COMPLIANCE** = nobody can delete, *including root*. **Legal hold** = no expiry, removed explicitly. Requires **versioning**.
-> - **MFA Delete** can only be configured by the **root account** with an MFA device — not via IAM users, not via Terraform.
 
 ## AWS console ↔ Terraform map
 

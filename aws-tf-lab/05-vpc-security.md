@@ -11,6 +11,14 @@ tags: [topic, domain/secure]
 
 The traffic-control and visibility layers of a VPC: two firewalls (stateful SG, stateless NACL), the log that tells you *why* traffic was allowed or blocked (Flow Logs), and the managed deep-inspection layer (Network Firewall). Part of [[05-vpc]].
 
+> [!info] Exam TL;DR
+> - **Security Group** = stateful, instance/ENI-level, **allow-only** (implicit deny for the rest), all rules evaluated together. Return traffic is auto-allowed (stateful).
+> - **NACL** = stateless, subnet-level, **allow AND deny**, rules **numbered & evaluated low→high, first match wins**. You must open **both directions** *and* the **ephemeral return ports `1024–65535`** yourself.
+> - **Default flip:** default NACL = allow-all; a **new custom NACL = deny-all**. (SGs: new SG denies inbound; default SG self-references.)
+> - **Use a NACL when** you need an explicit **DENY** (block an IP/CIDR) or a **subnet-wide guardrail** — the two things an SG fundamentally can't do.
+> - **Flow Logs** capture connection **metadata** + **ACCEPT/REJECT** — never payload. Attach at **VPC / subnet / ENI**; publish to **CloudWatch Logs / S3 / Kinesis Firehose**.
+> - **Network Firewall** = managed, stateful **IPS (Suricata)** with deep packet inspection + **domain filtering**; lives in a **dedicated firewall subnet** with route tables sending traffic through it. Far beyond SG/NACL (which are just IP/port allow-deny).
+
 ## What problem does this solve?
 
 Your instances live in a VPC. Something has to decide which packets are allowed to reach them, and something has to tell you afterwards what that decision was.
@@ -122,18 +130,6 @@ The awkward part is where it lives. It isn't a setting you enable on a subnet. I
 Which is the other thing to hold on to: security groups and NACLs are free. Network Firewall runs around $0.395/hr per firewall endpoint plus data processing (⚠️ check current). It's not the default answer — it's the answer when the requirement mentions payload, protocol or domain.
 
 > In one line: SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Security Group** = stateful, instance/ENI-level, **allow-only** (implicit deny for the rest), all rules evaluated together. Return traffic is auto-allowed (stateful).
-> - **NACL** = stateless, subnet-level, **allow AND deny**, rules **numbered & evaluated low→high, first match wins**. You must open **both directions** *and* the **ephemeral return ports `1024–65535`** yourself.
-> - **Default flip:** default NACL = allow-all; a **new custom NACL = deny-all**. (SGs: new SG denies inbound; default SG self-references.)
-> - **Use a NACL when** you need an explicit **DENY** (block an IP/CIDR) or a **subnet-wide guardrail** — the two things an SG fundamentally can't do.
-> - **Flow Logs** capture connection **metadata** + **ACCEPT/REJECT** — never payload. Attach at **VPC / subnet / ENI**; publish to **CloudWatch Logs / S3 / Kinesis Firehose**.
-> - **Network Firewall** = managed, stateful **IPS (Suricata)** with deep packet inspection + **domain filtering**; lives in a **dedicated firewall subnet** with route tables sending traffic through it. Far beyond SG/NACL (which are just IP/port allow-deny).
 
 ## AWS console ↔ Terraform map
 

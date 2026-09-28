@@ -11,6 +11,16 @@ tags: [topic, domain/resilient]
 
 The managed relational database tier. **RDS** = AWS runs standard engines for you; **Aurora** = AWS's cloud-native re-architecture of MySQL/Postgres with separated compute/storage. Built hands-on in [[06-capstone]]; this is the exam depth.
 
+> [!info] Exam TL;DR
+> - **RDS engines:** MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, + **Aurora**.
+> - **Multi-AZ = HA/failover** (synchronous standby, NOT readable). **Read Replica = read scaling** (async, readable, cross-region-capable, manual promote). The #1 RDS trap.
+> - **Backups:** automated (daily snapshot + ~5-min transaction logs → **PITR to any second**, 1–35 day retention, deleted with the instance) vs manual snapshots (survive deletion). Restore always creates a **new instance**.
+> - **Aurora storage:** **6 copies across 3 AZs**, self-healing, shared **cluster volume** auto-scaling **10 GB → 128 TB**; compute/storage **separated**.
+> - **Aurora replicas share the storage** (no copy) → **<10 ms** lag, auto-failover, up to **15** — **same cap as RDS**, so replica *count* is not the discriminator; **shared storage** is. Endpoints: **writer/cluster**, **reader** (LB'd reads), **custom**, **instance**.
+> - **Aurora Serverless v2** = auto-scaling capacity for variable workloads. **Aurora Global Database** = 1 primary + up to 10 read-only regions, <1s replication (DR + global reads).
+> - **Encryption at rest** = set at **creation only**. Keep DBs `publicly_accessible = false` in private subnets.
+> - **Three ways to authenticate:** native DB password · **IAM database authentication** (`rds-db:connect`, 15-minute token, nothing stored) · **Secrets Manager** (stored password + automatic rotation). "No password in the app / use the EC2 role" → **IAM DB auth**.
+
 ## What problem does this solve?
 
 A relational database is not hard to install. It is hard to *keep alive*.
@@ -173,20 +183,6 @@ The traps are all substitutions between adjacent rows:
 > In one line: reachability is the security group, API permission is the IAM policy, logging
 > in is IAM DB authentication, and encrypting the wire is `rds.force_ssl` — four layers, and
 > questions swap them deliberately.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **RDS engines:** MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, + **Aurora**.
-> - **Multi-AZ = HA/failover** (synchronous standby, NOT readable). **Read Replica = read scaling** (async, readable, cross-region-capable, manual promote). The #1 RDS trap.
-> - **Backups:** automated (daily snapshot + ~5-min transaction logs → **PITR to any second**, 1–35 day retention, deleted with the instance) vs manual snapshots (survive deletion). Restore always creates a **new instance**.
-> - **Aurora storage:** **6 copies across 3 AZs**, self-healing, shared **cluster volume** auto-scaling **10 GB → 128 TB**; compute/storage **separated**.
-> - **Aurora replicas share the storage** (no copy) → **<10 ms** lag, auto-failover, up to **15** — **same cap as RDS**, so replica *count* is not the discriminator; **shared storage** is. Endpoints: **writer/cluster**, **reader** (LB'd reads), **custom**, **instance**.
-> - **Aurora Serverless v2** = auto-scaling capacity for variable workloads. **Aurora Global Database** = 1 primary + up to 10 read-only regions, <1s replication (DR + global reads).
-> - **Encryption at rest** = set at **creation only**. Keep DBs `publicly_accessible = false` in private subnets.
-> - **Three ways to authenticate:** native DB password · **IAM database authentication** (`rds-db:connect`, 15-minute token, nothing stored) · **Secrets Manager** (stored password + automatic rotation). "No password in the app / use the EC2 role" → **IAM DB auth**.
 
 ## AWS console ↔ Terraform map
 

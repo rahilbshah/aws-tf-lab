@@ -11,6 +11,13 @@ tags: [topic, domain/resilient, capstone]
 
 The consolidation build: a real secure 3-tier app (ALB → ASG → RDS) in a purpose-built VPC, composed as **three reusable Terraform modules**. Two big lessons: **modules** (the Terraform skill) and **RDS** (the exam service). Ties together [[05-vpc-core]], [[04-alb-asg]], [[02-ec2]], [[01-iam]], [[03-ami-bake]].
 
+> [!info] Exam TL;DR
+> - **3-tier shape:** ALB in **public** subnets → ASG instances in **private app** subnets → RDS in **private data** subnets. Security-group **chain**: internet → alb-sg → app-sg → db-sg (each tier only reachable from the one in front). This is *the* canonical SAA-C03 architecture.
+> - **RDS Multi-AZ = synchronous standby in another AZ for FAILOVER (HA)** — NOT readable. **Read Replicas = async copies for READ SCALING** — readable, can be cross-region. Different problems.
+> - **RDS encryption at rest is set at creation only** — can't encrypt an existing unencrypted instance in place (snapshot → copy with encryption → restore).
+> - **DB subnet group** tells RDS which (2+ AZ) subnets it may live in. Keep RDS `publicly_accessible = false`.
+> - **Terraform modules:** a module is just a directory (variables = inputs, outputs = returns). Outputs bubble up **one level** — re-export at each caller. Provider is configured once in the **root**; child modules inherit it.
+
 ## What problem does this solve?
 
 An app that serves the public internet has to be reachable. A database holding that app's data must never be.
@@ -106,17 +113,6 @@ Notice what changed underneath. The bastion's security model is a network hole p
 Two Terraform snags on the way: on a **launch template**, `iam_instance_profile` is a **block** (`iam_instance_profile { name = ... }`), not the bare string you use on `aws_instance` — and instances that already exist need an **ASG instance refresh** before they pick up the new profile.
 
 > In one line: a bastion opens a door and guards it; Session Manager opens no door and dials out instead.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **3-tier shape:** ALB in **public** subnets → ASG instances in **private app** subnets → RDS in **private data** subnets. Security-group **chain**: internet → alb-sg → app-sg → db-sg (each tier only reachable from the one in front). This is *the* canonical SAA-C03 architecture.
-> - **RDS Multi-AZ = synchronous standby in another AZ for FAILOVER (HA)** — NOT readable. **Read Replicas = async copies for READ SCALING** — readable, can be cross-region. Different problems.
-> - **RDS encryption at rest is set at creation only** — can't encrypt an existing unencrypted instance in place (snapshot → copy with encryption → restore).
-> - **DB subnet group** tells RDS which (2+ AZ) subnets it may live in. Keep RDS `publicly_accessible = false`.
-> - **Terraform modules:** a module is just a directory (variables = inputs, outputs = returns). Outputs bubble up **one level** — re-export at each caller. Provider is configured once in the **root**; child modules inherit it.
 
 ## AWS console ↔ Terraform map (new pieces)
 

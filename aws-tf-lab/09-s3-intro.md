@@ -11,6 +11,15 @@ tags: [topic, domain/performance]
 
 The foundation: what S3 stores and how, the storage-class spectrum, and the two data-management features that save you money and mistakes — versioning and lifecycle. Part of [[09-s3]].
 
+> [!info] Exam TL;DR
+> - **Bucket names are GLOBALLY unique** (across all AWS accounts); buckets themselves live in **one region**.
+> - The **key** is the object's full name (`photos/cat.jpg`). S3 is a **flat key→object map** — "folders" are a console illusion over the `/` in keys; the leading part is a **prefix**.
+> - **Durability = 99.999999999% (11 nines)** for *every* storage class, stored across **≥3 AZs** — *except* One Zone classes (**1 AZ**). **Availability differs by class** (Standard 99.99%, IA 99.9%, One Zone-IA 99.5%).
+> - **Storage classes:** Standard → Intelligent-Tiering → Standard-IA → One Zone-IA → Glacier Instant → Glacier Flexible → Glacier Deep Archive. **Minimum storage durations:** IA classes **30 d**, Glacier Instant/Flexible **90 d**, Deep Archive **180 d** (delete early = still billed).
+> - **Versioning** keeps every version; a delete creates a **delete marker** (nothing is really removed). Deleting the marker restores the object.
+> - **Lifecycle rules** transition objects between classes and **expire** them (incl. noncurrent versions + incomplete multipart uploads) — pure cost control.
+> - **Static website hosting** serves objects over **HTTP only** — HTTPS needs CloudFront in front.
+
 ## What problem does this solve?
 
 You have files. Not a database, not a disk you attach to one server — just files. Logs, images, backups, CSV exports, a website's HTML.
@@ -113,19 +122,6 @@ The fix is always the same: enable versioning and a lifecycle rule with **noncur
 This is also why a versioned bucket refuses to `terraform destroy` — it fails with `BucketNotEmpty` until every version *and* every delete marker is purged, even though the bucket appears empty.
 
 > In one line: with versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **Bucket names are GLOBALLY unique** (across all AWS accounts); buckets themselves live in **one region**.
-> - The **key** is the object's full name (`photos/cat.jpg`). S3 is a **flat key→object map** — "folders" are a console illusion over the `/` in keys; the leading part is a **prefix**.
-> - **Durability = 99.999999999% (11 nines)** for *every* storage class, stored across **≥3 AZs** — *except* One Zone classes (**1 AZ**). **Availability differs by class** (Standard 99.99%, IA 99.9%, One Zone-IA 99.5%).
-> - **Storage classes:** Standard → Intelligent-Tiering → Standard-IA → One Zone-IA → Glacier Instant → Glacier Flexible → Glacier Deep Archive. **Minimum storage durations:** IA classes **30 d**, Glacier Instant/Flexible **90 d**, Deep Archive **180 d** (delete early = still billed).
-> - **Versioning** keeps every version; a delete creates a **delete marker** (nothing is really removed). Deleting the marker restores the object.
-> - **Lifecycle rules** transition objects between classes and **expire** them (incl. noncurrent versions + incomplete multipart uploads) — pure cost control.
-> - **Static website hosting** serves objects over **HTTP only** — HTTPS needs CloudFront in front.
 
 ## AWS console ↔ Terraform map
 

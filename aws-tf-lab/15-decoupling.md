@@ -11,6 +11,20 @@ tags: [topic, domain/resilient]
 
 Getting a message from one component to another without the two having to be up at the same time. The single most-tested *architectural pattern* on SAA-C03 — it shows up inside questions that look like they're about something else.
 
+> [!info] Exam TL;DR
+> - **A queue decouples in time and rate.** Producer and consumer no longer need to be healthy at the same moment, or fast at the same rate.
+> - **SQS retention:** default **4 days**, min **60 seconds**, max **14 days**.
+> - **Receiving is not deleting.** A received message goes invisible for the **visibility timeout** (default **30s**, max **12 hours**) and **reappears** if not deleted. Delivery is therefore **at-least-once** — consumers must be **idempotent**.
+> - **Dead-letter queue** = redrive policy + **`maxReceiveCount`**. Without one, a poison message loops until retention expires. Give the DLQ **longer retention**, because a standard-queue message keeps its **original enqueue timestamp** (FIFO resets it).
+> - **Short polling is the DEFAULT** and samples only a subset of servers, so it can return empty while messages exist. **Long polling** (`WaitTimeSeconds` up to **20 seconds**) queries all servers, cuts empty responses and costs less.
+> - **SNS pushes to every subscriber; SQS holds for one consumer that pulls.** SNS endpoints: SQS, Lambda, HTTP(S), email, SMS, mobile push, Firehose. **A2A and A2P**; SQS is A2A only.
+> - **Fan-out** = SNS topic → several SQS queues, so each consumer gets its own buffer and retries.
+> - The queue receives an **SNS JSON envelope**, not your raw payload — unless **raw message delivery** is enabled.
+> - A queue **rejects SNS by default**: its resource policy must allow `sns.amazonaws.com`, pinned with **`aws:SourceArn`**.
+> - **Standard** = unlimited throughput, best-effort order, at-least-once. **FIFO** = strict order, exactly-once, **300 TPS** (**3,000/sec** batched) unless high-throughput mode. **`MessageGroupId`** required; different groups run in parallel. **`MessageDeduplicationId`** = **5-minute** window.
+> - **Max message size is 1 MiB** — most course material still says 256 KB. Larger payloads go in S3 via the Extended Client Library (up to 2 GB).
+> - **Amazon MQ** = managed ActiveMQ/RabbitMQ, for **migrating an existing app without rewriting its messaging code**. Single-instance or active/standby across two AZs.
+
 > [!note] Build tier — **built (free)**
 > SQS and SNS are comfortably inside the always-free tier at lab volumes. Built hands-on in `../15-decoupling/`, and the observations below are from that lab, not from the docs.
 
@@ -114,22 +128,6 @@ The trade-off is that it's a **broker**, not a serverless service. You choose a 
 So: **a new application on AWS → SQS/SNS. An existing application you don't want to rewrite → Amazon MQ.**
 
 > In one line: Amazon MQ exists so a legacy app speaking a standard broker protocol can move to AWS without a rewrite — and that migration framing is the only reason to pick it.
-
-## Exam recap
-
-> [!info] Exam TL;DR
-> - **A queue decouples in time and rate.** Producer and consumer no longer need to be healthy at the same moment, or fast at the same rate.
-> - **SQS retention:** default **4 days**, min **60 seconds**, max **14 days**.
-> - **Receiving is not deleting.** A received message goes invisible for the **visibility timeout** (default **30s**, max **12 hours**) and **reappears** if not deleted. Delivery is therefore **at-least-once** — consumers must be **idempotent**.
-> - **Dead-letter queue** = redrive policy + **`maxReceiveCount`**. Without one, a poison message loops until retention expires. Give the DLQ **longer retention**, because a standard-queue message keeps its **original enqueue timestamp** (FIFO resets it).
-> - **Short polling is the DEFAULT** and samples only a subset of servers, so it can return empty while messages exist. **Long polling** (`WaitTimeSeconds` up to **20 seconds**) queries all servers, cuts empty responses and costs less.
-> - **SNS pushes to every subscriber; SQS holds for one consumer that pulls.** SNS endpoints: SQS, Lambda, HTTP(S), email, SMS, mobile push, Firehose. **A2A and A2P**; SQS is A2A only.
-> - **Fan-out** = SNS topic → several SQS queues, so each consumer gets its own buffer and retries.
-> - The queue receives an **SNS JSON envelope**, not your raw payload — unless **raw message delivery** is enabled.
-> - A queue **rejects SNS by default**: its resource policy must allow `sns.amazonaws.com`, pinned with **`aws:SourceArn`**.
-> - **Standard** = unlimited throughput, best-effort order, at-least-once. **FIFO** = strict order, exactly-once, **300 TPS** (**3,000/sec** batched) unless high-throughput mode. **`MessageGroupId`** required; different groups run in parallel. **`MessageDeduplicationId`** = **5-minute** window.
-> - **Max message size is 1 MiB** — most course material still says 256 KB. Larger payloads go in S3 via the Extended Client Library (up to 2 GB).
-> - **Amazon MQ** = managed ActiveMQ/RabbitMQ, for **migrating an existing app without rewriting its messaging code**. Single-instance or active/standby across two AZs.
 
 ## AWS console ↔ Terraform map
 

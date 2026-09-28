@@ -11,6 +11,16 @@ tags: [topic, domain/resilient]
 
 AWS's managed DNS. It answers "what IP is behind this name?" — but the exam cares about the *policy* in that answer: which of several IPs, chosen how, and what happens when one dies. Named after port 53.
 
+> [!info] Exam TL;DR
+> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — **it never checks whether you own the name**. Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
+> - **Alias vs CNAME** is the #1 Route 53 question. **CNAME cannot exist at the zone apex** (DNS protocol rule). **Alias can**, is Route 53-only, points **only at AWS resources**, and **query costs are free**. You **cannot set a TTL on an alias** to an AWS resource — it uses the target's.
+> - **Eight routing policies:** simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based.
+> - **Simple ≠ load balancing.** Multiple values are returned **all at once, in random order**, and the **client** picks — with **no health checking**. The health-checked version is **multivalue answer** (up to **8 healthy** records).
+> - **Geolocation** routes on where the **user** is (country/continent/state). **Geoproximity** routes on where your **resources** are, with a **bias** dial. Easy to swap.
+> - **Failover speed = (health check interval × failure threshold) + TTL.** Default-ish: (30s × 3) + TTL. Lower the TTL on failover-critical records — a 3600s TTL means an hour of stale answers no matter how fast Route 53 reacts.
+> - **Private hosted zone** = resolvable only from **associated VPCs**. Same name can exist public *and* private → **split-view DNS**.
+> - **Route 53 Resolver:** **inbound** endpoint = on-prem resolves **into** AWS. **outbound** endpoint = AWS resolves **out to** on-prem. Remember the direction.
+
 ## What problem does this solve?
 
 Machines route on IP addresses. People type names. Something has to turn one into the other.
@@ -123,20 +133,6 @@ Then hybrid. The VPC's built-in resolver sits at the **VPC base + 2** address (`
 Anchor on the direction the **query** travels, not the answer. Inbound = queries coming *into* AWS. Outbound = queries heading *out*.
 
 > In one line: a private zone answers only inside its associated VPCs; inbound lets on-prem ask AWS, outbound lets AWS ask on-prem.
-
-## Exam recap
-
-*Now that the mechanisms are clear, this is the compressed version to revise from.*
-
-> [!info] Exam TL;DR
-> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — **it never checks whether you own the name**. Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
-> - **Alias vs CNAME** is the #1 Route 53 question. **CNAME cannot exist at the zone apex** (DNS protocol rule). **Alias can**, is Route 53-only, points **only at AWS resources**, and **query costs are free**. You **cannot set a TTL on an alias** to an AWS resource — it uses the target's.
-> - **Eight routing policies:** simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based.
-> - **Simple ≠ load balancing.** Multiple values are returned **all at once, in random order**, and the **client** picks — with **no health checking**. The health-checked version is **multivalue answer** (up to **8 healthy** records).
-> - **Geolocation** routes on where the **user** is (country/continent/state). **Geoproximity** routes on where your **resources** are, with a **bias** dial. Easy to swap.
-> - **Failover speed = (health check interval × failure threshold) + TTL.** Default-ish: (30s × 3) + TTL. Lower the TTL on failover-critical records — a 3600s TTL means an hour of stale answers no matter how fast Route 53 reacts.
-> - **Private hosted zone** = resolvable only from **associated VPCs**. Same name can exist public *and* private → **split-view DNS**.
-> - **Route 53 Resolver:** **inbound** endpoint = on-prem resolves **into** AWS. **outbound** endpoint = AWS resolves **out to** on-prem. Remember the direction.
 
 ## AWS console ↔ Terraform map
 
