@@ -1,83 +1,120 @@
 /* ============================================================
-   readable.css — long-form reading comfort
-   Built 2026-09-28 after measuring the vault: 10.1% of all words
-   are bold and there are 1.2 bold runs per paragraph. Bold acts as
-   a stop sign, so the eye brakes constantly and never gets a smooth
-   run. This does NOT remove the bold from the notes — it renders it
-   gently, so emphasis still reads as emphasis without shouting.
+   readable.css — reading comfort AND visual hierarchy
+   v2, 2026-09-28.
 
-   Everything is a variable. Change a number, save, and Obsidian
-   applies it live. Delete the file to undo all of it.
+   v1 fixed the wrong problem. The vault is 10.1% bold by word, so I made
+   bold quieter — and made everything look identical. The trainer app gets
+   its hierarchy from SIZE, COLOUR and CONTAINERS, never from bolding words
+   inside a sentence. This does the same:
+
+     · bold        -> accent COLOUR at moderate weight (pops, doesn't stutter)
+     · callouts    -> loud, colour-coded by type. 203 of yours are traps.
+     · tables      -> a contained card with a distinct header
+     · "In one line" -> a summary bar you can find by shape alone
+     · headings    -> real size steps, so sections are landmarks
+
+   Every value is a variable. Delete the file to revert everything.
    ============================================================ */
 
-.theme-dark,
-.theme-light {
-  /* --- the big one: stop bold from shouting ------------------ */
-  --bold-weight: 600;          /* was ~700–800. 550–600 reads calm  */
-  --bold-color: inherit;       /* no colour shift; weight is enough */
-
-  /* --- breathing room ---------------------------------------- */
-  --line-height-normal: 1.75;  /* Claude's body sits near this     */
-  --p-spacing: 1.1em;          /* gap between paragraphs           */
-  --file-line-width: 46rem;    /* measure; lower = narrower column */
-
-  /* --- type --------------------------------------------------- */
+.theme-dark, .theme-light {
+  --line-height-normal: 1.75;
+  --p-spacing: 1.05em;
+  --file-line-width: 46rem;
   --font-text-theme: "Charter", "Iowan Old Style", "New York", Georgia, serif;
   --font-text-size: 18px;
+
+  /* bold: weight stays calm, colour does the work */
+  --bold-weight: 600;
+  --bold-color: var(--hl-key);
 }
 
-/* --- softer text colour: pure white on black is harsh --------- */
 .theme-dark {
-  --text-normal: #d8d4cc;      /* warm off-white, not #fff        */
-  --text-muted:  #9a958c;
+  --text-normal: #d8d4cc;
+  --text-muted:  #97918a;
+  --hl-key:      #e3b341;   /* key terms — warm amber, the one accent      */
+  --hl-code:     #d2a8ff;   /* inline code                                  */
+
+  --h1-color: #e8e3d9;
+  --h2-color: #dcd5c6;
+  --h3-color: #c8c1b4;
 }
 
-/* --- headings: calm, not neon -------------------------------- */
-.theme-dark {
-  --h1-color: #e6e1d7;
-  --h2-color: #d9cfa8;         /* was bright green                */
-  --h3-color: #cfc8ba;
-  --h4-color: #bdb6a8;
-}
-.markdown-rendered h1,
-.markdown-rendered h2,
-.markdown-rendered h3 {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-top: 1.9em;           /* air before a new section        */
-  margin-bottom: 0.55em;
-}
+/* ---------- body ------------------------------------------------ */
+.markdown-rendered p, .markdown-rendered li { line-height: var(--line-height-normal); }
+.markdown-rendered p  { margin-block: var(--p-spacing); }
+.markdown-rendered li + li { margin-top: 0.3em; }
+.markdown-rendered strong { color: var(--hl-key); font-weight: 600; }
 
-/* --- body copy ------------------------------------------------ */
-.markdown-rendered p,
-.markdown-rendered li {
-  line-height: var(--line-height-normal);
-  letter-spacing: 0.002em;
+/* ---------- headings: real size steps, not just colour ---------- */
+.markdown-rendered h1 { font-size: 1.95em; font-weight: 700; letter-spacing:-0.02em; margin: 0 0 .7em; }
+.markdown-rendered h2 {
+  font-size: 1.42em; font-weight: 650; letter-spacing:-0.015em;
+  margin: 2.3em 0 .7em; padding-bottom: .3em;
+  border-bottom: 1px solid rgba(255,255,255,.09);   /* a visible section break */
 }
-.markdown-rendered p { margin-block: var(--p-spacing); }
-.markdown-rendered li + li { margin-top: 0.35em; }
+.markdown-rendered h3 { font-size: 1.12em; font-weight: 650; margin: 1.8em 0 .5em; }
 
-/* --- inline code: stop it punching holes in the line ---------- */
-.markdown-rendered code {
-  font-size: 0.87em;
-  padding: 0.08em 0.3em;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.055);
-  color: inherit;
-}
-
-/* --- callouts: you have 356 of them, so make them quiet ------- */
+/* ---------- callouts: the main hierarchy carrier ---------------- */
 .markdown-rendered .callout {
-  border-radius: 8px;
-  padding: 0.75em 1em;
+  border-radius: 10px;
+  padding: .85em 1.1em;
+  margin: 1.5em 0;
+  border: 1px solid rgba(var(--callout-color), .30);
+  border-left: 4px solid rgb(var(--callout-color));
+  background: rgba(var(--callout-color), .07);
   mix-blend-mode: normal;
-  --callout-blend-mode: normal;
 }
-.markdown-rendered .callout-title { font-weight: 600; }
+.markdown-rendered .callout-title {
+  font-weight: 700; font-size: .95em;
+  letter-spacing: .02em; text-transform: uppercase;
+  color: rgb(var(--callout-color));
+  padding-bottom: .15em;
+}
+.markdown-rendered .callout-content p { margin-block: .55em; }
+.markdown-rendered .callout strong { color: inherit; font-weight: 700; }
 
-/* --- tables: 216 of them; readable beats compact -------------- */
-.markdown-rendered table { font-size: 0.94em; line-height: 1.45; }
-.markdown-rendered th, .markdown-rendered td { padding: 0.5em 0.7em; }
+/* traps are the highest-value block in the vault — make them unmistakable */
+.markdown-rendered .callout[data-callout="warning"] { --callout-color: 224,108,64; }
+.markdown-rendered .callout[data-callout="failure"] { --callout-color: 218,84,84;  }
+.markdown-rendered .callout[data-callout="info"]    { --callout-color: 88,166,255; }
+.markdown-rendered .callout[data-callout="example"] { --callout-color: 137,133,220;}
+.markdown-rendered .callout[data-callout="tip"]     { --callout-color: 63,185,120; }
+.markdown-rendered .callout[data-callout="success"] { --callout-color: 63,185,120; }
+.markdown-rendered .callout[data-callout="question"]{ --callout-color: 210,168,255;}
 
-/* --- keep the editor matching the reading view ---------------- */
+/* ---------- "In one line:" — the per-section summary ------------- */
+.markdown-rendered blockquote {
+  border-left: 3px solid var(--hl-key);
+  background: rgba(227,179,65,.06);
+  border-radius: 0 8px 8px 0;
+  padding: .6em 1em; margin: 1.4em 0;
+  font-style: normal; color: var(--text-normal);
+}
+
+/* ---------- tables: a card, with a header you can see ----------- */
+.markdown-rendered table {
+  font-size: .93em; line-height: 1.45;
+  border-collapse: separate; border-spacing: 0;
+  border: 1px solid rgba(255,255,255,.10); border-radius: 10px; overflow: hidden;
+  margin: 1.5em 0;
+}
+.markdown-rendered thead th {
+  background: rgba(255,255,255,.055);
+  font-weight: 700; font-size: .88em;
+  text-transform: uppercase; letter-spacing: .03em;
+  color: var(--text-muted);
+}
+.markdown-rendered th, .markdown-rendered td {
+  padding: .55em .8em; border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.markdown-rendered tbody tr:last-child td { border-bottom: none; }
+.markdown-rendered tbody tr:hover { background: rgba(255,255,255,.028); }
+.markdown-rendered td strong { color: var(--text-normal); font-weight: 700; }
+
+/* ---------- inline code ----------------------------------------- */
+.markdown-rendered code {
+  font-size: .86em; padding: .1em .35em; border-radius: 5px;
+  background: rgba(210,168,255,.10); color: var(--hl-code);
+}
+
 .markdown-source-view.mod-cm6 .cm-line { line-height: var(--line-height-normal); }
