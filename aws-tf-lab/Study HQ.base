@@ -1,0 +1,51 @@
+filters:
+  or:
+    - file.hasTag("topic")
+    - file.hasTag("decision")
+formulas:
+  weak_spot: file.hasTag("weak-spot")
+properties:
+  formula.weak_spot:
+    displayName: Weak spot
+  file.mtime:
+    displayName: Last edited
+views:
+  - type: table
+    name: Topics by domain
+    filters:
+      and:
+        - file.hasTag("topic")
+    groupBy:
+      property: domain
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - formula.weak_spot
+      - file.mtime
+  - type: table
+    name: Weak spots
+    filters:
+      and:
+        - file.hasTag("weak-spot")
+    order:
+      - file.name
+      - domain
+      - file.mtime
+  - type: table
+    name: Not touched in 14+ days
+    filters:
+      and:
+        - file.mtime < now() - "14 days"
+    order:
+      - file.name
+      - domain
+      - file.mtime
+  - type: cards
+    name: Decision pages
+    filters:
+      and:
+        - file.hasTag("decision")
+    order:
+      - file.name
+      - question
