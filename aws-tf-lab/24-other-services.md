@@ -155,6 +155,12 @@ telling them apart *is* the exam question:
   (unauthenticated) credentials**. This is the one that answers *"what may you touch in my
   account"*.
 
+**ALB and CloudFront can authenticate for you.** An **Application Load Balancer** has
+built-in **Cognito user pool** authentication — the listener rule authenticates the user before
+the request ever reaches your instances, which is how a scenario "decouples user
+authentication from the application". That integration is with a **user pool**; an identity
+pool has no part in it.
+
 They **work independently or together**. The combined flow is the one scenarios describe:
 sign in at the **user pool** → exchange the token at the **identity pool** → get temporary
 credentials → call **S3 or DynamoDB directly from the mobile app**.

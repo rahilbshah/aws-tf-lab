@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*178 recall hooks · 326 pointers · ~29 min read*
+*178 recall hooks · 334 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -72,6 +72,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
 
 **Traps** [[01-iam-advanced#Traps|open]]
+- RAM offered where an SCP or Control Tower belongs
 - "attach an SCP to give that account access"
 - root user and SCPs
 - permissions boundary vs SCP
@@ -88,6 +89,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[01-iam-advanced#How policy types combine|How policy types combine]]
 - [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
 - [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
+- [[01-iam-advanced#RAM shares resources; it never enforces policy|RAM shares resources; it never enforces policy]]
 
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
@@ -450,7 +452,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - The lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.  
   ↳ [[09-s3-security#Object Lock, and the delete that succeeds anyway|explain]]
 
-**Traps** [[09-s3-security#The Terraform I wrote|open]]
+**Traps** [[09-s3-security#Comparisons|open]]
+- an encryption option borrowed from another service
+- SSE-KMS request cost answered by changing the encryption type
 - Block Public Access can be overridden by a bucket policy
 - enabling default encryption encrypts what's already there
 - a presigned URL uses the recipient's permissions
@@ -464,6 +468,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]]
 - [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]
+- [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
 
 ## [[10-route53|10 – Route 53 (DNS)]]
@@ -829,6 +834,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[21-security#⚠️ Traps — why the wrong answer looks right|open]]
 - a regional certificate offered for CloudFront
 - "AWS managed" chosen as a service's default encryption key
+- Shield Advanced offered for a request-rate threshold
+- "disable GuardDuty" chosen when the findings must survive
 - rotation re-encrypts your data
 - "rotate this asymmetric key automatically"
 - Parameter Store for a rotating password
@@ -847,6 +854,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]]
 - [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]]
 - [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]]
+- [[21-security#Rate limiting is a WAF feature, and disabling GuardDuty destroys findings|Rate limiting is a WAF feature, and disabling GuardDuty destroys findings]]
 
 
 ## [[22-analytics|22 – Data & Analytics]]

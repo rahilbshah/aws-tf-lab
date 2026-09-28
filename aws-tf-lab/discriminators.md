@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*104 comparison tables · 185 discriminators · ~35 min read*
+*107 comparison tables · 190 discriminators · ~36 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -50,8 +50,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
-**Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]]
+**Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]] · [[01-iam-advanced#RAM shares resources; it never enforces policy|RAM shares resources; it never enforces policy]]
 
+- **RAM offered where an SCP or Control Tower belongs** — The word "multi-account" pulls toward RAM, but ask what the requirement does. Restricting what may be launched is an SCP — a deny at the OU, which is also the least-effort answer because it applies to every account at once.  
+  ↳ [[01-iam-advanced#Traps|note]]
 - **"attach an SCP to give that account access"** — SCPs never grant. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes.  
   ↳ [[01-iam-advanced#Traps|note]]
 - **root user and SCPs** — Both halves matter and they point opposite ways. The management account is immune to SCPs entirely — including its root user and every IAM principal in it. A member account's root user is not immune — it is capped like everyone else. That's exactly why AWS recommends keeping no workloads in the management account.  
@@ -242,8 +244,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
 
-**Compare:** [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]
+**Compare:** [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
+- **an encryption option borrowed from another service** — The distractors are real options in the wrong place. "Client-side with S3-managed keys" does not exist.  
+  ↳ [[09-s3-security#Comparisons|note]]
+- **SSE-KMS request cost answered by changing the encryption type** — High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the bill shows it.  
+  ↳ [[09-s3-security#Comparisons|note]]
 - **Block Public Access can be overridden by a bucket policy** — Backwards. BPA overrides the policy. A perfectly valid public bucket policy is simply ignored while BPA is on.  
   ↳ [[09-s3-security#The Terraform I wrote|note]]
 - **enabling default encryption encrypts what's already there** — It doesn't. Default encryption applies to new objects only. Existing objects keep their previous encryption until you rewrite them — S3 Batch Operations → Copy.  
@@ -468,11 +474,15 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[21-security|21 – Security & Encryption]]
 
-**Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]]
+**Compare:** [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]] · [[21-security#Rate limiting is a WAF feature, and disabling GuardDuty destroys findings|Rate limiting is a WAF feature, and disabling GuardDuty destroys findings]]
 
 - **a regional certificate offered for CloudFront** — CloudFront is global and takes its certificate only from us-east-1, no matter where the origin or the bucket sits.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **"AWS managed" chosen as a service's default encryption key** — The three key types are near-identical strings and the question is usually "why is there no encryption detail in CloudTrail?".  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **Shield Advanced offered for a request-rate threshold** — "Block a source making N requests per second" is a WAF rate-based rule, every time. Shield Advanced is the answer to "we want DDoS cost protection and 24/7 response support", not to a configurable rate threshold.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **"disable GuardDuty" chosen when the findings must survive** — They are opposites. Suspend stops monitoring and billing but keeps existing findings and lets you re-enable.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

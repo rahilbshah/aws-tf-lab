@@ -252,6 +252,59 @@ Two ways to become public (ACL, policy) × two timings (new, existing). All four
 | Use for | Internal policy, testing settings first | Regulatory WORM (SEC 17a-4, FINRA) |
 | Escape hatch | The bypass permission | Close the AWS account |
 
+### Which encryption options actually exist — per service
+
+Six misses in one mock came from choosing an option that **does not exist for that service**.
+The wrong answers are built by taking a real option from one service and offering it for
+another. Learn the menus, and most of the distractors disappear.
+
+**S3 — server-side (S3 holds the key material):**
+
+| Option | Key held by | Reach for it when |
+|---|---|---|
+| **SSE-S3** (`AES256`) | AWS, invisible | default since Jan 2023; "just encrypt it" |
+| **SSE-KMS** (`aws:kms`) | your KMS key | you need an **audit trail of key use** and a **key policy** — the compliance answer |
+| **DSSE-KMS** | your KMS key, twice | two independent layers, for the strictest mandates |
+| **SSE-C** | **you send the key on every request** | you must hold the key material yourself and accept managing it |
+
+**S3 — client-side (S3 never sees plaintext, and never sees the key):**
+
+| Option | Key held by |
+|---|---|
+| **CSE-KMS** | a KMS key you own |
+| **CSE with a client-side master key** | entirely you |
+
+**There is no "client-side encryption with S3-managed keys."** It is a contradiction: AWS
+states *"Amazon S3 does not play a role in encrypting or decrypting your objects"* — S3 cannot
+manage a key it never receives. Any option pairing *client-side* with *S3-managed* is
+manufactured.
+
+**EBS — KMS only.** *"Amazon EBS encryption uses AWS KMS keys."* That is the whole menu: an
+**AWS managed** KMS key or a **customer managed** one. There is **no SSE-C, no
+customer-provided key and no client-side option for EBS**, so any answer offering one is
+wrong by construction.
+
+Two EBS facts that get tested as a pair, both verbatim from AWS: encryption covers
+*"both data-at-rest and **data-in-transit between an instance and its attached EBS
+storage**"* — so "only the volume is encrypted, not the traffic to the instance" is false —
+and **snapshots of an encrypted volume are automatically encrypted**, with no way to remove
+encryption afterwards. You also **cannot encrypt an existing unencrypted volume in place**:
+snapshot it, then create an encrypted volume from the snapshot.
+
+> [!warning] Trap — an encryption option borrowed from another service
+> The distractors are real options in the wrong place. **"Client-side with S3-managed keys"**
+> does not exist. **SSE-C and client-side encryption do not exist for EBS** — EBS is KMS-only.
+> **DynamoDB** defaults to an **AWS owned** key and is always encrypted ([[21-security]]).
+> And when a stem demands an **audit trail of who used the key**, or **cross-account access to
+> encrypted data**, SSE-S3 and SSE-C both fail: only **SSE-KMS with a customer managed key**
+> gives you a key policy and CloudTrail records.
+
+> [!warning] Trap — SSE-KMS request cost answered by changing the encryption type
+> High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the
+> bill shows it. The fix is **S3 Bucket Keys** — a short-lived bucket-level key that cuts KMS
+> requests dramatically while staying SSE-KMS. Dropping to **SSE-S3** or **SSE-C** also cuts
+> the cost but abandons the key policy and the audit trail that made SSE-KMS the requirement.
+
 ## Worked examples
 
 > [!example] Worked example — the bucket that cannot leak

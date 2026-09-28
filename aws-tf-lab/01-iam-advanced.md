@@ -256,6 +256,30 @@ flowchart LR
 | `aws:PrincipalArn` | the caller's ARN | pin a specific role; prefer `ArnEquals`/`ArnLike` |
 | `aws:SecureTransport` | HTTPS? | the TLS-only guardrail — see [[09-s3-security]] |
 
+### RAM shares resources; it never enforces policy
+
+Two misses in one mock picked **AWS RAM** for governance questions. RAM and the governance
+services sit at different layers and are never substitutes:
+
+| You want to… | Service |
+|---|---|
+| **share a resource** across accounts — subnets, Transit Gateway attachments, Resolver rules, License Manager configs | **AWS RAM** |
+| **forbid an action** across accounts — "only these instance types may launch" | **SCP** (a `Deny`) |
+| **stand up new accounts** with pre-approved configuration and ongoing guardrails | **AWS Control Tower** — landing zone + guardrails |
+| **see and pay for everything centrally** | **Organizations** consolidated billing |
+
+RAM has **no deny, no condition, no compliance report**. If the requirement is a restriction,
+a standard, or an account factory, RAM cannot be the answer however much the scenario stresses
+"multiple accounts".
+
+> [!warning] Trap — RAM offered where an SCP or Control Tower belongs
+> The word "multi-account" pulls toward RAM, but ask what the requirement *does*. **Restricting
+> what may be launched is an SCP** — a deny at the OU, which is also the least-effort answer
+> because it applies to every account at once. **Provisioning new accounts with preapproved
+> configuration is Control Tower**, whose landing zone and guardrails exist for exactly that.
+> RAM is only ever the answer when something concrete is being *shared* — and then the usual
+> case is **VPC subnets** ([[05-vpc-endpoints-peering]]), not a Transit Gateway.
+
 ## Worked examples
 
 > [!example] Worked example — "no resources outside eu-west-1, and nobody can turn off CloudTrail"

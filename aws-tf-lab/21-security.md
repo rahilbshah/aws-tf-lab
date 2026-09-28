@@ -222,6 +222,43 @@ issuing internal certificates, and it is the answer only when the scenario says 
 > **DynamoDB is the canonical example** — always encrypted, no off switch, AWS owned by
 > default. And "Customer managed" is never a default anywhere, because you have to create it.
 
+### Rate limiting is a WAF feature, and disabling GuardDuty destroys findings
+
+Two edge/detection details that were each missed on confidence.
+
+**Rate-based rules belong to WAF, not Shield.** AWS: *"A rate-based rule counts incoming
+requests and rate limits requests when they are coming at too fast a rate."* So a stem
+describing *"attackers make 100 requests per second while normal users make about 10"* is a
+**WAF rate-based rule** — a threshold you set on request rate from a source. **Shield
+Advanced** adds DDoS cost protection, richer L3/L4 detection and the **Shield Response Team**;
+it does not give you a request-rate threshold to configure. Shield Advanced *includes* WAF at
+no extra cost, which is why both appear as options — but the thing doing the rate limiting is
+still WAF.
+
+**AWS Firewall Manager is the multi-account layer above WAF.** It centrally configures and
+enforces WAF rules (and Shield Advanced, security groups) across accounts in an Organization.
+One account, one Region → **WAF directly**. Many accounts, or "centrally configure and keep
+them consistent" → **Firewall Manager**.
+
+**GuardDuty: suspend keeps findings, disable destroys them.** Verbatim: suspending means
+*"it no longer monitors… Your existing findings remain intact"*, and you can re-enable.
+Disabling means *"your existing findings and the GuardDuty configuration are lost and can't be
+recovered"* — export them first if you want them. Disabling is also **per Region**: to turn
+GuardDuty off everywhere you must disable it in **each Region** where it is on.
+
+> [!warning] Trap — Shield Advanced offered for a request-rate threshold
+> "Block a source making N requests per second" is a **WAF rate-based rule**, every time.
+> Shield Advanced is the answer to *"we want DDoS cost protection and 24/7 response support"*,
+> not to a configurable rate threshold. Note also that GuardDuty notifications come from an
+> **EventBridge rule → SNS** — GuardDuty emits **findings as events**, so there is no
+> CloudWatch *metric* to alarm on.
+
+> [!warning] Trap — "disable GuardDuty" chosen when the findings must survive
+> They are opposites. **Suspend** stops monitoring and billing but **keeps** existing findings
+> and lets you re-enable. **Disable** loses the findings and the configuration permanently.
+> If the stem says the company wants to stop using GuardDuty but keep the findings, the answer
+> is **suspend** — or **export to S3 first, then disable**.
+
 ## Worked examples
 
 > [!example] Worked example — encrypting a 500 MB object with a 4 KB limit
