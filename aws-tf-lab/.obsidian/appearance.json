@@ -1,4 +1,10 @@
 {
-  "cssTheme": "Things",
-  "enabledCssSnippets": []
+  "cssTheme": "GitHub Theme",
+  "enabledCssSnippets": [
+    "wide-content",
+    "readable"
+  ],
+  "baseFontSize": 18,
+  "baseFontSizeAction": true,
+  "theme": "system"
 }

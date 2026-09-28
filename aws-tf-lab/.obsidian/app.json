@@ -1,4 +1,9 @@
 {
-  "readableLineLength": false,
-  "strictLineBreaks": true
+  "readableLineLength": true,
+  "strictLineBreaks": true,
+  "alwaysUpdateLinks": true,
+  "attachmentFolderPath": "attachments",
+  "trashOption": "local",
+  "propertiesInDocument": "hidden",
+  "showInlineTitle": false
 }

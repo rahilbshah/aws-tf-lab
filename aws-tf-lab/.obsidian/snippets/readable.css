@@ -1,0 +1,83 @@
+/* ============================================================
+   readable.css — long-form reading comfort
+   Built 2026-09-28 after measuring the vault: 10.1% of all words
+   are bold and there are 1.2 bold runs per paragraph. Bold acts as
+   a stop sign, so the eye brakes constantly and never gets a smooth
+   run. This does NOT remove the bold from the notes — it renders it
+   gently, so emphasis still reads as emphasis without shouting.
+
+   Everything is a variable. Change a number, save, and Obsidian
+   applies it live. Delete the file to undo all of it.
+   ============================================================ */
+
+.theme-dark,
+.theme-light {
+  /* --- the big one: stop bold from shouting ------------------ */
+  --bold-weight: 600;          /* was ~700–800. 550–600 reads calm  */
+  --bold-color: inherit;       /* no colour shift; weight is enough */
+
+  /* --- breathing room ---------------------------------------- */
+  --line-height-normal: 1.75;  /* Claude's body sits near this     */
+  --p-spacing: 1.1em;          /* gap between paragraphs           */
+  --file-line-width: 46rem;    /* measure; lower = narrower column */
+
+  /* --- type --------------------------------------------------- */
+  --font-text-theme: "Charter", "Iowan Old Style", "New York", Georgia, serif;
+  --font-text-size: 18px;
+}
+
+/* --- softer text colour: pure white on black is harsh --------- */
+.theme-dark {
+  --text-normal: #d8d4cc;      /* warm off-white, not #fff        */
+  --text-muted:  #9a958c;
+}
+
+/* --- headings: calm, not neon -------------------------------- */
+.theme-dark {
+  --h1-color: #e6e1d7;
+  --h2-color: #d9cfa8;         /* was bright green                */
+  --h3-color: #cfc8ba;
+  --h4-color: #bdb6a8;
+}
+.markdown-rendered h1,
+.markdown-rendered h2,
+.markdown-rendered h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 1.9em;           /* air before a new section        */
+  margin-bottom: 0.55em;
+}
+
+/* --- body copy ------------------------------------------------ */
+.markdown-rendered p,
+.markdown-rendered li {
+  line-height: var(--line-height-normal);
+  letter-spacing: 0.002em;
+}
+.markdown-rendered p { margin-block: var(--p-spacing); }
+.markdown-rendered li + li { margin-top: 0.35em; }
+
+/* --- inline code: stop it punching holes in the line ---------- */
+.markdown-rendered code {
+  font-size: 0.87em;
+  padding: 0.08em 0.3em;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.055);
+  color: inherit;
+}
+
+/* --- callouts: you have 356 of them, so make them quiet ------- */
+.markdown-rendered .callout {
+  border-radius: 8px;
+  padding: 0.75em 1em;
+  mix-blend-mode: normal;
+  --callout-blend-mode: normal;
+}
+.markdown-rendered .callout-title { font-weight: 600; }
+
+/* --- tables: 216 of them; readable beats compact -------------- */
+.markdown-rendered table { font-size: 0.94em; line-height: 1.45; }
+.markdown-rendered th, .markdown-rendered td { padding: 0.5em 0.7em; }
+
+/* --- keep the editor matching the reading view ---------------- */
+.markdown-source-view.mod-cm6 .cm-line { line-height: var(--line-height-normal); }

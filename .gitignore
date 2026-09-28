@@ -39,9 +39,12 @@ terraform.rc
 
 # Obsidian per-session/per-device state (churns constantly; not shareable)
 # Vault root was renamed notes/ -> aws-tf-lab/
-aws-tf-lab/.obsidian/workspace.json
-aws-tf-lab/.obsidian/workspace-mobile.json
-aws-tf-lab/.obsidian/cache
+# Obsidian is a personal environment, not vault content. Track only the CSS
+# we actually author; plugins and themes are downloadable (1.35 MB of vendored
+# plugin code was in here), and the settings JSONs churn on every tweak.
+aws-tf-lab/.obsidian/*
+!aws-tf-lab/.obsidian/snippets/
+aws-tf-lab/.obsidian/snippets/*.css.bak
 
 # Human-readable plan dumps (terraform show > plan.txt) — workspace artifacts
 plan.txt
@@ -50,8 +53,9 @@ plan.txt
 __pycache__/
 *.pyc
 
-# Retired 2026-09-06 (CLAUDE.md 13.1) - plugin no longer used, pure git churn
-aws-tf-lab/.obsidian/plugins/obsidian-spaced-repetition/
 
 # Downloaded source PDFs - notes cite the live docs URL, not the local copy
 *.pdf
+
+# Obsidian's local trash (trashOption: "local") — churn, never content
+aws-tf-lab/.trash/
