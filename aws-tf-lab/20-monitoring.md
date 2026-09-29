@@ -19,6 +19,8 @@ Four services that answer four different questions, and an exam that mostly test
 > - **An alarm invokes actions only when it CHANGES state.** Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
 > - **Composite alarms exist to reduce alarm noise** — and they cannot perform EC2 or Auto Scaling actions.
 > - **EventBridge = CloudWatch Events, renamed.** Same service; a question naming either means the same thing.
+> - **Alarm actions on EC2: `reboot` fixes an *Instance* status check, `recover` fixes a *System* one** (bad host → move to new hardware). `recover` works **only** with `StatusCheckFailed_System`. Recovery keeps the **instance ID and every IP including public IPv4**; it **loses RAM**. **Terminated instances can never be recovered.**
+> - **"Notify 30 days before a certificate expires"** → ACM's **`DaysToExpiry`** CloudWatch metric (published **twice daily**) and/or an **EventBridge** rule on **AWS Health** ACM events → **SNS**. Auto-renewal does not remove the need to watch it.
 
 ## What problem does this solve?
 
@@ -99,6 +101,59 @@ auditors who liked having bastion logs.
 > In one line: SSM acts on the instance rather than watching it, and Session Manager is the
 > answer whenever a stem wants shell access without a bastion, an open port or a key.
 
+### CloudWatch alarm actions on EC2 — reboot is not recover
+
+A CloudWatch alarm on a **per-instance** EC2 metric can carry an *action* that operates the
+instance itself: **stop**, **terminate**, **reboot** or **recover**. Stop and terminate exist to
+save money on instances that have finished their work. Reboot and recover exist to restore an
+instance automatically, and the exam tests the difference between those two because it maps onto
+the two **status checks**.
+
+- **Instance** status check fails → something inside the guest is broken (bad kernel, exhausted
+  memory, corrupt filesystem). A **reboot** is the fix: same physical host, OS restart.
+- **System** status check fails → the *host underneath* is broken (loss of network, loss of power,
+  a hardware or software fault on the physical host). A reboot cannot help; the instance must
+  move. That is **recover**.
+
+`recover` is therefore wired to **`StatusCheckFailed_System`** and is explicitly **not permitted**
+on `StatusCheckFailed_Instance`. (`0` means the check passed, `1` means it failed.)
+
+**What survives a recovery** is the point most questions turn on. A recovered instance is
+identical to the original, keeping its **instance ID**, its **private, public and Elastic IP
+addresses**, its **instance metadata**, its **placement group**, its **attached EBS volumes** and
+its **Availability Zone**. What is lost: everything in **volatile memory (RAM)**, **instance store
+data** (for CloudWatch action based recovery), and **OS uptime resets to zero** — because the
+migration presents to the instance as an unplanned reboot. And **a terminated instance can never
+be recovered.**
+
+Two mechanisms do this. **Simplified automatic recovery** is **on by default** on supported
+instances, no alarm required. **CloudWatch action based recovery** is the one you configure
+yourself, and the one that can notify an **SNS** topic on each attempt. Both work only on
+supported instance types, and both must be in place *before* the check fails.
+
+> In one line: reboot for a failed Instance check, recover for a failed System check — recover
+> moves the instance to new hardware, keeps its ID and all its IPs, and loses whatever was in RAM.
+
+### Alerting before a certificate expires
+
+ACM auto-renews the certificates it issued, as long as validation still resolves — see
+[[21-security#ACM — where the certificate has to live]]. Auto-renewal is not the same as knowing
+it happened, so "notify the security team 30 days before expiry" is a monitoring question with
+**two** valid answers, which is why it shows up as Select TWO:
+
+- **The metric.** ACM publishes **`DaysToExpiry`** in the **`AWS/CertificateManager`** namespace,
+  dimensioned by **`CertificateArn`**, **twice per day** for every certificate, stopping once the
+  certificate expires. Alarm on it at `<= 30`.
+- **The event.** ACM emits **AWS Health** events for renewal-eligible certificates — on
+  successful renewal, and when a human must act for renewal to happen. The event codes are
+  **`AWS_ACM_RENEWAL_STATE_CHANGE`** (renewed, expired, or due to expire),
+  **`CAA_CHECK_FAILURE`** and **`AWS_ACM_RENEWAL_FAILURE`** (private-CA-signed). They arrive as
+  source **`aws.health`**, detail-type **`AWS Health Event`**, so an **EventBridge** rule can
+  filter on the code and target **SNS**.
+
+> In one line: ACM's DaysToExpiry metric (twice daily) or an EventBridge rule on AWS Health ACM
+> events is how you get told before a certificate lapses; auto-renewal can still fail silently.
+
 ## AWS console ↔ Terraform map
 
 | Console action | Terraform resource | Key arguments |
@@ -151,6 +206,10 @@ graph TB
 - **The CloudWatch agent** collects in-guest metrics and logs, publishes to the `CWAgent` namespace by default, and its metrics are **billed as custom metrics**.
 - ⚠️ verify: the exact list of valid `retention_in_days` values for a log group (1 day → 10 years, plus "never expire" as the default) — confirm against the Logs docs before relying on a specific number.
 
+- **EC2 alarm actions:** **stop, terminate, reboot, recover**. `recover` works **only** with `StatusCheckFailed_System`, never `StatusCheckFailed_Instance`. Recovery **preserves** instance ID, private/public/Elastic IPs, metadata, placement group, attached EBS volumes and AZ; it **loses** RAM contents and instance-store data, and **uptime resets to zero**. **Terminated instances cannot be recovered.** **Simplified automatic recovery is enabled by default** on supported instances; CloudWatch action based recovery is configured manually. Reboot/stop/terminate actions use the service-linked role **`AWSServiceRoleForCloudWatchEvents`**. Configure these alarms to treat missing data as **`missing`**, since EC2 metrics can briefly go `INSUFFICIENT_DATA` on a healthy instance.
+- **ACM expiry:** metric **`DaysToExpiry`**, namespace **`AWS/CertificateManager`**, dimension **`CertificateArn`**, published **twice per day** until the certificate expires. Separately, **AWS Health** events (`aws.health` / *AWS Health Event*) carry **`AWS_ACM_RENEWAL_STATE_CHANGE`**, **`CAA_CHECK_FAILURE`**, **`AWS_ACM_RENEWAL_FAILURE`** for **EventBridge → SNS**.
+*Verified against AWS docs 2026-09-29.*
+
 ## Comparisons
 
 ### The four services — the discrimination the exam actually tests
@@ -169,6 +228,19 @@ graph TB
 | Answers "was it ever open to 0.0.0.0/0 last month?" | no — only that a call happened | **yes** |
 | Answers "which IAM principal did it?" | **yes** | no |
 | Can enforce/remediate | no | **yes** — Config rules + SSM Automation remediation |
+
+### EC2 alarm actions — reboot vs recover
+| | reboot | recover |
+|---|---|---|
+| Fixes a failing | **Instance** status check | **System** status check |
+| Cause | something broken **inside the guest** | the **underlying host** — power, network, hardware |
+| Physical host | **stays the same** | instance **moves to new hardware** |
+| Allowed on `StatusCheckFailed_Instance` | Yes | **No** |
+| Allowed on `StatusCheckFailed_System` | Yes | **Yes — the only metric it works with** |
+| Keeps instance ID / IPs / EBS / AZ | Yes | **Yes** (incl. public IPv4 and Elastic IP) |
+| Keeps RAM contents | No | **No** |
+| Recommended evaluation periods | 3 × 1 min | 2 × 1 min |
+| Works on a terminated instance | — | **Never** |
 
 ### CloudWatch event types
 | | Metric alarm | Composite alarm | EventBridge rule |
@@ -213,6 +285,28 @@ graph TB
 
 ## ⚠️ Traps — why the wrong answer looks right
 
+> [!warning] Trap — reboot offered for a failed system status check
+> The stem describes an instance made unreachable by a fault on the **underlying host** and offers
+> a reboot alarm. A reboot keeps the instance on the **same broken host**, so it fixes nothing —
+> **recover** is the action that moves it to new hardware. The mirror-image trap also appears:
+> `recover` attached to `StatusCheckFailed_Instance`, which AWS does not permit at all. Two more
+> distractors in this family: "**terminated** instances can be recovered if configured at launch"
+> (never — terminated is terminated) and "in-memory data **is retained** during recovery" (it is
+> **lost**; the migration looks like an unplanned reboot to the instance). What *is* kept is the
+> instance ID and every IP address, including the **public IPv4** — which is what distinguishes
+> automatic recovery from a manual stop/start, where a non-Elastic public IPv4 changes.
+
+> [!warning] Trap — "ACM auto-renews, so no monitoring is needed"
+> True and irrelevant. Auto-renewal can still **fail** — DNS validation records removed, a CAA
+> record blocking issuance, an email-validated certificate nobody clicked. A stem asking to be
+> **notified 30 days before expiry** wants the **`DaysToExpiry`** CloudWatch alarm and/or an
+> **EventBridge** rule on **AWS Health** ACM events → **SNS**. Eliminate: **AWS Config** "manually
+> created rule checking certificate expiry" (Config evaluates configuration, and the stem's own
+> wording gives it away), **Trusted Advisor** as an alarm source (it has an ACM check, but you do
+> not build a CloudWatch alarm on a Trusted Advisor *metric*), and **ACM Private CA** — switching
+> your public certificates to a paid private CA to get an alert is the most expensive wrong answer
+> on the page.
+
 > [!warning] Trap — a bastion host offered for private-instance access
 > Any stem asking to reach an instance in a **private subnet** lists a bastion/jump host, an
 > inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme. All three are
@@ -254,6 +348,10 @@ graph TB
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [Stop, terminate, reboot, or recover an EC2 instance (CloudWatch alarm actions)](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingAlarmActions.html)
+- [Recover your instance (preserved vs lost elements)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html)
+- [ACM supported CloudWatch metrics (`DaysToExpiry`)](https://docs.aws.amazon.com/acm/latest/userguide/cloudwatch-metrics.html)
+- [ACM supported events / AWS Health event codes](https://docs.aws.amazon.com/acm/latest/userguide/supported-events.html)
 - [CloudWatch metrics concepts](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html) — resolution, retention, periods; verified 2026-09-25
 - [Using CloudWatch alarms](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html) — states, actions, composite alarms; verified 2026-09-25
 - [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html) — in-guest metrics, custom-metric billing; verified 2026-09-25

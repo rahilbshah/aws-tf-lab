@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*178 recall hooks · 334 pointers · ~30 min read*
+*182 recall hooks · 340 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -327,10 +327,16 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[07-rds-aurora#Logging in with an IAM role instead of a password|explain]]
 - RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens  
   ↳ [[07-rds-aurora#RDS Proxy — the connection pool in front of the database|explain]]
+- Babelfish lets the application keep speaking T-SQL to Aurora PostgreSQL on port  
+  ↳ [[07-rds-aurora#Babelfish — keeping T-SQL applications after moving to Aurora PostgreSQL|explain]]
+- Enhanced Monitoring is the per-process, OS-level view collected by an agent inside  
+  ↳ [[07-rds-aurora#Enhanced Monitoring — OS metrics from an agent, not the hypervisor|explain]]
 - Reachability is the security group, API permission is the IAM policy, logging  
   ↳ [[07-rds-aurora#Four different things called "securing the database"|explain]]
 
 **Traps** [[07-rds-aurora#The Terraform I wrote|open]]
+- Babelfish offered instead of SCT + DMS
+- Enhanced Monitoring metrics confused with standard CloudWatch metrics
 - an IAM role on the app is not, by itself, database authentication
 - "IAM database authentication controls what the user can do in the database"
 - rds-db: vs rds:
@@ -346,6 +352,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]]
 - [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]]
+- [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]]
 - [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
 
@@ -799,8 +806,14 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[20-monitoring#How it actually works|explain]]
 - SSM acts on the instance rather than watching it, and Session Manager is the  
   ↳ [[20-monitoring#Systems Manager — the one that reaches *into* the instance|explain]]
+- Reboot for a failed Instance check, recover for a failed System check — recover  
+  ↳ [[20-monitoring#CloudWatch alarm actions on EC2 — reboot is not recover|explain]]
+- ACM's DaysToExpiry metric (twice daily) or an EventBridge rule on AWS Health ACM  
+  ↳ [[20-monitoring#Alerting before a certificate expires|explain]]
 
 **Traps** [[20-monitoring#⚠️ Traps — why the wrong answer looks right|open]]
+- reboot offered for a failed system status check
+- "ACM auto-renews, so no monitoring is needed"
 - a bastion host offered for private-instance access
 - CloudTrail for "what did this resource look like"
 - memory utilisation in the EC2 console
@@ -815,6 +828,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]]
 - [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]]
+- [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]]
 - [[20-monitoring#CloudWatch event types|CloudWatch event types]]
 - [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]]
 - [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]

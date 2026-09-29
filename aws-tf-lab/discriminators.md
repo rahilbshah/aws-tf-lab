@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 190 discriminators · ~36 min read*
+*109 comparison tables · 194 discriminators · ~36 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -180,8 +180,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
 
-**Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
+**Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
+- **Babelfish offered instead of SCT + DMS** — A stem says "migrate SQL Server to Aurora PostgreSQL with minimal application code changes" and lists Babelfish and "SCT + DMS" as separate options.  
+  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+- **Enhanced Monitoring metrics confused with standard CloudWatch metrics** — Asked which metrics Enhanced Monitoring provides, the plausible-looking wrong answers are CPU Utilization, Database Connections and Freeable Memory — because they are real RDS metrics you have seen a hundred times.  
+  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
 - **an IAM role on the app is not, by itself, database authentication** — The distractors are "attach an IAM role to the EC2 instance / Lambda function" and "restrict the security group to the app tier", offered on their own.  
   ↳ [[07-rds-aurora#The Terraform I wrote|note]]
 - **"IAM database authentication controls what the user can do in the database"** — It does not. IAM decides whether you may connect as a given database user; everything after that is still the database's own GRANTs.  
@@ -454,8 +458,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[20-monitoring|20 – Monitoring (CloudWatch, CloudTrail, Config, EventBridge)]]
 
-**Compare:** [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+**Compare:** [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
 
+- **reboot offered for a failed system status check** — The stem describes an instance made unreachable by a fault on the underlying host and offers a reboot alarm.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **"ACM auto-renews, so no monitoring is needed"** — True and irrelevant. Auto-renewal can still fail — DNS validation records removed, a CAA record blocking issuance, an email-validated certificate nobody clicked.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **a bastion host offered for private-instance access** — Any stem asking to reach an instance in a private subnet lists a bastion/jump host, an inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **CloudTrail for "what did this resource look like"** — CloudTrail records the API call, not the resulting state. "Was this bucket public at any point last quarter?" or "produce evidence that all volumes have been encrypted since January" is AWS Config — it stores configuration items over time and evaluates rules against them.  

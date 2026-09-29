@@ -20,6 +20,8 @@ The managed relational database tier. **RDS** = AWS runs standard engines for yo
 > - **Aurora Serverless v2** = auto-scaling capacity for variable workloads. **Aurora Global Database** = 1 primary + up to 10 read-only regions, <1s replication (DR + global reads).
 > - **Encryption at rest** = set at **creation only**. Keep DBs `publicly_accessible = false` in private subnets.
 > - **Three ways to authenticate:** native DB password · **IAM database authentication** (`rds-db:connect`, 15-minute token, nothing stored) · **Secrets Manager** (stored password + automatic rotation). "No password in the app / use the EC2 role" → **IAM DB auth**.
+> - **SQL Server → Aurora PostgreSQL with "minimal code changes" = TWO things:** **Babelfish** (T-SQL + SQL Server wire protocol on **port 1433**, Aurora PostgreSQL only) for the *application*, plus **SCT + DMS** for the *schema and data*. Neither alone is the answer.
+> - **Enhanced Monitoring** reads from an **agent inside the DB instance** (CloudWatch reads the **hypervisor**), goes to **CloudWatch Logs** (`RDSOSMetrics`), and is the only one showing **per-process** data. `CPUUtilization`/`FreeableMemory`/`DatabaseConnections` are plain CloudWatch, not Enhanced Monitoring.
 
 ## What problem does this solve?
 
@@ -155,6 +157,57 @@ It runs **inside your VPC** and is not publicly reachable.
 > In one line: RDS Proxy pools connections so Lambda cannot exhaust the database, and shortens
 > failover while keeping credentials in Secrets Manager.
 
+### Babelfish — keeping T-SQL applications after moving to Aurora PostgreSQL
+
+The expensive part of leaving SQL Server is rarely the data. It is the thousands of lines of
+**T-SQL** the application is built on — stored-procedure calls, `TOP` instead of `LIMIT`,
+`GETDATE()`, square-bracket identifiers — plus the SQL Server driver it uses to talk to the
+database. Rewriting that is what turns a migration into a year-long project.
+
+**Babelfish for Aurora PostgreSQL** removes that cost. It gives an Aurora PostgreSQL cluster an
+**additional endpoint** that speaks the SQL Server **wire protocol** — Tabular Data Stream
+(TDS), versions **7.1 through 7.4** — and understands commonly used T-SQL. The application keeps
+its existing SQL Server driver and its existing queries, and connects on **port 1433** as though
+Aurora were SQL Server. The PostgreSQL dialect stays available on **5432** at the same time, so
+new code can be written natively against the same data.
+
+What Babelfish does **not** do is move anything. It is a compatibility layer at the connection
+level only: the schema still has to be converted and the data still has to be copied. That is
+the **AWS SCT + DMS** job in [[24-other-services#AWS DMS — the migration answer, and the biggest gap here|AWS DMS]].
+The two are complementary halves of one migration, not alternatives to each other — which is
+exactly the shape the exam tests.
+
+Babelfish is **Aurora PostgreSQL only**. There is no Babelfish for RDS for PostgreSQL, and none
+for Aurora MySQL.
+
+> In one line: Babelfish lets the *application* keep speaking T-SQL to Aurora PostgreSQL on port
+> 1433; it moves no data, so SCT converts the schema and DMS copies the rows.
+
+### Enhanced Monitoring — OS metrics from an agent, not the hypervisor
+
+Ordinary CloudWatch metrics for a DB instance are gathered **from the hypervisor**, outside the
+guest. That is enough to tell you CPU is at 90%, and useless for telling you *which process* is
+burning it — because from outside the VM there are no processes to see.
+
+**Enhanced Monitoring** fixes that by collecting from an **agent running on the DB instance
+itself**, in real time. Because it measures from inside while CloudWatch measures from outside,
+the two can legitimately disagree on the same instance; AWS notes the gap is wider on **smaller
+instance classes**, where more VMs share one physical host.
+
+Two consequences that get tested:
+
+- Enhanced Monitoring metrics are delivered to **CloudWatch Logs**, not CloudWatch Metrics — log
+  group **`RDSOSMetrics`**, default retention **30 days**. To alarm on one you build a **metric
+  filter** over the log group first. Billing follows CloudWatch Logs rates, not metrics rates.
+- The console's **OS process list** breaks into exactly **three** groups: **RDS child
+  processes** (the engine itself — `mysqld`, `aurora`), **RDS processes** (the RDS management
+  agent and diagnostics), and **OS processes** (kernel and system).
+
+Available on **Db2, MariaDB, Microsoft SQL Server, MySQL, Oracle and PostgreSQL**.
+
+> In one line: Enhanced Monitoring is the per-process, OS-level view collected by an agent inside
+> the DB instance and written to CloudWatch Logs, not the hypervisor metrics you already had.
+
 ### Four different things called "securing the database"
 
 Three sure-wrong answers in one mock came from picking the wrong *layer*. A database question
@@ -240,6 +293,10 @@ flowchart TB
 - **Some global condition keys don't work** with IAM DB auth: `aws:SourceIp`, `aws:SourceVpc`, `aws:SourceVpce`, `aws:UserAgent`, `aws:Referer`, `aws:VpcSourceIp`.
 - **PostgreSQL specifics:** granting the `rds_iam` role to a user makes IAM auth **take precedence over password auth** for that user; IAM auth can't be combined with Kerberos, and can't be used for a replication connection.
 
+- **Babelfish for Aurora PostgreSQL:** an **additional endpoint** understanding the SQL Server **TDS** wire protocol (**versions 7.1–7.4**) and T-SQL. **T-SQL on port 1433, PostgreSQL on 5432**, both live at once. **Aurora PostgreSQL only** — not RDS for PostgreSQL, not Aurora MySQL. It migrates **nothing**: schema conversion is **AWS SCT / DMS Schema Conversion**, data movement is **DMS**.
+- **Enhanced Monitoring:** real-time **OS** metrics from an **agent on the DB instance** (CloudWatch reads the **hypervisor** instead, so the two can disagree — more so on small instance classes). Delivered to **CloudWatch Logs**, log group **`RDSOSMetrics`**, default retention **30 days**; charged at **Logs** rates, and only above the CloudWatch Logs free allowance. Process list has **three** groups: **RDS child processes**, **RDS processes**, **OS processes**. Engines: **Db2, MariaDB, SQL Server, MySQL, Oracle, PostgreSQL**.
+*Verified against AWS docs 2026-09-29.*
+
 ## Comparisons
 
 ### Multi-AZ vs Read Replica (memorize)
@@ -264,6 +321,22 @@ flowchart TB
 | Serverless | RDS has no true serverless | Aurora Serverless v2 |
 | Global | Cross-region read replica | Aurora Global Database (<1s) |
 | Cost | Lower | Higher, more performance |
+
+### The three RDS monitoring layers (the one the exam confuses)
+
+| | CloudWatch metrics | Enhanced Monitoring | Performance Insights |
+|---|---|---|---|
+| Measured from | the **hypervisor**, outside the guest | an **agent on the DB instance** | the engine's own wait events |
+| Answers | "is the instance busy?" | "**which process** is busy?" | "**which query** is slow, and waiting on what?" |
+| Granularity | 1 min (60s) standard | sub-minute, configurable | continuous |
+| Stored in | CloudWatch **Metrics** | CloudWatch **Logs** (`RDSOSMetrics`, 30 days) | its own dashboard + API |
+| Alarm on it directly? | **Yes** | **No** — metric filter over the log group first | No |
+| Example signal | `CPUUtilization`, `FreeableMemory`, `DatabaseConnections` | RDS child processes / RDS processes / OS processes | **DB load** by waits, SQL, hosts, users |
+| Stem trigger | "alert when CPU is high" | "see how **processes or threads** use the CPU" | "find the **query** causing the load" |
+
+⚠️ Naming currency: the **Performance Insights** dashboard is now presented as **Amazon
+CloudWatch Database Insights**; the API and the RDS setting are still called Performance
+Insights, and the exam still uses the old name. Verified 2026-09-29.
 
 ### Database authentication — password vs IAM vs Secrets Manager
 
@@ -316,6 +389,27 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 > [!failure] Failure mode — the connection pool that dies 15 minutes after deploy
 > A team enables IAM DB auth and their app works perfectly in testing. Fifteen minutes after each deploy, new database connections start failing with an authentication error while **existing connections keep working fine** — which makes it look like a random, partial outage. The cause: the connection pool minted **one** token at startup and cached it as "the password." AWS is explicit that the token is used only to *establish* the session and has a **15-minute lifetime** — an open session is unaffected, but every new connection needs a **fresh** token. Fix: generate the token inside the pool's connection factory, not once at boot. (Related: if you mint the token with temporary role credentials, those credentials must still be valid at connect time.)
 
+> [!warning] Trap — Babelfish offered *instead of* SCT + DMS
+> A stem says "migrate SQL Server to **Aurora PostgreSQL** with **minimal application code
+> changes**" and lists Babelfish and "SCT + DMS" as separate options. **Both are correct** — and
+> this is almost always a **Select TWO**, which is why picking one feels right and scores zero.
+> Babelfish handles the *application's* T-SQL and driver; **SCT converts the schema and DMS moves
+> the data**. Babelfish alone leaves you an empty database; SCT + DMS alone leaves you rewriting
+> every query. Eliminate: **Glue** "converting T-SQL" (Glue is ETL — it does not translate
+> application SQL), a **custom endpoint** "emulating SQL Server" (custom endpoints route
+> connections to a subset of instances; they do not change protocol), **Aurora Global Database**
+> (cross-Region replication, nothing to do with engine compatibility), and **Kinesis** for
+> "real-time replication" (DMS does CDC, not Kinesis).
+
+> [!warning] Trap — Enhanced Monitoring metrics confused with standard CloudWatch metrics
+> Asked which metrics **Enhanced Monitoring** provides, the plausible-looking wrong answers are
+> **CPU Utilization**, **Database Connections** and **Freeable Memory** — because they are real
+> RDS metrics you have seen a hundred times. They are **standard CloudWatch** metrics, gathered
+> from the hypervisor, and available with Enhanced Monitoring switched off. Enhanced Monitoring
+> is the **OS-level, per-process** view: the process-list groups above, plus fine-grained CPU,
+> memory, disk and network counters. Rule of thumb: if the metric names a **process or thread**,
+> it is Enhanced Monitoring; if it names the **instance as a whole**, it is CloudWatch.
+
 > [!warning] Trap — an IAM role on the app is not, by itself, database authentication
 > The distractors are **"attach an IAM role to the EC2 instance / Lambda function"** and **"restrict
 > the security group to the app tier"**, offered *on their own*. A role is an **identity** control and
@@ -354,6 +448,9 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 - [ ] **Aurora Replicas double as failover targets** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
 
 ## 🔗 Docs
+- [Using Babelfish for Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/babelfish.html)
+- [Monitoring OS metrics with Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html)
+- [Viewing OS metrics in the RDS console (process list groups)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.Viewing.html)
 
 - [Aurora DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.html) — verified 2026-07
 - [RDS Multi-AZ](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html) / [Read Replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html)
