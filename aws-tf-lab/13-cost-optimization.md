@@ -115,7 +115,7 @@ Plenty of exam cost questions never mention an instance. These are the levers, a
 
 **NAT Gateway** bills **per hour and per gigabyte processed**. A **gateway endpoint** for S3 or DynamoDB is **free** and keeps that traffic off the NAT entirely — one of the highest-value swaps in AWS, and it's in [[05-vpc-endpoints-peering]].
 
-**Data transfer**: inbound is generally free, **outbound to the internet costs money**, and **cross-AZ traffic is charged**. That's why an NLB with cross-zone load balancing enabled costs more than an ALB, where it's free — see [[04-alb-asg]].
+**Data transfer**: inbound is generally free, **outbound to the internet costs money**, and **cross-AZ traffic is charged** — with one exception the exam likes: **RDS read-replica replication is free within the same Region, across AZs included** (see [[07-rds-aurora#Replication traffic: what you actually pay for]]). That's why an NLB with cross-zone load balancing enabled costs more than an ALB, where it's free — see [[04-alb-asg]].
 
 **Elastic IPs** — and every public IPv4 address — bill **hourly whether attached or not**; an unattached one is the classic forgotten-resource bill, charging for nothing in return.
 

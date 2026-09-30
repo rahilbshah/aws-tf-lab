@@ -208,6 +208,56 @@ Available on **Db2, MariaDB, Microsoft SQL Server, MySQL, Oracle and PostgreSQL*
 > In one line: Enhanced Monitoring is the per-process, OS-level view collected by an agent inside
 > the DB instance and written to CloudWatch Logs, not the hypervisor metrics you already had.
 
+### Storage, cloning and the cost of standing still
+
+Three facts here decide questions that look like they are about something else.
+
+**RDS grows its own storage.** Plain RDS — not just Aurora — has **storage autoscaling**: you set
+a **maximum storage threshold** and RDS raises allocated storage on its own. It fires when free
+space is **≤ 10% of allocated**, the condition has lasted **at least 5 minutes**, and fewer than
+**4 storage modifications** have happened in the past 24 hours; each step adds the greater of
+**10 GiB or 10% of current allocated storage**. So "the database is about to run out of space and
+we want no downtime and no babysitting" is **one setting**, not a migration to Aurora. (Not
+supported for additional storage volumes.)
+
+**Aurora cloning is nearly free and nearly instant.** A clone is a *new cluster* that shares the
+source's storage volume under a **copy-on-write** protocol: *"This mechanism uses minimal
+additional space to create an initial clone… Additional storage is allocated only when changes
+are made."* A full-size staging copy of production appears in minutes at almost no storage cost,
+fully isolated from the source. You get **up to 15 copy-on-write clones**; the 16th is a **full
+copy**. Contrast the neighbours: a **snapshot restore** physically copies every byte, and
+**Backtrack** rewinds the *source* in place rather than giving you a second cluster.
+
+**A stopped RDS instance is not a free one.** Stopping saves **DB instance hours** and nothing
+else: you keep paying for **provisioned storage** (including Provisioned IOPS), **backup
+storage** — manual snapshots and automated backups inside the retention window — and a **public
+IPv4 address** if the instance is publicly accessible. And RDS **starts it again automatically
+after 7 consecutive days**, so stopping is not a way to park a database. For a workload that runs
+a few days a month, the cheaper shape is **snapshot → delete the instance → restore** when next
+needed.
+
+> In one line: RDS can grow its own storage, Aurora can clone a cluster in minutes for almost
+> nothing, and a stopped instance still bills storage and restarts itself after 7 days.
+
+### Replication traffic: what you actually pay for
+
+The general data-transfer rule — outbound costs money, **cross-AZ is charged** — has an exception
+the exam uses. AWS: *"You aren't charged for the data transfer incurred in replicating data
+between the source DB instance and a read replica **within the same AWS Region**."* Same Region
+**includes across Availability Zones**. You are billed for inter-Region transfer only when the
+replica sits in a **different Region**.
+
+So for "offload reporting queries at the lowest cost", a **same-Region** read replica replicates
+free; a cross-Region one is the expensive answer, right only when the requirement is disaster
+recovery or readers in another geography.
+
+> [!warning] Trap — applying the cross-AZ charge to replication
+> "Cross-AZ traffic is charged" is true in general and **false for read-replica replication in
+> the same Region**. A stem offering a **same-AZ** replica "to avoid data-transfer charges" sells
+> you worse availability for a saving that does not exist — a same-Region replica in *another* AZ
+> replicates free *and* survives an AZ failure. See [[13-cost-optimization]] for the general rule
+> this is the exception to.
+
 ### Four different things called "securing the database"
 
 Three sure-wrong answers in one mock came from picking the wrong *layer*. A database question
@@ -265,6 +315,14 @@ flowchart TB
 *6 copies across 3 AZs; all instances read the same volume (why replica lag is tiny).*
 
 ## Key facts, limits & pricing
+
+- **RDS storage autoscaling** (plain RDS, not just Aurora): set a **maximum storage threshold** and RDS grows allocated storage automatically. Triggers at **≤10% free**, sustained **5 minutes**, **<4 modifications in 24h**; each step is the greater of **10 GiB or 10%**. Not supported for additional storage volumes.
+- **Aurora cloning:** a new cluster sharing the source volume **copy-on-write** — ready in minutes, minimal extra storage, isolated from the source. **Up to 15** clones; the 16th is a **full copy**. Not a snapshot restore (copies bytes) and not Backtrack (rewinds the source).
+- **Stopped RDS still bills** provisioned storage (incl. PIOPS), backup storage, and a public IPv4 if publicly accessible — only **instance hours** stop. RDS **auto-starts it after 7 consecutive days**. Long parking = snapshot + delete + restore.
+- **Read-replica replication is free within the same Region**, across AZs included; **cross-Region** replication is billed as inter-Region data transfer.
+- **Multi-AZ operational benefits**, in AWS's wording: the synchronous standby exists to *"provide data redundancy and minimize latency spikes during system backups"*, and Multi-AZ *"can enhance availability during planned system maintenance"*. ⚠️ verify: the stronger claim that backups are taken *from* the standby — AWS does not state that on the automated-backups page.
+- **Amazon DocumentDB** is MongoDB-compatible: *"you can run the same application code and use the same drivers and tools that you use with MongoDB"* — so a MongoDB app moves with **no code change**, unlike DynamoDB, whose API forces a rewrite.
+*Verified against AWS docs 2026-10-01.*
 
 - **RDS Multi-AZ:** a **synchronous** standby in another AZ; **not readable**; automatic failover (~60–120s) via DNS CNAME swap. For HA only. Doubles cost; not Free-Tier.
 - **RDS Read Replicas:** **asynchronous**; **up to 15 per source** — the same cap as Aurora. **readable**; can be **cross-region**; can be **promoted** to a standalone DB (manual, breaks replication). For read scaling / reporting. (You can combine: a Multi-AZ primary *with* read replicas.)
@@ -415,11 +473,21 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > [!warning] Trap — Multi-AZ to scale reads
 > Multi-AZ standby is **not readable** — it's for failover. Use **read replicas** to scale reads. Reversed constantly on the exam.
 
+> [!warning] Trap — assuming an Aurora failover always promotes a replica
+> Aurora fails over *"in one of two ways: by promoting an existing reader DB instance to the new
+> primary instance"* **or** *"by creating a new primary instance"*. The fast CNAME flip everyone
+> quotes is the **first** case, and it needs a reader to exist. A single-instance Aurora cluster
+> with **no reader** has nothing to promote, so Aurora must **create a new primary** — far
+> slower. AWS's recommendation follows directly: *"create at least one or more reader instances
+> in two or more different Availability Zones."* A stem describing a one-instance Aurora cluster
+> and asking why failover was slow is asking for a **reader**, not for Multi-AZ — which is not
+> how Aurora is configured.
+
 > [!warning] Trap — Aurora replica lag is like RDS replica lag
 > No — Aurora replicas **share one storage volume** (no data copy), so lag is ~milliseconds; RDS read replicas copy data asynchronously and can lag seconds. Different mechanism.
 
 > [!warning] Trap — "RDS is serverless / auto-scales like Aurora"
-> Plain RDS is provisioned instances. True serverless + auto-scaling storage + global <1s replication are **Aurora** features. "Serverless relational" → Aurora Serverless v2.
+> Plain RDS is provisioned instances, and **true serverless** plus **global <1s replication** are Aurora features — "serverless relational" → Aurora Serverless v2. But do **not** extend that to storage: **plain RDS has storage autoscaling too** (see Key facts). The Aurora difference is that its *cluster volume* grows with no setting at all, whereas RDS grows an allocated volume up to a threshold you set.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -432,6 +500,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 - [ ] **Aurora Replicas double as failover targets** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
 
 ## 🔗 Docs
+- [RDS storage autoscaling](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIOPS.Autoscaling.html) · [Aurora cloning (copy-on-write)](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Managing.Clone.html) · [Stopping a DB instance (7-day restart, what still bills)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html) · [Read replicas (same-Region replication is free)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) · [Failing over an Aurora cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-failover.html) · [Amazon DocumentDB](https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html)
 - [Using Babelfish for Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/babelfish.html)
 - [Monitoring OS metrics with Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html)
 - [Viewing OS metrics in the RDS console (process list groups)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.Viewing.html)

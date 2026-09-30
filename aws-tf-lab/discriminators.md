@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*103 comparison tables · 190 discriminators · ~36 min read*
+*103 comparison tables · 192 discriminators · ~36 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -170,6 +170,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
+- **applying the cross-AZ charge to replication** — "Cross-AZ traffic is charged" is true in general and false for read-replica replication in the same Region.  
+  ↳ [[07-rds-aurora#How it actually works|note]]
 - **Babelfish offered instead of SCT + DMS** — A stem says "migrate SQL Server to Aurora PostgreSQL with minimal application code changes" and lists Babelfish and "SCT + DMS" as separate options.  
   ↳ [[07-rds-aurora#Worked examples|note]]
 - **Enhanced Monitoring metrics confused with standard CloudWatch metrics** — Asked which metrics Enhanced Monitoring provides, the plausible-looking wrong answers are CPU Utilization, Database Connections and Freeable Memory — because they are real RDS metrics you have seen a hundred times.  
@@ -184,9 +186,11 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[07-rds-aurora#Worked examples|note]]
 - **Multi-AZ to scale reads** — Multi-AZ standby is not readable — it's for failover. Use read replicas to scale reads.  
   ↳ [[07-rds-aurora#Worked examples|note]]
+- **assuming an Aurora failover always promotes a replica** — Aurora fails over "in one of two ways: by promoting an existing reader DB instance to the new primary instance" or "by creating a new primary instance".  
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **Aurora replica lag is like RDS replica lag** — No — Aurora replicas share one storage volume (no data copy), so lag is ~milliseconds; RDS read replicas copy data asynchronously and can lag seconds.  
   ↳ [[07-rds-aurora#Worked examples|note]]
-- **"RDS is serverless / auto-scales like Aurora"** — Plain RDS is provisioned instances. True serverless + auto-scaling storage + global <1s replication are Aurora features.  
+- **"RDS is serverless / auto-scales like Aurora"** — Plain RDS is provisioned instances, and true serverless plus global <1s replication are Aurora features — "serverless relational" → Aurora Serverless v2.  
   ↳ [[07-rds-aurora#Worked examples|note]]
 
 

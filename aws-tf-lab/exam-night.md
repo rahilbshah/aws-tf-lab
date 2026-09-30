@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*173 recall hooks · 325 pointers · ~29 min read*
+*174 recall hooks · 327 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -298,10 +298,13 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[07-rds-aurora#Babelfish — keeping T-SQL applications after moving to Aurora PostgreSQL|explain]]
 - Enhanced Monitoring is the per-process, OS-level view collected by an agent inside  
   ↳ [[07-rds-aurora#Enhanced Monitoring — OS metrics from an agent, not the hypervisor|explain]]
+- RDS can grow its own storage, Aurora can clone a cluster in minutes for almost  
+  ↳ [[07-rds-aurora#Storage, cloning and the cost of standing still|explain]]
 - Reachability is the security group, API permission is the IAM policy, logging  
   ↳ [[07-rds-aurora#Four different things called "securing the database"|explain]]
 
-**Traps** [[07-rds-aurora#Worked examples|open]]
+**Traps** [[07-rds-aurora#How it actually works|open]]
+- applying the cross-AZ charge to replication
 - Babelfish offered instead of SCT + DMS
 - Enhanced Monitoring metrics confused with standard CloudWatch metrics
 - an IAM role on the app is not, by itself, database authentication
@@ -309,6 +312,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - rds-db: vs rds:
 - "use IAM DB auth so database logins show up in CloudTrail"
 - Multi-AZ to scale reads
+- assuming an Aurora failover always promotes a replica
 - Aurora replica lag is like RDS replica lag
 - "RDS is serverless / auto-scales like Aurora"
 
