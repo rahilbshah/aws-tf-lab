@@ -175,6 +175,8 @@ graph TB
 
 ## Key facts, limits & pricing
 
+- **EventBridge can target an ECS task directly** — *"Amazon ECS tasks as targets"*, with the rule's input mapped through to **`ecs.RunTask`**. So "run a containerised job when X happens, or on a schedule" needs **no Lambda in between**; a Lambda that only calls `RunTask` is a distractor. *(Verified 2026-10-01.)*
+
 - **Systems Manager requires the SSM Agent** on the node plus network reachability to the service; both together make it a **managed node**. Preinstalled on Amazon Linux 2/2023, Ubuntu and Windows Server AMIs, and it needs an **instance profile** granting `AmazonSSMManagedInstanceCore`.
 - **Session Manager** gives *"secure node management without the need to open inbound ports, maintain bastion hosts, or manage SSH keys"*. Access is controlled entirely by **IAM policy**; traffic is **TLS 1.2** and requests are SigV4-signed. Supports **Windows, Linux and macOS**, plus **port forwarding/tunnelling**.
 - **Session logging** goes to **Amazon S3** or **CloudWatch Logs** (optionally KMS-encrypted), API calls to **CloudTrail**, and **EventBridge → SNS** can notify on session start/stop. ⚠️ **Logging is not available for sessions that use port forwarding or SSH** — Session Manager is only a tunnel there.
@@ -358,6 +360,7 @@ graph TB
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [EventBridge targets (ECS tasks)](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html)
 - [Systems Manager Run Command](https://docs.aws.amazon.com/systems-manager/latest/userguide/run-command.html)
 - [Systems Manager Patch Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-manager.html)
 - [Systems Manager Maintenance Windows](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-maintenance.html)

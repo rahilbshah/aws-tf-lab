@@ -102,6 +102,8 @@ graph TB
 ```
 
 ## Key facts, limits & pricing
+
+- **WAF geo match rule statement:** manages requests by **country and region of origin**, matching **ISO 3166-1 alpha-2** country codes (`HK`, `DE`…). WAF derives the country from the **request's IP address**, and can be told to read an alternate header such as **`X-Forwarded-For`** via forwarded-IP configuration. It also **adds country/region labels** to every request, match or not, which a later label-match rule can use. *(Verified 2026-10-01.)*
 *Verified against AWS docs 2026-09-25.*
 
 - **KMS `Encrypt` maximum plaintext: 4,096 bytes** for `SYMMETRIC_DEFAULT`. (Asymmetric is smaller still — RSA_2048 with OAEP-SHA-256 is 190 bytes.)
@@ -314,6 +316,15 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > ever need again, and until the period ends the key sits in **`Pending deletion`**, unusable
 > but still cancellable.
 
+> [!warning] Trap — CloudFront Geo Restriction offered for an ALB
+> "Block traffic from these countries" has **two** answers and the architecture picks one.
+> **CloudFront Geo Restriction** is a property of a **CloudFront distribution** — it does not
+> exist if there is no distribution. **WAF's geo match rule statement** blocks by country and a
+> **web ACL attaches directly to an ALB** (also API Gateway REST APIs and AppSync). So an
+> **ALB-only** architecture with no CloudFront in front of it is a **WAF** answer, every time.
+> If CloudFront *is* in the path, either works and Geo Restriction is the cheaper one — but read
+> what the stem actually has deployed before choosing.
+
 > [!warning] Trap — rotation re-encrypts your data
 > It does not. *"Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key."* Old key material is retained so old ciphertext still decrypts, and the **key ID is unchanged** — which is why rotation is transparent to applications and requires no code change.
 
@@ -350,6 +361,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+- [WAF geographic match rule statement](https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-geo-match.html)
 - [KMS key policies — IAM policies have no effect without key-policy permission](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)
 - [Deleting AWS KMS keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html)
 

@@ -77,6 +77,8 @@ graph TB
 ```
 
 ## Key facts, limits & pricing
+
+- **Dynamic host port mapping:** set the task definition's **host port to 0** and ECS assigns each task a **random ephemeral host port**, registering that instance:port pair with the ALB target group. AWS lists it as an ALB capability — *"Application Load Balancers allow containers to use dynamic host port mapping (so that multiple tasks from the same service are allowed per container instance)"*. That is what lets several copies of the same container share one EC2 instance with **no reverse proxy**. Only relevant to the **EC2 launch type with `bridge` networking** — Fargate forces `awsvpc`, where each task has its own ENI and the target type is `ip`. *(Verified 2026-10-01.)*
 *Verified against AWS docs 2026-09-06.*
 
 - **EKS control plane: $0.10 per cluster per hour**, standard support. ECS has no control-plane charge.
@@ -189,6 +191,7 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 - ⚠️ verify: with the circuit breaker enabled (`enable = true, rollback = true`) and a threshold of 3, a deployment failing with **`CannotPullContainerError`** was observed on 2026-09-06 to reach **12 failed tasks while still `IN_PROGRESS`**, never transitioning to `FAILED`. The documented behaviour is that tasks failing to reach `RUNNING` increment the counter and trip at the threshold. Hypothesis, **not confirmed**: an image that cannot be resolved produces *"unable to place a task"*, which may be accounted differently from a task that starts and then fails a health check. Re-test by breaking the **container health check** rather than the image before trusting the circuit breaker to catch pull failures.
 
 ## 🔗 Docs
+- [ECS service load balancing (dynamic host port mapping)](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html)
 - [ECS task execution IAM role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html) — verified 2026-09-06
 - [ECS deployment circuit breaker](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — threshold formula, verified 2026-09-06
 - [ECR interface VPC endpoints](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html) — the S3 gateway requirement, verified 2026-09-06

@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*103 comparison tables · 194 discriminators · ~37 min read*
+*103 comparison tables · 195 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -475,6 +475,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **"disable GuardDuty" chosen when the findings must survive** — They are opposites. Suspend stops monitoring and billing but keeps existing findings and lets you re-enable.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **"delete the KMS key" offered as the way to revoke access now** — Key deletion is not an immediate control: the shortest waiting period is 7 days and the default is 30, so nothing about it is fast.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **CloudFront Geo Restriction offered for an ALB** — "Block traffic from these countries" has two answers and the architecture picks one. CloudFront Geo Restriction is a property of a CloudFront distribution — it does not exist if there is no distribution.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

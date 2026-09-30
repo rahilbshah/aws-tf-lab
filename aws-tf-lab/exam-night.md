@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 329 pointers · ~29 min read*
+*176 recall hooks · 330 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -802,6 +802,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Shield Advanced offered for a request-rate threshold
 - "disable GuardDuty" chosen when the findings must survive
 - "delete the KMS key" offered as the way to revoke access now
+- CloudFront Geo Restriction offered for an ALB
 - rotation re-encrypts your data
 - "rotate this asymmetric key automatically"
 - Parameter Store for a rotating password

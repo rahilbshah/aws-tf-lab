@@ -168,6 +168,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **Tag policies** are a **separate Organizations policy type** from SCPs: *"Tag policies allow you to standardize the tags attached to the AWS resources in your organization's accounts"*, including the **preferred case** of tag keys and the **allowed values**. So "enforce which tag keys and values are permitted across the OU" is a **tag policy**, not an SCP condition and not AWS Config. *(Verified 2026-10-01.)*
+
 - **Organizations is free.** You pay only for what the member accounts use. Consolidated billing aggregates usage across accounts, which can earn **volume discounts** and lets **Reserved Instances / Savings Plans** be shared across the organization.
 - **Two feature sets:** *All features* (default, and required for SCPs, RCPs and service integrations) and *Consolidated billing only* (billing aggregation, no policy control). Upgrading to all features requires every invited member account to accept.
 - **One root per organization.** OU hierarchy can nest **five levels deep** below the root.
@@ -304,6 +306,7 @@ a standard, or an account factory, RAM cannot be the answer however much the sce
 - [ ] **Union vs intersection** — resource policies widen, boundaries and SCPs narrow.
 
 ## 🔗 Docs
+- [Organizations tag policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
 
 - [Service control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html) — "no permissions are granted by an SCP", management-account exemption, member root capped, FullAWSAccess, service-linked-role exemption, unrestricted tasks; verified 2026-08-30
 - [SCP evaluation](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html) — Allow needed at every level, Deny at any level, allow-list vs deny-list strategy, the seven scenarios; verified 2026-08-30

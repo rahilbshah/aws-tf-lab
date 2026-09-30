@@ -124,6 +124,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **Global Accelerator is not a CDN and caches nothing.** A *standard* accelerator gives you **two static anycast IPv4 addresses** (four for dual-stack) advertised from the **AWS edge network**, then carries the session **over the AWS global network** to the optimal regional endpoint by *"health, client location, and policies that you configure"*. Endpoints can be **NLB, ALB, EC2 instances or Elastic IPs**, in one Region or several. Because it accelerates the **network path** rather than caching bytes, it is the answer for **dynamic, non-cacheable** traffic — a real-time API, gaming, VoIP, IoT/MQTT, non-HTTP protocols — including an API served from a **single Region**, where a CDN has nothing to cache. *(Verified 2026-10-01.)*
+
 - **Origins:** an S3 bucket (REST endpoint), an S3 bucket configured as a **website endpoint** (treated as a *custom* origin), S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, MediaStore/MediaPackage, **ALB**, **NLB**, **EC2**, **Lambda function URLs**, **API Gateway**, and **any public HTTP(S) server, including on-premises**.
 - **VPC origins** let an **ALB, NLB or EC2 instance in a private subnet** be an origin without any public internet exposure — the modern way to keep the load balancer private while still fronting it with CloudFront.
 - **Origin groups** provide CloudFront's own failover: a primary and a secondary origin, switching when the primary returns configured HTTP failure codes. (Distinct from Route 53 failover — no DNS involved.)
@@ -190,6 +192,7 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 
 > [!warning] Not yet applied
 > **Not applied or verified live** as of 2026-09-04 — the practical was deferred. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
+- [What is AWS Global Accelerator](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html)
 
 Provenance: Claude wrote this lab at the human's request, to keep pace toward exam practice.
 

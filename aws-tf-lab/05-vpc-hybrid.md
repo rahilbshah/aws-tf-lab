@@ -137,6 +137,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **Direct Connect billing has exactly two elements:** *"port hours and outbound data transfer"*. Port-hour price follows capacity and connection type (dedicated vs hosted); **Data Transfer Out** is charged per GB for what actually leaves AWS over the link, and for private and transit VIFs it is *"allocated to the AWS account responsible for the Data Transfer"*. There is **no extra charge** for a multi-account DX gateway. The cost lever therefore is **how much data leaves** — moving the chatty compute into the same Region as the data cuts the bill; a bigger port does not. *(Verified 2026-10-01.)*
+
 - **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). Up to ~**1.25 Gbps per standard tunnel**. Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
 - **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 / 400 Gbps**; **hosted** (via partners) **50 Mbps – 25 Gbps** in fixed steps — the only route to a **sub-1 Gbps** link. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
 - **DX Virtual Interfaces (VIFs):** **Private VIF** → one VPC (via VGW); **Public VIF** → AWS public services (S3 etc.) globally; **Transit VIF** → Transit Gateway (via DX Gateway).
@@ -204,6 +206,7 @@ flowchart LR
 - [ ] **Direct Connect Gateway** = one DX to multiple regions (non-transitive).
 
 ## 🔗 Docs
+- [Direct Connect pricing elements (port hours + outbound data transfer)](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html)
 - [Direct Connect hosted connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/hosted_connection.html) · [dedicated connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/dedicated_connection.html)
 
 - [Network-to-VPC connectivity options (whitepaper)](https://docs.aws.amazon.com/whitepapers/latest/aws-vpc-connectivity-options/network-to-amazon-vpc-connectivity-options.html) — the comparison table; verified 2026-07

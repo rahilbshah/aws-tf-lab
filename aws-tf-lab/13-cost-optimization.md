@@ -145,6 +145,8 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 ## Key facts, limits & pricing
 
+- **Two different rightsizing tools, and the exam separates them.** **Cost Explorer** has its own **rightsizing recommendations**: *"identify cost-saving opportunities by downsizing or terminating instances in Amazon EC2"*, showing **underutilised instances across member accounts in a single view** — a *spend* view, netting out what you already own. **AWS Compute Optimizer** is the one that recommends the **instance type and size** from CloudWatch metrics. Neither recommends **purchasing options** — Savings Plans and RI recommendations are a Cost Explorer feature, and Compute Optimizer never does them. *(Verified 2026-10-01.)*
+
 - **Seven purchasing options:** On-Demand, Savings Plans, Reserved Instances, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations. (Capacity Blocks additionally reserve clusters of GPU instances.)
 - **Savings Plans commit to a spend rate in USD/hour** for **1 or 3 years**. Payment: **All Upfront**, **Partial Upfront**, or **No Upfront**. **Terms cannot be changed after purchase** — as usage grows you buy an additional plan.
 - **Compute Savings Plans — up to 66% off.** Apply regardless of instance family, size, **Region**, operating system or tenancy, **and cover AWS Fargate and AWS Lambda**.
@@ -241,6 +243,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - [ ] **Non-compute levers** — gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
 
 ## 🔗 Docs
+- [Cost Explorer rightsizing recommendations](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-rightsizing.html)
 
 - [EC2 billing and purchasing options](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html) — all seven options and AWS's own decision guidance; verified 2026-09-05
 - [What are Savings Plans](https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html) — commitment model, 1/3 year, payment options; verified 2026-09-05
