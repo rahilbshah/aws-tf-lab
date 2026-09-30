@@ -410,7 +410,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Custom NACL rule number range | 1–32766, evaluated ascending, first match wins, plus an unremovable * deny |
-| OS-specific ephemeral port ranges | Linux 32768–60999; Windows 2008+ 49152–65535; ELB/Lambda/NAT 1024–65535 |
+| OS-specific ephemeral port ranges | AWS's figures: many **Linux** kernels `32768–61000`; **Windows Server 2008+** `49152–65535`; **ELB / Lambda / NAT gateway** `1024–65535`. AWS's example NACL uses `32768–65535`; `1024–65535` is the safe superset |
 | Which direction the ephemeral rule goes | Receiving requests → outbound; initiating requests → inbound |
 | Ephemeral range to open on a NACL | 1024–65535 |
 | Traffic a NACL cannot filter at all | Amazon-provided DNS resolver (VPC+2) and the Amazon Time Sync Service |
@@ -420,7 +420,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | max_aggregation_interval values | 600s default, or 60s — no other value |
-| Delivery lag on top of the aggregation interval | ~5 more minutes to CloudWatch Logs, ~10 to S3 |
+| Delivery lag on top of the aggregation interval | ⚠️ verify: ~5 min to CloudWatch Logs, ~10 min to S3 — AWS does not state this on the flow-log pages. Total wait = aggregation interval + lag |
 | Protocol numbers in a flow log record | 6 = TCP, 17 = UDP, 1 = ICMP |
 | Traffic never logged by flow logs | Amazon DNS (custom DNS is logged), DHCP, 169.254.169.254, 169.254.169.123, Windows activation, VPC router IP |
 | Third destination, and its rename | Amazon Data Firehose — renamed from Kinesis Data Firehose; older material uses the old name |
@@ -466,7 +466,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Hosted DX connection speeds | 50 Mbps–25 Gbps via a partner — the only route to a sub-1 Gbps link |
+| Hosted DX connection speeds | Fixed steps **50/100/200/300/400/500 Mbps and 1/2/5/10/25 Gbps** via a partner. It is the only route to a **sub-1 Gbps** link (dedicated starts at 1 Gbps) — but it is **not** capped below 1 Gbps |
 | How to encrypt Direct Connect | Site-to-Site VPN over DX (IPsec over a public VIF), or MACsec on supported ports |
 | The three VIF types and where they land | Private → one VPC (via VGW); Public → AWS public services; Transit → TGW (via DXGW) |
 | Direct Connect Gateway reach and limit | Global fan-out to multiple VGWs/TGWs across regions and accounts; non-transitive |

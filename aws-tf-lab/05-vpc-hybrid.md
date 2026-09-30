@@ -80,7 +80,7 @@ Why the split exists: one fiber, but three genuinely different destinations — 
 
 It also pins down a detail from the previous section: the VPN-over-DX fix runs as IPsec over a **public** VIF. Nothing in the table above lets you derive that — memorise the pairing.
 
-The port itself comes in two flavours. **Dedicated** connections run at **1, 10 or 100 Gbps** (400 on some). **Hosted** connections, bought through a DX partner, go **below 1 Gbps** — that's the route to a sub-gigabit link.
+The port itself comes in two flavours. **Dedicated** connections run at **1, 10, 100 or 400 Gbps**. **Hosted** connections, bought through a DX partner, come in fixed steps from **50 Mbps up to 25 Gbps** — 50/100/200/300/400/500 Mbps and 1/2/5/10/25 Gbps. The exam-relevant point is the *bottom* of that range: **hosted is the only way to get a sub-1 Gbps link**, because dedicated starts at 1 Gbps. It is not a sub-1 Gbps ceiling. *(Verified 2026-09-30.)*
 
 > In one line: the fiber is the port; the VIF declares whether it lands in a VPC, on AWS's public services, or on a Transit Gateway.
 
@@ -138,7 +138,7 @@ flowchart LR
 ## Key facts, limits & pricing
 
 - **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). Up to ~**1.25 Gbps per standard tunnel**. Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
-- **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 Gbps** (400 on some); **hosted** connections (via partners) go sub-1 Gbps. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
+- **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 / 400 Gbps**; **hosted** (via partners) **50 Mbps – 25 Gbps** in fixed steps — the only route to a **sub-1 Gbps** link. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
 - **DX Virtual Interfaces (VIFs):** **Private VIF** → one VPC (via VGW); **Public VIF** → AWS public services (S3 etc.) globally; **Transit VIF** → Transit Gateway (via DX Gateway).
 - **Direct Connect Gateway:** global; a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs. **Non-transitive** (VPCs via a DXGW can't reach each other through it).
 - **VPN CloudHub:** hub-and-spoke over a VGW to connect **multiple on-prem branch offices** (and/or as backup links) using BGP.
@@ -204,6 +204,7 @@ flowchart LR
 - [ ] **Direct Connect Gateway** = one DX to multiple regions (non-transitive).
 
 ## 🔗 Docs
+- [Direct Connect hosted connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/hosted_connection.html) · [dedicated connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/dedicated_connection.html)
 
 - [Network-to-VPC connectivity options (whitepaper)](https://docs.aws.amazon.com/whitepapers/latest/aws-vpc-connectivity-options/network-to-amazon-vpc-connectivity-options.html) — the comparison table; verified 2026-07
 - [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — VIF types, speeds, not-encrypted; verified 2026-07

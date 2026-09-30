@@ -113,7 +113,7 @@ Reading them is a small skill worth having. The useful split is:
 - `REJECT` + **inbound** + a port you never opened → your firewall working correctly. The internet scans every public IP constantly; this noise is normal.
 - `REJECT` + **outbound** + a port your app actually needs → *your own* rule is too strict. That one is the bug.
 
-Two practicalities. The protocol shows up as a number — 6 is TCP, 17 is UDP, 1 is ICMP. And records are batched: the aggregation interval defaults to 600 seconds, and **delivery adds about 5 more minutes to CloudWatch Logs (~10 to S3)** — so while debugging set the interval to 60 and expect logs in roughly six minutes, not fifteen.
+Two practicalities. The protocol shows up as a number — 6 is TCP, 17 is UDP, 1 is ICMP. And records are batched: the aggregation interval defaults to 600 seconds, and **delivery adds a further lag on top** (⚠️ verify: this vault has used ~5 min to CloudWatch Logs, ~10 min to S3; AWS does not state it on the flow-log pages) — so when debugging, set the interval to **60** and expect the wait to be interval + lag, not the 600s default plus lag.
 
 Some traffic never appears at all: the Amazon DNS server (a custom DNS resolver *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the Amazon Time Sync Service `169.254.169.123`, Windows license activation, and the reserved VPC router address. Silence there is not evidence that something was blocked.
 
@@ -150,7 +150,7 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
-- **Ephemeral port range = `1024–65535`** (the safe superset to allow on a NACL for return traffic). OS-specific: Linux `32768–60999`, Windows 2008+ `49152–65535`, ELB/Lambda/NAT `1024–65535`. Direction: a server *receiving* requests allows ephemeral **outbound** (its reply → client's ephemeral port); an instance *initiating* outbound allows ephemeral **inbound** (the reply → its ephemeral port).
+- **Ephemeral port range = `1024–65535`** (the safe superset to allow on a NACL for return traffic). OS-specific, in AWS's own wording: **many Linux kernels (incl. Amazon Linux) `32768–61000`**, **Windows Server 2008+ `49152–65535`**, and **Elastic Load Balancing / Lambda / NAT gateway `1024–65535`**. AWS's own example NACL uses `32768–65535`. *(Verified 2026-09-30.)* Direction: a server *receiving* requests allows ephemeral **outbound** (its reply → client's ephemeral port); an instance *initiating* outbound allows ephemeral **inbound** (the reply → its ephemeral port).
 - **NACL rule numbers**: 1–32766 for custom rules, evaluated ascending, **first match wins**, plus an unremovable `*` rule that denies anything unmatched. Lower number = higher priority.
 - **SG evaluation**: no order/precedence — all rules are a union of allows; if any allows the traffic, it's permitted; there are no denies.
 - **One NACL per subnet, one SG-set per ENI.** A subnet uses the default NACL unless you associate a custom one. An ENI gets up to **5** security groups by default (raisable to 16).
@@ -158,7 +158,7 @@ flowchart TB
 - **Flow logs = metadata only, never payload.** (Payload/deep inspection = Network Firewall's job — a classic distractor.)
 - **Flow log levels:** VPC, subnet, or ENI. **Destinations:** CloudWatch Logs, S3, Amazon Data Firehose (renamed from *Kinesis* Data Firehose — older material still uses the old name).
 - **Not logged by flow logs:** traffic to the Amazon DNS server (custom DNS *is* logged), DHCP, the instance metadata endpoint `169.254.169.254`, the **Amazon Time Sync Service `169.254.169.123`**, Windows license activation, and the reserved VPC-router IP.
-- **`max_aggregation_interval`**: 600s default, or 60s for faster records (set to 60 to see logs in ~2 min instead of ~10).
+- **`max_aggregation_interval`**: **600s default, or 60s** for faster records. Total time to see a record = **aggregation interval + delivery lag**. ⚠️ verify: the delivery lag itself (this vault has used ~5 min to CloudWatch Logs and ~10 min to S3) — AWS does not state it on the flow-log pages.
 - **Network Firewall** ~$0.395/hr per firewall endpoint + data processing (⚠️ check current). SG/NACL are **free**. Flow logs cost only the destination storage/ingestion.
 
 ## Comparisons
@@ -220,6 +220,7 @@ flowchart TB
 - [ ] **VPC Flow Logs details** (had forgotten the topic): fields, levels VPC/subnet/ENI, destinations CloudWatch/S3/Firehose, excluded traffic.
 
 ## 🔗 Docs
+- [Network ACL ephemeral port ranges (AWS's own figures)](https://docs.aws.amazon.com/vpc/latest/userguide/custom-network-acl.html)
 
 - [Security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html) / [Network ACLs](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html) — incl. ephemeral ports + default behaviors
 - [VPC Flow Logs](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html) — fields, levels, destinations, excluded traffic; verified 2026-07
