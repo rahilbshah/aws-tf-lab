@@ -278,40 +278,6 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > [!warning] Trap — "the plan showed the policy was fine"
 > It didn't, and it couldn't. A policy whose `Resource` is the ARN of a bucket being created in the same operation cannot be rendered before that bucket exists — so the permissions policy is unknowable in advance, while the **trust** policy, which references nothing, is fully known. The lesson: for any IAM policy built from resources created alongside it, **inspect the policy after it exists** with `aws iam get-policy-version`, or test it with the policy simulator. Do not assume the version you intended is the version that shipped.
 
-## Scenario MCQs
-
-> [!question]- 1. Alice belongs to `developers`, which has `Allow s3:GetObject` on `my-bucket`. An inline policy is then attached directly to Alice that explicitly Denies `s3:GetObject` on `my-bucket/*`. Can Alice GetObject?
-> **A.** Yes — the group's policy was attached first.
-> **B.** Yes — there are more Allow statements than Deny.
-> **C.** No — explicit Deny in any attached policy overrides any Allow.
-> **D.** No — inline policies are more specific than managed policies.
->
-> **Answer: C.** IAM evaluation is order-independent and count-independent. One explicit Deny anywhere is sufficient. "Specificity" is not an IAM concept (it is in NTFS ACLs, which is why D is a plausible distractor).
-
-> [!question]- 2. A Lambda function needs to read from a DynamoDB table. Which is the MOST secure approach?
-> **A.** Create an IAM user with `dynamodb:GetItem`, put its access keys in the Lambda's environment variables.
-> **B.** Create an IAM role with `dynamodb:GetItem` permissions and a trust policy allowing `lambda.amazonaws.com` to assume it; attach the role to the Lambda function.
-> **C.** Make the DynamoDB table public and authenticate at the application layer.
-> **D.** Share the AWS account's root access key with the Lambda runtime.
->
-> **Answer: B.** Role + service trust policy is the canonical pattern; Lambda gets temporary credentials via STS, auto-rotated. A puts a long-lived key in environment variables (leak risk, no rotation); C breaks the security model; D is catastrophic.
-
-> [!question]- 3. You attach an IAM role to an EC2 instance. Shortly after, the instance still says it can't access S3. What's the MOST likely cause?
-> **A.** IAM is regional and the role was created in the wrong region.
-> **B.** The instance profile is missing or not referenced; you may have attached the role directly to the instance.
-> **C.** IAM changes can take a few seconds to propagate; retry the request.
-> **D.** Either B or C, depending on how the resource graph was wired.
->
-> **Answer: D.** B is a real and common bug — EC2 takes an **instance profile**, not a role directly. C is the classic **propagation race** when a role is created and used moments later. A is wrong — IAM is global.
-
-> [!question]- 4. Your team wants to give an auditor in another AWS account read-only access to your S3 buckets. Which is the canonical approach?
-> **A.** Create an IAM user in your account for the auditor and share access keys.
-> **B.** Make the buckets public.
-> **C.** Create an IAM role with `s3:Get*` / `s3:List*` permissions and a trust policy allowing the auditor's account as principal; the auditor assumes the role.
-> **D.** Add the auditor's email to the bucket ACL.
->
-> **Answer: C.** Cross-account role assumption is the standard pattern. A is the legacy/anti-pattern (long-lived keys, no audit trail). B is unsafe. D is the legacy S3 ACL model, increasingly discouraged.
-
 ## ⚠️ Traps & why the wrong answers are wrong   #trap
 
 > [!warning] Trap — Policy order or count matters
