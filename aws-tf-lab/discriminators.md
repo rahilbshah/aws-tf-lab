@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*103 comparison tables · 192 discriminators · ~36 min read*
+*103 comparison tables · 194 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -416,6 +416,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]] · [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]] · [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]] · [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]] · [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]] · [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
 
+- **"add a security group rule to let API Gateway in"** — API Gateway is a managed service outside your VPC, so it has no security group and no subnet.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **the certificate Region for a custom domain** — It depends on the endpoint type, not on the service. AWS: to use an ACM certificate with a Regional custom domain name you must have it "in the same Region as your API"; with an edge-optimized custom domain name you must have it *"in the US East (N.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **Lambda in a public subnet** — "Give the VPC-attached function internet access" is not answered by moving it to a public subnet.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **ENI per concurrent execution** — Older material teaches that a VPC Lambda creates one ENI per concurrent execution, making IP exhaustion a scaling risk.  

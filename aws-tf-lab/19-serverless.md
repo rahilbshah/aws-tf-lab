@@ -59,6 +59,13 @@ graph LR
 
 ## Key facts, limits & pricing
 
+- **API Gateway throttling:** token bucket — a **steady-state rate** plus a **burst**; over the limit is **`429 Too Many Requests`** and the request never reaches the backend. Settable **per stage**, **per method**, or **per client** via a **usage plan** + API key (per-client can't exceed per-account).
+- **API Gateway canary release:** attaches to a **stage**, splits traffic at random by a configured **percentage**, keeps separate metrics/logs, then you **promote** the canary. Same endpoint and domain — no second API, no DNS change.
+- **ACM certificate Region for a custom domain depends on the endpoint type:** **Regional** → same Region as the API; **edge-optimized** → **`us-east-1`** (it is CloudFront-fronted).
+- **API Gateway is outside your VPC** — no security group, no subnet. Restrict callers with a **resource policy** + `aws:SourceIp`; reach a private backend with a **private integration over a VPC link**.
+- **An `AWS` integration exposes AWS service actions directly** — e.g. a REST API straight to **DynamoDB**, no Lambda. Non-proxy only (`AWS`, not `AWS_PROXY`), so you map request and response yourself.
+*Verified against AWS docs 2026-10-01.*
+
 - **Lambda logs** go to CloudWatch Logs by default in a log group named **`/aws/lambda/<function-name>`** — but only if the **execution role** grants the permission. You can point a function at a different log group via console/CLI/API. *(Verified 2026-09-30.)*
 *Verified against AWS docs 2026-09-12.*
 
@@ -70,6 +77,56 @@ graph LR
 - **Secondary index quotas**: **20 GSIs** (default) and **5 LSIs** per table. LSI: *"For each partition key value, the total size of all indexed items must be 10 GB or less."*
 - **API Gateway default throttle**: 10,000 requests/second per account per Region, burst bucket 5,000.
 - **Lambda runtimes** are versioned per language release; `python3.13` is current and supported. *"All supported Lambda runtimes support both x86_64 and arm64 architectures"* — arm64/Graviton is cheaper per GB-second.
+
+## What API Gateway does besides invoke Lambda
+
+Six facts here, and the vault taught none of them. They matter because API Gateway is the most
+over-simplified service in the notes: "a managed front door that invokes one integration" is true
+and hides most of what the exam asks.
+
+**It does not need Lambda at all.** An `AWS` integration *"lets an API expose AWS service
+actions"* — so a REST API can call **DynamoDB directly**, no function in the path. It is the
+**non-proxy** type only (`type = AWS`, versus `AWS_PROXY` for Lambda), which is the cost: you
+must configure the integration request and response and map the data yourself. "Remove the Lambda
+that only forwards to DynamoDB" is a real answer, not a trick.
+
+**Throttling is a control, not just a quota.** API Gateway uses a **token bucket**: a
+**steady-state rate** plus a **burst**. Over the limit, clients get **`429 Too Many Requests`**
+and the request never reaches your backend. You set target limits **per API stage or per method**,
+or use **usage plans** with **API keys** for **per-client** limits (which can't exceed the
+per-account limits). That is the mechanism for "protect the downstream tier from a traffic spike".
+
+**Canary releases live on a stage.** *"Total API traffic is separated at random into a production
+release and a canary release with a pre-configured ratio"*, with its own metrics and logs; when
+you are satisfied you **promote the canary to the production release** and disable it. Same
+endpoint, same custom domain — **no second API and no DNS change**. That is why it beats a
+hand-built blue/green with two APIs and a domain cutover.
+
+**It sits outside your VPC.** There is no security group on API Gateway and you cannot put it in
+a subnet behind a NACL. Two consequences:
+- To restrict **who may call it** by IP, use an **API Gateway resource policy** with an
+  `aws:SourceIp` condition — AWS documents exactly this ("Deny API traffic based on source IP
+  address or range").
+- To **reach into** a private subnet, you need a **private integration** over a **VPC link**.
+  ⚠️ verify: the exact target per API type (HTTP APIs document Application Load Balancers and
+  ECS services; REST APIs are commonly stated as NLB-only).
+
+> [!warning] Trap — "add a security group rule to let API Gateway in"
+> API Gateway is a managed service **outside your VPC**, so it has no security group and no
+> subnet. Any option that secures it with a security group or a NACL is wrong by construction.
+> Restricting callers is a **resource policy** with `aws:SourceIp`; reaching a private backend is
+> a **private integration over a VPC link**. Note the two are opposite directions and the exam
+> pairs them as distractors — a **private endpoint** (who can reach the API) is not a **private
+> integration** (what the API can reach).
+
+> [!warning] Trap — the certificate Region for a custom domain
+> It depends on the **endpoint type**, not on the service. AWS: to use an ACM certificate with a
+> **Regional** custom domain name you must have it *"in the same Region as your API"*; with an
+> **edge-optimized** custom domain name you must have it *"in the US East (N. Virginia) –
+> `us-east-1` Region"* — because edge-optimized is fronted by CloudFront, and that is the same
+> `us-east-1` rule from [[21-security#ACM — where the certificate has to live]]. A stem that says
+> "regional API" and offers a `us-east-1` certificate is offering the CloudFront answer to a
+> non-CloudFront question.
 
 ## Comparisons
 
@@ -175,6 +232,11 @@ graph LR
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [API Gateway request throttling (token bucket, 429, stage/method/usage plan)](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html)
+- [Canary release deployments](https://docs.aws.amazon.com/apigateway/latest/developerguide/canary-release.html)
+- [Certificate Region by endpoint type](https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-specify-certificate-for-custom-domain-name.html)
+- [Integration types (`AWS` = expose AWS service actions)](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-api-integration-types.html)
+- [Resource policy examples (deny by source IP)](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-resource-policies-examples.html)
 - [Lambda and CloudWatch Logs (`/aws/lambda/<function-name>`)](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html)
 - [Lambda memory and CPU](https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html) — 1,769 MB = 1 vCPU; verified 2026-09-12
 - [Lambda retry behavior](https://docs.aws.amazon.com/lambda/latest/dg/invocation-retries.html) — "retries function errors twice"; verified 2026-09-12

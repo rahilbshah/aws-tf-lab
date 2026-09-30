@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*174 recall hooks · 327 pointers · ~29 min read*
+*174 recall hooks · 329 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -722,6 +722,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[19-serverless#How it actually works|explain]]
 
 **Traps** [[19-serverless#⚠️ Traps — why the wrong answer looks right|open]]
+- "add a security group rule to let API Gateway in"
+- the certificate Region for a custom domain
 - Lambda in a public subnet
 - ENI per concurrent execution
 - SQS is not an asynchronous invocation
