@@ -103,7 +103,7 @@ There is a second knob and it is not a nicety. `health_check_grace_period` is ho
 |---|---|
 | boot | ~30s |
 | `apt install nginx` at boot | ~60s |
-| health-check convergence (`healthy_threshold` 3 × `interval` 30s) | ~90s |
+| health-check convergence (`HealthyThresholdCount` × `HealthCheckIntervalSeconds`; **defaults 5 × 30s**) | **~150s** |
 | **actually ELB-healthy** | **~180s** |
 
 Set the grace period to 120s and the ASG starts honouring the ELB verdict at 120s, sees "unhealthy", terminates, and launches a replacement that hits the exact same wall. Instances cycle every few minutes and the target group never reaches a steady healthy state. Two fixes: raise the grace period above the true time-to-healthy (~300s here), or bake nginx into the AMI so an instance is healthy in ~40s and the problem evaporates. That second option is the clearest argument for golden images there is.
@@ -229,7 +229,8 @@ flowchart TD
 
 - **ALB requires at least 2 AZs** (enforced). NLB recommended 2+, not strictly required.
 - **Cross-zone load balancing:** ALB — always on at the LB level, can't disable there (only override off per target group); **free**. NLB/GWLB — **off by default**; enabling it means each node spreads to all AZs but **inter-AZ data transfer is billed**. (Exam-frequent.)
-- **Default routing algorithm** (ALB target group) = **round robin**; also *least outstanding requests* and *weighted random*.
+- **Default routing algorithm** (ALB target group) = **round robin**; also *least outstanding requests* and *weighted random*. An **NLB does not use these at all** — it distributes by flow hash.
+- **ALB target-group health-check defaults:** `HealthyThresholdCount` **5**, `UnhealthyThresholdCount` **2**, `HealthCheckIntervalSeconds` **30**, `HealthCheckTimeoutSeconds` **5**, path `/`, success code **200**. So a new target needs **5 × 30s = 150s** of passing checks to enter service, and **2 × 30s = 60s** of failures to leave it. Thresholds range **2–10**, interval **5–300s**. *(Verified 2026-09-30.)*
 - **Deregistration delay (connection draining)** default = **300 seconds**. Draining target finishes in-flight requests, state `draining` → `unused`, then the ASG may terminate it. Range 0–3600s.
 - **Health checks are two independent systems:** the *ALB/target-group* health check (does the app answer on the path with the matcher code?) decides **routing**; the *ASG* `health_check_type` decides **replacement**. `EC2` = hypervisor status checks only; `ELB` = honor the target-group health. They only cooperate if you set `ELB`.
 - **`health_check_grace_period`** — seconds after launch before the ASG counts health against an instance. Must exceed boot + bootstrap + health-check convergence, or you get a **boot loop**. With boot-time `apt install`, ~300s is safe; with a baked AMI you can drop it low.
@@ -379,6 +380,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [ALB target group health checks (defaults and ranges)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html)
 
 - [Zonal services — static stability capacity example](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/zonal-services.html) — the six-across-three-AZs → nine total example and the "50% additional instances" cost; verified 2026-09-27
 - [REL11-BP05 Use static stability to prevent bimodal behavior](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_withstand_component_failures_static_stability.html) — pre-provision for the loss of an AZ; verified 2026-09-27

@@ -65,7 +65,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Managed policy versions retained | Up to 5 versions, can roll back; inline policies have no versioning |
 | AWS-managed policy ARN namespace | arn:aws:iam::aws:policy/… (customer-managed live in your account namespace) |
 | Inline vs managed policy lifecycle | Inline dies with the principal, one principal only; managed is standalone and reusable |
-| ListBucket scoping | s3:ListBucket acts on the bucket ARN (no /*) — prefix scoping must be a condition on s3:prefix |
+| ListBucket scoping | `s3:ListBucket` is a **bucket-level** action — it takes the bare bucket ARN, **no `/*`**; object actions need `/*`. Getting it wrong fails silently. ⚠️ verify: that restricting a listing to a folder is done with a condition on `s3:prefix` |
 
 **IAM groups**
 
@@ -127,7 +127,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| How policy types combine | identity+resource = UNION; identity+boundary = INTERSECTION; identity+SCP = INTERSECTION |
+| How policy types combine | identity+resource = **UNION, but only within one account**; identity+boundary = INTERSECTION; identity+SCP = INTERSECTION. **Cross-account is evaluated twice** — the caller's identity policy *and* the resource policy must both allow it |
 | Boundary implicit deny vs resource policy | Implicit deny in a boundary does not limit resource-based policies; an explicit Deny does |
 | What can carry a permissions boundary | Users and roles — not groups; it takes a managed policy ARN and grants nothing |
 
@@ -168,8 +168,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | t3.micro max banked CPU credits | 288 (24h of earnings) |
 | t3.micro CPU credit earn rate | 12 CPU credits/hour |
-| T-family baseline CPU | 10% per vCPU |
-| T3 default credit mode | unlimited — never throttles, bills surplus instead |
+| T-family baseline CPU | **Varies by size** — baseline % per vCPU = (credits earned per hour ÷ vCPUs) ÷ 60. `t3.nano` **2.5%**, `t3.micro` **10%**, `t3.small`/`medium` **20%**, `t3.large` **30%**. Never quote one size's baseline for the family |
+| T3 default credit mode | **unlimited** (T2 defaults to *standard*). The burst always succeeds and is **free while average CPU stays at or below baseline over a rolling 24 hours**; only sustained excess bills, at a flat rate per vCPU-hour |
 | Metric to alarm on for surplus billing | CPUSurplusCreditsCharged |
 | The three burstable CloudWatch metric names | CPUCreditBalance, CPUSurplusCreditBalance, CPUSurplusCreditsCharged |
 | Standard mode at zero credit balance | pinned at baseline (~10% CPU on t3.micro) — CPUCreditBalance flatlined at 0 |
@@ -194,7 +194,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Free tier — accounts created before 15 Jul 2025 | t2.micro/t3.micro, 750 hrs/month, 12 months |
 | Free tier — accounts created on/after 15 Jul 2025: types | t3.micro, t3.small, t4g.micro, t4g.small, c7i-flex.large, m7i-flex.large |
-| Free tier — newer plan credits and expiry | $100 on sign-up plus up to $100 more; ends at 6 months or when credits run out |
+| Free tier — newer plan credits and expiry | **$100 on sign-up, plus up to $100 more earned by using foundational services** (not granted up front); ends at **6 months or when the credits run out**, whichever comes first |
 | OS still billed as a full hour, not per second | SLES |
 | On-Demand billing granularity | per second after a 60-second minimum — Linux, Windows, RHEL/Ubuntu Pro |
 
@@ -279,7 +279,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Putting an ALB behind an NLB | Target group target_type = "alb", protocol TCP, one ALB per target group |
 | Static IP — ALB vs NLB | ALB: DNS name only. NLB: one static IP per AZ, can attach an EIP |
 | Client source IP — ALB vs NLB | ALB terminates the connection, adds X-Forwarded-For; NLB preserves source IP natively |
-| NLB flow hash inputs | Protocol, source/destination IP and port (5-tuple flow hash for GWLB) |
+| NLB flow hash inputs | ⚠️ verify: protocol + source/destination IP + source/destination port — and whether the **TCP sequence number** is included (the notes state it both ways). GWLB uses a 5-tuple flow hash |
 | ALB layer and routing conditions | Layer 7; routes on host, path, header, method, query-string, source-IP |
 
 **ALB listener rules & redirect**
@@ -297,7 +297,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Default routing algorithm | Round robin (others: least outstanding requests, weighted random) |
+| Default routing algorithm | **ALB target group**: round robin (also least outstanding requests, weighted random). **NLB does not use it** — NLB distributes by flow hash |
 | Deregistration delay default | 300 seconds |
 | Deregistration delay range | 0–3600 seconds |
 | Draining target state transition | draining → unused, then the ASG may terminate it |
@@ -311,7 +311,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, only with health_check_type ELB |
 | When a failed health check is user-visible | Only when NO targets are healthy; with ≥1 healthy the ALB routes around it silently |
 | Time to ELB-healthy with boot-time apt install | ~180s = boot ~30s + apt install nginx ~60s + health-check convergence ~90s |
-| Health-check convergence arithmetic | healthy_threshold 3 × interval 30s = 90s |
+| Health-check convergence arithmetic | HealthyThresholdCount × HealthCheckIntervalSeconds. **ALB defaults: 5 × 30s = 150s** to be marked healthy; UnhealthyThresholdCount default **2** (so ~60s to be pulled). Thresholds range 2–10, interval 5–300s |
 | Safe health_check_grace_period values | ~300s with boot-time install; ~40s time-to-healthy with a baked AMI |
 
 **Target tracking**
@@ -350,9 +350,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Legacy ELB free tier — who no longer gets it | Accounts opened since 2025-07-15 get the credits-based Free plan instead |
-| Legacy ELB free tier allowance | 750 LB-hrs/month shared with Classic LBs + 15 LCUs |
+| Legacy ELB free tier allowance | 750 LB-hrs/month (**shared with Classic LBs**) + 15 LCUs. ⚠️ Dated pricing — check current; accounts opened since 2025-07-15 get the credits-based Free plan instead, so an ALB spends credits from hour one |
 | Launch configuration status | Deprecated predecessor to launch templates |
-| us-east-1 AZ that historically doesn't support ALBs | us-east-1e — handing the ALB all default-VPC subnets errors on apply |
 
 ↳ [[04-alb-asg]]
 
@@ -494,7 +493,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which id goes in the ARN | DbiResourceId (db-ABC…), not the DB identifier; Aurora = DbClusterResourceId; RDS Proxy = prx- |
 | DB-side mapping per engine | MySQL: AWSAuthenticationPlugin · PostgreSQL: GRANT rds_iam TO <user> |
 | Supported engines | MariaDB, MySQL, PostgreSQL (and Aurora MySQL/PostgreSQL) |
-| Transport encryption | Always SSL/TLS |
+| Transport encryption | **With IAM DB authentication: always SSL/TLS** (the token is only valid over TLS). With a native password or Secrets Manager, TLS is **optional** — you must require it |
 | PostgreSQL rds_iam role precedence | IAM auth takes precedence over password auth for that user; no Kerberos, no replication connections |
 | Default state of the feature | Off by default |
 
@@ -513,7 +512,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Aurora replica lag | <10 ms typical (note also states "well under 100 ms") |
 | Global Database secondary regions | 1 primary + up to 10 read-only secondary regions, <1s replication |
 | The four endpoint types | writer/cluster, reader (LB'd reads), custom, instance |
-| Serverless v2 capacity unit and instance class | ACUs; instance class db.serverless |
+| Serverless v2 capacity unit and instance class | Capacity is measured in **ACUs** (minimum 0.5). ⚠️ verify: the instance class name `db.serverless` |
 | Backtrack engine support | Aurora MySQL only — rewinds the DB in place, no restore |
 | Throughput claim vs stock engines | ~5× MySQL / 3× PostgreSQL |
 | Engine compatibility | MySQL/PostgreSQL-compatible only |
@@ -569,8 +568,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Replication group size | 1 primary + up to 5 read replicas |
-| Minimum nodes for auto-failover / Multi-AZ | 2 |
-| Redis port | 6379 |
+| Minimum nodes for auto-failover / Multi-AZ | **2** — Multi-AZ with automatic failover requires a cluster **with at least one replica**, so 1 primary + 1 replica. Max **5** read replicas per shard |
+| Redis port | ⚠️ verify: 6379 (Memcached 11211) — widely known but not confirmed against AWS docs in this vault |
 
 **Caching strategies**
 
@@ -596,7 +595,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Glacier Flexible vs Deep Archive retrieval times | Flexible: Expedited 1–5 min, Standard 3–5 h, Bulk 5–12 h · Deep Archive: no Expedited, Std ~12 h, Bulk ~48 h |
 | One Zone-IA vs Standard-IA | Same 11 nines; One Zone-IA = 1 AZ, 99.5% availability, re-creatable data only |
 | Glacier Instant Retrieval speed | Milliseconds — no restore job at all |
-| Durability and AZ count | 99.999999999% (11 nines) on every class; ≥3 AZs, One Zone classes 1 AZ |
+| Durability and AZ count | **"Designed for"** 99.999999999% (11 nines) on every current class; **≥3 AZs**. One Zone classes: **1 AZ**, same 11 nines **but the data is lost if that AZ is destroyed**. Legacy exception: Reduced Redundancy Storage, **99.99%** |
 
 **S3 encryption**
 
@@ -617,7 +616,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Object Lock delete asymmetry | DELETE with a version id → 403 AccessDenied; DELETE without → 200 OK + delete marker |
 | GOVERNANCE mode bypass requirements | s3:BypassGovernanceRetention + header x-amz-bypass-governance-retention:true |
-| Retention vs legal hold | Retention = fixed date, extend-only never shorten; legal hold = no expiry, removed by explicit call |
+| Retention vs legal hold | Retention = a fixed *Retain Until Date*; **extend always, shorten only in GOVERNANCE mode with `s3:BypassGovernanceRetention`** — in COMPLIANCE mode nobody, not even root, can shorten it. Legal hold = no expiry, removed by an explicit call |
 | COMPLIANCE mode escape hatch | None — not even root; AWS's documented way out before expiry is closing the AWS account |
 | When Object Lock can be enabled / disabled | At bucket creation or on an existing versioned bucket; can never be turned off, versioning can't be suspended |
 | MFA Delete — who can configure it | **Root** account with an MFA device, via the **CLI only** — not an IAM user, not the console |
@@ -678,7 +677,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| S3 Select currency warning | ⚠️ No longer available to new customers — use Athena; event triggers are ObjectCreated:*/ObjectRemoved:*/ObjectRestore:* |
+| S3 Select currency warning | ⚠️ No longer available to new customers — use Athena. (Event notification triggers include `s3:ObjectCreated:*`, `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, replication events **and more** — not a closed list; filterable by prefix and suffix) |
 
 ↳ [[09-s3-advanced]] · [[09-s3-intro]] · [[09-s3-security]]
 
@@ -884,7 +883,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Vault Lock compliance mode grace time minimum | 3 days |
-| Vault Lock governance vs compliance mode | Governance unlockable with IAM permission; compliance unlockable by no one, including AWS |
+| Vault Lock governance vs compliance mode | **Governance**: unlockable by anyone holding the IAM permission. **Compliance**: unlockable by nobody, including AWS — **but only once the grace period expires** (minimum **3 days**). During that window it is still cancellable, which is what an "accidentally locked vault" question turns on |
 | AWS Backup cross-account copy requirement | An AWS Organizations structure |
 | AWS Backup incremental vs full | Incremental for supported resource types; others are full copies each time |
 | AWS Backup resource assignment method | By tag (plus Vault Lock = WORM) |
@@ -926,7 +925,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Dedicated Host vs Dedicated Instance | Host = physical server visibility, per-socket/per-core BYOL; Instance = single-tenant, no host visibility |
-| Number of EC2 purchasing options | seven: On-Demand, Savings Plans, RIs, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations |
+| Number of EC2 purchasing options | **Seven**: On-Demand, Savings Plans, RIs, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations — **plus Capacity Blocks** for reserving clusters of GPU instances, so "seven" is the documented count, not the whole universe |
 
 **Spot**
 
@@ -1069,7 +1068,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Partition key — length and hash | Unicode string up to 256 characters, mapped to a shard by MD5 hash; required on every write |
 | Retention — default / min / max | default and minimum 24 hours; maximum 8,760 hours (365 days); above 24 h costs extra |
 | Per-shard write limit | 1 MB/sec OR 1,000 records/sec — whichever binds first |
-| Per-shard read limit | 2 MB/sec, at most 5 GetRecords calls/sec, shared across all consumers |
+| Per-shard read limit | **2 MB/sec out** per shard, max **5 `GetRecords`/sec** — **shared across all consumers only under the default shared fan-out**. With **enhanced fan-out** each registered consumer gets its own 2 MB/sec per shard (`SubscribeToShard`, pushed). "Several consumers each needing full throughput" → enhanced fan-out |
 | Free tier | none — Kinesis Data Streams has no free tier |
 
 **Kinesis consumers**
@@ -1097,7 +1096,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | SQS vs Kinesis after a consumer reads | SQS: deleted. Kinesis: stays until retention expires (no delete operation) |
 | Data Streams vs Firehose | Streams stores, you build the consumer; Firehose delivers, you build nothing |
 | Kinesis ordering scope | within a shard, not across the stream |
-| Standard vs FIFO delivery guarantee | Standard: at-least-once, best-effort order. FIFO: exactly-once, strict order |
+| Standard vs FIFO delivery guarantee | Standard: **at-least-once**, best-effort order. FIFO: **exactly-once**, strict order **per `MessageGroupId`** — *not* across the queue. Different groups have no defined order relative to each other and process in parallel |
 | SQS vs SNS delivery direction | SQS: consumer pulls, one consumer. SNS: pushes to every subscriber |
 | A2A vs A2P support | SNS: A2A and A2P. SQS: A2A only |
 | Amazon MQ vs SQS/SNS trigger | existing app on a standard broker protocol, no rewrite → MQ; anything new → SQS/SNS |
@@ -1267,7 +1266,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | AWS managed key rotation (currency warning) | every year — changed from every 3 years (~1,095 days) in May 2022 |
 | On-demand rotations per key | maximum 25, quota not adjustable |
 | Resource quotas | 100,000 customer managed keys/Region · 50 aliases/key · 50,000 grants/key · 10 custom key stores |
-| Keys that cannot auto-rotate | asymmetric, HMAC, and custom-key-store keys — manual only |
+| Keys that cannot auto-rotate | Automatic rotation works **only on symmetric encryption keys whose key material AWS KMS generated**. So asymmetric, HMAC, custom-key-store **and imported (BYOK) key material** are all manual-only — the list is a rule, not three exceptions |
 | Encrypt max plaintext (SYMMETRIC_DEFAULT) | 4,096 bytes |
 | What rotation does to your data | nothing — no re-encrypt, no data-key rotation, key ID unchanged |
 | What GenerateDataKey returns | a plaintext data key plus an encrypted copy of the same key |
@@ -1301,7 +1300,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | WAF cannot attach to | Network Load Balancer, or an EC2 instance directly |
 | CloudFront-scope web ACL Region | hard-coded us-east-1 (N. Virginia); one web ACL per resource |
 | ACM certificate Region for CloudFront | us-east-1 |
-| Shield Advanced minimum commitment | 1 year; adds L7 DDoS, 24x7 SRT, DDoS cost protection, covers standard WAF cost |
+| Shield Advanced minimum commitment | **$3,000/month, 1-year commitment**; adds L7 DDoS protection, 24×7 SRT access, DDoS cost protection, and covers standard WAF costs **on protected resources** (not account-wide) |
 | Shield Standard scope and cost | L3/L4 DDoS, free and automatic for all customers, no rules to configure |
 
 **CloudHSM**
@@ -1390,8 +1389,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | SageMaker rename | Amazon SageMaker AI as of 3 December 2024; "SageMaker" reused for the unified platform |
 | Amazon Forecast status | Closed to new customers 29 July 2024 → SageMaker Canvas; still exam-answerable |
-| Amazon Fraud Detector status | Closed to new customers 7 November 2025 → SageMaker, AutoGluon, AWS WAF |
-| Amazon Kendra status | Closed to new customers → Amazon Bedrock Knowledge Bases |
+| Amazon Fraud Detector status | Closed to new customers 7 November 2025 → SageMaker, AutoGluon, AWS WAF. **Still in the SAA-C03 exam guide — still answer it on the exam.** Legacy in the real world, not in the question bank |
+| Amazon Kendra status | Closed to new customers → Amazon Bedrock Knowledge Bases. **Still in the SAA-C03 exam guide — still answer it on the exam**, e.g. natural-language enterprise search. Do not eliminate it for being legacy |
 
 **ML services**
 

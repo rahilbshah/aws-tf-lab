@@ -171,7 +171,7 @@ flowchart LR
 
 - **In-memory** → sub-millisecond latency; data lives in RAM (Memcached loses it on restart; Redis can persist/replicate).
 - **Redis threading:** single-threaded for command execution (one core per node) — scale by **cluster mode** (sharding across nodes), not by adding cores. **Memcached:** multi-threaded — scales up on **large multi-core** nodes *and* out by adding nodes.
-- **Redis HA:** a **replication group** = 1 primary + up to 5 read replicas; **Multi-AZ with automatic failover** promotes a replica if the primary dies. Supports **backup/snapshot & restore**. **Cluster mode enabled** shards data across multiple primaries (each with replicas) for horizontal scale.
+- **Redis HA:** a **replication group** = 1 primary + up to 5 read replicas; **Multi-AZ with automatic failover** promotes a replica if the primary dies. AWS requires a cluster **with at least one replica** for Multi-AZ, so the **minimum is 2 nodes** — a single-node cluster cannot fail over. *(Verified 2026-09-30.)* Supports **backup/snapshot & restore**. **Cluster mode enabled** shards data across multiple primaries (each with replicas) for horizontal scale.
 - **Memcached:** no replication, no failover, no persistence, no backup — if a node dies, its data is gone. Scales by partitioning keys across nodes (client-side).
 - **Data types:** Redis has strings, lists, sets, **sorted sets** (leaderboards!), hashes, bitmaps, hyperloglog, **geospatial**, plus **pub/sub** and transactions. Memcached: simple strings/objects only.
 - **Encryption:** in-transit + at-rest supported on Redis (newer versions); Memcached in-transit on newer versions.
@@ -237,6 +237,7 @@ flowchart LR
 - [ ] **Auto Discovery is Memcached-only** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). The discriminator was "multithreaded sub-ms session store with node discovery": I anchored on *session store → Redis* and ignored two Memcached-exclusive signals. Fix the **method**, not just the fact — scan for engine-exclusive capabilities before reading the use case.
 
 ## 🔗 Docs
+- [ElastiCache replication groups (Multi-AZ needs a cluster with replicas)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.Redis.Groups.html)
 
 - [Comparing Redis OSS / Valkey / Memcached](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html) — threading + feature table; verified 2026-07
 - [Caching strategies (lazy loading, write-through, TTL)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html)
