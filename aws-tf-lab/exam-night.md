@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*174 recall hooks · 329 pointers · ~29 min read*
+*176 recall hooks · 329 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -143,6 +143,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#Which instance dies when it scales in|explain]]
 - Schedule desired capacity only and leave min/max alone, so dynamic scaling keeps working for the rest of the day.  
   ↳ [[04-alb-asg#Scheduling capacity without freezing the group|explain]]
+- Never scale a queue consumer on CPU, and never on raw queue depth either — use  
+  ↳ [[04-alb-asg#Scaling a queue-driven worker fleet|explain]]
 - Spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and  
   ↳ [[04-alb-asg#Sizing min / desired / max for the loss of an AZ|explain]]
 
@@ -634,6 +636,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[15-decoupling#Standard vs FIFO — what strict ordering costs|explain]]
 - Amazon MQ exists so a legacy app speaking a standard broker protocol can move to AWS without a rewrite — and that migration framing is the only reason to pick it.  
   ↳ [[15-decoupling#When neither fits: Amazon MQ|explain]]
+- Scale queue consumers on the queue's own metrics — backlog per consumer normally,  
+  ↳ [[15-decoupling#Scaling the consumers on the queue itself|explain]]
 
 **Traps** [[15-decoupling#Traps|open]]
 - "receiving a message removes it"

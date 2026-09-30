@@ -140,6 +140,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Standard queues:** nearly unlimited throughput per API action; **at-least-once** delivery; **best-effort ordering**.
 - **FIFO queues:** **300 TPS** per API action per partition; **3,000 messages/second** with batching. **High throughput FIFO** (opt-in) raises this per Region — up to **70,000 TPS** non-batched in N. Virginia / Oregon / Ireland, **19,000** in Ohio and Frankfurt, **9,000** in Mumbai / Singapore / Sydney / Tokyo / Spain, **4,500** in London and São Paulo, **2,400** elsewhere; batching multiplies by 10.
 - **`MessageGroupId`** is required on FIFO queues; the send fails without it. On **standard** queues it enables **fair queues**.
+- **Scaling consumers:** drive it from the **queue**, not consumer CPU. **Backlog per consumer** (`ApproximateNumberOfMessages` ÷ running consumers) for throughput; **`ApproximateAgeOfOldestMessage`** — *"the age of the oldest unprocessed message"*, in seconds — for a latency SLA. On a **standard** queue a message received 3+ times moves to the back, so the age metric then reports the *next* message and can understate. *(Verified 2026-10-01.)*
 - **Deduplication:** FIFO rejects a duplicate `MessageDeduplicationId` sent within a **5-minute** interval. **Content-based deduplication** hashes the message **body** with SHA-256 — *not* the attributes.
 - **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and must be the **same queue type** — a FIFO queue's DLQ must be FIFO, a standard queue's DLQ must be standard. Separately, AWS advises against a DLQ on a FIFO queue at all if exact ordering matters. A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
 - **DLQ retention clock:** **standard** queues keep the **original enqueue timestamp** when a message moves to the DLQ, so set the DLQ's retention **longer** than the source's. **FIFO** queues **reset** the timestamp on the move.
@@ -149,6 +150,27 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Amazon MQ deployment modes:** *single-instance* — one broker, one AZ, **EBS or EFS** storage; *active/standby* — two brokers in two AZs on **EFS**, only one active, with two endpoints per wire protocol (`-1`/`-2` suffixes) and failover in seconds on reboot. RabbitMQ offers **quorum queues** (leader + followers across AZs, good for poison messages); ActiveMQ offers **cross-Region data replication** with API-triggered failover.
 - **Amazon MQ wire protocols** — this is the whole point of the service, and why a migration question picks it over SQS. *ActiveMQ*: **AMQP, MQTT, OpenWire, STOMP** (plus MQTT and STOMP over WebSocket). *RabbitMQ*: **AMQP 0-9-1**. If a scenario names a protocol, the answer is Amazon MQ — SQS and SNS speak only the AWS API.
 - **Pricing:** SQS and SNS both have an always-free tier that covers lab use comfortably. **Amazon MQ bills per broker-hour** — it is a running server, not serverless.
+
+### Scaling the consumers on the queue itself
+
+The queue absorbs a burst; something still has to add consumers. The signal is **the queue**, not
+the workers — a consumer blocked on I/O shows no CPU while the backlog grows, so CPU-based scaling
+never reacts.
+
+Two metrics, two different questions:
+
+| Question in the stem | Metric | Why |
+|---|---|---|
+| "keep up with the backlog", "scale the fleet to demand" | **backlog per instance** — `ApproximateNumberOfMessages` ÷ running consumers | raw depth doesn't move with fleet size, so it can't drive target tracking; the ratio does |
+| "process within N seconds", a stated **latency SLA** | **`ApproximateAgeOfOldestMessage`** | it measures *waiting time*, which is what the SLA is about |
+| "how big is the backlog right now" | `ApproximateNumberOfMessagesVisible` | *"the number of messages currently available for retrieval and processing"* — good for an alarm, wrong for target tracking |
+
+This works the same for an **ECS service** (Application Auto Scaling on messages-per-task) as for
+an EC2 Auto Scaling group — see [[04-alb-asg#Scaling a queue-driven worker fleet]] for AWS's
+backlog-per-instance formula and worked example.
+
+> In one line: scale queue consumers on the queue's own metrics — backlog per consumer normally,
+> message age when the requirement is latency — never on consumer CPU.
 
 ## Comparisons
 
@@ -227,6 +249,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - [ ] Got right first time and worth keeping: the SNS→SQS queue policy needs `sns.amazonaws.com` pinned with **`ArnEquals` on `aws:SourceArn`** — fourth appearance of the confused-deputy shape.
 
 ## 🔗 Docs
+- [Available CloudWatch metrics for SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-available-cloudwatch-metrics.html)
 
 - [SQS message quotas](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html) — retention, visibility timeout, **1 MiB** message size, delay, batch size, FIFO and high-throughput TPS by Region; verified 2026-09-06
 - [Short and long polling](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html) — short is the default, subset sampling, false empty responses, 20-second maximum; verified 2026-09-06

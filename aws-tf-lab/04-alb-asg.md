@@ -160,6 +160,62 @@ The schedule itself is **5-field cron** — `[Minute] [Hour] [Day_of_Month] [Mon
 
 > In one line: schedule desired capacity only and leave min/max alone, so dynamic scaling keeps working for the rest of the day.
 
+### Scaling a queue-driven worker fleet
+
+CPU is the wrong signal for a worker reading a queue. An idle worker waiting on I/O shows almost
+no CPU while a backlog piles up, so CPU target tracking never fires. But the obvious fix —
+target-track on **`ApproximateNumberOfMessagesVisible`** — is also wrong, and AWS says why:
+
+> *"The number of messages in the queue might not change proportionally to the size of the Auto
+> Scaling group that processes messages… the number of messages in your SQS queue does not solely
+> define the number of instances needed."*
+
+Target tracking needs a metric that moves **in proportion to fleet size**. Queue depth doesn't:
+double the fleet and the depth is unchanged. AWS's answer is a **backlog per instance** metric:
+
+- **backlog per instance** = `ApproximateNumberOfMessages` ÷ instances in the **`InService`** state
+- **target value** = acceptable latency ÷ average processing time per message
+
+AWS's own worked example: 10 instances, 1,500 messages, 0.1s per message, 10s acceptable latency.
+Target = 10 / 0.1 = **100 messages per instance**. Current = 1500 / 10 = **150**, so the group
+scales out — by five instances, to bring the ratio back to target.
+
+⚠️ Currency: AWS now adds that *"you can save the cost and effort put into publishing your own
+metric by using **metric math**"*, so the classic "write a Lambda to publish a custom metric"
+step is no longer required. Older courses still teach the custom-metric version.
+
+For a pure **latency SLA** the sharper signal is **`ApproximateAgeOfOldestMessage`** — "the age of
+the oldest unprocessed message in the queue", in seconds — because that *is* the thing the SLA is
+about. One caveat worth knowing: on a **standard** queue, a message received three or more times
+without being deleted gets moved to the **back** of the queue, and the metric then reports the
+*next* message's age, so reordering can make it understate.
+
+> In one line: never scale a queue consumer on CPU, and never on raw queue depth either — use
+> backlog per instance, or message age when the requirement is stated as latency.
+
+### Three ASG mechanics the exam asks about
+
+**Instance warm-up.** A newly launched instance is counted toward capacity but its metrics are
+excluded until its **warm-up** has elapsed, which stops a slow-booting instance from provoking
+another scale-out. AWS recommends setting the **default instance warmup** on the group rather
+than per policy, so one change updates every policy. Current capacity counts only instances that
+have *passed* warmup.
+
+**Lifecycle hooks** pause an instance in a **wait state** so you can act before it joins or
+leaves — install software on launch, drain logs on termination. The default (heartbeat) timeout
+is **one hour**; the global maximum is **48 hours or 100× the heartbeat, whichever is smaller**;
+`complete-lifecycle-action` releases it early. Critically, **termination hooks are best-effort**:
+*"If a termination lifecycle hook times out, or is abandoned, Amazon EC2 Auto Scaling proceeds
+with terminating the instance immediately."* ⚠️ verify: the API state names (`Pending:Wait` on
+launch, `Terminating:Wait` on termination) — AWS's own page says only "wait state".
+
+**An ASG of one is still an HA answer.** For a single-instance, non-distributed app that must
+survive an AZ failure, the cheapest design is an Auto Scaling group with
+**min = max = desired = 1** spanning **two or more AZs**. Nothing scales, but if the AZ fails the
+group relaunches the instance in the other AZ automatically. A stem that says "single instance",
+"cannot be load balanced", "cheapest", and "survive an AZ outage" is describing exactly this — not
+a second standby instance, and not an ALB.
+
 ### Sizing min / desired / max for the loss of an AZ
 
 An ASG spread over two AZs is not the same thing as an ASG that still works when one of them
@@ -229,6 +285,12 @@ flowchart TD
 
 - **ALB requires at least 2 AZs** (enforced). NLB recommended 2+, not strictly required.
 - **Cross-zone load balancing:** ALB — always on at the LB level, can't disable there (only override off per target group); **free**. NLB/GWLB — **off by default**; enabling it means each node spreads to all AZs but **inter-AZ data transfer is billed**. (Exam-frequent.)
+- **Scaling a queue consumer:** not CPU, and not raw queue depth — **backlog per instance** = `ApproximateNumberOfMessages` ÷ `InService` instances, target = acceptable latency ÷ per-message processing time. **Metric math** now replaces publishing a custom metric. For a latency SLA use **`ApproximateAgeOfOldestMessage`**.
+- **Lifecycle hooks:** instance parks in a **wait state**; heartbeat timeout **1 hour** default, global cap **48 h or 100× heartbeat** (smaller wins); `complete-lifecycle-action` continues early. **Termination hooks are best-effort** — on timeout or abandon, ASG terminates anyway.
+- **Instance warm-up** excludes a new instance's metrics from scaling decisions until it elapses; set the **default instance warmup** on the group, not per policy.
+- **min = max = desired = 1 across 2+ AZs** is the cheapest way to make a single non-distributed instance survive an AZ failure — the group relaunches it elsewhere.
+*Verified against AWS docs 2026-10-01.*
+
 - **Default routing algorithm** (ALB target group) = **round robin**; also *least outstanding requests* and *weighted random*. An **NLB does not use these at all** — it distributes by flow hash.
 - **ALB target-group health-check defaults:** `HealthyThresholdCount` **5**, `UnhealthyThresholdCount` **2**, `HealthCheckIntervalSeconds` **30**, `HealthCheckTimeoutSeconds` **5**, path `/`, success code **200**. So a new target needs **5 × 30s = 150s** of passing checks to enter service, and **2 × 30s = 60s** of failures to leave it. Thresholds range **2–10**, interval **5–300s**. *(Verified 2026-09-30.)*
 - **Deregistration delay (connection draining)** default = **300 seconds**. Draining target finishes in-flight requests, state `draining` → `unused`, then the ASG may terminate it. Range 0–3600s.
@@ -380,6 +442,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [Scaling based on an SQS queue (backlog per instance)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html) · [Lifecycle hooks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html) · [Step and simple scaling (warm-up)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-simple-step.html)
 - [ALB target group health checks (defaults and ranges)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html)
 
 - [Zonal services — static stability capacity example](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/zonal-services.html) — the six-across-three-AZs → nine total example and the "50% additional instances" cost; verified 2026-09-27
