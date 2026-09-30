@@ -2,6 +2,7 @@
 topic: 06-capstone
 domain: resilient
 status: reviewed
+exam: false
 services: [VPC, ALB, ASG, RDS]
 related: [05-vpc-core, 04-alb-asg, 02-ec2, 01-iam, 03-ami-bake]
 tags: [topic, domain/resilient, capstone]

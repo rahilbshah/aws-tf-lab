@@ -2,6 +2,7 @@
 topic: 18-containers-capstone
 domain: resilient
 status: reviewed
+exam: false
 services: [ECS, Fargate, ECR, ALB, CloudFront, RDS, ElastiCache, S3, SecretsManager, ApplicationAutoScaling]
 related: [17-containers, 05-vpc-core, 07-rds-aurora, 08-elasticache, 11-cloudfront, 01-iam]
 tags: [topic, domain/resilient]

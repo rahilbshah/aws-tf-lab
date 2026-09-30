@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*181 recall hooks · 342 pointers · ~30 min read*
+*173 recall hooks · 323 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -278,35 +278,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[05-vpc-hybrid#Site-to-Site VPN vs Direct Connect|Site-to-Site VPN vs Direct Connect]]
 - [[05-vpc-hybrid#Which one? (exam triggers)|Which one? (exam triggers)]]
-
-
-## [[06-capstone|06 – Capstone: 3-Tier VPC with Terraform Modules]]
-
-- Tiers limit the blast radius of a breach; modules turn one untouchable file into composable, reusable pieces.  
-  ↳ [[06-capstone#What problem does this solve?|explain]]
-- Each tier only accepts the group in front of it, referenced by SG ID so it survives every scale event.  
-  ↳ [[06-capstone#The security-group chain is the architecture|explain]]
-- A module is a directory with variables in and outputs out, and its outputs reach the caller and stop there.  
-  ↳ [[06-capstone#Modules, and the output that goes missing|explain]]
-- Multi-AZ is a standby you cannot read that fails over automatically; a read replica is a copy you can read but must promote by hand.  
-  ↳ [[06-capstone#Multi-AZ and read replicas solve different problems|explain]]
-- Encryption is decided at creation and the only way back is snapshot-copy-restore; the username and password just have to survive RDS's validation rules.  
-  ↳ [[06-capstone#The RDS setting you can only get right once|explain]]
-- A bastion opens a door and guards it; Session Manager opens no door and dials out instead.  
-  ↳ [[06-capstone#Reaching a database that has no way in|explain]]
-
-**Traps** [[06-capstone#Worked examples|open]]
-- Multi-AZ to scale reads
-- "the module output shows in terraform output"
-
-**Failure modes**
-- the all-protocols-with-ports egress error  ↳ [[06-capstone#Worked examples|open]]
-- secret in a committed .tf file  ↳ [[06-capstone#Worked examples|open]]
-
-**Comparisons**
-- [[06-capstone#RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)|RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)]]
-- [[06-capstone#Flat config vs Modules|Flat config vs Modules]]
-- [[06-capstone#Accessing the private database (bastion vs SSM)|Accessing the private database (bastion vs SSM)]]
 
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
@@ -735,32 +706,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[17-containers#Task execution role vs task role|Task execution role vs task role]]
 - [[17-containers#ALB target types|ALB target types]]
 - [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
-
-
-## [[18-containers-capstone|18 – Containers capstone (the services meeting each other)]]
-
-- The capstone's lessons are all about the joints, because the bones were already known.  
-  ↳ [[18-containers-capstone#What problem does this solve?|explain]]
-- The execution role is the plumbing, the task role is the app, and the password only ever flows through the plumbing.  
-  ↳ [[18-containers-capstone#How it actually works|explain]]
-
-**Traps** [[18-containers-capstone#⚠️ Traps — why the wrong answer looks right|open]]
-- the ALB timed out, so something's broken
-- the autoscaler scaled to 1, so the ALB isn't load balancing
-- .id on a task definition
-- putting the secret grant on the task role
-- health check on /
-- "the S3 upload went through the NAT gateway"
-
-**Failure modes**
-- the plan that never goes clean  ↳ [[18-containers-capstone#Worked examples|open]]
-
-**Comparisons**
-- [[18-containers-capstone#Where a task's configuration lives|Where a task's configuration lives]]
-- [[18-containers-capstone#The two ECS roles, as used in this build|The two ECS roles, as used in this build]]
-- [[18-containers-capstone#Two independent controls on the isolated tier|Two independent controls on the isolated tier]]
-- [[18-containers-capstone#Three ways to keep a DB password out of Terraform|Three ways to keep a DB password out of Terraform]]
-- [[18-containers-capstone#The perpetual-drift pattern — two instances from this build|The perpetual-drift pattern — two instances from this build]]
 
 
 ## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]
