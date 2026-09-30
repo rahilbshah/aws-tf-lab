@@ -1463,7 +1463,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Checks available on Basic/Developer Support | All Service limits checks + EBS/RDS public snapshots, S3 bucket permissions, MFA on root, SG ports, STS endpoint |
 | Number and names of check categories | Six: cost optimization, performance, security, fault tolerance, service limits, operational excellence |
-| Support-plan restructuring | Developer, Business and Enterprise On-Ramp discontinued 1 January 2027, replaced by Business Support+ |
+| Support-plan restructuring | Developer, Business and Enterprise On-Ramp discontinued **1 January 2027**, replaced by **Business Support+**; full Trusted Advisor then needs Business Support+, Enterprise Support or Unified Operations. **The exam still uses the old Business / Enterprise framing — answer with that** |
 | What requires a paid support plan | Full check set, the Trusted Advisor API, and EventBridge monitoring |
 | WA Tool vs Trusted Advisor vs Config | WA Tool reviews design; Trusted Advisor inspects resources; Config continuously evaluates + remediates |
 
