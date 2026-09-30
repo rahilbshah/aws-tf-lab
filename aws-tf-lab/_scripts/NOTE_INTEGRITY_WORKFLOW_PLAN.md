@@ -41,40 +41,45 @@ exactly this shape.
 
 ## Axis A — currency
 
-### A0. Citation sweep (deterministic script, no agent)
+### A0. Citation sweep (deterministic script, no agent) — RUN 2026-09-30
 
-Fetch the `.md` twin of all 284 citations, require HTTP 200, classify
-**OK / MOVED / GONE**. For MOVED, attempt the obvious successor path and record it.
+**Result: 205 AWS citations checked, 196 live, 4 gone.** Minutes to run, no judgement,
+no tokens. This remains the first thing to run and the best value in either plan.
 
-This is the highest signal per token in either plan: minutes to run, exhaustive,
-no judgement required. **Run this one first, and separately, before any agent.**
+#### The method, corrected by running it
 
-#### It needs two different methods, because only AWS 404s honestly
+`docs.aws.amazon.com` is a single-page app. **Every unknown path returns HTTP 200** with
+an identical ~**2,328-byte** shell, and its "Looking for Something?" text is injected by
+JavaScript, so it is not in the raw HTML. Status codes and text greps both fail.
 
-| Host | Count | Check | Works? |
-|---|---|---|---|
-| `docs.aws.amazon.com` | 203 | fetch `<page>.md`, require **200** | **yes** — verified, 10% of a 20-URL sample failed |
-| `registry.terraform.io` | 51 | HTTP status | **no** |
-| `aws.amazon.com` + others | 30 | HTTP status, manual eyeball | partial (marketing pages move quietly) |
-
-The registry is a client-side-routed SPA that **never 404s**. Checked 2026-09-30:
-`…/docs/resources/iam_role` and `…/docs/resources/totally_fake_thing` both return
-**200**, both return **200** on `.md`, and both return a **byte-identical 8,497-byte
-JS shell** containing no content. There is no HTTP signal to read.
-
-**The fix is local and offline.** Terraform v1.15.3 is installed and the AWS provider
-is already downloaded under several topic folders, so the authoritative resource list
-comes from the provider itself:
+The test that works is **content length against that shell**:
 
 ```bash
-cd 01-iam && terraform providers schema -json \
-  | python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin)["provider_schemas"]["registry.terraform.io/hashicorp/aws"]["resource_schemas"])))'
+SHELL=$(curl -sL ".../<guide>/THIS_DOES_NOT_EXIST.html" | wc -c)   # 2328
+n=$(curl -sL "$URL" | wc -c);  [ "$n" -le $((SHELL+400)) ] && echo GONE
 ```
 
-Every `registry.terraform.io/.../docs/resources/<x>` citation is then checked by asking
-whether `aws_<x>` exists in that list — which also catches the case a status check never
-could: a resource that was **renamed or removed in provider v6** while the URL still
-resolves. That is a more useful check than link-liveness anyway.
+> [!warning] The `.md` twin is a ONE-WAY test — this plan originally got it wrong
+> `<page>.md` returning **200 proves the page is live**. A **404 proves nothing**: many
+> live pages serve no markdown twin. The first version of this plan used `.md` 404 as
+> proof of removal and predicted "~20 bad citations" from a 10% sample. Run in full it
+> flagged 11, of which the size test cleared **7** — `systems-manager-maintenance.md`
+> 404s while its `.html` serves 20,628 bytes. The real number was **4**.
+>
+> The size test also *confirmed* the one removal that mattered: `CHAP_LargeDBs.html`
+> returns exactly 2,328 bytes, byte-identical to a URL invented not to exist.
+
+Also: **retry timeouts before classifying.** 5 URLs returned `000` on the first pass and
+4 were fine on retry. A timeout is not a finding.
+
+#### What it found (4 dead citations)
+
+| Citation | In |
+|---|---|
+| `efs/latest/ug/storage-classes` | `12-storage-extras` |
+| `AmazonECS/…/specifying-sensitive-data-secret` | `18-containers-capstone` |
+| `IAM/latest/UserGuide/` (bare directory link) | `01-iam` |
+| `whitepapers/…/disaster-recovery-objectives` | `14-dr-resilience` |
 
 ### A1. Claim extraction + verification (1 agent per note)
 

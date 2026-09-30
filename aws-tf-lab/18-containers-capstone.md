@@ -150,7 +150,7 @@ graph TB
 
 ## 🔗 Docs
 - [RDS managed master password](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-secrets-manager.html) — verified 2026-09-06
-- [ECS secrets from Secrets Manager — JSON-key ARN syntax](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data-secret.html) — verified 2026-09-06
+- [ECS secrets from Secrets Manager — JSON-key ARN syntax](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html) — re-verified 2026-09-30 (page renamed)
 - [ECS task execution role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html) — verified 2026-09-06
 - [ALB target groups — deregistration delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html) — verified 2026-09-06
 - [Terraform `lifecycle` meta-argument](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle) — verified 2026-09-06

@@ -259,7 +259,8 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 ## 🔗 Docs
 
 - [What is Amazon EFS](https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html) — NFSv4.1/4.0, Regional vs One Zone, General Purpose + Elastic defaults, encryption, and the explicit "not supported with Windows EC2 instances"; verified 2026-09-05
-- [EFS storage classes](https://docs.aws.amazon.com/efs/latest/ug/storage-classes.html) — Standard / IA / Archive + One Zone variants, lifecycle on last access; verified 2026-09-05
+- [EFS performance and storage classes](https://docs.aws.amazon.com/efs/latest/ug/performance.html) — Standard / IA / Archive + One Zone variants; re-verified 2026-09-30 (the old `storage-classes` page was removed)
+- [EFS lifecycle management](https://docs.aws.amazon.com/efs/latest/ug/lifecycle-management-efs.html) — transition on last access; verified 2026-09-30
 - [What is FSx for Windows File Server](https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html) — SMB 2.0–3.1.1, Active Directory, Single-AZ vs Multi-AZ, SSD/HDD, VSS backups, on-prem access via DX/VPN; verified 2026-09-05
 - [What is FSx for Lustre](https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html) — scratch vs persistent durability, storage classes, S3 data-repository integration; verified 2026-09-05
 - [What is Volume Gateway](https://docs.aws.amazon.com/storagegateway/latest/vgw/WhatIsStorageGateway.html) — cached vs stored, iSCSI, deployment options; verified 2026-09-05
