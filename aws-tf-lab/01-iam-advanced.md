@@ -126,7 +126,7 @@ Nearly every policy type **narrows** your access:
 
 Exactly one type **widens** it:
 
-- identity policy **+ resource-based policy** → **either** one allowing is enough
+- identity policy **+ resource-based policy** → **either** one allowing is enough — **except a KMS key policy**, which is the one resource policy that must independently allow (see [[21-security#KMS is the exception to the resource-policy rule]])
 
 That exception looks inconsistent until you notice what a resource policy actually is: the *owner of the resource* saying "I permit this principal." That's a genuine grant arriving from the other direction — and it's the only reason cross-account access can work at all. If resource policies only narrowed, a bucket in account A could never give anything to a principal in account B.
 

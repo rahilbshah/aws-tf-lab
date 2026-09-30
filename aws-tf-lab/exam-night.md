@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*173 recall hooks · 323 pointers · ~29 min read*
+*173 recall hooks · 325 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -786,6 +786,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[21-security#ACM — where the certificate has to live|explain]]
 
 **Traps** [[21-security#⚠️ Traps — why the wrong answer looks right|open]]
+- "grant kms:Decrypt in the IAM policy" offered as the whole fix
 - a regional certificate offered for CloudFront
 - "AWS managed" chosen as a service's default encryption key
 - Shield Advanced offered for a request-rate threshold
@@ -803,6 +804,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - the cross-account restore that cannot decrypt  ↳ [[21-security#Worked examples|open]]
 
 **Comparisons**
+- [[21-security#KMS is the exception to the resource-policy rule|KMS is the exception to the resource-policy rule]]
 - [[21-security#KMS key types|KMS key types]]
 - [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]]
 - [[21-security#Which detection service|Which detection service]]

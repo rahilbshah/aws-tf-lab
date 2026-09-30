@@ -106,6 +106,7 @@ graph TB
 
 - **KMS `Encrypt` maximum plaintext: 4,096 bytes** for `SYMMETRIC_DEFAULT`. (Asymmetric is smaller still — RSA_2048 with OAEP-SHA-256 is 190 bytes.)
 - **Deleting a KMS key is scheduled, never immediate.** A mandatory waiting period of **7–30 days** (**default 30**) applies; AWS may extend it by up to 24 hours. Throughout it the key state is **`Pending deletion`**, the key **cannot be used in any cryptographic operation**, and the deletion **can still be cancelled**. When the period ends the key, its aliases and all KMS metadata are destroyed — and anything encrypted under it becomes permanently unrecoverable. *(Verified 2026-09-30.)*
+- **KMS allow is two-sided:** *"Without permission from the key policy, IAM policies that allow permissions have no effect."* A **deny** from IAM needs no key-policy permission. The **default key policy enables IAM policies**, so only a hand-tightened key policy exposes the rule. **Key policies are Regional; IAM policies are global.** For a Lambda principal, name the **execution role ARN**. *(Verified 2026-09-30.)*
 - **Rotation period:** *"If you do not specify a value for `RotationPeriodInDays`... the default value is 365 days."* **On-demand rotation: maximum 25 per key, and this quota is not adjustable.**
 - **AWS managed keys:** *"AWS KMS automatically rotates AWS managed keys every year"* — and *"In May 2022, AWS KMS changed the rotation schedule for AWS managed keys from every three years (approximately 1,095 days) to every year."*
 - **Cannot auto-rotate:** asymmetric KMS keys, HMAC KMS keys, keys in custom key stores — these are rotated **manually**.
@@ -118,6 +119,44 @@ graph TB
 - **WAF web ACL targets:** regional — **API Gateway REST API, Application Load Balancer, AppSync GraphQL API, Cognito user pool, App Runner, Verified Access, Amplify**; global — **CloudFront**, whose web ACL *"will have a hard-coded Region of US East (N. Virginia)"*. One web ACL per resource; a CloudFront web ACL cannot also be attached to a regional resource.
 
 ## Comparisons
+
+### KMS is the exception to the resource-policy rule
+
+Everywhere else in IAM, an identity policy and a resource policy **widen** each other: either
+one allowing is enough, which is what makes cross-account access possible at all
+([[01-iam-advanced]]). **A KMS key policy does not work that way**, and it is the one carve-out
+worth memorising. AWS's wording:
+
+> *"Unless the key policy explicitly allows it, you cannot use IAM policies to **allow** access
+> to a KMS key. Without permission from the key policy, IAM policies that allow permissions have
+> **no effect**."*
+
+Three consequences, and the exam tests the first two:
+
+- **Allow is two-sided.** A principal needs `kms:Decrypt` in its IAM policy **and** the key
+  policy must permit it. Granting `kms:Decrypt` in IAM alone does nothing.
+- **Deny is one-sided.** You *can* deny a KMS permission from an IAM policy with no help from the
+  key policy — denies never need the key policy's cooperation.
+- **The default key policy already enables IAM policies**, via a statement granting the account
+  root access. So a key created with defaults behaves "normally" and the exception only bites on
+  a key whose policy was hand-written and omitted that statement. This is why the rule surprises
+  people: it is invisible until someone tightens a key policy.
+
+One more difference: **IAM policies are global, key policies are Regional.** A key policy governs
+only the key in its own Region.
+
+When the principal is a **Lambda function**, the name that goes in the key policy is the
+function's **execution role ARN** — a function is not an IAM principal, so its own ARN is never
+the answer, and a Lambda *resource* policy only controls who may **invoke** it inbound.
+*(Verified 2026-09-30.)*
+
+> [!warning] Trap — "grant kms:Decrypt in the IAM policy" offered as the whole fix
+> A stem where a Lambda (or EC2 role, or another account) cannot decrypt an SSE-KMS object, and
+> the options include adding `kms:Decrypt` to the IAM policy. On its own that **does nothing** if
+> the key policy doesn't permit the principal. The complete answer names **both sides**, and the
+> key-policy principal is the **execution role**, not the function ARN. The mirror-image trap is
+> "modify the key policy of an AWS managed key" — you **cannot**; that is the reason to use a
+> **customer managed key** when a stem says "control exactly who may decrypt".
 
 ### KMS key types
 | | Customer managed | AWS managed (`aws/service`) | AWS owned |
@@ -311,6 +350,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+- [KMS key policies — IAM policies have no effect without key-policy permission](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)
 - [Deleting AWS KMS keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html)
 
 - [AWS KMS keys — concepts](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html) — the three key types side by side; "AWS managed keys are a legacy key type that is no longer being created for new AWS services as of 2021"; AWS owned logging "Not viewable by the customer"; verified 2026-09-27
