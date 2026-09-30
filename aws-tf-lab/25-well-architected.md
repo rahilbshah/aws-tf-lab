@@ -22,7 +22,7 @@ The course calls this section "WhitePapers and Architectures". It isn't new serv
 > - **Whitepapers** are the source of the exam's "best practice" answers — and they age; verify their numbers.
 
 > [!warning] Build tier — **conceptual-only**
-> The Well-Architected Tool is free and worth ten minutes clicking through in the console if you're curious. There is nothing to build and no Terraform.
+> The Well-Architected Tool is free and worth ten minutes clicking through in the console if you're curious. There is nothing to build.
 
 ## What problem does this solve?
 

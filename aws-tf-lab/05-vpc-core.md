@@ -117,24 +117,9 @@ Here is the flip that gets tested. A **custom** NACL you create yourself **denie
 
 There is no rationale to reason your way back to here — just hold the direction: what AWS made for you is open, what you make yourself is closed. One exception, and it gets tested: **outbound on a security group is allow-all** whether AWS created it or you did.
 
-Terraform knows about none of the three. They are not in your state unless you deliberately adopt them with the `aws_default_*` resources — which is why the console showed a **third** route table after an apply that only defined two.
+All three exist from the moment the VPC does, whether or not you asked for them — which is why a VPC you built with two route tables shows **three** in the console.
 
-> In one line: AWS's own defaults are open, anything you create is closed, and Terraform ignores the defaults until you adopt them.
-
-## AWS console ↔ Terraform map
-
-| Console / concept | Terraform | Key args / notes |
-|---|---|---|
-| Create a VPC | `aws_vpc` | `cidr_block`; set `enable_dns_hostnames = true` + `enable_dns_support = true` (public DNS + required for interface endpoints). |
-| Look up AZ names | `data "aws_availability_zones" { state = "available" }` | `.names[0]`, `.names[1]` — don't hardcode `"us-east-1a"`. |
-| Create a subnet | `aws_subnet` | `vpc_id`, `cidr_block`, `availability_zone`, `map_public_ip_on_launch` (true for public). |
-| Internet gateway | `aws_internet_gateway` | `vpc_id` attaches it. One per VPC. |
-| Route table | `aws_route_table` | Inline `route {}` OR separate `aws_route` — pick one, don't mix (drift). |
-| Add a route | `aws_route` (or inline) | `gateway_id` (IGW), `nat_gateway_id` (NAT), `destination_cidr_block`. |
-| Associate subnet ↔ RT | `aws_route_table_association` | One per (subnet, RT). Unassociated subnets fall back to the main RT. |
-| Allocate EIP for NAT | `aws_eip` | `domain = "vpc"`. |
-| NAT gateway | `aws_nat_gateway` | `allocation_id` (EIP) + `subnet_id` = a **public** subnet; `depends_on = [igw]` recommended. |
-| Adopt the auto-created defaults | `aws_default_route_table` / `aws_default_network_acl` / `aws_default_security_group` | Manage (not create) the freebies AWS made. Optional; use to lock them down. |
+> In one line: AWS's own defaults are permissive and anything you create yourself starts closed — so never route the main route table to an IGW, and a subnet you forget to associate fails private.
 
 ## Architecture diagram
 
@@ -163,10 +148,10 @@ flowchart TB
 - **The two conditions for "public"** (both required): route to IGW **and** a public IP on the instance. A subnet with an IGW route but no public IP, or a public IP but no IGW route, can't be reached from the internet.
 - **AWS reserves 5 IP addresses in every subnet**: network address (`.0`), VPC router (`.1`), DNS (`.2`), future use (`.3`), and broadcast (`.255`, last). So a `/24` gives 251 usable, not 256. (Exam-frequent.)
 - **VPC CIDR** must be `/16`–`/28`. CIDR blocks can't overlap if you plan to peer VPCs later.
-- **Every new VPC gets 3 freebies**: a **main route table**, a **default NACL** (allow-all in/out), and a **default security group** (self-referencing inbound + allow-all outbound). Terraform ignores these unless you adopt them with the `aws_default_*` resources. **Best practice: never add an IGW route to the main route table** — so a subnet you forget to associate fails *closed* (private), not open.
+- **Every new VPC gets 3 freebies**: a **main route table**, a **default NACL** (allow-all in/out), and a **default security group** (self-referencing inbound + allow-all outbound). **Best practice: never add an IGW route to the main route table** — so a subnet you forget to associate fails *closed* (private), not open.
 - **IGW**: horizontally scaled, redundant, no bandwidth limit, one per VPC, free (you pay for the data transfer, not the IGW). Bidirectional.
 - **NAT gateway**: managed, **5 Gbps scaling automatically to 100 Gbps**, redundant **within one AZ** but **AZ-scoped** — for real HA you deploy **one NAT gateway per AZ** and point each private subnet's RT at the NAT in its own AZ (else an AZ failure cuts egress, and cross-AZ NAT traffic is billed). Has **no security group**. Needs an EIP. Bills **~$0.045/hr + per-GB data processed** — ⚠️ check current pricing. Outbound-only; drops unsolicited inbound.
-- **Egress-only Internet Gateway (`aws_egress_only_internet_gateway`)**: the **IPv6** equivalent of a NAT gateway — outbound-only internet for IPv6 (IPv6 is globally routable, so you can't use NAT; you use this instead). IPv4 has no analog need because private IPv4 isn't routable.
+- **Egress-only Internet Gateway**: the **IPv6** equivalent of a NAT gateway — outbound-only internet for IPv6 (IPv6 is globally routable, so you can't use NAT; you use this instead). IPv4 has no analog need because private IPv4 isn't routable.
 
 ## Comparisons
 
@@ -205,14 +190,6 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 > [!failure] Failure mode — single NAT gateway as an AZ SPOF
 > Deploying one NAT gateway and routing *all* private subnets (across AZs) through it saves money but makes that AZ a single point of failure: if the NAT's AZ goes down, every private subnet in every AZ loses egress, and in normal operation cross-AZ traffic to the NAT is billed. Production fix: **one NAT gateway per AZ**, each AZ's private RT → its local NAT. Cost vs resilience tradeoff the exam probes.
 
-## The Terraform I wrote
-
-Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../05-vpc/nat.tf) (paid peek)
-
-- `data.aws_availability_zones` → `.names[0]/[1]` for the AZs; `aws_vpc.this` with DNS attributes on; 4 subnets (2 public with `map_public_ip_on_launch = true`, 2 private without); `aws_internet_gateway`; `aws_route_table.public` (inline `route` → IGW) + `aws_route_table.private` (no internet route); 4 `aws_route_table_association`.
-- NAT peek: `aws_eip.nat` + `aws_nat_gateway.this` (in **public-a**, `depends_on` the IGW) + `aws_route.private_nat` (`0.0.0.0/0 → nat` on the private RT).
-- Console showed a **3rd route table** — the auto-created **main route table** AWS makes with every VPC (plus the default NACL + default SG). None are Terraform-managed.
-
 > [!warning] Trap — "the default NACL and a new NACL behave the same"
 > Opposite. The **default** NACL allows all traffic both ways; a **custom** NACL you create **denies all** until you add numbered rules. Same flip exists for the default vs custom SG. Getting the direction of the default wrong is a classic distractor.
 
@@ -223,7 +200,7 @@ Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../
 
 - [ ] **NAT gateway subnet placement** — put it in a *private* subnet on the first try; it must be **public** (that's its own door to the IGW). The private RT points *at* it.
 - [ ] **Default vs custom NACL/SG behavior flips** — default NACL allows all, custom NACL denies all; default SG self-references, new SG denies inbound. Easy to state backwards.
-- [ ] **The 3 auto-created VPC defaults** (main RT, default NACL, default SG) — didn't expect the 3rd route table in the console; they're AWS freebies, not Terraform-managed.
+- [ ] **The 3 auto-created VPC defaults** (main RT, default NACL, default SG) — didn't expect the 3rd route table in the console; they're AWS freebies that exist from the moment the VPC does.
 - [ ] **Single-NAT AZ SPOF** — one NAT for all AZs is a resilience + cross-AZ-cost trap; production uses one per AZ.
 
 ## 🔗 Docs
@@ -233,4 +210,3 @@ Code: [`05-vpc/network.tf`](../05-vpc/network.tf) (core) + [`05-vpc/nat.tf`](../
 - [NAT gateways](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html) — per-AZ HA, no SG, needs public subnet + EIP
 - [NAT gateway vs NAT instance comparison](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-comparison.html)
 - [Egress-only internet gateways (IPv6)](https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html)
-- [Terraform `aws_vpc`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) / [`aws_nat_gateway`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway)

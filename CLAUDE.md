@@ -331,7 +331,7 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 
 ### 13.5 Per-topic reference note structure (template)
 
-Every reference note follows `_templates/topic-template.md`. Note: **there are no flashcards anywhere** (§13.7) — recall practice is generated. The reference note's job is teaching and reference; the cards file's job is recall practice.
+Every reference note follows `_templates/topic-template.md`. **The notes contain no Terraform** (decided 2026-09-30): SAA-C03 does not test it, so `## AWS console ↔ Terraform map` and `## The Terraform I wrote` were removed from all 33 notes and from this template. Do not reintroduce them, do not name `aws_*` resources, and do not cite `registry.terraform.io`. If a Terraform detail carries an *AWS* fact, state the AWS fact and drop the Terraform framing. The one exception is a note whose frontmatter says `exam: false` (e.g. `03-ami-bake`), which `_lib.notes()` already excludes from every generator. Note: **there are no flashcards anywhere** (§13.7) — recall practice is generated. The reference note's job is teaching and reference; the cards file's job is recall practice.
 
 ````markdown
 ---
@@ -355,11 +355,6 @@ One sentence on what this is and why it exists.
 ## Concept (plain English)
 3–6 lines.
 
-## AWS console ↔ Terraform map
-| Console action | Terraform resource / data source | Key arguments |
-|---|---|---|
-| Create user | `aws_iam_user` | `name` |
-
 ## Architecture diagram
 ```mermaid
 graph LR
@@ -381,10 +376,6 @@ graph LR
 
 > [!failure] Failure mode — what goes wrong if you skip the trust policy
 > A common mistake: attaching only a permissions policy to the role and forgetting the trust policy entirely. Result: the role exists but no principal can assume it, so it does nothing. Symptoms: `AccessDenied: not authorized to perform sts:AssumeRole`. Fix: …
-
-## The Terraform I wrote
-- Path: `../01-iam/main.tf`
-- What was tricky: …
 
 > [!warning] Trap — Multi-AZ vs Read Replica
 > Why a candidate picks the wrong option, and the reasoning that eliminates it.

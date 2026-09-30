@@ -154,16 +154,6 @@ hit rate above ~90% to be worth it.
 > In one line: DAX is a drop-in microsecond cache for DynamoDB only, and only for eventually
 > consistent reads.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Redis replication group (with replicas/Multi-AZ) | `aws_elasticache_replication_group` | Primary + replicas, `automatic_failover_enabled`, `multi_az_enabled`. |
-| Memcached cluster | `aws_elasticache_cluster` (engine `memcached`) | N nodes, client-side sharding. |
-| Single Redis node | `aws_elasticache_cluster` (engine `redis`) | Simple single-node cache. |
-| Subnet group | `aws_elasticache_subnet_group` | Private subnets (like a DB subnet group). |
-| Parameter group | `aws_elasticache_parameter_group` | Engine tuning. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -226,10 +216,6 @@ flowchart LR
 > [!example] Worked example — real-time leaderboard
 > A game needs a live top-100 leaderboard updated on every score. A relational `ORDER BY score` over millions of rows per request is too slow. **Redis sorted sets** (`ZADD`/`ZREVRANGE`) maintain a ranked set in memory and return the top-N in microseconds. Memcached can't do this (simple key-value only). Trigger words "leaderboard / ranking / real-time counter" → **Redis**.
 
-## The Terraform I wrote
-
-Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elasticache_replication_group` with `num_cache_clusters = 2` → `automatic_failover_enabled` + `multi_az_enabled` (both require ≥2 nodes), `at_rest_encryption_enabled` + `transit_encryption_enabled` (+ `auth_token`), snapshots on, in an `aws_elasticache_subnet_group` in private subnets, SG allowing 6379 **only from the app/client SG**. Verified the **primary** (`master.…`) and **reader** (`replica.…`) endpoints — same writer/reader split as Aurora. Redis took ~6 min to create. Used `aws_elasticache_replication_group` (not `aws_elasticache_cluster`) precisely to get the primary+replica HA topology.
-
 > [!warning] Trap — Memcached for anything needing HA/persistence/complex data
 > Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → **Redis**. This engine-choice question is the heart of ElastiCache on the exam.
 
@@ -256,4 +242,3 @@ Built a **best-practices Redis HA cache** in `07-rds-elasticache/`: an `aws_elas
 - [Caching strategies (lazy loading, write-through, TTL)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html)
 - [Redis replication & Multi-AZ](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.html)
 - [Auto Discovery (Memcached)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/AutoDiscovery.html) — Memcached-only, not available for Valkey/Redis OSS; verified 2026-08-29
-- [Terraform `aws_elasticache_replication_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group)

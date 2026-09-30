@@ -51,21 +51,6 @@ graph TB
 
 **Autoscaling changes who owns a number.** Terraform creates the service with `desired_count = 2`. Application Auto Scaling then tracks CPU at 50% between 1 and 4 tasks. With no load it scaled *in* to 1. Without `ignore_changes`, every `terraform apply` would drag it back to 2 and the two would fight forever.
 
-## AWS console ↔ Terraform map
-
-| Console action | Terraform resource | The argument that mattered |
-|---|---|---|
-| Route table with no internet route | `aws_route_table` | **no `route` block at all** |
-| S3 gateway endpoint on private + isolated tables | `aws_vpc_endpoint` | `vpc_endpoint_type = "Gateway"`, `route_table_ids` |
-| Registry | `aws_ecr_repository` | `force_delete = true` so destroy works with images present |
-| RDS with a managed password | `aws_db_instance` | **`manage_master_user_password = true`**, no `password` |
-| Password into the container | `container_definitions` → `secrets` | `valueFrom = "${secret_arn}:password::"` |
-| Agent may read the secret | `aws_iam_role_policy` on the **execution** role | `secretsmanager:GetSecretValue` on one ARN |
-| App may write uploads | `aws_iam_role_policy` on the **task** role | `s3:PutObject` on `bucket/*` |
-| ALB accepts only CloudFront | `aws_vpc_security_group_ingress_rule` | `prefix_list_id = data.aws_ec2_managed_prefix_list.cloudfront.id` |
-| Scale tasks on CPU | `aws_appautoscaling_target` + `_policy` | `ECSServiceAverageCPUUtilization`, target 50 |
-| Stop fighting the autoscaler | `lifecycle` on `aws_ecs_service` | `ignore_changes = [desired_count]` |
-
 ## Key facts, limits & pricing
 *Verified during the build, 2026-09-19.*
 
@@ -134,12 +119,6 @@ graph TB
 >
 > Cause: `gateway_id` holds an IGW or VGW; a NAT gateway needs `nat_gateway_id`. AWS accepted the NAT ID in the wrong field and created the route correctly, then reported it back under the right field. Config and state disagreed on every read. The same thing happened again with `task_definition = ….id`: AWS accepted the bare family, resolved it to `capstone:1`, and Terraform saw a change every time. Both fixed with one word; both would have gone unnoticed in a config nobody re-planned.
 
-## The Terraform I wrote
-- Path: `../18-containers-capstone/` — one root config, one file per concern, 53 resources, seven phases each applying on its own. The S3 backend from `bootstrap/`, `use_lockfile = true`, no DynamoDB.
-- Deliberately **no modules, no `for_each` over AZs, no `dynamic` blocks, no dev/prod split.** The AWS services were the lesson. The only new Terraform idea was `ignore_changes`, at the one point the autoscaler made it unavoidable.
-- The app (`app/`, Flask on arm64, gunicorn) was written for me and gates each endpoint on its phase — an unbuilt endpoint returns 503 naming the missing env vars, so "not built yet" read as a message rather than a stack trace.
-- Verified end to end through CloudFront: `/db` row count climbing, `/cache` counter climbing, `/upload` landing in S3, `served_by` a private-subnet IP, and the direct ALB URL timing out.
-
 ## ⚠️ Traps — why the wrong answer looks right
 
 > [!warning] Trap — the ALB timed out, so something's broken
@@ -174,6 +153,4 @@ graph TB
 - [ECS secrets from Secrets Manager — JSON-key ARN syntax](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data-secret.html) — verified 2026-09-06
 - [ECS task execution role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html) — verified 2026-09-06
 - [ALB target groups — deregistration delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html) — verified 2026-09-06
-- [Terraform `aws_route_table` — route argument reference](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table)
-- [Terraform `aws_ecs_task_definition` attributes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_task_definition)
 - [Terraform `lifecycle` meta-argument](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle) — verified 2026-09-06

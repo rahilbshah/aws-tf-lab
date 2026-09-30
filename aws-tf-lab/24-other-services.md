@@ -26,7 +26,7 @@ The catch-all. Seven services that are individually too small for their own note
 > - **QLDB** = immutable verifiable ledger. **AppFlow** = SaaS↔AWS data transfer. **Wavelength** = 5G edge. **License Manager** = BYOL tracking.
 
 > [!warning] Build tier — **conceptual-only**
-> Nothing here is free-tier friendly (DMS replication instances, Beanstalk environments and Directory Service directories all bill hourly) and none of it is Terraform-interesting. Read, drill, move on.
+> Nothing here is free-tier friendly (DMS replication instances, Beanstalk environments and Directory Service directories all bill hourly). Read, drill, move on.
 
 ## What problem does this solve?
 
@@ -276,18 +276,6 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 | **AWS Serverless Application Repository / Device Farm** | share serverless apps / test on real mobile devices |
 
 > In one line: for the long tail, knowing the one-line purpose is enough to eliminate them as distractors.
-
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Migration | `aws_dms_replication_instance`, `aws_dms_endpoint`, `aws_dms_replication_task` | Instance bills hourly. |
-| Workflow | `aws_sfn_state_machine` | `type = "STANDARD"` or `"EXPRESS"`. |
-| GraphQL API | `aws_appsync_graphql_api`, `aws_appsync_datasource`, `aws_appsync_resolver` | |
-| Batch | `aws_batch_compute_environment`, `aws_batch_job_queue`, `aws_batch_job_definition` | The three-part shape is the mental model. |
-| PaaS app | `aws_elastic_beanstalk_application`, `aws_elastic_beanstalk_environment` | |
-| Managed SFTP | `aws_transfer_server`, `aws_transfer_user` | |
-| Directory | `aws_directory_service_directory` | `type` selects MicrosoftAD / ADConnector / SimpleAD. |
 
 ## Key facts, limits & pricing
 

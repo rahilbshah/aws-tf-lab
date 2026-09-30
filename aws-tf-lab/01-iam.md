@@ -19,7 +19,7 @@ The global, free AWS service that authenticates and authorizes every AWS API cal
 > - **Roles use two distinct policies:** *trust policy* (`assume_role_policy` — WHO can assume) + *permissions policy* (attached separately — WHAT can be done once assumed). Either half missing = role doesn't work.
 > - **Roles reach past AWS APIs.** With **IAM database authentication** an EC2/Lambda role can log in to RDS with a 15-minute token instead of a password — the IAM action is `rds-db:connect` (note: *not* the `rds:` management prefix). See [[07-rds-aurora]].
 > - **Existing corporate users?** Don't create IAM users — federate. **AD groups map to IAM roles** via IAM Identity Center (or SAML 2.0), backed by AWS Managed Microsoft AD or AD Connector.
-> - **EC2 doesn't attach to a role directly** — it attaches to an *Instance Profile*, a thin wrapper around a role (see [[02-ec2]]). Console hides this; Terraform makes it explicit. (Lambda, ECS, etc. take roles directly.)
+> - **EC2 doesn't attach to a role directly** — it attaches to an *Instance Profile*, a thin wrapper around a role (see [[02-ec2]]). The console hides the wrapper entirely. (Lambda, ECS, etc. take roles directly.)
 
 > [!tip] Multi-account layer
 > Organizations, SCPs, permissions boundaries, ABAC and Control Tower live in **[[01-iam-advanced]]** — the Udemy "IAM Advanced" section. This note is the foundations.
@@ -92,21 +92,11 @@ Here is a rule that looks like a typo until you've been bitten by it. **An EC2 i
 
 Lambda takes a role directly. ECS takes a role directly. EC2 is the odd one.
 
-You never notice this in the console, because the console hides the wrapper entirely. Terraform doesn't: you create `aws_iam_instance_profile` yourself and hand *that* to the instance's `iam_instance_profile` argument.
+You never notice this in the console, because the console creates the instance profile for you, silently, and shows you only the role.
 
 Which gives this failure a signature worth memorising: the apply succeeds, the role exists, the role's permissions are correct — and the instance still can't reach S3. Two likely causes, and both are ordinary. Either the instance profile is missing or unreferenced (a role went where a profile belonged), or you hit IAM's **eventual consistency** — a brand-new role can take a few seconds to become visible everywhere, so an apply that creates a role and immediately uses it can race. Usually a retry resolves that one.
 
-> In one line: EC2 wears the hat through an instance profile; the console hides the wrapper, Terraform makes you write it.
-
-### Why a principal is named but a policy is an ARN
-
-In Terraform, IAM cross-references are inconsistent in a way that feels arbitrary: principals are referenced by **`.name`**, policies by **`.arn`**. It isn't arbitrary, and the reason makes it stay put.
-
-A principal — a user, a group, a role — only ever exists inside your account. Within that scope a name is already unambiguous, so a name is all AWS needs. A policy might not be yours. AWS-managed policies live in AWS's own namespace (`arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`), customer-managed ones live in yours. Only a full ARN, which carries the account, can tell those apart.
-
-The trap is that Terraform cannot protect you here. `.arn` and `.name` are both strings, so a swap is perfectly type-valid: `validate` passes, `plan` passes, and the error surfaces at apply — or worse, doesn't surface at all and just produces the wrong wiring. The same trap in a second costume is the quoted reference: `groups = ["aws_iam_group.developers"]` is a literal string that happens to look like HCL, where `[aws_iam_group.developers.name]` is the actual reference. Also type-valid. Also silent.
-
-> In one line: principals go by name, policies go by ARN — and both are strings, so nothing but your own eyes will catch the swap.
+> In one line: EC2 wears the hat through an instance profile, not the role itself — the console hides that wrapper, and EC2 is the only service with it.
 
 ### When the users already exist somewhere else
 
@@ -149,22 +139,6 @@ elements in this order — the answer usually falls out before you reach the end
 > In one line: read Effect → Action → Resource (watch the `/*`) → Condition, and the
 > condition key is almost always the thing being tested.
 
-## AWS console ↔ Terraform map
-
-| Console / what you want | Terraform resource | Notes |
-|---|---|---|
-| Create an IAM user | `aws_iam_user` | Console password is separate (`aws_iam_user_login_profile`); access keys are separate (`aws_iam_access_key`). |
-| Create an IAM group | `aws_iam_group` | IAM Groups do **not** support tags (AWS-side limitation). |
-| Put a user in a group | `aws_iam_user_group_membership` | Additive (user-side). **NOT** `aws_iam_group_membership`, which is exclusive group-side. |
-| Create a customer-managed policy | `aws_iam_policy` | `policy` argument takes JSON. Build with `data "aws_iam_policy_document"` for native HCL + plan-time validation. |
-| Attach a managed policy to a user/group/role | `aws_iam_user_policy_attachment` / `aws_iam_group_policy_attachment` / `aws_iam_role_policy_attachment` | One resource per (principal, policy) pair. **Avoid** the prefix-less `aws_iam_policy_attachment` — see Traps. |
-| Inline policy on a principal | `aws_iam_user_policy` / `aws_iam_group_policy` / `aws_iam_role_policy` | Lives and dies with the principal; not reusable. Prefer managed for reusability. |
-| Exclusively manage all policies on one principal | `aws_iam_user_policy_attachments_exclusive` / `aws_iam_group_policy_attachments_exclusive` / `aws_iam_role_policy_attachments_exclusive` | The safe modern way to say "Terraform owns all attachments on this principal." |
-| Create a role | `aws_iam_role` | `assume_role_policy` argument = **trust policy**, NOT permissions. |
-| Attach the role to an EC2 instance | `aws_iam_instance_profile` + reference from `aws_instance.iam_instance_profile` | EC2 takes an instance profile, not a role directly. Lambda/ECS take roles directly. See [[02-ec2]]. |
-| Reference an existing AWS-managed policy | `data "aws_iam_policy"` data source | Or hardcode the ARN (`arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess` — stable). |
-| Build policy JSON natively in HCL | `data "aws_iam_policy_document"` | Validated at plan time; supports interpolation/loops; the idiomatic pattern. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -199,12 +173,11 @@ flowchart TD
 
 - **Global service** — no region picker. Same IAM seen from every region. (The IAM API endpoint historically lives in `us-east-1` infrastructure, but the concept and the data are global.)
 - **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. Access Analyzer's external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.
-- **Eventually consistent** — newly created users/roles/policies may take a few seconds to become globally visible. A `terraform apply` that creates a role and immediately tries to use it can race; usually a retry resolves it. Worth knowing for real-world AND exam scenarios.
+- **Eventually consistent** — newly created users/roles/policies may take a few seconds to become globally visible. Automation that creates a role and uses it a second later can race; a retry usually resolves it. Worth knowing for real-world AND exam scenarios.
 - **Principal identification is by name; policy identification is by ARN.** Reason: principals only exist within your account (name is unambiguous in that scope); policies may live in the `aws` account namespace (AWS-managed, e.g. `arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`) or your account namespace, so the full ARN with account ID is needed for disambiguation.
 - **Inline vs managed policies:**
   - *Managed* — standalone, reusable, versioned (up to 5 versions retained, can roll back), attachable to many principals.
   - *Inline* — embedded directly on one principal; deleted when the principal is deleted; not reusable; no versioning.
-- **`aws_iam_user.name` is in-place updatable** in the v6 provider (uses AWS `UpdateUser` API). **`aws_iam_policy.name` is NOT** — it has `ForceNew: true`, so renaming a policy destroys and recreates it (the policy ARN embeds the name, so AWS can't rename in place). **Lesson:** behavior is NOT consistent across the IAM resource family; read the plan.
 - **Service quotas** (max users per account, max policies per principal, policy size limits, etc.) change over time. ⚠️ Don't memorize specific numbers — refer to the AWS service quotas page (linked in Docs).
 
 ## Comparisons
@@ -232,7 +205,7 @@ flowchart TD
 
 |   | Trust policy | Permissions policy |
 |---|---|---|
-| Lives on | The role itself (`assume_role_policy` argument on `aws_iam_role`) | Attached separately (`aws_iam_role_policy_attachment` for managed, `aws_iam_role_policy` for inline) |
+| Lives on | The role itself — it is part of the role | Attached to the role separately, as a managed or inline policy |
 | Answers | **Who is allowed to assume me?** | **What can I do once assumed?** |
 | Without it | Nobody can assume the role | Role can be assumed but does nothing |
 | Common values | `Service: ec2.amazonaws.com`, `Service: lambda.amazonaws.com`, `AWS: arn:aws:iam::<acct>:root` (cross-account), `Federated: <SAML/OIDC provider ARN>` | Standard policy JSON over S3, DynamoDB, etc. |
@@ -281,7 +254,6 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > 2. Acme creates a role. Trust policy: `"Principal": {"AWS": "<vendor account ID>"}` **plus** `"Condition": {"StringEquals": {"sts:ExternalId": "<id>"}}`. Permissions policy: read-only (e.g. the AWS-managed `ReadOnlyAccess`, or scoped down to Cost Explorer/billing APIs).
 > 3. Acme hands the vendor the role ARN; the vendor calls `sts:AssumeRole` with ARN + ExternalId and receives temporary credentials.
 >
-> In Terraform this is the exact `aws_iam_role` + `data.aws_iam_policy_document` pattern from `01-iam/`, with a `condition {}` block added inside the trust-policy `statement`.
 
 > [!failure] Failure mode — confused deputy (the missing ExternalId)
 > The vendor stores role ARNs for hundreds of customers. An attacker signs up as a *legitimate customer* of the vendor, then feeds the vendor **someone else's role ARN** (ARNs are guessable: account ID + role name). The vendor's system dutifully calls `AssumeRole` on the victim's role — and it *works*, because the victim's trust policy trusts the vendor's whole account. The vendor just became a **confused deputy**: tricked into using its legitimate access on behalf of the wrong principal.
@@ -289,35 +261,11 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 
 > [!example] Worked example — CI deploys with zero long-lived keys (GitHub Actions OIDC)
 > The modern answer to "how does CI get AWS credentials?" — federation, not access keys in CI secrets:
-> 1. Register GitHub's OIDC provider in IAM: URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com` (Terraform: `aws_iam_openid_connect_provider`).
+> 1. Register GitHub's OIDC provider in IAM: URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
 > 2. Create a deploy role whose trust policy trusts `Federated: <provider ARN>` for action `sts:AssumeRoleWithWebIdentity`, with a condition on the token's `sub` claim, e.g. `repo:acme/platform:ref:refs/heads/main` — only workflows from *that repo, that branch* can assume it.
 > 3. The workflow exchanges its short-lived OIDC token for temporary AWS credentials. Nothing stored, nothing to rotate, nothing to leak.
 >
 > Same mental model as the EC2 instance profile in [[02-ec2]] — a role with a trust policy — only the trusted principal differs (federated IdP vs `ec2.amazonaws.com`).
-
-## The Terraform I wrote
-
-Code: [`01-iam/main.tf`](../01-iam/main.tf)
-
-Built a minimal user → group → policy → attachment chain (5 resources). Non-obvious bits I hit while writing:
-
-- **`.arn` vs `.name`** — IAM principal cross-references want `.name`; policy references want `.arn`. Got this wrong on the first pass for `user`, `groups`, and `group` arguments; `validate` and `plan` did NOT catch it because both shapes are strings.
-- **Quoted vs unquoted references** — wrote `groups = ["aws_iam_group.developers"]` (literal string!) on the first pass instead of `[aws_iam_group.developers.name]` (HCL reference). Same trap: type-valid, only fails at apply.
-- **Idiomatic policy authoring** — used `data "aws_iam_policy_document"` to build the policy JSON in HCL instead of a heredoc. Plan-time validation catches Effect/Action typos before AWS sees them.
-
-### Recap lab — 01-iam-lab/ (built 2026-08-29)
-
-A second root module (own state, so it touches nothing in `01-iam`) built to close the two IAM weaknesses the 2026-08-28 mock exposed: **instance profiles** and **`Condition` blocks**. An EC2 role that may read exactly one S3 prefix, and cannot do it over plain HTTP.
-
-Three statements, deliberately three different shapes:
-
-| # | Effect | Action | How it's scoped |
-|---|---|---|---|
-| 1 | Allow | `s3:GetObject` | **resource ARN** — `bucket/reports/*` |
-| 2 | Allow | `s3:ListBucket` | **condition** — `StringLike` on `s3:prefix` |
-| 3 | Deny | `s3:*` | **condition** — `Bool aws:SecureTransport = false`, over *both* ARNs |
-
-The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects, so its resource ARN has no `/*` and cannot express "only this prefix." The scoping has to be a condition. Get it wrong and the role enumerates the whole bucket while the plan looks perfectly reasonable.
 
 > [!tip] Verify a policy without assuming the role — `simulate-principal-policy`
 > The role trusts only `ec2.amazonaws.com`, so you can't assume it from your CLI to test it. `aws iam simulate-principal-policy` evaluates the policy for a principal without anyone assuming anything — free, instant, and it accepts `--context-entries` so you can test **condition keys** directly. Crucially it returns `allowed` / `implicitDeny` / **`explicitDeny`** as distinct verdicts, which S3's uniform `AccessDenied` never tells you. Verified results for this lab:
@@ -328,7 +276,7 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 > ```
 
 > [!warning] Trap — "the plan showed the policy was fine"
-> It didn't, and it couldn't. Because the policy document interpolates `aws_s3_bucket.this.arn`, Terraform reports `data.aws_iam_policy_document.permissions will be read during apply` and the policy renders as `(known after apply)` — while the **trust** policy, which references nothing, renders in full. For any IAM policy built from references to resources created in the same apply, **the plan is not the artifact**. Read it after apply with `aws iam get-policy-version`, or simulate it.
+> It didn't, and it couldn't. A policy whose `Resource` is the ARN of a bucket being created in the same operation cannot be rendered before that bucket exists — so the permissions policy is unknowable in advance, while the **trust** policy, which references nothing, is fully known. The lesson: for any IAM policy built from resources created alongside it, **inspect the policy after it exists** with `aws iam get-policy-version`, or test it with the policy simulator. Do not assume the version you intended is the version that shipped.
 
 ## Scenario MCQs
 
@@ -348,13 +296,13 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 >
 > **Answer: B.** Role + service trust policy is the canonical pattern; Lambda gets temporary credentials via STS, auto-rotated. A puts a long-lived key in environment variables (leak risk, no rotation); C breaks the security model; D is catastrophic.
 
-> [!question]- 3. You attach an IAM role to an EC2 instance via Terraform. After apply, the instance still says it can't access S3. What's the MOST likely cause?
+> [!question]- 3. You attach an IAM role to an EC2 instance. Shortly after, the instance still says it can't access S3. What's the MOST likely cause?
 > **A.** IAM is regional and the role was created in the wrong region.
 > **B.** The instance profile is missing or not referenced; you may have attached the role directly to the instance.
 > **C.** IAM changes can take a few seconds to propagate; retry the request.
 > **D.** Either B or C, depending on how the resource graph was wired.
 >
-> **Answer: D.** B is a real common bug — `aws_instance.iam_instance_profile` takes an instance profile, not a role. C is the classic propagation race when a role is created and immediately used in the same apply. A is wrong — IAM is global.
+> **Answer: D.** B is a real and common bug — EC2 takes an **instance profile**, not a role directly. C is the classic **propagation race** when a role is created and used moments later. A is wrong — IAM is global.
 
 > [!question]- 4. Your team wants to give an auditor in another AWS account read-only access to your S3 buckets. Which is the canonical approach?
 > **A.** Create an IAM user in your account for the auditor and share access keys.
@@ -363,14 +311,6 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 > **D.** Add the auditor's email to the bucket ACL.
 >
 > **Answer: C.** Cross-account role assumption is the standard pattern. A is the legacy/anti-pattern (long-lived keys, no audit trail). B is unsafe. D is the legacy S3 ACL model, increasingly discouraged.
-
-> [!question]- 5. You change `name = "alice"` to `name = "alice2"` on `aws_iam_user.alice`. What does `terraform plan` show?
-> **A.** Plans `-/+` (destroy and recreate) because IAM doesn't support renaming.
-> **B.** Plans `~` (in-place update) — the provider calls AWS `UpdateUser` with `NewUserName`.
-> **C.** Fails at validate — `name` is immutable.
-> **D.** Plans no change — `name` is just metadata.
->
-> **Answer: B.** `aws_iam_user.name` is NOT `ForceNew` in the v6 provider; it uses the AWS `UpdateUser` API for renames. Different IAM resources behave differently: `aws_iam_policy.name` IS `ForceNew` (destroys and recreates, because the ARN embeds the name). Never assume consistency across the family — read the plan.
 
 ## ⚠️ Traps & why the wrong answers are wrong   #trap
 
@@ -393,7 +333,7 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 > EC2 needs an instance profile in between (see [[02-ec2]]). Lambda doesn't.
 
 > [!warning] Trap — All `name` arguments on IAM resources behave the same
-> They don't — `aws_iam_user.name` is in-place updatable; `aws_iam_policy.name` forces destroy-and-recreate (ARN embeds the name). Always read the plan for `~` vs `-/+`.
+> A policy's **ARN embeds its name**, so AWS cannot rename one in place — renaming means creating a new policy and re-attaching it everywhere. A **user** can be renamed in place.
 
 > [!warning] Trap — `validate`/`plan` catch reference bugs (`.arn` vs `.name`, quoted strings)
 > They don't — both shapes are type-valid strings. The errors surface only at apply (or silently produce wrong results).
@@ -426,18 +366,12 @@ The lesson is statement 2: `ListBucket` acts on the **bucket**, not the objects,
 - [ ] **AD groups mapped to IAM roles — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Directory Service and IAM Identity Center were **absent from this note** until 2026-08-29. Trigger phrase to catch: *"users already exist in Active Directory."*
 - [x] **Instance profile delivers role credentials to EC2 — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Was decay, not a gap. **Rebuilt from scratch in `01-iam-lab/` on 2026-08-29**, this time in an IAM frame rather than as one line of an EC2 lab, alongside the `Condition` blocks that were the other half of the weakness.
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
-- [ ] **Scope of `aws_iam_policy_attachment`** — initially explained it as group-side exclusive; it's actually **per-policy** exclusive (manages all attachments of one specific policy across all principals). A different policy added to the same group is invisible to it.
 
 ## 🔗 Docs
 
 - [AWS IAM User Guide (entry point)](https://docs.aws.amazon.com/IAM/latest/UserGuide/)
 - [IAM Policy Evaluation Logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html) — canonical explanation of explicit-Deny-wins
 - [IAM Service Quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html) — current numerical limits; check this rather than memorize
-- [Terraform AWS provider — `aws_iam_user`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user)
-- [Terraform AWS provider — `aws_iam_role`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
-- [Terraform AWS provider — `aws_iam_policy`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy)
-- [Terraform AWS provider — `aws_iam_policy_document` data source](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document)
-- Verified against v6 provider source (2026-05): `aws_iam_user.name` is NOT `ForceNew` (uses `UpdateUser`); `aws_iam_policy.name` IS `ForceNew` (destroys-and-recreates). `aws_iam_group_policy_attachments_exclusive` exists and ships in v6.
 - [ExternalId for third-party access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html) — confused-deputy mitigation; condition syntax verified 2026-06
 - [What is AWS Directory Service?](https://docs.aws.amazon.com/directoryservice/latest/admin-guide/what_is.html) — Managed Microsoft AD vs AD Connector vs Simple AD, trust/MFA/LDAPS/RDS-SQL-Server support matrix; verified 2026-08-29
 - [GitHub Actions OIDC ↔ AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) — provider URL, audience, `sub` claim format verified 2026-06

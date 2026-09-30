@@ -76,7 +76,7 @@ An NLB can do none of this. At Layer 4 there is no HTTP to inspect or rewrite, s
 
 The ALB never points at instances. It points at a **target group**, and instances are members of that group.
 
-You don't put them there by hand. The ASG does it: give the ASG `target_group_arns` and every instance it launches registers itself, every instance it terminates deregisters. (`aws_autoscaling_attachment` does the same wiring from the other end — ASG to target group — so use one or the other, never both for the same target group. Registering a standalone instance is a different resource: `aws_lb_target_group_attachment`.)
+You don't put them there by hand. **Attach the target group to the Auto Scaling group** and every instance the ASG launches registers itself, every instance it terminates deregisters. A standalone instance that is not in an ASG has to be registered with the target group directly.
 
 Now the part that catches everyone. There are **two** health checks. They measure different things, and by default they don't talk to each other.
 
@@ -158,18 +158,7 @@ Pin `min = max = 6` instead and you've bought a fixed block of capacity and swit
 
 The schedule itself is **5-field cron** — `[Minute] [Hour] [Day_of_Month] [Month_of_Year] [Day_of_Week]` — in **UTC** unless you set an IANA `time_zone` like `America/New_York`, which then auto-adjusts for DST.
 
-And then the Terraform trap, which has no console equivalent. In `aws_autoscaling_schedule`, `min_size`, `max_size` and `desired_capacity` are all optional — but an omitted one defaults to **`0`**, not to "leave unchanged." The sentinel meaning "don't touch this" is **`-1`**, and you have to write it out. So this:
-
-```hcl
-resource "aws_autoscaling_schedule" "morning" {
-  desired_capacity = 6          # min_size and max_size omitted -> both become 0
-  recurrence       = "0 13 * * 1-5"
-}
-```
-
-…quietly sets `max_size = 0` at 13:00 UTC, which clamps desired to 0 and **terminates your entire fleet on a schedule, every weekday**. The plan looks harmless because the resource is new; the damage happens later, at the cron time.
-
-> In one line: schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write `min_size = -1` / `max_size = -1`, because omitted means zero, not unchanged.
+> In one line: schedule desired capacity only and leave min/max alone, so dynamic scaling keeps working for the rest of the day.
 
 ### Sizing min / desired / max for the loss of an AZ
 
@@ -210,22 +199,6 @@ the whole argument for paying up front ([[14-dr-resilience]]).
 
 > In one line: spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and
 > the minimum is A times that.
-
-## AWS console ↔ Terraform map
-
-| Console / what you want | Terraform | Notes |
-|---|---|---|
-| Instance blueprint for the fleet | `aws_launch_template` | AMI, type, SGs, key, `user_data`, IAM profile. **Replaces the deprecated launch *configuration*.** |
-| The fleet manager | `aws_autoscaling_group` | `min/max/desired`, `vpc_zone_identifier` (2+ AZs), `launch_template { version = "$Latest" }`, `target_group_arns`, `health_check_type`, `health_check_grace_period`. |
-| The load balancer | `aws_lb` | `load_balancer_type = "application"`, `subnets` (2+ AZ), `security_groups`, `internal`. |
-| Where the ALB sends traffic | `aws_lb_target_group` | `port`/`protocol`/`vpc_id` + `health_check {}`. |
-| The front door + routing | `aws_lb_listener` (+ `aws_lb_listener_rule`) | Listener = protocol/port + `default_action`; rules add host/path/etc. routing. |
-| Scale automatically | `aws_autoscaling_policy` | `policy_type = "TargetTrackingScaling"` + `target_tracking_configuration {}`. Auto-manages its CloudWatch alarms. |
-| Tie instances to the LB | `target_group_arns` on the ASG | `aws_autoscaling_attachment` attaches the same ASG↔target-group link standalone — **never use both for one target group**. Standalone instances go in via `aws_lb_target_group_attachment`. |
-| Force HTTPS | `aws_lb_listener` on :80 with `default_action { type = "redirect" }` | ALB-native. The :443 listener does the real `forward`. |
-| Scale at known times | `aws_autoscaling_schedule` | `recurrence` (cron), `time_zone`, `desired_capacity` (+ optional `min_size`/`max_size`). |
-| Control which instance dies on scale-in | `termination_policies` on `aws_autoscaling_group` | List, evaluated in order; default is `["Default"]`. |
-| "Only the LB can reach my app" | instance SG ingress with `referenced_security_group_id = <alb SG>` | Source is the ALB's SG, not a CIDR. The core security pattern. |
 
 ## Architecture diagram
 
@@ -368,43 +341,11 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 > The target-tracking policy (`ASGAverageCPUUtilization = 50`) auto-created two CloudWatch alarms with zero hand-wiring: `TargetTracking-…-AlarmHigh` at 50% (scale out) and `-AlarmLow` at 35% (scale in — the lower band AWS picks). Observed behaviour: an idle fleet sits well below 35%, so after a sustained period the low alarm scales it in toward `min_size` — cheap to watch, no load needed. But you **cannot** provoke a scale-*out* by lowering the target: target tracking never scales out when the metric is below target, and a static nginx page produces near-zero CPU, so the only way to see scale-out is to generate real load (`stress` on the instances). This asymmetry is by design — EC2 Auto Scaling **prioritizes availability**: it scales out fast and scales in conservatively so a brief dip doesn't strand you under-provisioned when traffic returns.
 
 > [!example] Worked example — forcing HTTPS with two listeners, not one
-> You've attached an ACM certificate and want every visitor on TLS. The wrong instinct is to make the app redirect, or to run a second load balancer. The ALB does it natively with **two listeners**: :443 carries the certificate and `forward`s to the target group; :80 carries a single `default_action` of type `redirect` sending `HTTPS` on port `443` with `HTTP_301`. Because you leave host, path and query unset, the reserved keywords apply implicitly and `http://site/a/b?c=1` lands on `https://site/a/b?c=1`. The redirect is served **by the load balancer** — the request never reaches an instance, so it costs no capacity and works even when every target is unhealthy. Terraform shape:
-> ```hcl
-> default_action {
->   type = "redirect"
->   redirect {
->     port        = "443"
->     protocol    = "HTTPS"
->     status_code = "HTTP_301"
->   }
-> }
-> ```
+> You've attached an ACM certificate and want every visitor on TLS. The wrong instinct is to make the app redirect, or to run a second load balancer. The ALB does it natively with **two listeners**: :443 carries the certificate and `forward`s to the target group; :80 carries a single `default_action` of type `redirect` sending `HTTPS` on port `443` with `HTTP_301`. Because you leave host, path and query unset, the reserved keywords apply implicitly and `http://site/a/b?c=1` lands on `https://site/a/b?c=1`. The redirect is served **by the load balancer** — the request never reaches an instance, so it costs no capacity and works even when every target is unhealthy.
 > Exam framing: "redirect HTTP to HTTPS with no application changes" → an ALB listener rule, not CloudFront, not a Lambda, not an instance-level rewrite.
 
 > [!example] Worked example — a predictable 9am rush
 > A payroll app is idle overnight and slammed from 09:00 on weekdays. Target tracking alone reacts *after* the load arrives, so the first few minutes are slow while instances boot and pass health checks. The fix is **both**: a scheduled action at 08:45 local raises `desired_capacity` to 6 so capacity is warm before users arrive, and the existing target-tracking policy then handles whatever the day actually does. Crucially the scheduled action sets **only desired capacity** and leaves min/max alone — so at 09:30 the CPU policy can still scale to 9 if the day is heavier than usual, and scale back down when it isn't. If you had pinned `min = max = 6` instead, you'd have bought a fixed block of capacity and disabled dynamic scaling for the day.
-
-> [!failure] Failure mode — `aws_autoscaling_schedule` silently scaling your group to zero
-> This one is a **Terraform-specific** trap with no AWS-console equivalent. In `aws_autoscaling_schedule`, `min_size`, `max_size` and `desired_capacity` are all *optional* — but their default is **`0`**, not "leave unchanged." The sentinel for "don't touch this value" is **`-1`**, and you must write it explicitly. So a schedule that looks like it only bumps desired capacity:
-> ```hcl
-> resource "aws_autoscaling_schedule" "morning" {
->   desired_capacity = 6          # min_size and max_size omitted -> both become 0
->   recurrence       = "0 13 * * 1-5"
-> }
-> ```
-> …sets `max_size = 0` at 13:00 UTC, which clamps desired to 0 and **terminates the entire fleet on a schedule**, every weekday. The plan looks harmless because the resource is new and the damage happens later, at the cron time. Always write `min_size = -1` and `max_size = -1` when you mean "leave them as they are." (Also worth knowing: `recurrence` is UTC unless you set `time_zone`, so a schedule written in local-time thinking fires at the wrong hour and shifts again at DST.)
-
-## The Terraform I wrote
-
-Code: [`04-alb-asg/main.tf`](../04-alb-asg/main.tf) + `variables.tf` / `outputs.tf` / `user_data.sh`
-
-13 resources: 2 SGs + 4 rules, `aws_launch_template` (golden AMI from [[03-ami-bake]] via `data.aws_ami` on `tag:BakedBy=packer`, `owners=["self"]`, `user_data = base64encode(file(...))`), `aws_lb` + `aws_lb_target_group` + `aws_lb_listener`, `aws_autoscaling_group` (`min 1 / max 3 / desired 2`, `health_check_type = "ELB"`, `grace 120→300`), and `aws_autoscaling_policy` (target tracking, CPU 50).
-
-Non-obvious bits:
-- The **instance SG sources from the ALB SG** via `referenced_security_group_id` — the "only the LB reaches my app" pattern (different argument from the `cidr_ipv4` used in [[02-ec2]]).
-- **Scoped the ALB to `us-east-1a`+`us-east-1b`** on purpose: the default VPC includes a `us-east-1e` subnet, and that AZ historically doesn't support ALBs → apply error if you hand it *all* subnets.
-- ASG auto-registers into the target group via `target_group_arns`; no `aws_autoscaling_attachment`.
-- The golden AMI is a **data source**, so `terraform destroy` leaves it intact.
 
 > [!warning] Trap — "the ALB terminates the unhealthy instance"
 > It doesn't. The ALB only stops *routing* to it. Termination is the **ASG's** job, and only if `health_check_type = "ELB"`. Two separate systems; the default (`EC2`) leaves them disconnected.
@@ -445,11 +386,6 @@ Non-obvious bits:
 - [How ELB works — cross-zone, routing, schemes](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html) — ALB cross-zone always-on, NLB/GWLB off by default; round-robin default; verified 2026-06
 - [Target group attributes — deregistration delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html) — default 300s draining; verified 2026-06
 - [Target tracking scaling policies](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html) — auto-managed alarms, scale-out-fast/scale-in-gradual, can't scale out below target; verified 2026-06
-- [Terraform `aws_autoscaling_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group)
-- [Terraform `aws_lb` / `aws_lb_target_group` / `aws_lb_listener`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb)
-- [Terraform `aws_launch_template`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template)
 - [Termination policies](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-termination-policies.html) — zonal balance precedence, outdated-configuration ordering, predefined policy list; verified 2026-08-29
 - [Scheduled scaling](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html) — desired/min/max semantics, cron + IANA time zone, 125-action limit, composition with dynamic scaling; verified 2026-08-29
 - [ALB rule action types](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-action-types.html) — `redirect` config, 301/302, `#{host}`/`#{path}`/`#{query}` keywords, no HTTPS→HTTP; verified 2026-08-29
-- [Terraform `aws_autoscaling_schedule`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule) — min/max/desired default to `0`; use `-1` to leave unchanged
-- [Terraform `aws_autoscaling_policy`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy)

@@ -143,18 +143,6 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 > In one line: Cost Explorer analyses, Budgets alert, Anomaly Detection watches, tags slice, and Compute Optimizer says the instance is too big.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Spot in an ASG | `instance_market_options { market_type = "spot" }` on `aws_launch_template` | Or a mixed-instances policy for a Spot/On-Demand blend. |
-| Capacity Reservation | `aws_ec2_capacity_reservation` | `availability_zone`, `instance_count`. Holds capacity; separate from any discount. |
-| Dedicated Host | `aws_ec2_host` | Then `host_id` / `tenancy` on the instance. |
-| Budget + alert | `aws_budgets_budget` | `budget_type` COST or USAGE, `notification` blocks for thresholds. |
-| Cost allocation | `default_tags` in the provider | Tags are the mechanism; activate them as cost allocation tags in the console. |
-| Cost anomaly alerts | `aws_ce_anomaly_monitor` + `aws_ce_anomaly_subscription` | |
-| Savings Plans / RIs | *(not Terraform)* | Financial commitments, bought in the console/API — not infrastructure. |
-
 ## Key facts, limits & pricing
 
 - **Seven purchasing options:** On-Demand, Savings Plans, Reserved Instances, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations. (Capacity Blocks additionally reserve clusters of GPU instances.)
@@ -262,4 +250,3 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - [Spot interruption notices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html) — the two-minute notice, EventBridge event, `spot/instance-action` metadata, the hibernation exception; verified 2026-09-05
 - [What is AWS Compute Optimizer](https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html) — supported resources, 14-day CloudWatch lookback, opt-in; verified 2026-09-05
 - [AWS Billing and Cost Management](https://docs.aws.amazon.com/cost-management/latest/userguide/what-is-costmanagement.html) — Cost Explorer, Budgets, Cost Anomaly Detection, cost allocation tags, cost categories, Cost Optimization Hub, consolidated billing benefits; verified 2026-09-05
-- [Terraform `aws_budgets_budget`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) / [`aws_ec2_capacity_reservation`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ec2_capacity_reservation)

@@ -75,19 +75,6 @@ That "cannot change its policy" line is the practical discriminator: the moment 
 
 > In one line: GuardDuty watches logs, Inspector watches software, Macie watches data, Security Hub aggregates, Detective investigates.
 
-## AWS console ↔ Terraform map
-
-| Console action | Terraform resource | Key arguments |
-|---|---|---|
-| Create a KMS key | `aws_kms_key` | `enable_key_rotation`, `rotation_period_in_days`, `deletion_window_in_days`, `policy`, `multi_region` |
-| Friendly name for a key | `aws_kms_alias` | `name = "alias/…"`, `target_key_id` |
-| Store a config value | `aws_ssm_parameter` | `type = "String" \| "StringList" \| "SecureString"`, `tier`, `key_id` |
-| Store a rotating credential | `aws_secretsmanager_secret` + `_version` | `rotation_rules`, `recovery_window_in_days` |
-| Public TLS certificate | `aws_acm_certificate` | `validation_method = "DNS"`; **must be in us-east-1 for CloudFront** |
-| Enable threat detection | `aws_guardduty_detector` | `enable` |
-| Web ACL | `aws_wafv2_web_acl` | `scope = "REGIONAL" \| "CLOUDFRONT"` (CLOUDFRONT must be created in us-east-1) |
-| Attach a web ACL | `aws_wafv2_web_acl_association` | `resource_arn` — or `web_acl_id` on the CloudFront distribution |
-
 ## Architecture diagram
 
 ```mermaid
@@ -118,6 +105,7 @@ graph TB
 *Verified against AWS docs 2026-09-25.*
 
 - **KMS `Encrypt` maximum plaintext: 4,096 bytes** for `SYMMETRIC_DEFAULT`. (Asymmetric is smaller still — RSA_2048 with OAEP-SHA-256 is 190 bytes.)
+- **Deleting a KMS key is scheduled, never immediate.** A mandatory waiting period of **7–30 days** (**default 30**) applies; AWS may extend it by up to 24 hours. Throughout it the key state is **`Pending deletion`**, the key **cannot be used in any cryptographic operation**, and the deletion **can still be cancelled**. When the period ends the key, its aliases and all KMS metadata are destroyed — and anything encrypted under it becomes permanently unrecoverable. *(Verified 2026-09-30.)*
 - **Rotation period:** *"If you do not specify a value for `RotationPeriodInDays`... the default value is 365 days."* **On-demand rotation: maximum 25 per key, and this quota is not adjustable.**
 - **AWS managed keys:** *"AWS KMS automatically rotates AWS managed keys every year"* — and *"In May 2022, AWS KMS changed the rotation schedule for AWS managed keys from every three years (approximately 1,095 days) to every year."*
 - **Cannot auto-rotate:** asymmetric KMS keys, HMAC KMS keys, keys in custom key stores — these are rotated **manually**.
@@ -278,6 +266,15 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 
 ## ⚠️ Traps — why the wrong answer looks right
 
+> [!warning] Trap — "delete the KMS key" offered as the way to revoke access now
+> Key deletion is **not** an immediate control: the shortest waiting period is **7 days** and
+> the default is **30**, so nothing about it is fast. It is also the most destructive option on
+> the page — when the period expires, every object encrypted under that key is unrecoverable
+> forever. To cut access *now*, change the **key policy** or the IAM policy, or **disable** the
+> key — all immediate and all reversible. Deletion is for a key you are certain nothing will
+> ever need again, and until the period ends the key sits in **`Pending deletion`**, unusable
+> but still cancellable.
+
 > [!warning] Trap — rotation re-encrypts your data
 > It does not. *"Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key."* Old key material is retained so old ciphertext still decrypts, and the **key ID is unchanged** — which is why rotation is transparent to applications and requires no code change.
 
@@ -314,6 +311,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+- [Deleting AWS KMS keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html)
 
 - [AWS KMS keys — concepts](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html) — the three key types side by side; "AWS managed keys are a legacy key type that is no longer being created for new AWS services as of 2021"; AWS owned logging "Not viewable by the customer"; verified 2026-09-27
 - [DynamoDB encryption at rest](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EncryptionAtRest.html) — "AWS owned key – Default encryption type"; all data always encrypted; DAX uses an AWS managed key; verified 2026-09-27

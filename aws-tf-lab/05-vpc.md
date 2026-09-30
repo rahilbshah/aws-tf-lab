@@ -42,8 +42,3 @@ flowchart TB
     IGW --- Internet([Internet])
 ```
 
-## The Terraform I wrote
-
-`05-vpc/` — split by concern: `network.tf` (core), `nat.tf` (paid peek), plus per-increment files as topics are added. This VPC is the network you'd later drop the [[04-alb-asg]] stack into (ALB in the public pair, ASG in the private pair).
-
----

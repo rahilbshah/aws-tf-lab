@@ -113,15 +113,6 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 
 > In one line: shared fan-out splits one shard's 2 MB/sec between all consumers; enhanced fan-out gives each registered consumer its own 2 MB/sec, pushed rather than polled.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| The stream | `aws_kinesis_stream` | `shard_count`, `retention_period` (hours), `stream_mode_details { stream_mode = "PROVISIONED" \| "ON_DEMAND" }`. |
-| Registered consumer (EFO) | `aws_kinesis_stream_consumer` | Enhanced fan-out. |
-| Delivery pipeline | `aws_kinesis_firehose_delivery_stream` | `destination = "extended_s3"`, `kinesis_source_configuration`, `extended_s3_configuration { buffering_size, buffering_interval }`. |
-| Firehose's permissions | `aws_iam_role` + policy | Needs **both** stream reads (`GetRecords`, `GetShardIterator`, `DescribeStream`, `ListShards`) **and** destination writes. |
-
 ## Key facts, limits & pricing
 
 - **A stream is a set of shards**; a shard is a uniquely identified sequence of records. A **record** = sequence number + partition key + data blob.
@@ -210,4 +201,3 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 - [Kinesis Data Streams quotas and limits](https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html) — per-shard write/read limits, `GetRecords` sizes, enhanced fan-out consumer counts, on-demand throughput by Region, the 10 MiB payload note; verified 2026-09-06
 - [What is Amazon Data Firehose](https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html) — destinations, buffer size and interval, Lambda transform, the Redshift-via-S3 path, reading from a data stream; verified 2026-09-06
 - [Kinesis Data Streams pricing](https://aws.amazon.com/kinesis/data-streams/pricing/) — $0.015/shard-hour, on-demand rates, **no free tier**; verified 2026-09-06
-- [Terraform `aws_kinesis_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_stream) / [`aws_kinesis_firehose_delivery_stream`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_firehose_delivery_stream)

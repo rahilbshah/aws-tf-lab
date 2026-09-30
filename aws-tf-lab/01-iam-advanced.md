@@ -23,7 +23,7 @@ The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do
 > - **MFA conditions must use `BoolIfExists`**, not `Bool` — the key is absent for long-term access keys, so plain `Bool` denies things you didn't mean to.
 
 > [!warning] Build tier — **conceptual-only**
-> Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from notes + the exam framing, not from `terraform apply`.
+> Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from the notes and the exam framing, not by building it.
 
 ## What problem does this solve?
 
@@ -133,18 +133,6 @@ That exception looks inconsistent until you notice what a resource policy actual
 Above all of it: an **explicit `Deny` anywhere wins.** In any policy, of any type, at any level. Nothing overrides it.
 
 > In one line: resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.
-
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| The organization | `aws_organizations_organization` | `feature_set = "ALL"` is required for SCPs. |
-| An OU | `aws_organizations_organizational_unit` | Nests under the root or another OU. |
-| A member account | `aws_organizations_account` | Created *by* the org; removing it from state does not close it. |
-| An SCP | `aws_organizations_policy` (`type = "SERVICE_CONTROL_POLICY"`) | Written as a policy document, same syntax as IAM. |
-| Attaching it | `aws_organizations_policy_attachment` | `target_id` = a root, OU, or account. |
-| Permissions boundary | `permissions_boundary` argument on `aws_iam_role` / `aws_iam_user` | Takes a **policy ARN**. Not a separate resource. |
-| Restrict who may set boundaries | `iam:PermissionsBoundary` condition key | The delegation pattern — see the worked example. |
 
 ## Architecture diagram
 

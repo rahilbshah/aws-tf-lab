@@ -129,18 +129,6 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 
 > In one line: Amazon MQ exists so a legacy app speaking a standard broker protocol can move to AWS without a rewrite — and that migration framing is the only reason to pick it.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| A queue | `aws_sqs_queue` | `visibility_timeout_seconds`, `message_retention_seconds`, `receive_wait_time_seconds` (long polling), `delay_seconds`. |
-| A FIFO queue | same, `fifo_queue = true` | Name **must** end `.fifo`. `content_based_deduplication` optional. |
-| Dead-letter queue | a second `aws_sqs_queue` + `redrive_policy` on the source | `redrive_policy = jsonencode({ deadLetterTargetArn = …, maxReceiveCount = … })`. |
-| A topic | `aws_sns_topic` | `fifo_topic = true` for FIFO. |
-| Fan-out wiring | `aws_sns_topic_subscription` | `protocol = "sqs"`, `endpoint` = the queue **ARN**. |
-| Letting SNS in | `aws_sqs_queue_policy` + `aws_iam_policy_document` | Service principal + **`aws:SourceArn`** condition. `queue_url` takes the queue's `.id`. |
-| Amazon MQ | `aws_mq_broker` | `engine_type`, `deployment_mode` (SINGLE_INSTANCE / ACTIVE_STANDBY_MULTI_AZ). |
-
 ## Key facts, limits & pricing
 
 - **Retention:** default **4 days** (345,600s); minimum **60 seconds**; maximum **1,209,600 seconds (14 days)**.
@@ -249,4 +237,3 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - [SNS FIFO topic examples](https://docs.aws.amazon.com/sns/latest/dg/fifo-topic-code-examples.html) — FIFO topics deliver only over SQS, to both queue types; filter policies; verified 2026-09-06
 - [What is Amazon MQ](https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/welcome.html) — ActiveMQ/RabbitMQ, migrate without rewriting messaging code, quorum queues, CRDR; verified 2026-09-06
 - [Amazon MQ deployment options](https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/amazon-mq-broker-architecture.html) — single-instance vs active/standby, EBS vs EFS storage; verified 2026-09-06
-- [Terraform `aws_sqs_queue`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) / [`aws_sns_topic_subscription`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription)

@@ -181,4 +181,3 @@ Until then it costs ~$0.05/GB-month of snapshot storage (cents). Keep it for now
 - [Packer `amazon-ami` data source](https://developer.hashicorp.com/packer/integrations/hashicorp/amazon/latest/components/data-source/ami)
 - [Packer shell provisioner](https://developer.hashicorp.com/packer/docs/provisioners/shell)
 - [EC2 Image Builder — what is it](https://docs.aws.amazon.com/imagebuilder/latest/userguide/what-is-image-builder.html) — managed golden-image pipelines, test-before-distribute, STIG components; verified 2026-06
-- [Terraform `aws_ami` data source](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) — `most_recent` / `filter` behaviour behind the failure mode above

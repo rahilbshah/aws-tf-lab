@@ -134,19 +134,6 @@ Anchor on the direction the **query** travels, not the answer. Inbound = queries
 
 > In one line: a private zone answers only inside its associated VPCs; inbound lets on-prem ask AWS, outbound lets AWS ask on-prem.
 
-## AWS console ↔ Terraform map
-
-| Console / what you want | Terraform | Notes |
-|---|---|---|
-| Hosted zone (public) | `aws_route53_zone` | Returns `name_servers` — the four to delegate to. |
-| Hosted zone (private) | `aws_route53_zone` **with a `vpc {}` block** | The block is the only difference. |
-| Any record | `aws_route53_record` | Policy is a **nested block**: `weighted_routing_policy`, `failover_routing_policy`, `geolocation_routing_policy`, `latency_routing_policy`, or `multivalue_answer_routing_policy = true`. |
-| Alias to an AWS resource | `alias {}` block **inside** `aws_route53_record` | Not a separate resource. Needs `zone_id` + `name` of the target, and `evaluate_target_health`. |
-| Health check | `aws_route53_health_check` | `type` HTTP/HTTPS/TCP/CALCULATED/CLOUDWATCH_METRIC. |
-| Telling records apart | `set_identifier` | **Required** whenever several records share a name+type. Plain DNS never needs this. |
-| Register/transfer a domain | `aws_route53domains_registered_domain` | Real money, non-refundable. |
-| Hybrid DNS | `aws_route53_resolver_endpoint`, `aws_route53_resolver_rule` | Direction is set by `direction = "INBOUND" \| "OUTBOUND"`. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -256,19 +243,6 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 > [!failure] Failure mode — the geolocation record with no default
 > A team adds geolocation records for `US`, `GB` and `DE`, tests from those three countries, and ships. Users in **every other country get no answer at all** — not a slow answer, not a wrong region, **NXDOMAIN-shaped silence** — because no record matches their location and Route 53 has nothing to fall back on. The fix is a record with country `*` as the **default**, which catches every unmatched location. The same trap is why `dig +subnet=` testing from a *single* location gives false confidence: you only ever exercise one branch. Always test an unmatched location deliberately.
 
-## The Terraform I wrote
-
-Code: `../10-route53/` — `main.tf` (zone), `websites.tf` (two S3 static sites, us-east-1 + us-west-2), `health.tf`, `records.tf` (all six policies), `outputs.tf`.
-
-**Provenance, honestly:** Claude wrote this one at my request, on the argument that Route 53's HCL is thin (one resource type, six nested blocks) while the learning is in the DNS behaviour. I owned every verification instead — predicting each `dig` result before running it.
-
-The lab technique worth remembering: a hosted zone for **`saa-c03-lab.example`** (RFC 2606 reserved TLD, never delegated to anyone), with all addresses from the **RFC 5737 documentation ranges** (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`). Nothing collides with anything real. Verification is `dig @<assigned nameserver>`, and `dig +subnet=<cidr>` fakes a client location because **Route 53 honours EDNS0 client subnet** — which is what makes geolocation and latency routing testable from one laptop.
-
-Non-obvious bits:
-- **Failover had to use CNAMEs, not aliases.** An alias to an S3 website endpoint requires the **bucket name to equal the record name** (S3 routes static-website requests by `Host` header), and both failover records share the name `www.…` — so both would need to be the same bucket. Impossible.
-- The health check monitors the S3 **website endpoint by domain name**, which is a real public name, so it works even though our zone is undelegated.
-- Breaking it is `aws s3 rm .../index.html` → 404 → three failed checks → the answer flips.
-
 ## Traps
 
 > [!warning] Trap — "use simple routing to distribute traffic across three servers"
@@ -311,4 +285,3 @@ Non-obvious bits:
 - [Health check values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/health-checks-creating-values.html) — interval options, failure threshold, private-IP restriction, optional-feature charges; verified 2026-09-03
 - [Route 53 VPC Resolver](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver.html) — VPC+2, inbound/outbound direction, resolver rules, rename note; verified 2026-09-04
 - [Route 53 pricing](https://aws.amazon.com/route53/pricing/) — $0.50/zone, 12-hour deletion waiver, 50 free AWS health checks, $1/$2 optional features, $0.40/million queries; verified 2026-09-03
-- [Terraform `aws_route53_record`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)

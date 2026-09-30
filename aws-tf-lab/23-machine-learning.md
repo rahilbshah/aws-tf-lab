@@ -139,17 +139,6 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 
 > In one line: SageMaker is now "SageMaker AI", and Forecast, Fraud Detector and Kendra are closed to new customers but still exam-answerable.
 
-## AWS console ↔ Terraform map
-
-Mostly not a Terraform topic — these are API calls from application code, not infrastructure. The few that are resources:
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Chatbot | `aws_lexv2models_bot` | V2 models; V1 resources are legacy. |
-| Custom model endpoint | `aws_sagemaker_model`, `aws_sagemaker_endpoint_configuration`, `aws_sagemaker_endpoint` | The one place you'd really write HCL. |
-| Notebook | `aws_sagemaker_notebook_instance` | Bills hourly — destroy it. |
-| Everything else | **none** | Rekognition/Textract/Comprehend/Polly are called with the SDK. What you'd write in Terraform is the **IAM role** granting your Lambda permission to call them ([[19-serverless]]). |
-
 ## Key facts, limits & pricing
 
 - **Exam scope:** the SAA-C03 exam guide lists a **Machine Learning** in-scope category containing **Comprehend, Forecast, Fraud Detector, Kendra, Lex, Polly, Rekognition, SageMaker, Textract, Transcribe, Translate**. Explicitly **out of scope**: Apache MXNet, Augmented AI (A2I), DeepComposer, Deep Learning AMIs, Deep Learning Containers, DeepLens, DeepRacer, DevOps Guru, Elastic Inference, HealthLake, Inferentia, **Lookout for Equipment / Metrics / Vision**, Monitron, Panorama, **Personalize**, PyTorch on AWS, **SageMaker Data Wrangler**, **SageMaker Ground Truth**, TensorFlow on AWS. No task statement in any domain names machine learning.

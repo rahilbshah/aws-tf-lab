@@ -97,25 +97,13 @@ An event notification is a rule on the bucket: when *this* kind of thing happens
 
 The triggers are `s3:ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, and more. The destinations are **SNS**, **SQS**, **Lambda** and **EventBridge** — EventBridge being the one that buys richer filtering, archive/replay, and 20+ further targets.
 
-**First failure: nobody told the destination.** S3 publishing into your queue is S3 calling *your* resource, so the permission has to live on that resource. Each destination needs a **resource policy** allowing `s3.amazonaws.com`, scoped with an `aws:SourceArn` condition to the one bucket. Miss it and you don't get a quiet runtime error later — the setup itself **fails validation**. In Terraform that also fixes the ordering: the policy must exist before the notification.
+**First failure: nobody told the destination.** S3 publishing into your queue is S3 calling *your* resource, so the permission has to live on that resource. Each destination needs a **resource policy** allowing `s3.amazonaws.com`, scoped with an `aws:SourceArn` condition to the one bucket. Miss it and you don't get a quiet runtime error later — the setup itself **fails validation**. The policy must therefore exist **before** the notification is configured.
 
 **Second failure: the rule feeds itself.** A Lambda triggered by uploads to `uploads/` writes a thumbnail. If it writes that thumbnail back into `uploads/`, the write is a new `ObjectCreated` event, which fires the same Lambda, which writes another object. Infinite recursion, billed every turn. The output must go to a **different prefix or bucket**.
 
 One more shape worth holding: delivery is typically seconds but **not guaranteed instant**, so design consumers to be **idempotent**.
 
 > In one line: the destination must grant S3 permission, and the output must never land where the trigger is watching.
-
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Replication rule | `aws_s3_bucket_replication_configuration` | On the **source**; needs `role`, versioning both sides. |
-| Destination in another region | `provider` **alias** + `provider = aws.dest` | How one config spans regions. |
-| Replication IAM role | `aws_iam_role` + `aws_iam_role_policy` | Trust `s3.amazonaws.com`; 3 statements (list source / read versions / replicate to dest). |
-| Event notification | `aws_s3_bucket_notification` | **One per bucket** — it owns the whole notification config. |
-| Event destination policy | `aws_sqs_queue_policy` / `aws_sns_topic_policy` / `aws_lambda_permission` | Required, or apply fails validating the destination. |
-| Transfer Acceleration | `aws_s3_bucket_accelerate_configuration` | One setting; costs extra per GB. |
-| Abort stale multipart uploads | `abort_incomplete_multipart_upload` in the lifecycle rule | Pure cost hygiene. |
 
 ## Architecture diagram
 
@@ -202,21 +190,6 @@ flowchart LR
 > [!failure] Failure mode — the invisible multipart bill
 > A nightly job uploads multi-GB files and sometimes crashes mid-upload. Each crash leaves an **incomplete multipart upload**: the uploaded parts are stored and **billed**, but they don't appear in `s3 ls` or the bucket's object count. Months later, storage cost far exceeds the visible data. Diagnose with `aws s3api list-multipart-uploads`; fix permanently with a lifecycle rule containing **`abort_incomplete_multipart_upload { days_after_initiation = 7 }`**. This is why that clause is in our lifecycle rule.
 
-## The Terraform I wrote
-
-Code: `09-s3/events.tf` + `09-s3/replication.tf` (+ the `aws.dest` provider alias in `versions.tf`).
-
-*(Written collaboratively — I reviewed and applied; the code was walked through line by line rather than hand-typed, since the exam value here is conceptual.)*
-
-- **Events:** `aws_sqs_queue` → `aws_sqs_queue_policy` (principal `s3.amazonaws.com`, **`aws:SourceArn` condition** scoping it to the one bucket — the confused-deputy fix from [[01-iam]]) → `aws_s3_bucket_notification` on `ObjectCreated:*`/`ObjectRemoved:*` filtered to `uploads/`, with `depends_on` the queue policy.
-- **Replication:** a **second provider alias** (`aws.dest`, us-west-2), destination bucket + versioning there, an IAM role trusted by `s3.amazonaws.com` with **three** statements (bucket-level list/config on the source ARN, object-version reads on `source/*`, replicate actions on `dest/*`), and `aws_s3_bucket_replication_configuration` on the source with `storage_class = "STANDARD_IA"` and delete-marker replication off.
-
-Non-obvious things:
-- **One `aws_s3_bucket_notification` per bucket** — it owns the entire config; a second resource silently overwrites the first.
-- Event setup **fails at apply** without the destination's resource policy (`Unable to validate the following destination configurations`).
-- Replication IAM: **bucket-level actions use the bucket ARN, object-level actions use `<arn>/*`** — mixing them fails silently.
-- Both buckets are versioned, so **neither will `terraform destroy`** until versions and delete markers are purged (or `force_destroy = true`).
-
 > [!warning] Trap — replication copies existing objects
 > It does **not**. Live CRR/SRR only handles objects created/updated **after** the rule. Existing data needs **S3 Batch Replication**.
 
@@ -246,4 +219,3 @@ Non-obvious things:
 - [Archive retrieval options](https://docs.aws.amazon.com/AmazonS3/latest/userguide/restoring-objects-retrieval-options.html) — Expedited/Standard/Bulk times; **verified 2026-08**
 - [S3 Select](https://docs.aws.amazon.com/AmazonS3/latest/userguide/selecting-content-from-objects.html) — *"no longer available to new customers"*; **verified 2026-08**
 - [Event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) / [Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
-- [Terraform `aws_s3_bucket_replication_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_replication_configuration) / [`aws_s3_bucket_notification`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_notification)

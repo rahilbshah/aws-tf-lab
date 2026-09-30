@@ -119,22 +119,9 @@ Now the failure this causes. A job rewrites the same objects every hour. Every r
 
 The fix is always the same: enable versioning and a lifecycle rule with **noncurrent version expiration** in the same breath. Never one without the other.
 
-This is also why a versioned bucket refuses to `terraform destroy` — it fails with `BucketNotEmpty` until every version *and* every delete marker is purged, even though the bucket appears empty.
+This is also why a versioned bucket **cannot be deleted** while anything remains in it: the delete fails with `BucketNotEmpty` until every version *and* every delete marker is purged, even though the bucket looks empty.
 
 > In one line: with versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.
-
-## AWS console ↔ Terraform map
-
-| Console / concept | Terraform | Notes |
-|---|---|---|
-| Create a bucket | `aws_s3_bucket` | Just the container now — settings are **separate resources** in the modern provider (inline blocks are deprecated). |
-| Enable versioning | `aws_s3_bucket_versioning` | `versioning_configuration { status = "Enabled" }`. |
-| Lifecycle rules | `aws_s3_bucket_lifecycle_configuration` | `transition`, `expiration`, `noncurrent_version_expiration`, `abort_incomplete_multipart_upload`. |
-| Upload an object | `aws_s3_object` | `content = "..."` (inline) **or** `source = path` + **`etag = filemd5(path)`**; set `content_type`. |
-| Static website | `aws_s3_bucket_website_configuration` | `index_document` + `error_document`. |
-| Public-access safety net | `aws_s3_bucket_public_access_block` | 4 flags; **all true** normally, all false only for a real public site. |
-| Bucket policy | `aws_s3_bucket_policy` (+ `data.aws_iam_policy_document`) | Resource-based policy; see [[09-s3-security]]. |
-| Default encryption | `aws_s3_bucket_server_side_encryption_configuration` | See [[09-s3-security]]. |
 
 ## Architecture diagram
 
@@ -196,25 +183,10 @@ flowchart LR
 > Log files land in S3 daily. They're queried constantly for the first month, occasionally for a quarter, then kept years for compliance and almost never read. One lifecycle rule handles the whole journey: **Standard** on write → **Standard-IA at 30 days** → **Glacier Flexible at 90 days** → **expire at 7 years**, plus `noncurrent_version_expiration` to purge old versions and `abort_incomplete_multipart_upload` after 7 days. Storage cost drops by an order of magnitude with no application change. Exam trigger: *"data accessed frequently at first then rarely, minimize cost"* → **lifecycle transitions**, not manual copies.
 
 > [!failure] Failure mode — versioning without noncurrent-version expiration
-> A team enables versioning "for safety" on a bucket where a job rewrites the same objects hourly. Every rewrite keeps the old version forever, so storage (and the bill) grows without bound while the bucket "looks" the same size in the console — `s3 ls` shows only current versions. Months later the bill is 20× expected. Fix: always pair versioning with a lifecycle rule containing **`noncurrent_version_expiration`** (e.g. 30 days), and use `list-object-versions` (not `s3 ls`) to see true usage. *(Also why a versioned bucket refuses to `terraform destroy` with `BucketNotEmpty` until every version and delete marker is purged — hit live in this build.)*
+> A team enables versioning "for safety" on a bucket where a job rewrites the same objects hourly. Every rewrite keeps the old version forever, so storage (and the bill) grows without bound while the bucket "looks" the same size in the console — `s3 ls` shows only current versions. Months later the bill is 20× expected. Fix: always pair versioning with a lifecycle rule containing **`noncurrent_version_expiration`** (e.g. 30 days), and use `list-object-versions` (not `s3 ls`) to see true usage. *(Also why deleting a versioned bucket fails with `BucketNotEmpty` until every version and delete marker is purged.)*
 
 > [!failure] Failure mode — One Zone-IA for the only copy
 > One Zone-IA is ~20% cheaper than Standard-IA and equally durable *on paper* (11 nines) — so a team moves its only backup copy there. Both classes are 11-nines durable, but One Zone-IA stores in a **single AZ**: if that AZ is physically destroyed, **the data is gone**, and its availability is only 99.5%. Rule: One Zone-IA is only for **re-creatable** data (thumbnails, derived files, secondary replicas). The primary/only copy belongs in a ≥3-AZ class.
-
-## The Terraform I wrote
-
-Code: `09-s3/` — `main.tf` (bucket + versioning + lifecycle + objects), `website.tf` (static site), plus `data.txt` / `index.html` / `error.html`.
-
-- Bucket named with `data.aws_caller_identity.current.account_id` as a suffix (bucket names are **globally unique** — a plain name fails).
-- `aws_s3_bucket_versioning` enabled, then **verified live**: edited the object, re-applied, and `list-object-versions` showed **two versions** with different `VersionId`s and `IsLatest` on the newer. Deleted it → a **delete marker** appeared and the object vanished from `s3 ls` while both versions remained; removing the marker restored it.
-- `aws_s3_bucket_lifecycle_configuration` with transitions (30 d → STANDARD_IA, 90 d → GLACIER), `expiration`, `noncurrent_version_expiration` and `abort_incomplete_multipart_upload`.
-- Static site: second bucket + `website_configuration` (index + error), `public_access_block` all-false, a public-read `bucket_policy` (with `depends_on` on the access block so ordering is right), and objects uploaded with **`content_type = "text/html"`**. Verified in a browser, including the 404 page.
-
-Non-obvious things:
-- **Modern provider splits bucket config into separate resources** — the inline `versioning`/`lifecycle_rule`/`website` blocks on `aws_s3_bucket` are **deprecated**, not removed: v6 still accepts them, but only drift-detects what you explicitly set.
-- **`etag = filemd5(path)`** is required with `source`, or Terraform won't notice the file's *contents* changed and silently skips the upload.
-- **`content_type`** must be set or browsers download instead of rendering.
-- A public bucket policy is **rejected while Block Public Access is on** → `depends_on` the access block.
 
 > [!warning] Trap — "S3 has folders"
 > No. S3 is a flat key→object store; `photos/cat.jpg` is one key. The console renders "folders" by splitting on `/`. Listing by **prefix** is how you emulate a directory.
@@ -243,4 +215,3 @@ Non-obvious things:
 - [Using versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html) — delete markers
 - [Managing object lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
 - [Hosting a static website](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html)
-- [Terraform `aws_s3_bucket`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) / [`aws_s3_object`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object)

@@ -108,20 +108,6 @@ CloudFront has its own failover, and it is worth not confusing with either of th
 
 > In one line: CloudFront caches, Global Accelerator doesn't — its trick is IPs that never change, so DNS never has to catch up.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| The distribution | `aws_cloudfront_distribution` | Verbose: `origin`, `default_cache_behavior`, `restrictions`, `viewer_certificate` are all required. |
-| Lock the S3 origin | `aws_cloudfront_origin_access_control` | `origin_access_control_origin_type = "s3"`, `signing_behavior = "always"`, `signing_protocol = "sigv4"`. |
-| Trust it back | `aws_s3_bucket_policy` | Service principal + `AWS:SourceArn` condition. **This is the security-critical half.** |
-| What forms the cache key | `aws_cloudfront_cache_policy` | `min_ttl` / `default_ttl` / `max_ttl` + which cookies/headers/query strings are included. |
-| Use an AWS-managed policy | `data "aws_cloudfront_cache_policy"` | e.g. `name = "Managed-CachingOptimized"`. |
-| Route a path differently | `ordered_cache_behavior { path_pattern = "/static/*" }` | Evaluated in order; `default_cache_behavior` is the fallback. |
-| Origin failover | `origin_group` block | Primary + secondary, switching on named HTTP status codes. |
-| Edge code | `aws_cloudfront_function` / `aws_lambda_function` + `lambda_function_association` | Functions vs Lambda@Edge. |
-| Custom domain | `aliases` + `viewer_certificate { acm_certificate_arn = ... }` | **Certificate must be in `us-east-1`.** |
-
 ## Architecture diagram
 
 ```mermaid
@@ -197,17 +183,13 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > A company wants a static site served worldwide with the bucket completely private. Create the bucket with **Block Public Access fully on** and no bucket policy. Create an **OAC** (`signing_behavior = always`), attach it to an S3 **REST-endpoint** origin on the distribution, then add a bucket policy allowing `s3:GetObject` to the service principal `cloudfront.amazonaws.com` **conditioned on `AWS:SourceArn` equal to that distribution's ARN**. Result: `https://d111.cloudfront.net/index.html` returns 200, and `https://bucket.s3.us-east-1.amazonaws.com/index.html` returns **403**. The only way in is through CloudFront, where WAF, geo restriction and signed URLs can be applied. Contrast with [[10-route53]], where S3 *website* endpoints forced the buckets public — website endpoints are custom origins and cannot use OAC at all.
 
 > [!example] Worked example — the two-tier caching pattern
-> A deploy updates both `index.html` and the app's CSS. Cache them the same way and you must choose between slow updates or constant invalidation. The production pattern splits them: **`index.html` gets a short TTL** (60 s) because it is tiny and is the only thing that must change quickly; **`/static/app.a1b2c3.css` gets a one-year TTL** because the hash is *in the filename*, so a new build produces a new name and therefore a **new cache key**. Nothing needs invalidating, ever, and users mid-session keep working off the old asset instead of getting a half-updated page. In Terraform that's a custom `aws_cloudfront_cache_policy` on the default behaviour plus `Managed-CachingOptimized` on an `ordered_cache_behavior` for `/static/*`.
+> A deploy updates both `index.html` and the app's CSS. Cache them the same way and you must choose between slow updates or constant invalidation. The production pattern splits them: **`index.html` gets a short TTL** (60 s) because it is tiny and is the only thing that must change quickly; **`/static/app.a1b2c3.css` gets a one-year TTL** because the hash is *in the filename*, so a new build produces a new name and therefore a **new cache key**. Nothing needs invalidating, ever, and users mid-session keep working off the old asset instead of getting a half-updated page.
 
 > [!failure] Failure mode — the bucket policy that trusts every CloudFront distribution on earth
 > A team writes the OAC bucket policy but omits the `Condition` block, leaving `Principal: {"Service": "cloudfront.amazonaws.com"}` and nothing else. **Everything works perfectly** — their site serves, direct S3 URLs still 403 for anonymous users, tests pass. But `cloudfront.amazonaws.com` is the *same principal for every AWS customer*, so anyone who learns the bucket name can point **their own** distribution at it and serve the content as their own, on their own domain, billed to them but read from you. The bug is invisible because the condition isn't what makes *your* distribution work — it's what stops *everyone else's*. Same shape as the S3 event-notification and replication-role conditions in [[09-s3-security]]: the service principal identifies the *service*, never the *customer*.
 
-## The Terraform I wrote
-
-Code: `../11-cloudfront/` — `main.tf` (private bucket + two objects), `cloudfront.tf` (OAC, two cache policies, distribution, bucket policy), `outputs.tf`.
-
 > [!warning] Not yet applied
-> Written and `terraform validate`-clean, but **not applied or verified live** as of 2026-09-04 — the human deferred the practical. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
+> **Not applied or verified live** as of 2026-09-04 — the practical was deferred. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
 
 Provenance: Claude wrote this lab at the human's request, to keep pace toward exam practice.
 
@@ -248,4 +230,3 @@ Provenance: Claude wrote this lab at the human's request, to keep pace toward ex
 - [CloudFront Functions vs Lambda@Edge](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-functions-choosing.html) — the full comparison table; verified 2026-09-04
 - [Serve private content](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html) — signed URLs/cookies, trusted key groups; verified 2026-09-04
 - [What is AWS Global Accelerator](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html) — two static anycast IPs, endpoint types, instant health reaction; verified 2026-09-04
-- [Terraform `aws_cloudfront_distribution`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution) / [`aws_cloudfront_origin_access_control`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_origin_access_control)

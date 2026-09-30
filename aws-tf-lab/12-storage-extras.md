@@ -150,20 +150,6 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 
 > In one line: AWS Backup is a policy engine over every service's own backups, with tag-based assignment, cross-Region and cross-account copies, and a vault lock that makes them WORM.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| EFS file system | `aws_efs_file_system` | `performance_mode`, `throughput_mode`, `lifecycle_policy`, `encrypted`. |
-| Where it can be mounted | `aws_efs_mount_target` | **One per AZ**, each in a subnet with a security group. |
-| Restrict a client to a subtree | `aws_efs_access_point` | Enforces a POSIX user and root directory per application. |
-| FSx Windows | `aws_fsx_windows_file_system` | `active_directory_id` or `self_managed_active_directory`, `deployment_type`. |
-| FSx Lustre | `aws_fsx_lustre_file_system` | `deployment_type` (SCRATCH_* / PERSISTENT_*), `import_path` for S3. |
-| Storage Gateway | `aws_storagegateway_gateway` (+ `_cached_iscsi_volume`, `_nfs_file_share`, `_smb_file_share`) | `gateway_type` = FILE_S3 / FILE_FSX_SMB / CACHED / STORED / VTL. |
-| DataSync | `aws_datasync_task` + `aws_datasync_location_*` | A task joins a source location to a destination location. |
-| Backup policy | `aws_backup_plan` + `aws_backup_selection` | Selection can match **by tag**. |
-| Backup destination | `aws_backup_vault` (+ `aws_backup_vault_lock_configuration`) | Vault Lock is the WORM control. |
-
 ## Key facts, limits & pricing
 
 - **EFS** speaks **NFSv4.1 and NFSv4.0**. Mountable from EC2, ECS, EKS, Lambda and Fargate. Capacity is elastic to petabyte scale with nothing to provision. **Using EFS with Windows EC2 instances is not supported.**
@@ -280,4 +266,3 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 - [What is AWS DataSync](https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html) — sources/destinations, integrity validation, VPC endpoints; verified 2026-09-05
 - [What is Snowball Edge](https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html) — 210 TB Storage Optimized, clustering, protocols, **and the notice that it is closed to new customers**; verified 2026-09-05
 - [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) — backup plans/vaults, tag-based assignment, cross-Region and cross-account, Vault Lock WORM, supported services; verified 2026-09-05
-- [Terraform `aws_efs_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system) / [`aws_fsx_windows_file_system`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/fsx_windows_file_system) / [`aws_backup_plan`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_plan)

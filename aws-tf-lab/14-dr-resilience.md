@@ -169,18 +169,6 @@ Two consequences that read like exam answers:
 
 > In one line: detection time is spent out of your RTO budget, and the only recovery path that works is one you run often enough to trust.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Cross-Region database | `aws_rds_global_cluster` + regional `aws_rds_cluster` | Aurora Global Database; needs a provider alias per Region. |
-| Multi-active NoSQL | `replica` blocks on `aws_dynamodb_table` | Global Tables. |
-| Cross-Region object copy | `aws_s3_bucket_replication_configuration` | Plus a replication IAM role — see [[09-s3-advanced]]. |
-| Cross-Region backup copy | `copy_action` in `aws_backup_plan` | `destination_vault_arn` in the DR Region. |
-| DNS failover | `aws_route53_record` + `failover_routing_policy` + `aws_route53_health_check` | Data-plane failover. |
-| Static-IP failover | `aws_globalaccelerator_accelerator` + endpoint groups | No DNS caching to wait out. |
-| Repeatable infrastructure | your Terraform, or CloudFormation StackSets | The IaC that makes backup & restore viable. |
-
 ## Key facts, limits & pricing
 
 - **Four DR strategies:** backup & restore, pilot light, warm standby, multi-site active/active. **Hot standby** is a variant of multi-site that is active/**passive** — full capacity deployed, but only one Region takes traffic.
@@ -303,4 +291,3 @@ Two consequences that read like exam answers:
 - [Aurora Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html) — **up to 10 secondary Regions**, replication latency typically under a second; verified 2026-09-25 (the DR whitepaper still says five — it is stale)
 - [S3 Replication Time Control](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html) — 99.9% of objects within 15 minutes, SLA-backed; verified 2026-09-25
 - [DynamoDB Global Tables](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html) · [S3 Replication](https://aws.amazon.com/s3/features/replication/) · [AWS Elastic Disaster Recovery](https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html)
-- [Terraform `aws_rds_global_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) / [`aws_route53_health_check`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_health_check)

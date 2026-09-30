@@ -131,18 +131,6 @@ Which is the other thing to hold on to: security groups and NACLs are free. Netw
 
 > In one line: SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Security group | `aws_security_group` + `aws_vpc_security_group_ingress_rule`/`egress_rule` | Modern per-rule resources; source can be a CIDR or another SG (`referenced_security_group_id`). |
-| Network ACL | `aws_network_acl` (+ inline `ingress`/`egress` or separate `aws_network_acl_rule`) | `rule_no` = precedence (low first), `action = allow/deny` — inline names; the separate resource calls them `rule_number` / `rule_action`. `protocol = -1` for all. |
-| Associate NACL ↔ subnets | `subnet_ids` on the NACL, or `aws_network_acl_association` | Each subnet has exactly one NACL (default if unset). |
-| Flow log | `aws_flow_log` | `vpc_id`/`subnet_id`/`eni_id` (the level), `traffic_type` (ALL/ACCEPT/REJECT), `log_destination_type`, `max_aggregation_interval` (60 or 600). |
-| Log group (CloudWatch dest) | `aws_cloudwatch_log_group` | Needs an IAM **service role** (see below). S3 dest needs a bucket policy instead. |
-| Flow-log IAM service role | `aws_iam_role` trusting `vpc-flow-logs.amazonaws.com` + `logs:*` permissions | The trust-vs-permissions split from [[01-iam]], for real. |
-| Network Firewall | `aws_networkfirewall_firewall` + `_firewall_policy` + `_rule_group` | *Conceptual-only here* — needs a dedicated firewall subnet + route-table redirection; ~$0.395/hr. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -214,17 +202,6 @@ flowchart TB
 > [!example] Worked example — when SG can't do the job (block one bad IP)
 > A single IP is scraping your app abusively and you must block it at the **subnet** level regardless of instance SGs. A security group **can't** — it's allow-only. You add a NACL rule: `rule_no 100, action deny, cidr 203.0.113.50/32`, numbered **below** your allow rules so first-match-wins blocks it before any allow is considered. This is *the* reason NACLs exist alongside SGs — explicit deny + subnet-wide reach. (Real-world caveat: for app-layer / scaled blocking you'd reach for AWS WAF or Network Firewall; a NACL is the blunt L3/L4 instrument.)
 
-## The Terraform I wrote
-
-Code: [`05-vpc/security.tf`](../05-vpc/security.tf) (NACL) + [`05-vpc/flow-logs.tf`](../05-vpc/flow-logs.tf)
-
-- NACL on the public subnets: `#100 deny 203.0.113.50/32` (proves precedence), `#110/120` allow 80/443, `#130` allow SSH 22 from my `/32`, `#140` + egress `#120` allow ephemeral `1024–65535`. Inline `ingress`/`egress` blocks.
-- Flow log → CloudWatch: `aws_cloudwatch_log_group` + an IAM **service role** (`vpc-flow-logs.amazonaws.com` trust policy + `logs:*` permissions) + `aws_flow_log` (`traffic_type = "ALL"`, `max_aggregation_interval = 60`). Verified by reading real ACCEPT/REJECT records.
-
-Two things learned the hard way:
-- **Trust-vs-permissions swap:** first wired `assume_role_policy` to the *permissions* document instead of the trust document → would fail apply with `MalformedPolicyDocument`. `validate` passed (valid reference, wrong meaning); **TFLint's `terraform_unused_declarations`** would flag the now-unused trust doc — logic errors need lint + plan-reading, not `validate`.
-- **TCP-only NACL** silently blocks UDP DNS/NTP — saw it as outbound `REJECT` in the flow logs.
-
 > [!warning] Trap — "make the NACL match the SG rules and you're done"
 > No — the NACL is stateless, so it needs the **ephemeral return rule** the SG never required. Mirroring SG rules onto a NACL without ephemeral ports is the guaranteed-to-break configuration.
 
@@ -248,4 +225,3 @@ Two things learned the hard way:
 - [VPC Flow Logs](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html) — fields, levels, destinations, excluded traffic; verified 2026-07
 - [Flow log record fields](https://docs.aws.amazon.com/vpc/latest/userguide/flow-log-records.html)
 - [AWS Network Firewall — what is it](https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html) — Suricata IPS, firewall subnet, domain filtering, deep packet inspection; verified 2026-07
-- [Terraform `aws_network_acl`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_acl) / [`aws_flow_log`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/flow_log)

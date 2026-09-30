@@ -237,18 +237,6 @@ The traps are all substitutions between adjacent rows:
 > in is IAM DB authentication, and encrypting the wire is `rds.force_ssl` — four layers, and
 > questions swap them deliberately.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| RDS instance | `aws_db_instance` | engine, instance_class, storage, subnet group, SG, credentials, `multi_az`, `storage_encrypted`. |
-| DB subnet group | `aws_db_subnet_group` | The 2+ AZ (private) subnets RDS may use. |
-| RDS read replica | `aws_db_instance` with `replicate_source_db` | Async read copy. |
-| Aurora cluster | `aws_rds_cluster` | The cluster (storage + endpoints + engine `aurora-mysql`/`aurora-postgresql`). |
-| Aurora instance(s) | `aws_rds_cluster_instance` | Writer + reader instances attached to the cluster. |
-| Aurora Serverless v2 | `aws_rds_cluster` + `serverlessv2_scaling_configuration` (min/max ACU) | Instances with class `db.serverless`. |
-| Log in with an IAM role instead of a password | `iam_database_authentication_enabled = true` on `aws_db_instance` / `aws_rds_cluster` | Terraform only flips the switch — you still need an IAM policy granting `rds-db:connect` **and** a DB user mapped to IAM inside the database. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -368,7 +356,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 ## Worked examples
 
 > [!example] Worked example — an EC2 app that connects to RDS with no password anywhere
-> The app runs on EC2 behind an ASG and must reach a private PostgreSQL instance. Instead of a password in a config file (or in Terraform state), enable `iam_database_authentication_enabled` on the instance, create the DB user and `GRANT rds_iam TO appuser`, and attach a policy allowing `rds-db:connect` on `arn:aws:rds-db:us-east-1:…:dbuser:db-ABC…/appuser` to the **instance profile role** the ASG's launch template already assigns (see [[02-ec2]], [[01-iam]]). At connect time the SDK calls `generate-db-auth-token`, signs it with the role's temporary credentials from IMDSv2, and hands the token to the driver as the password over TLS. Nothing is stored, nothing is rotated, and revoking access is a one-line IAM change — no database restart, no redeploy. This is the canonical exam answer to "remove hard-coded database credentials without managing a secret."
+> The app runs on EC2 behind an ASG and must reach a private PostgreSQL instance. Instead of a password in a config file, enable `iam_database_authentication_enabled` on the instance, create the DB user and `GRANT rds_iam TO appuser`, and attach a policy allowing `rds-db:connect` on `arn:aws:rds-db:us-east-1:…:dbuser:db-ABC…/appuser` to the **instance profile role** the ASG's launch template already assigns (see [[02-ec2]], [[01-iam]]). At connect time the SDK calls `generate-db-auth-token`, signs it with the role's temporary credentials from IMDSv2, and hands the token to the driver as the password over TLS. Nothing is stored, nothing is rotated, and revoking access is a one-line IAM change — no database restart, no redeploy. This is the canonical exam answer to "remove hard-coded database credentials without managing a secret."
 
 > [!example] Worked example — read-heavy app with a reporting team
 > An app's primary DB is fine for writes, but a BI/reporting team runs heavy analytical queries that slow production. Solution: add **read replicas** and point the reporting tools at them (or Aurora's **reader endpoint**), isolating analytics from the write path. If they *also* need to survive an AZ outage, that's a **separate** feature — **Multi-AZ** — layered on the primary. The exam tests whether you know these are two different tools: replicas = scale reads, Multi-AZ = availability.
@@ -378,10 +366,6 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 
 > [!example] Worked example — spiky dev/test database → Aurora Serverless v2
 > A team runs dozens of dev/test databases that are idle most of the day and busy in bursts. Provisioned instances waste money sitting idle; right-sizing each by hand is toil. **Aurora Serverless v2** auto-scales each cluster's capacity (ACUs) up during bursts and down to a floor when idle, in-place, per-second billing — you pay for actual usage. Trigger phrase: "unpredictable / intermittent / variable workload, minimize cost" → Aurora Serverless.
-
-## The Terraform I wrote
-
-Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twice — in [[06-capstone]] and again as a **best-practices standalone** in `07-rds-elasticache/` (encrypted, `publicly_accessible = false`, automated backups, SG-from-app-tier, sensitive password from tfvars). Aurora/Serverless/Global were studied conceptually (they bill, and the exam tests the *decisions*, not the HCL). Aurora in Terraform would be `aws_rds_cluster` + `aws_rds_cluster_instance` (writer + readers) rather than a single `aws_db_instance`.
 
 > [!tip] Real gotcha — AWS Free Plan caps backup retention
 > On the new AWS **Free Tier "Free Plan"**, `backup_retention_period = 7` failed with `FreeTierRestrictionError`; had to drop to `1`. The current free tier has service guardrails (backup retention, sometimes instance types) the old 12-month one didn't — dial settings down rather than upgrading the plan.
@@ -458,4 +442,3 @@ Built a standard `aws_db_instance` (postgres, single-AZ, encrypted, private) twi
 - [Aurora Serverless v2](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html) / [Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)
 - [IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) — engines, 15-min token lifetime, SSL/TLS, 300–1000 MiB memory, CloudTrail non-logging, unsupported condition keys; verified 2026-08-29
 - [IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) — `rds-db:connect`, the `dbuser` ARN format, DbiResourceId; verified 2026-08-29
-- [Terraform `aws_rds_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster)

@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*182 recall hooks · 344 pointers · ~30 min read*
+*181 recall hooks · 342 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -20,10 +20,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam#Explicit Deny wins, and nothing else counts|explain]]
 - A role is a credential-less hat — the trust policy says who may wear it, the permissions policy says what it can do, and either half missing breaks it differently.  
   ↳ [[01-iam#A role is a hat, and it needs two policies|explain]]
-- EC2 wears the hat through an instance profile; the console hides the wrapper, Terraform makes you write it.  
+- EC2 wears the hat through an instance profile, not the role itself — the console hides that wrapper, and EC2 is the only service with it.  
   ↳ [[01-iam#The instance profile — the wrapper the console hides|explain]]
-- Principals go by name, policies go by ARN — and both are strings, so nothing but your own eyes will catch the swap.  
-  ↳ [[01-iam#Why a principal is named but a policy is an ARN|explain]]
 - If the users already exist, don't copy them — federate, and the AD group ends up wearing an IAM role.  
   ↳ [[01-iam#When the users already exist somewhere else|explain]]
 - Read Effect → Action → Resource (watch the /*) → Condition, and the  
@@ -114,7 +112,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - All EC2 attributes can be changed in-place
 - ip_protocol accepts "ssh" / "http"
 - t3-micro works
-- aws_subnets.X.id returns one subnet ID
 - IAM changes are instant
 - EBS volumes can be moved across AZs by detach + attach
 - Instance store survives stop
@@ -144,7 +141,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#Target tracking scales out fast and scales in slowly, deliberately|explain]]
 - AZ balance first, then oldest configuration, then billing hour, then random — and unhealthy instances bypass the whole ordering.  
   ↳ [[04-alb-asg#Which instance dies when it scales in|explain]]
-- Schedule desired capacity only, so dynamic scaling keeps working — and in Terraform write min_size = -1 / max_size = -1, because omitted means zero, not unchanged.  
+- Schedule desired capacity only and leave min/max alone, so dynamic scaling keeps working for the rest of the day.  
   ↳ [[04-alb-asg#Scheduling capacity without freezing the group|explain]]
 - Spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and  
   ↳ [[04-alb-asg#Sizing min / desired / max for the loss of an AZ|explain]]
@@ -162,7 +159,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Failure modes**
 - the grace-period boot loop  ↳ [[04-alb-asg#Worked examples|open]]
-- aws_autoscaling_schedule silently scaling your group to zero  ↳ [[04-alb-asg#Worked examples|open]]
 
 **Comparisons**
 - [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
@@ -184,10 +180,10 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[05-vpc-core#Why the NAT gateway has to live in a public subnet|explain]]
 - A NAT gateway is redundant inside its AZ and nowhere else — one per AZ, or you have built a single point of failure with a cross-AZ bill attached.  
   ↳ [[05-vpc-core#Why one NAT gateway is not enough|explain]]
-- AWS's own defaults are open, anything you create is closed, and Terraform ignores the defaults until you adopt them.  
+- AWS's own defaults are permissive and anything you create yourself starts closed — so never route the main route table to an IGW, and a subnet you forget to associate fails private.  
   ↳ [[05-vpc-core#The defaults that behave backwards from what you create|explain]]
 
-**Traps** [[05-vpc-core#The Terraform I wrote|open]]
+**Traps** [[05-vpc-core#Worked examples|open]]
 - "the default NACL and a new NACL behave the same"
 - "add the IGW route to the main route table to make setup simpler"
 
@@ -215,7 +211,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - SG and NACL filter addresses, Network Firewall inspects contents — and it only sees what your route tables send it.  
   ↳ [[05-vpc-security#Network Firewall, and why it needs a subnet of its own|explain]]
 
-**Traps** [[05-vpc-security#The Terraform I wrote|open]]
+**Traps** [[05-vpc-security#Worked examples|open]]
 - "make the NACL match the SG rules and you're done"
 - "use flow logs to see what data was exfiltrated"
 - "a higher NACL rule number can override a lower deny"
@@ -270,7 +266,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Throughput argues for Direct Connect, but the calendar picks the VPN.  
   ↳ [[05-vpc-hybrid#The calendar usually decides, not the bandwidth|explain]]
 
-**Traps** [[05-vpc-hybrid#The Terraform I wrote|open]]
+**Traps** [[05-vpc-hybrid#Worked examples|open]]
 - "Direct Connect is encrypted because it's private"
 - "use Direct Connect for a quick or temporary connection"
 - "VGW vs CGW"
@@ -299,7 +295,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - A bastion opens a door and guards it; Session Manager opens no door and dials out instead.  
   ↳ [[06-capstone#Reaching a database that has no way in|explain]]
 
-**Traps** [[06-capstone#The Terraform I wrote|open]]
+**Traps** [[06-capstone#Worked examples|open]]
 - Multi-AZ to scale reads
 - "the module output shows in terraform output"
 
@@ -334,7 +330,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Reachability is the security group, API permission is the IAM policy, logging  
   ↳ [[07-rds-aurora#Four different things called "securing the database"|explain]]
 
-**Traps** [[07-rds-aurora#The Terraform I wrote|open]]
+**Traps** [[07-rds-aurora#Worked examples|open]]
 - Babelfish offered instead of SCT + DMS
 - Enhanced Monitoring metrics confused with standard CloudWatch metrics
 - an IAM role on the app is not, by itself, database authentication
@@ -347,7 +343,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Failure modes**
 - "we'll encrypt the database later"  ↳ [[07-rds-aurora#Worked examples|open]]
-- the connection pool that dies 15 minutes after deploy  ↳ [[07-rds-aurora#The Terraform I wrote|open]]
+- the connection pool that dies 15 minutes after deploy  ↳ [[07-rds-aurora#Worked examples|open]]
 
 **Comparisons**
 - [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]]
@@ -401,7 +397,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - With versioning on, delete only hides; old versions bill forever until a noncurrent-version expiration rule removes them.  
   ↳ [[09-s3-intro#Versioning, delete markers, and the bill that grows in the dark|explain]]
 
-**Traps** [[09-s3-intro#The Terraform I wrote|open]]
+**Traps** [[09-s3-intro#Worked examples|open]]
 - "S3 has folders"
 - "Glacier means slow retrieval"
 - durability vs availability
@@ -429,7 +425,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - The destination must grant S3 permission, and the output must never land where the trigger is watching.  
   ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
 
-**Traps** [[09-s3-advanced#The Terraform I wrote|open]]
+**Traps** [[09-s3-advanced#Worked examples|open]]
 - replication copies existing objects
 - replication is transitive
 - Transfer Acceleration moves your data closer to users
@@ -784,9 +780,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "ECS-style" two roles on Lambda
 - more memory is always more expensive
 
-**Failure modes**
-- the deployment that silently ships nothing  ↳ [[19-serverless#Worked examples|open]]
-
 **Comparisons**
 - [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]]
 - [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]]
@@ -852,6 +845,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "AWS managed" chosen as a service's default encryption key
 - Shield Advanced offered for a request-rate threshold
 - "disable GuardDuty" chosen when the findings must survive
+- "delete the KMS key" offered as the way to revoke access now
 - rotation re-encrypts your data
 - "rotate this asymmetric key automatically"
 - Parameter Store for a rotating password

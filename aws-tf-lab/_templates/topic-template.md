@@ -19,11 +19,6 @@ One sentence on what this is and why it exists.
 ## Concept (plain English)
 3–6 lines, no jargon dumping.
 
-## AWS console ↔ Terraform map
-| Console action | Terraform resource / data source | Key arguments |
-|---|---|---|
-| Create X | `aws_x` | `name` |
-
 ## Architecture diagram
 ```mermaid
 graph LR
@@ -35,10 +30,6 @@ graph LR
 
 ## Comparisons
 (Only if relevant — e.g. S3 storage classes, EBS volume types.)
-
-## The Terraform I wrote
-- Path: `../NN-name/main.tf`
-- What was tricky: …
 
 ## Scenario MCQs
 > [!question]- 1. Scenario in SAA-C03 BEST/MOST framing?

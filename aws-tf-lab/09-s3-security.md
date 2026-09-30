@@ -18,7 +18,7 @@ Who can reach an object, how it's encrypted, and how to make it undeletable. The
 > - **Changing default encryption does NOT re-encrypt existing objects** — use **S3 Batch Operations Copy**.
 > - **Presigned URL** carries the **permissions of whoever generated it**, is time-limited, and works for **anyone holding the link**. Max **7 days** via CLI/SDK, **12 hours** via console.
 > - **Object Lock = WORM.** **GOVERNANCE** = overridable with `s3:BypassGovernanceRetention`; **COMPLIANCE** = nobody can delete, *including root*. **Legal hold** = no expiry, removed explicitly. Requires **versioning**.
-> - **MFA Delete** can only be configured by the **root account** with an MFA device — not via IAM users, not via Terraform.
+> - **MFA Delete** can only be configured by the **root account** with an MFA device, via the **CLI** — not by an IAM user and not in the console.
 
 ## What problem does this solve?
 
@@ -68,7 +68,7 @@ Four settings looks fussy until you see the grid. There are **two ways a bucket 
 | **New** ones | `block_public_acls` · API `BlockPublicAcls` | `block_public_policy` · API `BlockPublicPolicy` |
 | **Existing** ones | `ignore_public_acls` · API `IgnorePublicAcls` | `restrict_public_buckets` · API `RestrictPublicBuckets` |
 
-The console and AWS docs use the API spellings; Terraform uses snake_case. Same four switches ([verified 2026-09-27](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)).
+The console and the AWS docs use slightly different spellings for the same four switches ([verified 2026-09-27](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)).
 
 That is the whole design. Blocking only the new ones leaves whatever was already public still public, which is why the "existing" column exists at all.
 
@@ -137,25 +137,9 @@ Now the behaviour that surprises everybody, and it makes sense once you remember
 
 The simple delete didn't destroy anything. It laid a delete marker *on top*, so the object stops appearing. The locked version is still underneath, intact. Nothing was violated — but "the file vanished from a WORM bucket" panic is very real.
 
-Finally **MFA Delete**, which protects permanent version deletion and turning versioning off. It can only be configured by the **root account** holding an MFA device, via the CLI. Not an IAM user, not the console, not Terraform — and that root-only constraint is the entire reason it shows up on the exam.
+Finally **MFA Delete**, which protects permanent version deletion and turning versioning off. It can only be configured by the **root account** holding an MFA device, via the CLI. Not an IAM user and not the console — and that root-only constraint is the entire reason it shows up on the exam.
 
 > In one line: the lock protects a version, so a permanent delete gets 403 while a simple delete happily adds a delete marker over the top.
-
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Bucket policy | `aws_s3_bucket_policy` + `data.aws_iam_policy_document` | Resource-based. Explicit `Deny` beats any Allow ([[01-iam]]). |
-| Block Public Access | `aws_s3_bucket_public_access_block` | All four `true` for normal buckets. |
-| Account-wide BPA | `aws_s3_account_public_access_block` | The recommended account default. |
-| Disable ACLs | `aws_s3_bucket_ownership_controls` | `object_ownership = "BucketOwnerEnforced"`. |
-| Default encryption | `aws_s3_bucket_server_side_encryption_configuration` | `AES256` (SSE-S3) or `aws:kms` (+ `bucket_key_enabled`). |
-| KMS key | `aws_kms_key` + `aws_kms_alias` | Destroy only *schedules* deletion (7–30 days). |
-| Object Lock (create-time) | `object_lock_enabled` on `aws_s3_bucket` | Forces a new bucket if changed. Needs versioning. |
-| Object Lock retention | `aws_s3_bucket_object_lock_configuration` | `mode` GOVERNANCE/COMPLIANCE + `days`/`years`. |
-| Presigned URL | **none** — runtime, not infrastructure | `aws s3 presign …` / SDK. |
-| MFA Delete | **none** — root + MFA via CLI only | Cannot be Terraformed. |
-| Access Point | `aws_s3_access_point` | Named entry point with its own policy, for shared buckets. |
 
 ## Architecture diagram
 
@@ -224,7 +208,7 @@ Two ways to become public (ACL, policy) × two timings (new, existing). All four
 - **Deletes behave differently** (exam-critical): a **permanent** `DELETE` (with a version id) → **403 AccessDenied**; a **simple** `DELETE` (no version id) → **200 OK and a delete marker**. The locked version survives underneath — the object is hidden, not destroyed.
 
 ### MFA Delete
-- Requires the **root** account with an MFA device, configured via CLI. **Not** possible from an IAM user, the console, or Terraform.
+- Requires the **root** account with an MFA device, configured via the CLI. **Not** possible from an IAM user or the console.
 - Protects permanent version deletion and disabling versioning. Rare in practice; exam-relevant precisely because of the root-only constraint.
 
 ## Comparisons
@@ -315,20 +299,6 @@ snapshot it, then create an encrypted volume from the snapshot.
 > [!example] Worked example — sharing one private object without giving away credentials
 > A user needs to download one report from a private bucket. Options that are *wrong*: making the bucket public (exposes everything), creating an IAM user for them (a permanent identity for a one-off), or emailing the file (no audit, no revocation). The right answer is a **presigned URL**: `aws s3 presign s3://bucket/report.pdf --expires-in 3600` produces a link that works for one hour, for that one object, carrying *your* permissions. The trade-off to state out loud: it's a **bearer token** — anyone who gets the link has it until expiry, so keep the window short.
 
-## The Terraform I wrote
-
-Code: [`09-s3/security.tf`](../09-s3/security.tf) (secure-by-default bucket) + [`09-s3/objectlock.tf`](../09-s3/objectlock.tf) (WORM bucket).
-
-*(Written collaboratively — reviewed, applied and verified by me; the exam value here is conceptual rather than in the HCL.)*
-
-- **Secure bucket:** Block Public Access ×4, `BucketOwnerEnforced`, customer-managed KMS key + default SSE-KMS with `bucket_key_enabled`, versioning, and a bucket policy of pure **Deny**s (non-TLS, non-SSE-KMS uploads). Verified live: `aws s3 cp` succeeded and `head-object` showed `aws:kms`; the same upload with `--sse AES256` was **denied** by the policy.
-- **Object Lock bucket:** `object_lock_enabled` at create time, versioning, GOVERNANCE default retention of 1 day. Verified the delete asymmetry — permanent delete (`--version-id`) → **403**, simple `rm` → **200 + delete marker** with the version intact underneath.
-
-Non-obvious things:
-- `object_lock_enabled` is **create-time**; it can't be toggled on a live bucket in Terraform without replacement.
-- A KMS customer-managed key costs ~$1/month and `terraform destroy` only **schedules** deletion (7-day minimum) — by design, so you can't destroy the key that decrypts your data.
-- Presigned URLs and MFA Delete have **no Terraform surface at all** — the first is runtime, the second is root-only.
-
 > [!warning] Trap — Block Public Access can be overridden by a bucket policy
 > Backwards. **BPA overrides the policy.** A perfectly valid public bucket policy is simply ignored while BPA is on. That's the point — it's a guardrail, not a permission.
 
@@ -342,7 +312,7 @@ Non-obvious things:
 > It stops that **version** being deleted. A simple `DELETE` still returns **200 OK** and adds a **delete marker**, hiding the object. Nothing was destroyed, but "it disappeared" panic is real.
 
 > [!warning] Trap — MFA Delete can be set up like any other bucket setting
-> Only the **root account** with an MFA device can enable it, via CLI. Not IAM users, not the console, not Terraform.
+> Only the **root account** with an MFA device can enable it, and only via the **CLI** — not an IAM user, and not the console.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -352,7 +322,7 @@ Non-obvious things:
 - [ ] **Presigned URLs carry the generator's permissions**, are bearer tokens, max 7 days CLI / 12 hours console.
 - [ ] **Object Lock delete asymmetry** — permanent delete 403, simple delete 200 + delete marker.
 - [ ] **COMPLIANCE mode is irreversible even for root** — never demo it on a real account.
-- [ ] **MFA Delete is root-only**, no Terraform path.
+- [ ] **MFA Delete is root-only**, CLI-only.
 
 ## 🔗 Docs
 
@@ -361,4 +331,3 @@ Non-obvious things:
 - [Sharing objects with presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html) — generator's credentials, 7-day CLI / 12-hour console limits; verified 2026-08
 - [Blocking public access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)
 - [Bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html) / [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
-- [Terraform `aws_s3_bucket_public_access_block`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) / [`aws_s3_bucket_object_lock_configuration`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_object_lock_configuration)

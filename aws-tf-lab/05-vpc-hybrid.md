@@ -115,19 +115,6 @@ One service that sounds related and isn't: **Client VPN** connects **individual 
 
 > In one line: throughput argues for Direct Connect, but the calendar picks the VPN.
 
-## AWS console ↔ Terraform map
-
-*(Conceptual — sketch you read, don't apply; a real setup needs a physical on-prem side.)*
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| AWS-side VPN endpoint | `aws_vpn_gateway` (VGW) attached to the VPC | Or a Transit Gateway for many VPCs. |
-| On-prem router representation | `aws_customer_gateway` (CGW) | Its public IP + BGP ASN. |
-| The VPN tunnel | `aws_vpn_connection` | Links VGW/TGW ↔ CGW; 2 tunnels; static or BGP. |
-| Route propagation | `aws_vpn_gateway_route_propagation` | Propagates learned routes into the route table. |
-| Direct Connect | `aws_dx_connection` + `aws_dx_private_virtual_interface` (etc.) | Physical port + VIFs; provisioned with a DX partner. |
-| DX Gateway | `aws_dx_gateway` + associations | One DX → multiple VGWs/TGWs across regions. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -156,7 +143,7 @@ flowchart LR
 - **Direct Connect Gateway:** global; a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs. **Non-transitive** (VPCs via a DXGW can't reach each other through it).
 - **VPN CloudHub:** hub-and-spoke over a VGW to connect **multiple on-prem branch offices** (and/or as backup links) using BGP.
 - **HA patterns:** DX + **VPN backup** (cheap failover if the line drops); dual DX (two connections/locations) for max resilience; VPN itself already has 2 tunnels.
-- **Client VPN** (aside): `aws_ec2_client_vpn_endpoint` — OpenVPN-based access for **individual remote users** (laptops), *not* site-to-site. Don't confuse the two.
+- **Client VPN** (aside): OpenVPN-based access for **individual remote users** (laptops), *not* site-to-site. Don't confuse the two.
 
 ## Comparisons
 
@@ -195,10 +182,6 @@ flowchart LR
 
 > [!example] Worked example — resilient hybrid at scale
 > An enterprise with 20 VPCs across 2 regions and 3 data centers wants one coherent network. Peering would be a 190-connection mess. Design: a **Transit Gateway** per region as the hub (all VPCs attach with one attachment each), **Direct Connect + Transit VIF via a Direct Connect Gateway** to bring the data centers onto the hubs across regions, and a **Site-to-Site VPN as failover** for the DX. This is the canonical "large hybrid network" answer — TGW for the VPC mesh, DX for the private pipe, VPN for cheap backup.
-
-## The Terraform I wrote
-
-None — **conceptual-only** (build tier: no apply). A real setup requires a physical on-prem device and a DX partner circuit, neither of which exists in a learning account. The map above is the sketch of what the HCL *would* be (`aws_vpn_gateway`, `aws_customer_gateway`, `aws_vpn_connection`, `aws_dx_*`). The exam tests the **decision criteria and topology**, not the Terraform, for these.
 
 > [!warning] Trap — "Direct Connect is encrypted because it's private"
 > Private ≠ encrypted. DX carries plaintext over a dedicated circuit. For encryption, run a **VPN over DX**. Very common distractor.

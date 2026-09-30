@@ -28,7 +28,7 @@ Now imagine fifty containers in production. One dies at 3am — something has to
 
 Doing that by hand is the nightmare. **ECS is the thing that does it for you**, and the way it does it is *desired state*: you never tell ECS "start a container." You tell it "three of these should be running, behind that load balancer," and a reconciliation loop continuously compares reality to that statement and closes the gap.
 
-That single idea — declare the end state, let a loop converge on it — is the whole of container orchestration, and it's why the same idea shows up in Kubernetes, in Auto Scaling groups, and in Terraform itself.
+That single idea — declare the end state, let a loop converge on it — is the whole of container orchestration, and it's why the same idea shows up in Kubernetes, and in Auto Scaling groups.
 
 > In one line: you never tell ECS to start a container — you declare how many should be running, and a loop closes the gap forever.
 
@@ -40,7 +40,7 @@ Fargate answers a second question: *who owns the servers underneath?* With the E
 
 **The four nouns, in order of containment:**
 
-- **Cluster** — a logical grouping, plus (for EC2 launch type) the capacity attached to it. With pure Fargate a cluster is almost empty, because there's no capacity to attach. That's why `aws_ecs_cluster` looks suspiciously bare.
+- **Cluster** — a logical grouping, plus (for EC2 launch type) the capacity attached to it. With pure Fargate a cluster is almost empty, because there's no capacity to attach. That's why creating a Fargate-only cluster feels like it barely does anything.
 - **Task definition** — the immutable blueprint: which image, how much CPU and memory, which ports, where logs go, which IAM roles. Registered as `family:revision`.
 - **Task** — one running instantiation of a task definition. One or more containers that share a network namespace and a lifecycle.
 - **Service** — the reconciliation loop. Keeps N tasks running, replaces dead ones, registers and deregisters them with the ALB target group, and performs rolling deployments.
@@ -57,19 +57,6 @@ Two defaults govern that dance:
 **Networking.** Fargate requires `awsvpc` mode: each task gets a real ENI with a private IP in your subnet, and its own security group. This is why load balancing works by IP, and why "which security group is on the task" is a meaningful question at all.
 
 > In one line: awsvpc gives every task its own ENI, so the load balancer registers IP addresses — there is no instance to register.
-
-## AWS console ↔ Terraform map
-
-| Console action | Terraform resource | Key arguments |
-|---|---|---|
-| Create cluster | `aws_ecs_cluster` | `name` |
-| Create task definition | `aws_ecs_task_definition` | `family`, `requires_compatibilities`, `network_mode`, `cpu`, `memory`, `execution_role_arn`, `container_definitions` (JSON, **camelCase keys**) |
-| Create service | `aws_ecs_service` | `cluster`, `task_definition`, `desired_count`, `launch_type`, `network_configuration`, `load_balancer` |
-| Attach to load balancer | `load_balancer` block on the service | `target_group_arn`, `container_name` (must match the container definition exactly), `container_port` |
-| Target group | `aws_lb_target_group` | **`target_type = "ip"`** for Fargate |
-| Task execution role | `aws_iam_role` + `aws_iam_role_policy_attachment` | trust `ecs-tasks.amazonaws.com`; attach `AmazonECSTaskExecutionRolePolicy` |
-| Container logs | `aws_cloudwatch_log_group` + `logConfiguration` in the container definition | `awslogs-group`, `awslogs-region`, `awslogs-stream-prefix` |
-| Registry | `aws_ecr_repository` | `name`, `image_scanning_configuration` |
 
 ## Architecture diagram
 
@@ -159,21 +146,16 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 ## Worked examples
 
 > [!example] Worked example — a bad image ships and nobody notices
-> A team changes an image tag, runs `terraform apply` in CI, and the pipeline goes green. Three days later someone asks why the fix isn't live.
+> A team changes an image tag, the CI pipeline deploys it, and the build goes green. Three days later someone asks why the fix isn't live.
 >
-> What happened: Terraform's job is to register a new task definition revision and tell ECS to use it. The API accepted that, so Terraform correctly reported success — **its contract ends at the API call.** ECS then tried to start tasks from the new revision, the pull failed, and because `minimumHealthyPercent` is 100 it refused to kill the healthy old tasks. The site stayed up on the *old* version. The deployment sat at `rolloutState: IN_PROGRESS`, retrying, with nothing anywhere marked red.
+> What happened: the deploy's job is to register a new task definition revision and tell ECS to use it. The API accepted that and reported success — **the deploy's contract ends at the API call.** ECS then tried to start tasks from the new revision, the pull failed, and because `minimumHealthyPercent` is 100 it refused to kill the healthy old tasks. The site stayed up on the *old* version. The deployment sat at `rolloutState: IN_PROGRESS`, retrying, with nothing anywhere marked red.
 >
-> This was reproduced deliberately in `17-ecs-alb` (see below). The fix is not a Terraform change — it's monitoring the *other* system: an EventBridge rule on `SERVICE_DEPLOYMENT_FAILED`, and a deployment circuit breaker so the rollout gives up instead of grinding.
+> The fix is not in the deployment tooling — it is monitoring the *other* system: an EventBridge rule on `SERVICE_DEPLOYMENT_FAILED`, and a deployment circuit breaker so the rollout gives up instead of grinding.
 
 > [!failure] Failure mode — the private subnet that can't pull
 > You move tasks to private subnets for defence in depth, delete the NAT gateway to save $0.045/hr, and add ECR interface endpoints for `ecr.api` and `ecr.dkr`. Tasks now fail with `CannotPullContainerError` and the message mentions S3.
 >
 > Cause: ECR is a manifest API in front of **layers stored in S3**. Without the (free) `com.amazonaws.<region>.s3` **gateway** endpoint the manifest resolves and the layers never download. Add it, and check the endpoint security group allows 443 from the private subnets. Then add the `logs` interface endpoint too, or your tasks will run and log nothing.
-
-## The Terraform I wrote
-- Path: `../17-ecs-alb/` — ALB in two public subnets, Fargate tasks in two private subnets behind one NAT gateway, `nginxdemos/hello`.
-- What was tricky: `target_type = "ip"`; `depends_on = [aws_lb_listener.http]` on the service, without which ECS rejects it with *"The target group does not have an associated load balancer"*; `container_name` in the service's `load_balancer` block having to match the container definition string exactly.
-- Observed: 30 requests distributed 7/6/6/6/5 across five tasks — round robin, visible because the image prints its own server address.
 
 ## ⚠️ Traps — why the wrong answer looks right
 
@@ -184,7 +166,7 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > With `awsvpc` each task has its own ENI, so there is no instance ID to register. Leaving `target_type` at the default `"instance"` does not error: `terraform apply` succeeds, the service creates, no target ever registers, and the ALB serves 503 against a plan that looked clean.
 
 > [!warning] Trap — a green apply is not a green deployment
-> Terraform reports success once the ECS API accepts the new task definition. Whether containers start is a separate control loop on its own clock. Two systems, two definitions of "done", and only one of them is in your pipeline output.
+> A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock. Two systems, two definitions of "done", and only one of them shows up in your pipeline output.
 
 > [!warning] Trap — the execution role is not for the pull
 > Nothing in AWS authenticates you to Docker Hub; a public image needs *network egress*, not IAM. The execution role is required for **private ECR pulls, the `awslogs` driver, and secrets**. Answer "internet" for the public-image pull and "execution role" for the logs.
@@ -199,7 +181,6 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 - Believed the S3 **gateway** endpoint was unusable for ECR because it "only supports S3 and DynamoDB" — it is in fact **mandatory**, precisely because ECR keeps image layers in S3. The inversion is the thing to remember.
 - Gave "you don't need an IAM role for a public image" as a complete answer. Right about the pull, wrong about the conclusion: `awslogs` still requires the execution role.
 - Knew `least_outstanding_requests` exists but not *when* to choose it: variable or expensive request cost, or targets of differing capacity.
-- Scaled `desired_count` in the console, creating Terraform drift that the next apply silently reverted.
 
 > [!tip] Production gap
 > This lab is HTTP-only with no certificate, one NAT gateway, no autoscaling, no deployment alarm, and it pulls a public image anonymously. Production adds: **ACM + HTTPS** (or CloudFront in front), **one NAT gateway per AZ**, **Application Auto Scaling** target-tracking on the service, **EventBridge on `SERVICE_DEPLOYMENT_FAILED`**, **ECR** with lifecycle policies and scanning instead of Docker Hub, and **Secrets Manager** for anything sensitive via the task definition's `secrets` block. All of that is the `18-containers-capstone` build.
@@ -213,4 +194,3 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 - [ECR interface VPC endpoints](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html) — the S3 gateway requirement, verified 2026-09-06
 - [ALB target groups](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html) — target types and algorithms, verified 2026-09-06
 - [EKS pricing](https://aws.amazon.com/eks/pricing/) · [Fargate pricing](https://aws.amazon.com/fargate/pricing/) — verified 2026-09-06
-- [Terraform `aws_ecs_service`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service)

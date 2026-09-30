@@ -163,20 +163,6 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 > In one line: Lake Formation governs the catalog, MSK is Kafka-when-you-need-Kafka, Flink is stream processing, and Data Pipeline is a legacy answer.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Catalog database / table | `aws_glue_catalog_database`, `aws_glue_catalog_table` | The shared metastore. |
-| Schema discovery | `aws_glue_crawler` | Points at an S3 path, writes into the catalog. |
-| ETL job | `aws_glue_job` | Spark or Python shell. |
-| Athena workspace | `aws_athena_workgroup`, `aws_athena_database` | Workgroup is where you set the **query result bucket** and per-query data scan limits. |
-| Warehouse | `aws_redshift_cluster` / `aws_redshiftserverless_workgroup` | Blocked on this account's plan. |
-| Search domain | `aws_opensearch_domain` | Hourly per node. |
-| Big data cluster | `aws_emr_cluster` + `aws_emr_instance_group` | Instance groups vs fleets is set at creation. |
-| Kafka | `aws_msk_cluster` / `aws_msk_serverless_cluster` | |
-| Lake governance | `aws_lakeformation_permissions`, `aws_lakeformation_resource` | Layers on top of Glue catalog resources. |
-
 ## Key facts, limits & pricing
 
 - **Athena** is serverless, uses standard SQL, queries S3 directly, and charges **$5 per TB scanned** (us-east-1, checked 2026-09-26 — verify current pricing). You pay only for queries you run. Athena also supports **Apache Spark** notebooks alongside SQL.
@@ -299,4 +285,3 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 - [What is Amazon MSK?](https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html) · [Managed Service for Apache Flink rename](https://aws.amazon.com/blogs/aws/announcing-amazon-managed-service-for-apache-flink-renamed-from-amazon-kinesis-data-analytics/) — renamed 30 Aug 2023; verified 2026-09-26
 - [Migrating workloads from AWS Data Pipeline](https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/migration.html) — closed to new customers, maintenance mode, console removed Apr 2023, use Glue/Step Functions/MWAA; verified 2026-09-26
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — Task Statement 3.5 and the in-scope Analytics service list; verified 2026-09-26
-- Terraform: [`aws_glue_crawler`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_crawler) · [`aws_athena_workgroup`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_workgroup) · [`aws_emr_cluster`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/emr_cluster)

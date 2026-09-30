@@ -2,7 +2,7 @@
 topic: 06-capstone
 domain: resilient
 status: reviewed
-services: [VPC, ALB, ASG, RDS, Terraform Modules]
+services: [VPC, ALB, ASG, RDS]
 related: [05-vpc-core, 04-alb-asg, 02-ec2, 01-iam, 03-ami-bake]
 tags: [topic, domain/resilient, capstone]
 ---
@@ -114,16 +114,6 @@ Two Terraform snags on the way: on a **launch template**, `iam_instance_profile`
 
 > In one line: a bastion opens a door and guards it; Session Manager opens no door and dials out instead.
 
-## AWS console ↔ Terraform map (new pieces)
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| A reusable child module | a directory + `module "x" { source = "./modules/x" }` | Inputs = its variables; outputs = its returns. No provider block inside. |
-| Read a module's output | `module.x.output_name` | Only visible to the caller; re-export at root for the CLI. |
-| DB subnet group | `aws_db_subnet_group` | The 2+ AZ subnets RDS may use. |
-| The database | `aws_db_instance` | engine, instance_class, subnet group, SG, credentials, multi_az, storage_encrypted. |
-| Secret input | `variable { sensitive = true }` + `terraform.tfvars` (gitignored) | Never hardcode a password in a `.tf` file. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -198,21 +188,6 @@ flowchart TB
 > [!failure] Failure mode — secret in a committed .tf file
 > Hardcoding `db_password = "..."` directly in `main.tf` puts a credential into git history the moment you commit. Fix (the real-world pattern): declare a **`sensitive = true`** variable, pass `db_password = var.db_password` in the module block, and put the value in **`terraform.tfvars`** (gitignored) or `TF_VAR_db_password`. Next level up in production: **AWS Secrets Manager / SSM Parameter Store** so the value never sits in a file at all — RDS can even manage the password in Secrets Manager directly.
 
-## The Terraform I wrote
-
-Code: `06-capstone/` — root (`main.tf` wiring, `variables.tf`, `outputs.tf`, `terraform.tfvars` gitignored) + `modules/{vpc,compute,database}/`.
-
-- **module.vpc** — 3-tier network (2 public / 2 app / 2 data subnets, IGW, NAT, route tables), all driven by `var.*`, exposing `vpc_id` + three subnet-ID lists.
-- **module.compute** — adapted [[04-alb-asg]]: golden AMI ([[03-ami-bake]]), alb-sg + app-sg chain, launch template (`user_data` via `${path.module}`), ALB/target group/listener, ASG in **private** app subnets, target-tracking policy. Exposes `alb_dns_name` + `app_sg_id`.
-- **module.database** — DB subnet group, db-sg (from `var.app_sg_id`), `aws_db_instance` (postgres, single-AZ, encrypted, private, secret password).
-- **root** wires it all: `module.vpc` outputs → `module.compute` + `module.database` inputs; `module.compute.app_sg_id` → `module.database`.
-
-Non-obvious things hit:
-- **Module outputs don't reach the CLI** until re-exported at the root (`terraform output` was empty).
-- **`-1` egress rules must omit ports** (apply error above).
-- **Empty SG `description = ""`** fails at apply (AWS requires a non-empty description); `validate`/`plan` don't catch it.
-- **RDS reserved username** (`root`) + **forbidden password chars** (`@`).
-
 > [!warning] Trap — Multi-AZ to scale reads
 > Multi-AZ is **HA/failover**, the standby is **not readable**. To offload/scale reads you use **read replicas**. Swapping these is the most common RDS exam mistake.
 
@@ -264,4 +239,3 @@ The DB is private (no public IP; `db-sg` allows only the app tier), so reaching 
 - [Terraform module outputs](https://developer.hashicorp.com/terraform/language/values/outputs)
 - [RDS Multi-AZ](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html) / [Read Replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html)
 - [RDS encryption at rest](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html)
-- [Terraform `aws_db_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) / [`aws_db_subnet_group`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group)

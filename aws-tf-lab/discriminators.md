@@ -18,7 +18,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[01-iam#User vs Role|User vs Role]] · [[01-iam#Inline vs Managed policy|Inline vs Managed policy]] · [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]] · [[01-iam#How an application authenticates to RDS|How an application authenticates to RDS]] · [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
 
-- **"the plan showed the policy was fine"** — It didn't, and it couldn't. Because the policy document interpolates aws_s3_bucket.this.arn, Terraform reports data.aws_iam_policy_document.permissions will be read during apply and the policy renders as (known after apply) — while the trust policy, which references nothing, renders in full.  
+- **"the plan showed the policy was fine"** — It didn't, and it couldn't. A policy whose Resource is the ARN of a bucket being created in the same operation cannot be rendered before that bucket exists — so the permissions policy is unknowable in advance, while the trust policy, which references nothing, is fully known.  
   ↳ [[01-iam|note]]
 - **Policy order or count matters** — It doesn't. IAM evaluation is order-independent and count-independent. One explicit Deny anywhere is sufficient.  
   ↳ [[01-iam|note]]
@@ -32,7 +32,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[01-iam|note]]
 - **Attach a role directly to an EC2 instance** — EC2 needs an instance profile in between (see [[02-ec2]]). Lambda doesn't.  
   ↳ [[01-iam|note]]
-- **All name arguments on IAM resources behave the same** — They don't — aws_iam_user.name is in-place updatable; aws_iam_policy.name forces destroy-and-recreate (ARN embeds the name).  
+- **All name arguments on IAM resources behave the same** — A policy's ARN embeds its name, so AWS cannot rename one in place — renaming means creating a new policy and re-attaching it everywhere.  
   ↳ [[01-iam|note]]
 - **validate/plan catch reference bugs (.arn vs .name, quoted strings)** — They don't — both shapes are type-valid strings. The errors surface only at apply (or silently produce wrong results).  
   ↳ [[01-iam|note]]
@@ -80,8 +80,6 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[02-ec2|note]]
 - **t3-micro works** — No — AWS instance types are family.size with a literal dot. Hyphens get rejected at apply.  
   ↳ [[02-ec2|note]]
-- **aws_subnets.X.id returns one subnet ID** — No — that data source returns a list under .ids. There is no singular .id on the plural resource.  
-  ↳ [[02-ec2|note]]
 - **IAM changes are instant** — Often near-instant, but eventually consistent — newly created roles can briefly fail to be assumed (propagation race).  
   ↳ [[02-ec2|note]]
 - **EBS volumes can be moved across AZs by detach + attach** — No — EBS is AZ-scoped. Cross-AZ requires snapshot → restore in target AZ.  
@@ -103,19 +101,19 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **minimum capacity set to N when an AZ must be survivable** — The stem gives a required capacity and an AZ count, and the wrong options are near-misses on the same arithmetic: min set to N (right total, no spare zone) · the correct total parked in one AZ · one instance per AZ across N AZs (total right, per-AZ wrong) · max below the stated peak.  
   ↳ [[04-alb-asg#Comparisons|note]]
 - **"the ALB terminates the unhealthy instance"** — It doesn't. The ALB only stops routing to it. Termination is the ASG's job, and only if health_check_type = "ELB".  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **"a failed ALB health check means users get errors"** — Only if no targets are healthy. With ≥1 healthy target the ALB quietly routes around the bad one and users are fine — you're at reduced capacity with nobody alerted.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **NLB vs ALB for a static IP / source-IP / PrivateLink** — "Need a static IP for the LB" or "must preserve client source IP with no app changes" → NLB (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs X-Forwarded-For. Frequent distractor pairing. Third trigger, same pairing: "expose one service to another VPC or account without exposing the rest of the VPC" → PrivateLink, and an endpoint service must be fronted by an NLB or a GWLB — never an ALB directly.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **cross-zone billing** — Cross-zone is free & always-on for ALB, but off by default and inter-AZ-billed for NLB.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **"scale-in terminates the oldest instance"** — Two errors in one. First, AZ balance is evaluated before the termination policy, so the instance chosen may be a newer one sitting in an over-weighted AZ. Second, the default policy targets the oldest configuration (launch configuration, then non-current launch template, then oldest template version) — not the oldest instance.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **a scheduled action that also pins min and max** — "Guarantee 10 instances at 9am" and "run exactly 10 instances at 9am" are different requirements.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 - **redirect on the wrong load balancer, or the wrong direction** — redirect is an ALB (Layer 7) listener action; an NLB operates at Layer 4 and cannot inspect or rewrite HTTP, so "redirect HTTP to HTTPS on an NLB" is always wrong.  
-  ↳ [[04-alb-asg#The Terraform I wrote|note]]
+  ↳ [[04-alb-asg#Worked examples|note]]
 
 
 ## [[05-vpc-core|05.1 – VPC Core (subnets, routing, IGW, NAT)]]
@@ -123,9 +121,9 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[05-vpc-core#NAT Gateway vs NAT Instance|NAT Gateway vs NAT Instance]] · [[05-vpc-core#IGW vs NAT Gateway vs Egress-only IGW|IGW vs NAT Gateway vs Egress-only IGW]]
 
 - **"the default NACL and a new NACL behave the same"** — Opposite. The default NACL allows all traffic both ways; a custom NACL you create denies all until you add numbered rules.  
-  ↳ [[05-vpc-core#The Terraform I wrote|note]]
+  ↳ [[05-vpc-core#Worked examples|note]]
 - **"add the IGW route to the main route table to make setup simpler"** — Never. That makes every unassociated subnet public by default — a subnet you forget to wire becomes internet-exposed.  
-  ↳ [[05-vpc-core#The Terraform I wrote|note]]
+  ↳ [[05-vpc-core#Worked examples|note]]
 
 
 ## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
@@ -133,11 +131,11 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]] · [[05-vpc-security#Where each layer sits|Where each layer sits]]
 
 - **"make the NACL match the SG rules and you're done"** — No — the NACL is stateless, so it needs the ephemeral return rule the SG never required.  
-  ↳ [[05-vpc-security#The Terraform I wrote|note]]
+  ↳ [[05-vpc-security#Worked examples|note]]
 - **"use flow logs to see what data was exfiltrated"** — Flow logs are metadata only — IPs, ports, bytes, ACCEPT/REJECT. They never show payload.  
-  ↳ [[05-vpc-security#The Terraform I wrote|note]]
+  ↳ [[05-vpc-security#Worked examples|note]]
 - **"a higher NACL rule number can override a lower deny"** — No — first match wins, low number first. A deny at #100 is final; #200 allow never gets evaluated for that packet.  
-  ↳ [[05-vpc-security#The Terraform I wrote|note]]
+  ↳ [[05-vpc-security#Worked examples|note]]
 
 
 ## [[05-vpc-endpoints-peering|05.3 – VPC Endpoints & Peering (+ Transit Gateway)]]
@@ -147,11 +145,11 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **VPC sharing confused with peering, or "share the VPC"** — Two errors in one family. **VPC sharing shares subnets, never the whole VPC — an option saying "share the VPC" is wrong even when sharing is the right idea. And sharing is not peering**: peering connects two separate VPCs, while sharing puts several accounts inside one VPC, using its implicit routing.  
   ↳ [[05-vpc-endpoints-peering#Key facts, limits & pricing|note]]
 - **"use a gateway endpoint for SQS/KMS/etc."** — Gateway endpoints only exist for S3 and DynamoDB. Every other service uses an interface endpoint (PrivateLink).  
-  ↳ [[05-vpc-endpoints-peering#The Terraform I wrote|note]]
+  ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
 - **"reach the S3 gateway endpoint from a peered VPC / on-prem"** — No. Gateway endpoints work only within the same VPC. If you need S3 access from a peered VPC or over VPN/DX, you use an interface endpoint (which is reachable across those).  
-  ↳ [[05-vpc-endpoints-peering#The Terraform I wrote|note]]
+  ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
 - **"peering scales fine, just add connections"** — Full mesh is N(N-1)/2 and non-transitive — it explodes past a few VPCs. The intended answer for "many VPCs" is Transit Gateway, not more peerings.  
-  ↳ [[05-vpc-endpoints-peering#The Terraform I wrote|note]]
+  ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
 
 
 ## [[05-vpc-hybrid|05.4 – VPC Hybrid Connectivity (VPN & Direct Connect)]]
@@ -159,13 +157,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[05-vpc-hybrid#Site-to-Site VPN vs Direct Connect|Site-to-Site VPN vs Direct Connect]] · [[05-vpc-hybrid#Which one? (exam triggers)|Which one? (exam triggers)]]
 
 - **"Direct Connect is encrypted because it's private"** — Private ≠ encrypted. DX carries plaintext over a dedicated circuit. For encryption, run a VPN over DX.  
-  ↳ [[05-vpc-hybrid#The Terraform I wrote|note]]
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"use Direct Connect for a quick or temporary connection"** — DX takes weeks-to-months to provision. Anything "fast," "temporary," or "immediately" is a Site-to-Site VPN.  
-  ↳ [[05-vpc-hybrid#The Terraform I wrote|note]]
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"VGW vs CGW"** — VGW = AWS side (attached to the VPC). CGW = on-prem side (a config object describing your router). Swapping these is a classic mix-up.  
-  ↳ [[05-vpc-hybrid#The Terraform I wrote|note]]
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"Client VPN = Site-to-Site VPN"** — Client VPN = individual users' devices (OpenVPN). Site-to-Site VPN = whole network ↔ VPC (IPsec).  
-  ↳ [[05-vpc-hybrid#The Terraform I wrote|note]]
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 
 
 ## [[06-capstone|06 – Capstone: 3-Tier VPC with Terraform Modules]]
@@ -173,9 +171,9 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[06-capstone#RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)|RDS Multi-AZ vs Read Replica (the number-one RDS exam trap)]] · [[06-capstone#Flat config vs Modules|Flat config vs Modules]] · [[06-capstone#Accessing the private database (bastion vs SSM)|Accessing the private database (bastion vs SSM)]]
 
 - **Multi-AZ to scale reads** — Multi-AZ is HA/failover, the standby is not readable. To offload/scale reads you use read replicas.  
-  ↳ [[06-capstone#The Terraform I wrote|note]]
+  ↳ [[06-capstone#Worked examples|note]]
 - **"the module output shows in terraform output"** — Only root outputs show on the CLI. A module output must be re-declared at the root. Outputs bubble up one level per caller.  
-  ↳ [[06-capstone#The Terraform I wrote|note]]
+  ↳ [[06-capstone#Worked examples|note]]
 
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
@@ -183,23 +181,23 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
 - **Babelfish offered instead of SCT + DMS** — A stem says "migrate SQL Server to Aurora PostgreSQL with minimal application code changes" and lists Babelfish and "SCT + DMS" as separate options.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **Enhanced Monitoring metrics confused with standard CloudWatch metrics** — Asked which metrics Enhanced Monitoring provides, the plausible-looking wrong answers are CPU Utilization, Database Connections and Freeable Memory — because they are real RDS metrics you have seen a hundred times.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **an IAM role on the app is not, by itself, database authentication** — The distractors are "attach an IAM role to the EC2 instance / Lambda function" and "restrict the security group to the app tier", offered on their own.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **"IAM database authentication controls what the user can do in the database"** — It does not. IAM decides whether you may connect as a given database user; everything after that is still the database's own GRANTs.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **rds-db: vs rds:** — rds-db:connect is the only action with the rds-db: prefix and it exists solely for IAM DB auth. Everything else (rds:CreateDBInstance, rds:DescribeDBInstances…) is the rds: management API and has nothing to do with logging into the database. An answer that grants rds:* to let an app "connect to the database" is wrong.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **"use IAM DB auth so database logins show up in CloudTrail"** — They don't. AWS documents that CloudTrail and CloudWatch do not log generate-db-auth-token.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **Multi-AZ to scale reads** — Multi-AZ standby is not readable — it's for failover. Use read replicas to scale reads.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **Aurora replica lag is like RDS replica lag** — No — Aurora replicas share one storage volume (no data copy), so lag is ~milliseconds; RDS read replicas copy data asynchronously and can lag seconds.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 - **"RDS is serverless / auto-scales like Aurora"** — Plain RDS is provisioned instances. True serverless + auto-scaling storage + global <1s replication are Aurora features.  
-  ↳ [[07-rds-aurora#The Terraform I wrote|note]]
+  ↳ [[07-rds-aurora#Worked examples|note]]
 
 
 ## [[08-elasticache|08 – ElastiCache (Redis / Memcached)]]
@@ -209,13 +207,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **DAX and ElastiCache offered for the same workload** — They front different databases and that alone usually settles it. DAX only accelerates DynamoDB; ElastiCache fronts RDS/Aurora and anything else you write caching logic for.  
   ↳ [[08-elasticache#How it actually works|note]]
 - **Memcached for anything needing HA/persistence/complex data** — Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → Redis.  
-  ↳ [[08-elasticache#The Terraform I wrote|note]]
+  ↳ [[08-elasticache#Worked examples|note]]
 - **a question that mixes Redis-sounding use cases with Memcached-only features** — The hard version of the engine question doesn't say "pick a cache" — it describes a session store (which your instinct maps to Redis) while also specifying multi-threaded and automatic node discovery (both Memcached-only).  
-  ↳ [[08-elasticache#The Terraform I wrote|note]]
+  ↳ [[08-elasticache#Worked examples|note]]
 - **"add a cache" when the problem is writes** — Caches accelerate reads. If the bottleneck is heavy writes or the data must be strongly consistent per request, a cache doesn't help (and lazy-loading serves stale data).  
-  ↳ [[08-elasticache#The Terraform I wrote|note]]
+  ↳ [[08-elasticache#Worked examples|note]]
 - **Redis is multi-threaded because it's fast** — Redis command execution is single-threaded (one core per node); it scales via cluster-mode sharding, not more cores.  
-  ↳ [[08-elasticache#The Terraform I wrote|note]]
+  ↳ [[08-elasticache#Worked examples|note]]
 
 
 ## [[09-s3-intro|09.1 – S3 Introduction (buckets, classes, versioning, lifecycle)]]
@@ -223,13 +221,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[09-s3-intro#Storage classes (verified against AWS docs 2026-08)|Storage classes (verified against AWS docs 2026-08)]] · [[09-s3-intro#Versioning: delete vs permanent delete|Versioning: delete vs permanent delete]]
 
 - **"S3 has folders"** — No. S3 is a flat key→object store; photos/cat.jpg is one key. The console renders "folders" by splitting on /.  
-  ↳ [[09-s3-intro#The Terraform I wrote|note]]
+  ↳ [[09-s3-intro#Worked examples|note]]
 - **"Glacier means slow retrieval"** — Glacier Instant Retrieval returns objects in milliseconds. Only Flexible Retrieval (minutes–hours) and Deep Archive (hours) need a restore job.  
-  ↳ [[09-s3-intro#The Terraform I wrote|note]]
+  ↳ [[09-s3-intro#Worked examples|note]]
 - **durability vs availability** — Every class is 11 nines durable (won't lose data). What differs is availability (can you reach it right now): Standard 99.99%, IA 99.9%, One Zone-IA 99.5%. Questions about "surviving AZ loss" are about AZ count, not durability.  
-  ↳ [[09-s3-intro#The Terraform I wrote|note]]
+  ↳ [[09-s3-intro#Worked examples|note]]
 - **moving to IA/Glacier always saves money** — Minimum storage durations (IA 30 d, Glacier 90 d, Deep Archive 180 d) and a 128 KB minimum billable size mean short-lived or tiny objects can cost more in IA than Standard.  
-  ↳ [[09-s3-intro#The Terraform I wrote|note]]
+  ↳ [[09-s3-intro#Worked examples|note]]
 
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
@@ -237,13 +235,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 - **replication copies existing objects** — It does not. Live CRR/SRR only handles objects created/updated after the rule. Existing data needs S3 Batch Replication.  
-  ↳ [[09-s3-advanced#The Terraform I wrote|note]]
+  ↳ [[09-s3-advanced#Worked examples|note]]
 - **replication is transitive** — No. A→B and B→C does not deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.  
-  ↳ [[09-s3-advanced#The Terraform I wrote|note]]
+  ↳ [[09-s3-advanced#Worked examples|note]]
 - **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket. It changes the path: enter AWS at the nearest edge location, then travel the private backbone to the bucket's region.  
-  ↳ [[09-s3-advanced#The Terraform I wrote|note]]
+  ↳ [[09-s3-advanced#Worked examples|note]]
 - **"use S3 Select" on a new account** — S3 Select is no longer available to new customers. The modern answer for SQL over S3 is Athena (and it queries many objects, not one).  
-  ↳ [[09-s3-advanced#The Terraform I wrote|note]]
+  ↳ [[09-s3-advanced#Worked examples|note]]
 
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
@@ -255,15 +253,15 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **SSE-KMS request cost answered by changing the encryption type** — High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the bill shows it.  
   ↳ [[09-s3-security#Comparisons|note]]
 - **Block Public Access can be overridden by a bucket policy** — Backwards. BPA overrides the policy. A perfectly valid public bucket policy is simply ignored while BPA is on.  
-  ↳ [[09-s3-security#The Terraform I wrote|note]]
+  ↳ [[09-s3-security#Worked examples|note]]
 - **enabling default encryption encrypts what's already there** — It doesn't. Default encryption applies to new objects only. Existing objects keep their previous encryption until you rewrite them — S3 Batch Operations → Copy.  
-  ↳ [[09-s3-security#The Terraform I wrote|note]]
+  ↳ [[09-s3-security#Worked examples|note]]
 - **a presigned URL uses the recipient's permissions** — It uses the generator's. That's why it works for someone with no AWS account at all — and why generating one from an over-privileged role is dangerous.  
-  ↳ [[09-s3-security#The Terraform I wrote|note]]
+  ↳ [[09-s3-security#Worked examples|note]]
 - **Object Lock stops the object being deleted** — It stops that version being deleted. A simple DELETE still returns 200 OK and adds a delete marker, hiding the object.  
-  ↳ [[09-s3-security#The Terraform I wrote|note]]
-- **MFA Delete can be set up like any other bucket setting** — Only the root account with an MFA device can enable it, via CLI. Not IAM users, not the console, not Terraform.  
-  ↳ [[09-s3-security#The Terraform I wrote|note]]
+  ↳ [[09-s3-security#Worked examples|note]]
+- **MFA Delete can be set up like any other bucket setting** — Only the root account with an MFA device can enable it, and only via the CLI — not an IAM user, and not the console.  
+  ↳ [[09-s3-security#Worked examples|note]]
 
 
 ## [[10-route53|10 – Route 53 (DNS)]]
@@ -410,7 +408,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **target_type on a Fargate service** — With awsvpc each task has its own ENI, so there is no instance ID to register. Leaving target_type at the default "instance" does not error: terraform apply succeeds, the service creates, no target ever registers, and the ALB serves 503 against a plan that looked clean.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
-- **a green apply is not a green deployment** — Terraform reports success once the ECS API accepts the new task definition. Whether containers start is a separate control loop on its own clock.  
+- **a green apply is not a green deployment** — A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **the execution role is not for the pull** — Nothing in AWS authenticates you to Docker Hub; a public image needs network egress, not IAM.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
@@ -493,6 +491,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Shield Advanced offered for a request-rate threshold** — "Block a source making N requests per second" is a WAF rate-based rule, every time. Shield Advanced is the answer to "we want DDoS cost protection and 24/7 response support", not to a configurable rate threshold.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **"disable GuardDuty" chosen when the findings must survive** — They are opposites. Suspend stops monitoring and billing but keeps existing findings and lets you re-enable.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **"delete the KMS key" offered as the way to revoke access now** — Key deletion is not an immediate control: the shortest waiting period is 7 days and the default is 30, so nothing about it is fast.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **rotation re-encrypts your data** — It does not. "Key rotation has no effect on the data that the KMS key protects. It does not rotate the data keys that the KMS key generated or re-encrypt any data protected by the KMS key." Old key material is retained so old ciphertext still decrypts, and the key ID is unchanged — which is why rotation is transparent to applications and requires no code change.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

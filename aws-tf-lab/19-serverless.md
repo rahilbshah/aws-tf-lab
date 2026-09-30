@@ -44,19 +44,6 @@ You configure **memory**, and AWS allocates CPU in proportion. AWS: *"Lambda all
 
 **API Gateway** is a managed front door. It does not load balance across a fleet — each route invokes exactly one integration. AWS scales the gateway itself.
 
-## AWS console ↔ Terraform map
-
-| Console action | Terraform resource | Key arguments |
-|---|---|---|
-| Create function | `aws_lambda_function` | `runtime`, `handler` (`file.function`), `memory_size`, `timeout`, **`source_code_hash`** |
-| Package the code | `data.archive_file` | `source_file`, `output_path` |
-| Function's IAM role | `aws_iam_role` + `AWSLambdaBasicExecutionRole` | trusts `lambda.amazonaws.com` |
-| Function logs | `aws_cloudwatch_log_group` | name must be **`/aws/lambda/<function-name>`** |
-| Create table | `aws_dynamodb_table` | `hash_key`, `range_key`, `billing_mode`, `attribute` blocks **only for key attributes** |
-| HTTP API | `aws_apigatewayv2_*` (**v2 = HTTP**) | `protocol_type = "HTTP"`; v1 `aws_api_gateway_*` is REST |
-| Route → function | `aws_apigatewayv2_integration` | `AWS_PROXY`, **`invoke_arn`**, `payload_format_version = "2.0"` |
-| Let API GW call Lambda | `aws_lambda_permission` | `principal`, **`source_arn`** |
-
 ## Architecture diagram
 
 ```mermaid
@@ -144,23 +131,13 @@ graph LR
 ## Worked examples
 
 > [!example] Worked example — designing the table from the access patterns
-> The lab's API serves three operations: create a note, list all notes for a user, fetch one specific note. Those three *are* the access patterns, and in DynamoDB they decide the key schema before a line of Terraform is written.
+> The lab's API serves three operations: create a note, list all notes for a user, fetch one specific note. Those three *are* the access patterns, and in DynamoDB they decide the key schema before anything gets built.
 >
 > "List all notes for one user" must be **one** cheap read, so `userId` has to be the **partition key** — that puts every one of a user's notes in the same partition. "Fetch one specific note" needs `GetItem`, which requires the **complete** primary key, so a second attribute is needed to tell one note from another: `noteId` as the **sort key**. `hash_key = "userId"`, `range_key = "noteId"`.
 >
 > Then the design question the schema cannot answer: **"fetch note X, I don't know whose it is."** Nothing in that table supports it — you would have to scan every item. That is what a **GSI** is for: the same data, partitioned a different way.
 >
-> Note also what does *not* go in the Terraform. `title`, `body` and `createdAt` are written by the application and must **not** appear as `attribute` blocks — DynamoDB is schemaless for everything outside a key, and declaring a non-key attribute fails at apply.
-
-> [!failure] Failure mode — the deployment that silently ships nothing
-> You edit `handler.py`, run `terraform apply`, and Terraform says **No changes**. The function keeps running yesterday's code and you spend twenty minutes debugging logic that was never deployed.
->
-> Cause: without **`source_code_hash`**, Terraform compares only the zip's *filename*, which did not change. `source_code_hash = data.archive_file.handler.output_base64sha256` is what makes it notice. The same class of silent failure as `payload_format_version` being `1.0` while the handler reads the 2.0 event shape — the stack looks healthy and every request 404s.
-
-## The Terraform I wrote
-- Path: `../19-serverless/` — HTTP API → Lambda (Python, arm64) → DynamoDB on-demand.
-- Key schema decided from the access patterns: `userId` partition, `noteId` sort. Routes built with `for_each` over the three route strings.
-- Verified live: three POSTs, then `GET /notes/rahil` returned only rahil's notes with no filter in the code — the partition key doing the work — while the same `noteId` under a different `userId` returned 404, because `GetItem` needs the whole key.
+> Note also what you do *not* declare. `title`, `body` and `createdAt` are written by the application and are never part of the table definition — DynamoDB is schemaless for everything outside a key, so **only key attributes are declared**, and declaring a non-key one is an error.
 
 ## ⚠️ Traps — why the wrong answer looks right
 

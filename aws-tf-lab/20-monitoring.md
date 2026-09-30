@@ -156,21 +156,6 @@ it happened, so "notify the security team 30 days before expiry" is a monitoring
 > In one line: ACM's DaysToExpiry metric (twice daily) or an EventBridge rule on AWS Health ACM
 > events is how you get told before a certificate lapses; auto-renewal can still fail silently.
 
-## AWS console ↔ Terraform map
-
-| Console action | Terraform resource | Key arguments |
-|---|---|---|
-| Create an alarm | `aws_cloudwatch_metric_alarm` | `metric_name`, `namespace`, `period`, `evaluation_periods`, `threshold`, `comparison_operator`, `alarm_actions` |
-| Composite alarm | `aws_cloudwatch_composite_alarm` | `alarm_rule` (an expression over other alarms) |
-| Log group | `aws_cloudwatch_log_group` | `name`, `retention_in_days` |
-| Turn log lines into a metric | `aws_cloudwatch_log_metric_filter` | `pattern`, `metric_transformation` |
-| Scheduled or event-driven rule | `aws_cloudwatch_event_rule` (**this is EventBridge**) | `schedule_expression` **or** `event_pattern` |
-| Rule target | `aws_cloudwatch_event_target` | `rule`, `arn`, `input_transformer` |
-| Trail | `aws_cloudtrail` | `s3_bucket_name`, `is_multi_region_trail`, `enable_log_file_validation`, `event_selector` for data events |
-| Config recorder + rule | `aws_config_configuration_recorder`, `aws_config_config_rule` | `recording_group`, `source` (AWS managed or custom Lambda) |
-
-Note the naming legacy: EventBridge resources are still `aws_cloudwatch_event_*` in the provider, because the service was renamed after the resources were named.
-
 ## Architecture diagram
 
 ```mermaid
@@ -351,7 +336,7 @@ graph TB
 > CloudTrail is on by default only for **management events**. Object-level reads and writes are **data events**, which *"trails and event data stores"* do **not** log by default. The answer must include configuring data events (an event selector) on a trail — and note they are billed by volume, which is the reason they are opt-in.
 
 > [!warning] Trap — CloudWatch Events versus EventBridge
-> They are the same service; CloudWatch Events was renamed to EventBridge. If a question offers both as separate options, they are not testing a distinction — look at what else the options differ on. (Terraform still names the resources `aws_cloudwatch_event_rule` for the same historical reason.)
+> They are the same service; CloudWatch Events was renamed to EventBridge. If a question offers both as separate options, they are not testing a distinction — look at what else the options differ on.
 
 > [!warning] Trap — the 90 days
 > "CloudTrail keeps 90 days" is true of the **free Event history view**, per Region, management events only. A **trail** delivering to S3 keeps events as long as you want, at S3 prices. A stem wanting "retain audit logs for seven years for compliance" is asking for a trail plus S3 lifecycle, not the console view.
@@ -385,5 +370,3 @@ graph TB
 - [Using CloudWatch alarms](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html) — states, actions, composite alarms; verified 2026-09-25
 - [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html) — in-guest metrics, custom-metric billing; verified 2026-09-25
 - [CloudTrail concepts](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html) — 90-day event history, event types, Insights; verified 2026-09-25
-- [Terraform `aws_cloudwatch_metric_alarm`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm)
-- [Terraform `aws_cloudtrail`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudtrail)

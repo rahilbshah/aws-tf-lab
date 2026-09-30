@@ -101,17 +101,6 @@ The tradeoff is cost and weight: TGW bills **per attachment per hour plus per-GB
 
 > In one line: peering is O(N²) and non-transitive, so at **many VPCs / hybrid at scale** the answer becomes one Transit Gateway hub.
 
-## AWS console ↔ Terraform map
-
-| Concept | Terraform | Notes |
-|---|---|---|
-| Gateway endpoint (S3/DynamoDB) | `aws_vpc_endpoint` (`vpc_endpoint_type = "Gateway"`, `route_table_ids`) | Injects an S3/DynamoDB prefix-list route. Free. |
-| Interface endpoint (PrivateLink) | `aws_vpc_endpoint` (`type = "Interface"`, `subnet_ids`, `security_group_ids`, `private_dns_enabled`) | ENI per AZ; the SG controls who can reach it. Costs hourly. |
-| Expose your own service privately | `aws_vpc_endpoint_service` (+ NLB) | The "endpoint service" side of PrivateLink. |
-| VPC peering | `aws_vpc_peering_connection` (+ `_accepter` if cross-account) | `auto_accept = true` only same-account+region. |
-| Peering routes | `aws_route` on **both** route tables | Each side routes to the **other** VPC's CIDR via the `vpc_peering_connection_id`. |
-| Transit Gateway | `aws_ec2_transit_gateway` + `_vpc_attachment` + `_route_table` | *Conceptual here.* Hub; attachments per VPC/VPN/DX. |
-
 ## Architecture diagram
 
 ```mermaid
@@ -189,14 +178,6 @@ flowchart TB
 > [!example] Worked example — 4 VPCs today, 12 next quarter → Transit Gateway
 > A company has 4 VPCs (prod/staging/dev/shared) fully peered: N(N-1)/2 = **6** connections, each with routes on both sides. Manageable. Then acquisitions push it toward 12 VPCs → **66** peering connections and a route-table nightmare. Migrating to a **Transit Gateway** collapses it to **12 attachments** (one per VPC), gives transitive any-to-any (or segmented via TGW route tables), and lets the on-prem Direct Connect attach to the same hub. The trigger phrase — "growing number of VPCs, simplify connectivity, connect on-prem" — is always TGW.
 
-## The Terraform I wrote
-
-Code: [`05-vpc/endpoints.tf`](../05-vpc/endpoints.tf) + [`05-vpc/peering.tf`](../05-vpc/peering.tf)
-
-- **S3 gateway endpoint**: `aws_vpc_endpoint` (Gateway, `service_name = com.amazonaws.us-east-1.s3`, `route_table_ids = [private-rt]`). Verified the injected `pl-xxxx (S3) → vpce-xxxx` route in the private route table.
-- **Peering**: a second VPC (`10.1.0.0/16`, non-overlapping), `aws_vpc_peering_connection` (`auto_accept = true`), and **two `aws_route`s** — main-side → peer CIDR, peer-side → main CIDR, each via the connection. Verified status **Active** and both route tables carrying the cross-VPC route.
-- Got the **route directions right** (each side routes to the *other's* CIDR — the common swap mistake) and used `aws_vpc.peer.main_route_table_id` to route on the peer's auto-created main RT.
-
 > [!warning] Trap — "use a gateway endpoint for SQS/KMS/etc."
 > Gateway endpoints only exist for **S3 and DynamoDB**. Every other service uses an **interface endpoint (PrivateLink)**. "Private access to SQS/KMS/Secrets Manager" → interface endpoint, not gateway.
 
@@ -219,4 +200,3 @@ Code: [`05-vpc/endpoints.tf`](../05-vpc/endpoints.tf) + [`05-vpc/peering.tf`](..
 - [Interface endpoints / AWS PrivateLink](https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html)
 - [VPC peering — what it is + limitations](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html)
 - [Transit Gateway](https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html)
-- [Terraform `aws_vpc_endpoint`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) / [`aws_vpc_peering_connection`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_peering_connection)
