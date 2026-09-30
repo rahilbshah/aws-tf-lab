@@ -219,7 +219,7 @@ graph TB
 | Tool | Its actual job | The stem that means it |
 |---|---|---|
 | **Run Command** | run a command or script across a fleet **once, now**, without logging in | "**install** a third-party tool", "make a **one-time** configuration change", "without SSH/RDP" |
-| **Patch Manager** | automate **patching** — security and other updates — against a **patch baseline** | "**patch** a security exposure", "keep the OS up to date", "compliance reporting on patch level" |
+| **Patch Manager** | automate **OS patching** — security and other updates — against a **patch baseline**, with compliance reporting. Its *application*-patching support is narrow | "**patch** a security exposure", "keep the OS up to date", "patch **compliance**" |
 | **Maintenance Windows** | **only a schedule** — a window in which disruptive work may run | "during a defined window", "outside business hours" — never the thing that *does* the work |
 | **State Manager** | hold nodes at a **desired state**, continuously, re-applying drift | "**ensure** agents stay installed", "keep configuration consistent over time" |
 | **Automation** | **runbooks** for multi-step operational tasks, incl. AWS-provided documents | "automate the whole sequence", a named `AWS-*`/`AWSEC2-*` runbook |

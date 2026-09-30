@@ -15,7 +15,7 @@ The catch-all. Seven services that are individually too small for their own note
 > - **DMS** migrates data and can **keep replicating (CDC)** so downtime is minimal; it runs on a **replication instance**. **Different engines ⇒ convert the schema first with AWS SCT / DMS Schema Conversion.** Oracle → Aurora PostgreSQL = **SCT + DMS**.
 > - **DMS targets are not just databases:** **Redshift**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, Kafka, Neptune, DocumentDB — and **S3 can be a source**. "Continuously replicate RDS into a warehouse" = **DMS → Redshift**, not Glue or EMR.
 > - **DMS Serverless** auto-provisions and scales capacity (a **replication configuration**, no instance to size) — the answer for **spiky volume + least operational overhead**.
-> - **Too big for the bandwidth?** **SCT + a local DMS Agent** extract onto a **Snowball Edge**; AWS unloads it to **S3**; a **remote DMS task** loads the target. DMS itself does *not* do the extraction.
+> - **Too big for the bandwidth?** The **retired but still-examined** answer: **SCT + a local DMS Agent** extract onto a **Snowball Edge**, AWS unloads to **S3**, a **remote DMS task** loads the target — DMS itself does *not* extract. Current answer is **DataSync**.
 > - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** at-least-once, **5 minutes**, 100,000/sec, priced by count+duration, **Request Response only**.
 > - **AppSync = managed GraphQL** with real-time **WebSocket subscriptions**; API Gateway = REST/HTTP/WebSocket. Amplify is built on AppSync.
 > - **AWS Batch** runs **containerised** jobs on ECS/EKS across EC2/Fargate/**Spot**, with **no time limit** — the answer when Lambda's **15 minutes** isn't enough.
@@ -89,14 +89,21 @@ an instance; DMS inspects the source metadata, computes the capacity it needs, a
 workload moves. Trigger words: load that **varies or spikes**, *"dynamically allocate capacity"*,
 **least operational overhead**.
 
-**When the data is too big for the pipe.** DMS can stage a migration through an **AWS Snowball
-Edge** device, and the division of labour is the testable part. Locally you run **AWS SCT** plus a
-**DMS Agent** (an on-premises build of DMS) — those extract the data and load it onto the Edge
-device. You ship the device back; AWS unloads it into an **Amazon S3** staging bucket; then a
-**remote DMS task** migrates from S3 into the target. Cloud DMS never touches your data centre, so
-an option saying *DMS* extracts to the device has the two halves the wrong way round. See
-[[12-storage-extras]] for the Snow Family itself — including that it is now closed to new
-customers.
+> [!warning] Currency — the DMS + Snowball Edge path is retired
+> The exam still asks it, so recognise it; do not carry it as current practice.
+> **How it worked:** locally you ran **AWS SCT** plus a **DMS Agent** (an on-premises build
+> of DMS) to extract the data onto an **AWS Snowball Edge** device; you shipped the device
+> back; AWS unloaded it into an **Amazon S3** staging bucket; then a **remote DMS task**
+> migrated from S3 into the target. The testable half is the division of labour — cloud DMS
+> never reached into your data centre, so an option saying *DMS* performed the extraction has
+> the two halves reversed.
+> **Why it is retired:** AWS has **removed the large-data-store/Snowball Edge chapter from the
+> DMS user guide** (`CHAP_LargeDBs.md` now 404s while sibling chapters resolve), Snowball Edge
+> has been **closed to new customers since 2025-11-07**, and support for Snowball devices
+> **ends in all commercial Regions on 2026-12-31**. Today the same problem is answered with
+> **DataSync** over the network, or **AWS Data Transfer Terminal** for physical transfer.
+> See [[12-storage-extras]]. (Verified 2026-09-30; mechanism from an archived 2022 copy of the
+> removed chapter, since no live AWS page documents it.)
 
 > In one line: DMS moves the data and keeps it in sync with CDC, SCT converts the schema when the
 > engines differ, and the target can be a warehouse, a stream or a NoSQL store — not just a database.
@@ -299,7 +306,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 - **DMS is not database-to-database only.** Targets include **Redshift / Redshift Serverless**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, DocumentDB, Neptune, Apache Kafka and **Babelfish** for Aurora PostgreSQL; **S3 can also be a source**. DMS → Redshift beats Glue/EMR for *continuous replication into a warehouse*.
 - **DMS Serverless** vs **DMS Standard**: Serverless auto-provisions and auto-scales capacity with built-in HA and pay-for-use, and removes capacity estimation, provisioning and engine patching. You define a **replication configuration**, not a replication instance. Trigger: spiky/variable volume + least operational overhead.
-- **DMS with Snowball Edge:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction.
+- **DMS with Snowball Edge — RETIRED, still examinable:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction. AWS has removed this chapter from the DMS user guide; Snowball support ends **2026-12-31**. Modern answer: **DataSync** or **AWS Data Transfer Terminal**.
 *Verified against AWS docs 2026-09-30.*
 
 ## Comparisons
@@ -362,8 +369,8 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 ## Traps
 
 > [!warning] Trap — DMS offered as the tool that extracts to the Snowball Edge device
-> For a database too large for the available bandwidth, the shape of the answer is **SCT extracts
-> to the device, DMS finishes in the cloud**. Options reverse it — "use **DMS** to extract and load
+> On the **retired** Snowball path above — which the exam still asks — the shape of the answer is
+> **SCT extracts to the device, DMS finishes in the cloud**. Options reverse it — "use **DMS** to extract and load
 > the data to a Snowball Edge device" — and it is wrong because the cloud service has no presence
 > in your data centre; the local extraction is done by **AWS SCT** together with a **DMS Agent**
 > installed on-premises. Also wrong: **Direct Connect** "so DMS can migrate directly", which
@@ -411,7 +418,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 ## 🔗 Docs
 - [Working with AWS DMS Serverless](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Serverless.html)
 - [DMS targets](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Targets.html) · [DMS sources](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Sources.html)
-- [Migrating large data stores using AWS DMS and AWS Snowball Edge](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_LargeDBs.html)
+- DMS + Snowball Edge: **chapter removed from the AWS DMS user guide** — no live citation exists. Mechanism from the [archived 2022 copy](https://web.archive.org/web/20221129212529/https://docs.aws.amazon.com/dms/latest/userguide/CHAP_LargeDBs.Process.html); retirement dates from [AWS Snowball Edge availability change](https://docs.aws.amazon.com/snowball/latest/developer-guide/snowball-edge-availability-change.html).
 
 - [What is AWS DMS?](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html) — replication instance, one-time vs ongoing replication, heterogeneous support, SCT / DMS Schema Conversion, Fleet Advisor, KMS/SSL; verified 2026-09-26
 - [What is Step Functions?](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) — Standard vs Express table, the three integration patterns, state types; verified 2026-09-26

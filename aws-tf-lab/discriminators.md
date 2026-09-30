@@ -554,7 +554,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **user pool offered where an identity pool is needed** — The tell is what the app does after signing in. If it only needs to know who the user is, or to put a token in front of an API, that is a user pool.  
   ↳ [[24-other-services#Traps|note]]
-- **DMS offered as the tool that extracts to the Snowball Edge device** — For a database too large for the available bandwidth, the shape of the answer is SCT extracts to the device, DMS finishes in the cloud.  
+- **DMS offered as the tool that extracts to the Snowball Edge device** — On the retired Snowball path above — which the exam still asks — the shape of the answer is SCT extracts to the device, DMS finishes in the cloud.  
   ↳ [[24-other-services#Traps|note]]
 - **Glue, EMR or Kinesis offered for continuous database replication** — A stem wanting several RDS databases continuously consolidated into Redshift, with least development effort and no infrastructure to manage, is DMS.  
   ↳ [[24-other-services#Traps|note]]
