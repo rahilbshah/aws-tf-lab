@@ -84,7 +84,7 @@ If the scenario wants controlled proportions, that's **weighted**. If it wants r
 | | Reads | The dial you turn |
 |---|---|---|
 | **Geolocation** | where the **user** is — continent, country, US state | none; you map locations to records |
-| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment (the console **bias maps** need Traffic Flow; the policy itself does not) |
+| **Geoproximity** | where your **resources** are | a **bias** that grows or shrinks each resource's catchment — **+1 to +99** expands its region (shrinking adjacent ones), **−1 to −99** shrinks it. The **policy itself does not require Traffic Flow**; only the console's visual bias maps do |
 
 "German users must get the German site" is geolocation — a localization/compliance sentence. "Shift more traffic toward the bigger data centre" is geoproximity bias — a capacity sentence.
 
@@ -191,7 +191,7 @@ flowchart TB
 | **Latency** | lowest measured latency to an **AWS Region** | one | ✅ |
 | **Failover** | primary's health | primary, else secondary | ✅ (that's the point) |
 | **Geolocation** | where the **user** is (continent / country / US state) | one | ✅ |
-| **Geoproximity** | where your **resources** are + a **bias** you set | one | ✅ (needs Traffic Flow) |
+| **Geoproximity** | where your **resources** are + a **bias** you set (**+1…+99** expand, **−1…−99** shrink) | one | ✅ |
 | **Multivalue answer** | nothing | up to **8 healthy**, random | ✅ **yes** |
 | **IP-based** | CIDR blocks **you** supply | one | ✅ |
 
@@ -275,6 +275,7 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 - [ ] **Fixing a slow failover** — diagnosed the TTL cause correctly but didn't name the fix (lower the TTL; and you can't set one at all on an alias).
 
 ## 🔗 Docs
+- [Geoproximity routing and bias values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-geoproximity.html)
 
 - [Choosing a routing policy](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html) — all eight policies; verified 2026-09-03
 - [Simple routing](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-simple.html) — random order, client picks, **not health checked**; verified 2026-09-03

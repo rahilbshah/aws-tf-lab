@@ -233,8 +233,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Family letters | t burstable, m general, c compute, r memory, g/p GPU, i storage |
 | Generation suffixes a and g | t3a = AMD, t4g = Graviton/ARM |
-| Instance type separator | family.size with a literal period; t3-micro is rejected with InvalidParameterValue |
-| Instance-type change vs AMI change | Instance type: **stop-modify-start**, ~1–3 min downtime, same instance ID, EBS and EIP kept. AMI: **cannot** change in place — launch a replacement |
+| Instance type separator | `family.size` with a **literal period** — `t3.micro`. A hyphen (`t3-micro`) is **rejected** |
+| Instance-type change vs AMI change | Instance type: **stop-modify-start**, ~1–3 min downtime. **Kept:** instance ID, EBS volumes, Elastic IP. **Lost/changed:** an **auto-assigned public IPv4** changes and **instance-store data is destroyed**. AMI: **cannot** change in place — launch a replacement |
 | Attributes that force instance replacement | ami, subnet_id, key_name, associate_public_ip_address; in-place: instance_type, SG ids, instance profile |
 
 **AMI**
@@ -419,7 +419,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| max_aggregation_interval values | 600s default, or 60s — no other value |
+| max_aggregation_interval values | **600s default**, or **60s** for faster records — the two documented values |
 | Delivery lag on top of the aggregation interval | ⚠️ verify: ~5 min to CloudWatch Logs, ~10 min to S3 — AWS does not state this on the flow-log pages. Total wait = aggregation interval + lag |
 | Protocol numbers in a flow log record | 6 = TCP, 17 = UDP, 1 = ICMP |
 | Traffic never logged by flow logs | Amazon DNS (custom DNS is logged), DHCP, 169.254.169.254, 169.254.169.123, Windows activation, VPC router IP |
@@ -709,14 +709,14 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Meaning of weight 0 | Never return this record |
 | Geolocation catch-all for unmatched locations | A record with country `*` as the default |
 | Simple routing — health checks? | None; returns all values in random order, client picks |
-| Geolocation vs geoproximity | Geolocation reads where the USER is; geoproximity reads where your RESOURCES are, plus a bias |
+| Geolocation vs geoproximity | Geolocation = where the **USER** is (continent/country/US state) — localization, licensing, compliance. Geoproximity = where your **RESOURCES** are plus a **bias** (**+1…+99** expand, **−1…−99** shrink) — a capacity sentence. The policy does **not** need Traffic Flow; only the console's bias maps do |
 
 **Route 53 alias vs CNAME**
 
 | | |
 |---|---|
 | TTL on an alias record | You cannot set one — it uses the target's TTL |
-| Query cost: alias vs CNAME | Alias to AWS resources is free; a CNAME to another Route 53 record bills as two queries |
+| Query cost: alias vs CNAME | **Alias to an AWS resource: free.** A **CNAME is charged** like any other query — and **×2** when it targets another Route 53 record. Base rate **$0.40/million** for the first 1B/month |
 | Is an EC2 instance a valid alias target? | No — use a plain A record to its Elastic IP |
 | CNAME exclusivity rule | A name with a CNAME can have no other records at all at that name |
 
@@ -796,7 +796,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Snowball Edge current availability | No longer available to new customers — AWS directs to DataSync, AWS Data Transfer Terminal, or Outposts |
+| Snowball Edge current availability | **Being retired, not merely discouraged.** Closed to new customers **2025-11-07**; support for Snowball devices **ends in all commercial Regions 2026-12-31**. AWS directs new users to DataSync, AWS Data Transfer Terminal or Outposts. Still examinable |
 | Snowball Edge cluster size | 3–16 devices |
 | Snowball Edge Storage Optimized capacity | 210 TB |
 | Snowball Edge network adapter speed | Up to 100 Gbit/s |
@@ -1032,7 +1032,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | High-throughput FIFO TPS in other Regions | 19,000 Ohio/Frankfurt; 9,000 Mumbai/Singapore/Sydney/Tokyo/Spain; 4,500 London/São Paulo; 2,400 else |
 | What content-based deduplication hashes | the message body with SHA-256 — not the attributes |
 | MessageGroupId on a STANDARD queue | enables fair queues (on FIFO it is required — send fails without it) |
-| Deduplication window | 5 minutes |
+| Deduplication window | **FIFO only: 5 minutes.** A repeated `MessageDeduplicationId` inside that window is rejected. **Content-based deduplication** derives the ID from a SHA-256 of the message **body** |
 | FIFO throughput ceiling | 300 TPS per API action per partition; 3,000 messages/sec with batching (300 × 10) |
 | FIFO queue name requirement | must end in .fifo |
 
@@ -1141,7 +1141,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Execution role vs task role — who uses it | Execution role = the ECS/Fargate agent; task role = your application code |
 | What the execution role is actually required for | Private ECR pulls, the awslogs driver, Secrets Manager/SSM refs — NOT for a public Docker Hub pull |
-| Execution role trust principal and managed policy | Trusts ecs-tasks.amazonaws.com; attach AmazonECSTaskExecutionRolePolicy |
+| Execution role trust principal and managed policy | Attach **`AmazonECSTaskExecutionRolePolicy`** (verified). ⚠️ verify: that the trust principal is `ecs-tasks.amazonaws.com` |
 | Are execution-role credentials visible in the container? | No — "not directly accessible by the containers in the task"; task role creds are, via task metadata endpoint |
 
 **ECR & VPC endpoints**
@@ -1371,7 +1371,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Kinesis Data Analytics is now called | Amazon Managed Service for Apache Flink — renamed 30 August 2023 |
-| AWS Data Pipeline status | Closed to new customers, maintenance mode; console removed 30 April 2023 (CLI/API only) |
+| AWS Data Pipeline status | Closed to new customers, maintenance mode, console removed 30 April 2023 (CLI/API only). **Still listed in-scope in the SAA-C03 exam guide — still answer it** |
 | QuickSight rename | Now "Amazon Quick Sight", a feature within Amazon Quick; exam still says QuickSight |
 | Only analytics service explicitly out of scope | Amazon CloudSearch |
 | Exam task statement covering analytics | Task Statement 3.5 — determine high-performing data ingestion and transformation solutions |
@@ -1387,7 +1387,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| SageMaker rename | Amazon SageMaker AI as of 3 December 2024; "SageMaker" reused for the unified platform |
+| SageMaker rename | The ML service became **Amazon SageMaker AI** on 3 December 2024, and "Amazon SageMaker" was reused for a new unified data/analytics/AI platform. **On the exam, bare "Amazon SageMaker" means the ML service** |
 | Amazon Forecast status | Closed to new customers 29 July 2024 → SageMaker Canvas; still exam-answerable |
 | Amazon Fraud Detector status | Closed to new customers 7 November 2025 → SageMaker, AutoGluon, AWS WAF. **Still in the SAA-C03 exam guide — still answer it on the exam.** Legacy in the real world, not in the question bank |
 | Amazon Kendra status | Closed to new customers → Amazon Bedrock Knowledge Bases. **Still in the SAA-C03 exam guide — still answer it on the exam**, e.g. natural-language enterprise search. Do not eliminate it for being legacy |
