@@ -49,6 +49,33 @@ Fetch the `.md` twin of all 284 citations, require HTTP 200, classify
 This is the highest signal per token in either plan: minutes to run, exhaustive,
 no judgement required. **Run this one first, and separately, before any agent.**
 
+#### It needs two different methods, because only AWS 404s honestly
+
+| Host | Count | Check | Works? |
+|---|---|---|---|
+| `docs.aws.amazon.com` | 203 | fetch `<page>.md`, require **200** | **yes** — verified, 10% of a 20-URL sample failed |
+| `registry.terraform.io` | 51 | HTTP status | **no** |
+| `aws.amazon.com` + others | 30 | HTTP status, manual eyeball | partial (marketing pages move quietly) |
+
+The registry is a client-side-routed SPA that **never 404s**. Checked 2026-09-30:
+`…/docs/resources/iam_role` and `…/docs/resources/totally_fake_thing` both return
+**200**, both return **200** on `.md`, and both return a **byte-identical 8,497-byte
+JS shell** containing no content. There is no HTTP signal to read.
+
+**The fix is local and offline.** Terraform v1.15.3 is installed and the AWS provider
+is already downloaded under several topic folders, so the authoritative resource list
+comes from the provider itself:
+
+```bash
+cd 01-iam && terraform providers schema -json \
+  | python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin)["provider_schemas"]["registry.terraform.io/hashicorp/aws"]["resource_schemas"])))'
+```
+
+Every `registry.terraform.io/.../docs/resources/<x>` citation is then checked by asking
+whether `aws_<x>` exists in that list — which also catches the case a status check never
+could: a resource that was **renamed or removed in provider v6** while the URL still
+resolves. That is a more useful check than link-liveness anyway.
+
 ### A1. Claim extraction + verification (1 agent per note)
 
 Each agent gets one note, that note's slice of the A0 report, and the **caveat feed**
