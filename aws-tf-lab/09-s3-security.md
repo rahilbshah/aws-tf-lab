@@ -200,7 +200,7 @@ Two ways to become public (ACL, policy) × two timings (new, existing). All four
 - Works for **uploads** too (presigned `PUT`), which is the standard "let a browser upload directly to S3" pattern.
 
 ### Object Lock (WORM) — verified 2026-08
-- **Requires versioning**; locks a specific object **version**. `object_lock_enabled` is a **create-time** bucket property.
+- **Requires versioning** and locks a specific object **version**, not "the object". It can be enabled **either when creating the bucket or on an existing versioned bucket** (console, CLI, SDK or REST) — AWS documents both. What is irreversible is the other direction: once enabled you **cannot disable Object Lock or suspend versioning** on that bucket. A bucket with Object Lock also **cannot be a destination for server access logs**. *(Verified 2026-09-30.)*
 - **Retention period** — fixed "retain until" date. Can be **extended**, never shortened.
 - **Legal hold** — same protection, **no expiry**, independent of retention, removed explicitly (`s3:PutObjectLegalHold`).
 - **GOVERNANCE mode** — overridable by a principal with **`s3:BypassGovernanceRetention`** plus the `x-amz-bypass-governance-retention:true` header.
@@ -325,6 +325,7 @@ snapshot it, then create an encrypted volume from the snapshot.
 - [ ] **MFA Delete is root-only**, CLI-only.
 
 ## 🔗 Docs
+- [Configuring S3 Object Lock (incl. enabling on an existing bucket)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-configure.html)
 
 - [Server-side encryption overview](https://docs.aws.amazon.com/AmazonS3/latest/userguide/serv-side-encryption.html) — the four SSE options, SSE-S3 default since Jan 2023, **SSE-C disabled by default April 2026**; verified 2026-08
 - [Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) — WORM, GOVERNANCE vs COMPLIANCE, legal holds, delete behaviour; verified 2026-08

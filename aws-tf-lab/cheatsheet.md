@@ -73,7 +73,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Can IAM groups be nested? | No — user groups can contain only users, not other groups |
 | Can an IAM group be a policy Principal? | No — groups relate to permissions, not authentication; no federated identity can land in one |
-| Do IAM groups support tags? | No — AWS-side limitation |
 
 **IAM basics**
 
@@ -242,7 +241,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Canonical / Ubuntu AMI owner ID | 099720109477 (also: amazon, self) |
 | AMI scope and how to move one | region-scoped — ami-… is unique per region; copy with aws ec2 copy-image |
 | What an EBS-backed AMI actually is | metadata (kernel, architecture, virtualization type) plus references to EBS snapshots |
 | Accepted ip_protocol values | tcp, udp, icmp, icmpv6, -1 — never "ssh"/"http" |
@@ -562,7 +560,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Threading, per engine | Redis single-threaded (one core/node); Memcached multi-threaded |
 | Auto Discovery availability | Memcached only — AWS states it is NOT available for Valkey or Redis OSS |
 | Auto Discovery client requirement | An ElastiCache client library with Auto Discovery support |
-| Memcached persistence form | Redis persists via snapshots; AOF is not supported on ElastiCache |
+| Memcached persistence | **None at all** — no replication, no failover, no persistence, no backup. A dead node's data is gone |
 | What Memcached lacks, exactly | No replication, no failover, no persistence, no backup |
 | Valkey, one line | AWS-backed open-source Redis fork after Redis's licence change; ≈ Redis, minus Auto Discovery |
 
