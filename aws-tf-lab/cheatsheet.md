@@ -157,7 +157,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Terraform ebs_block_device.delete_on_termination default | true — an inline extra volume IS destroyed with the instance, opposite of the console default |
+| Extra EBS data volume — delete_on_termination default | **Console** at launch, or attached after launch: **Preserve** (false). At launch via **CLI/API**: **Delete** (true). Answer `false` on the exam; set it explicitly in practice |
 | Data volume attached at launch via CLI/API — default | Delete |
 | Data volume added via console at launch, or attached after launch | Preserve |
 | Additional EBS volume default (the exam answer) | false — survives termination, still billing, attachable in the same AZ |
@@ -235,7 +235,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Family letters | t burstable, m general, c compute, r memory, g/p GPU, i storage |
 | Generation suffixes a and g | t3a = AMD, t4g = Graviton/ARM |
 | Instance type separator | family.size with a literal period; t3-micro is rejected with InvalidParameterValue |
-| Instance-type change vs AMI change in Terraform | instance_type is in-place (~1–3 min downtime); ami is destroy-and-recreate |
+| Instance-type change vs AMI change | Instance type: **stop-modify-start**, ~1–3 min downtime, same instance ID, EBS and EIP kept. AMI: **cannot** change in place — launch a replacement |
 | Attributes that force instance replacement | ami, subnet_id, key_name, associate_public_ip_address; in-place: instance_type, SG ids, instance profile |
 
 **AMI**
@@ -259,7 +259,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Deleting an AMI leaves what behind? | the backing EBS snapshot — needs both deregister-image and delete-snapshot |
 | Boot time baked vs user_data install | ~30 sec vs 2–5 min |
-| Packer state vs Terraform state | Packer is stateless (build stage); Terraform is stateful (deploy stage) |
 | ami_name collisions | must be unique — Packer refuses to overwrite an existing name |
 | Tag argument for the snapshot, not the AMI | snapshot_tags (AMI uses tags) |
 | AWS-native managed equivalent of a Packer pipeline | EC2 Image Builder — test-before-distribute, multi-region, cross-account via AWS RAM, STIG components |
@@ -346,7 +345,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Scheduled action execution delay | May be delayed up to 2 minutes |
 | Process to suspend to pause all schedules | ScheduledActions |
 | Cron format and default time zone | 5-field [Minute] [Hour] [Day_of_Month] [Month_of_Year] [Day_of_Week], UTC unless an IANA time_zone is set |
-| Omitted min_size/max_size in a Terraform schedule | Default to 0, not "unchanged"; the sentinel for unchanged is -1 |
 | When min/max must be supplied with a schedule | When the new desired capacity would fall outside the group's current limits |
 
 **ELB cost & currency**
@@ -624,7 +622,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Retention vs legal hold | Retention = fixed date, extend-only never shorten; legal hold = no expiry, removed by explicit call |
 | COMPLIANCE mode escape hatch | None — not even root; AWS's documented way out before expiry is closing the AWS account |
 | When Object Lock can be enabled / disabled | At bucket creation or on an existing versioned bucket; can never be turned off, versioning can't be suspended |
-| MFA Delete — who can configure it | Root account with an MFA device, via CLI only; not IAM users, not console, not Terraform |
+| MFA Delete — who can configure it | **Root** account with an MFA device, via the **CLI only** — not an IAM user, not the console |
 
 **S3 replication**
 
