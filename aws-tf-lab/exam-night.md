@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*182 recall hooks · 340 pointers · ~30 min read*
+*182 recall hooks · 344 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -804,7 +804,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[20-monitoring#How it actually works|explain]]
 - CloudTrail's free 90-day Event history is management events only — everything else is a trail you configure.  
   ↳ [[20-monitoring#How it actually works|explain]]
-- SSM acts on the instance rather than watching it, and Session Manager is the  
+- SSM acts on the instance rather than watching it — Session Manager for a shell,  
   ↳ [[20-monitoring#Systems Manager — the one that reaches *into* the instance|explain]]
 - Reboot for a failed Instance check, recover for a failed System check — recover  
   ↳ [[20-monitoring#CloudWatch alarm actions on EC2 — reboot is not recover|explain]]
@@ -814,6 +814,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[20-monitoring#⚠️ Traps — why the wrong answer looks right|open]]
 - reboot offered for a failed system status check
 - "ACM auto-renews, so no monitoring is needed"
+- Patch Manager offered for "install this tool", Run Command for "apply this patch"
 - a bastion host offered for private-instance access
 - CloudTrail for "what did this resource look like"
 - memory utilisation in the EC2 console
@@ -826,6 +827,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - the alarm that never fires, and the one that fires constantly  ↳ [[20-monitoring#Worked examples|open]]
 
 **Comparisons**
+- [[20-monitoring#Which Systems Manager tool — the discrimination that actually gets tested|Which Systems Manager tool — the discrimination that actually gets tested]]
 - [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]]
 - [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]]
 - [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]]
@@ -946,7 +948,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 - Seven small services with real exam weight and no home elsewhere in the vault.  
   ↳ [[24-other-services#What problem does this solve?|explain]]
-- DMS moves the data (and keeps it in sync with CDC); SCT converts the schema when the engines differ.  
+- DMS moves the data and keeps it in sync with CDC, SCT converts the schema when the  
   ↳ [[24-other-services#AWS DMS — the migration answer, and the biggest gap here|explain]]
 - Standard is exactly-once and runs up to a year; Express is at-least-once, capped at five minutes, and built for volume.  
   ↳ [[24-other-services#Step Functions — orchestration, and one table that gets tested|explain]]
@@ -969,6 +971,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[24-other-services#Traps|open]]
 - user pool offered where an identity pool is needed
+- DMS offered as the tool that extracts to the Snowball Edge device
+- Glue, EMR or Kinesis offered for continuous database replication
 - DMS alone for a heterogeneous migration
 - Standard vs Express workflows
 - AD Connector or Simple AD where RDS for SQL Server is involved

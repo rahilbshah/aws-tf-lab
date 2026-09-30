@@ -19,6 +19,7 @@ Four services that answer four different questions, and an exam that mostly test
 > - **An alarm invokes actions only when it CHANGES state.** Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
 > - **Composite alarms exist to reduce alarm noise** — and they cannot perform EC2 or Auto Scaling actions.
 > - **EventBridge = CloudWatch Events, renamed.** Same service; a question naming either means the same thing.
+> - **Systems Manager is not just Session Manager.** **Run Command** = push an arbitrary command/installer once; **Patch Manager** = patch existing software against a baseline; **State Manager** = hold a desired state over time; **Maintenance Windows** = the *schedule* only, never the doer. "Install a tool" and "apply a patch" are different answers.
 > - **Alarm actions on EC2: `reboot` fixes an *Instance* status check, `recover` fixes a *System* one** (bad host → move to new hardware). `recover` works **only** with `StatusCheckFailed_System`. Recovery keeps the **instance ID and every IP including public IPv4**; it **loses RAM**. **Terminated instances can never be recovered.**
 > - **"Notify 30 days before a certificate expires"** → ACM's **`DaysToExpiry`** CloudWatch metric (published **twice daily**) and/or an **EventBridge** rule on **AWS Health** ACM events → **SNS**. Auto-renewal does not remove the need to watch it.
 
@@ -71,8 +72,8 @@ The four services above watch from outside. **AWS Systems Manager (SSM)** is the
 acts *on* the node. Everything it does requires the **SSM Agent** installed and able to
 reach the service; a node that meets both is a **managed node**.
 
-The exam almost only asks about **Session Manager**, and always the same way: *"connect to
-an instance in a private subnet"*. AWS's own wording is the answer:
+**Session Manager** is the most *recognisable* thing it does, and always asked the same way:
+*"connect to an instance in a private subnet"*. AWS's own wording is the answer:
 
 > *"Session Manager provides secure node management **without the need to open inbound
 > ports, maintain bastion hosts, or manage SSH keys**."*
@@ -81,16 +82,16 @@ That sentence kills three distractors at once — a bastion host, an inbound SSH
 key pair. Access is granted by **IAM policy**, not by a key, which is also why "revoke this
 engineer's access" is a policy change rather than a key rotation.
 
-The rest, one line each:
+But Session Manager is **not** most of the SSM questions. The rest of the toolset is asked at
+least as often, and the questions are built out of the *overlap* between these tools — several of
+them could plausibly install something on a fleet, and only one is right in each stem.
 
-| Tool | What it does |
-|---|---|
-| **Session Manager** | browser/CLI shell to a node — no inbound port, no bastion, no key |
-| **Patch Manager** | scans and installs OS/application patches on a schedule |
-| **Run Command** | runs a command across a fleet without logging in |
-| **Automation** | runbooks for multi-step ops tasks (the DR-drift remediation in [[14-dr-resilience]]) |
-| **Parameter Store** | config and secrets — see [[21-security]] for the Secrets Manager comparison |
-| **State Manager** · **Inventory** · **Fleet Manager** | hold nodes at a desired state · collect software inventory · manage nodes from a console |
+The full tool-by-tool split is in [[#Which Systems Manager tool — the discrimination that actually gets tested|Comparisons]] below.
+The two that get mixed up most are **Run Command** and **Patch Manager**, because both act on a
+whole fleet at once. The split is *what* you are pushing: an **arbitrary command or installer** is
+Run Command; an **update to existing software, assessed against a baseline** is Patch Manager.
+**Maintenance Windows** is the reliable wrong answer in both, because it schedules work rather
+than performing it.
 
 Two details worth carrying. A node **with no public IP and no NAT** can still be managed by
 adding **interface VPC endpoints** for Systems Manager ([[05-vpc-endpoints-peering]]) — that
@@ -98,8 +99,9 @@ is the fully-private answer. And sessions can be **logged to S3 or CloudWatch Lo
 EventBridge + SNS notifying on session start and stop, which is what makes it acceptable to
 auditors who liked having bastion logs.
 
-> In one line: SSM acts on the instance rather than watching it, and Session Manager is the
-> answer whenever a stem wants shell access without a bastion, an open port or a key.
+> In one line: SSM acts on the instance rather than watching it — Session Manager for a shell,
+> Run Command to push an arbitrary command or installer, Patch Manager to patch against a
+> baseline, and Maintenance Windows only ever to say *when*.
 
 ### CloudWatch alarm actions on EC2 — reboot is not recover
 
@@ -212,6 +214,19 @@ graph TB
 
 ## Comparisons
 
+### Which Systems Manager tool — the discrimination that actually gets tested
+
+| Tool | Its actual job | The stem that means it |
+|---|---|---|
+| **Run Command** | run a command or script across a fleet **once, now**, without logging in | "**install** a third-party tool", "make a **one-time** configuration change", "without SSH/RDP" |
+| **Patch Manager** | automate **patching** — security and other updates — against a **patch baseline** | "**patch** a security exposure", "keep the OS up to date", "compliance reporting on patch level" |
+| **Maintenance Windows** | **only a schedule** — a window in which disruptive work may run | "during a defined window", "outside business hours" — never the thing that *does* the work |
+| **State Manager** | hold nodes at a **desired state**, continuously, re-applying drift | "**ensure** agents stay installed", "keep configuration consistent over time" |
+| **Automation** | **runbooks** for multi-step operational tasks, incl. AWS-provided documents | "automate the whole sequence", a named `AWS-*`/`AWSEC2-*` runbook |
+| **Session Manager** | interactive **shell** to one node | "connect to", "get a shell", "no bastion / no open port / no key" |
+| **Parameter Store** | store **config values and secrets** — see [[21-security#Secrets Manager vs SSM Parameter Store]] | "store a config value", "no credentials in code" (**rotation → Secrets Manager**) |
+| **Inventory** · **Fleet Manager** | collect installed-software inventory · manage nodes from a console | "what is installed across the fleet" |
+
 ### The four services — the discrimination the exam actually tests
 | Question in the stem | Service | What it records |
 |---|---|---|
@@ -307,6 +322,16 @@ graph TB
 > your public certificates to a paid private CA to get an alert is the most expensive wrong answer
 > on the page.
 
+> [!warning] Trap — Patch Manager offered for "install this tool", Run Command for "apply this patch"
+> Two stems that look identical and have **opposite** answers. *"Install a third-party tool on 500
+> instances, quickly, and repeatedly from now on"* → **Run Command**: it runs an arbitrary command
+> or installer across a fleet, and it keeps working as instances are added. *"Patch thousands of
+> instances to remediate a security exposure"* → **Patch Manager**: patching existing software
+> against a baseline is the one thing it is for. Swapping them is the intended error. In both
+> stems, **Maintenance Windows** appears and is wrong for the same reason each time — it defines
+> **when** disruptive work may run, it does not run anything. And **State Manager** is wrong
+> whenever the task is one-off, because its job is holding a state over time.
+
 > [!warning] Trap — a bastion host offered for private-instance access
 > Any stem asking to reach an instance in a **private subnet** lists a bastion/jump host, an
 > inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme. All three are
@@ -348,6 +373,10 @@ graph TB
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [Systems Manager Run Command](https://docs.aws.amazon.com/systems-manager/latest/userguide/run-command.html)
+- [Systems Manager Patch Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-manager.html)
+- [Systems Manager Maintenance Windows](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-maintenance.html)
+- [Systems Manager State Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html)
 - [Stop, terminate, reboot, or recover an EC2 instance (CloudWatch alarm actions)](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingAlarmActions.html)
 - [Recover your instance (preserved vs lost elements)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html)
 - [ACM supported CloudWatch metrics (`DaysToExpiry`)](https://docs.aws.amazon.com/acm/latest/userguide/cloudwatch-metrics.html)

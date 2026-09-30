@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*109 comparison tables · 194 discriminators · ~36 min read*
+*110 comparison tables · 197 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -458,11 +458,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[20-monitoring|20 – Monitoring (CloudWatch, CloudTrail, Config, EventBridge)]]
 
-**Compare:** [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+**Compare:** [[20-monitoring#Which Systems Manager tool — the discrimination that actually gets tested|Which Systems Manager tool — the discrimination that actually gets tested]] · [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
 
 - **reboot offered for a failed system status check** — The stem describes an instance made unreachable by a fault on the underlying host and offers a reboot alarm.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ACM auto-renews, so no monitoring is needed"** — True and irrelevant. Auto-renewal can still fail — DNS validation records removed, a CAA record blocking issuance, an email-validated certificate nobody clicked.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **Patch Manager offered for "install this tool", Run Command for "apply this patch"** — Two stems that look identical and have opposite answers. "Install a third-party tool on 500 instances, quickly, and repeatedly from now on" → Run Command: it runs an arbitrary command or installer across a fleet, and it keeps working as instances are added.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **a bastion host offered for private-instance access** — Any stem asking to reach an instance in a private subnet lists a bastion/jump host, an inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
@@ -551,6 +553,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]] · [[24-other-services#Directory Service options|Directory Service options]] · [[24-other-services#Batch vs Lambda|Batch vs Lambda]] · [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
 
 - **user pool offered where an identity pool is needed** — The tell is what the app does after signing in. If it only needs to know who the user is, or to put a token in front of an API, that is a user pool.  
+  ↳ [[24-other-services#Traps|note]]
+- **DMS offered as the tool that extracts to the Snowball Edge device** — For a database too large for the available bandwidth, the shape of the answer is SCT extracts to the device, DMS finishes in the cloud.  
+  ↳ [[24-other-services#Traps|note]]
+- **Glue, EMR or Kinesis offered for continuous database replication** — A stem wanting several RDS databases continuously consolidated into Redshift, with least development effort and no infrastructure to manage, is DMS.  
   ↳ [[24-other-services#Traps|note]]
 - **DMS alone for a heterogeneous migration** — DMS moves data. It does not translate a schema between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs AWS SCT / DMS Schema Conversion first, then DMS.  
   ↳ [[24-other-services#Traps|note]]

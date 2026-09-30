@@ -13,6 +13,9 @@ The catch-all. Seven services that are individually too small for their own note
 
 > [!info] Exam TL;DR
 > - **DMS** migrates data and can **keep replicating (CDC)** so downtime is minimal; it runs on a **replication instance**. **Different engines ⇒ convert the schema first with AWS SCT / DMS Schema Conversion.** Oracle → Aurora PostgreSQL = **SCT + DMS**.
+> - **DMS targets are not just databases:** **Redshift**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, Kafka, Neptune, DocumentDB — and **S3 can be a source**. "Continuously replicate RDS into a warehouse" = **DMS → Redshift**, not Glue or EMR.
+> - **DMS Serverless** auto-provisions and scales capacity (a **replication configuration**, no instance to size) — the answer for **spiky volume + least operational overhead**.
+> - **Too big for the bandwidth?** **SCT + a local DMS Agent** extract onto a **Snowball Edge**; AWS unloads it to **S3**; a **remote DMS task** loads the target. DMS itself does *not* do the extraction.
 > - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** at-least-once, **5 minutes**, 100,000/sec, priced by count+duration, **Request Response only**.
 > - **AppSync = managed GraphQL** with real-time **WebSocket subscriptions**; API Gateway = REST/HTTP/WebSocket. Amplify is built on AppSync.
 > - **AWS Batch** runs **containerised** jobs on ECS/EKS across EC2/Fargate/**Spot**, with **no time limit** — the answer when Lambda's **15 minutes** isn't enough.
@@ -63,7 +66,40 @@ The exam question is almost always some form of: *"migrate a 5 TB on-premises Or
 
 Also worth a line each: **DMS Fleet Advisor** inventories your on-premises database estate to help plan a migration, data at rest is encrypted with **KMS** and in flight with **SSL**, and DMS provides **automatic failover** to a backup replication server.
 
-> In one line: DMS moves the data (and keeps it in sync with CDC); SCT converts the schema when the engines differ.
+**It is not only database-to-database.** This is the part most people carry wrongly: DMS reads
+from and writes to things that are not relational databases at all, which is why it turns up as
+the answer to questions that look like analytics or streaming problems.
+
+| Direction | Includes |
+|---|---|
+| **Targets** | RDS · Aurora (incl. **Babelfish**) · **Redshift** and **Redshift Serverless** · **S3** · **DynamoDB** · **OpenSearch Service** · ElastiCache (Redis OSS) · **Kinesis Data Streams** · DocumentDB · Neptune · Apache Kafka |
+| **Sources** | the commercial and open-source engines, plus **S3** |
+
+So "continuously replicate several RDS databases into a petabyte-scale warehouse" is **DMS →
+Redshift**, not Glue and not EMR. "Stream existing S3 files and ongoing updates into Kinesis Data
+Streams" is **DMS with S3 as the source**, not a Lambda triggered by S3 events. "Move an embedded
+NoSQL database to a managed one" is **DMS → DynamoDB**.
+
+**DMS Serverless.** The replication *instance* above is the Standard model, where you size and
+manage the compute. **DMS Serverless** instead does *"automatic provisioning, scaling, built-in
+high availability, and a pay-for-use billing model"*, and *"eliminates replication instance
+management tasks like capacity estimation, provisioning, cost optimization, and managing
+replication engine versions and patching."* You create a **replication configuration** rather than
+an instance; DMS inspects the source metadata, computes the capacity it needs, and scales as the
+workload moves. Trigger words: load that **varies or spikes**, *"dynamically allocate capacity"*,
+**least operational overhead**.
+
+**When the data is too big for the pipe.** DMS can stage a migration through an **AWS Snowball
+Edge** device, and the division of labour is the testable part. Locally you run **AWS SCT** plus a
+**DMS Agent** (an on-premises build of DMS) — those extract the data and load it onto the Edge
+device. You ship the device back; AWS unloads it into an **Amazon S3** staging bucket; then a
+**remote DMS task** migrates from S3 into the target. Cloud DMS never touches your data centre, so
+an option saying *DMS* extracts to the device has the two halves the wrong way round. See
+[[12-storage-extras]] for the Snow Family itself — including that it is now closed to new
+customers.
+
+> In one line: DMS moves the data and keeps it in sync with CDC, SCT converts the schema when the
+> engines differ, and the target can be a warehouse, a stream or a NoSQL store — not just a database.
 
 ### Step Functions — orchestration, and one table that gets tested
 
@@ -261,6 +297,11 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - **AD Connector** is a **proxy** that forwards sign-in requests to on-premises domain controllers — **no directory sync, no federation infrastructure**; supports seamless EC2 domain join and RADIUS-based MFA; **not compatible with RDS SQL Server**.
 - **Simple AD** is **Samba 4**-based and AD-*compatible*. It does **not** support **MFA, trust relationships, DNS dynamic update, schema extensions, LDAPS, PowerShell AD cmdlets or FSMO role transfer**, and is **not compatible with RDS SQL Server**.
 
+- **DMS is not database-to-database only.** Targets include **Redshift / Redshift Serverless**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, DocumentDB, Neptune, Apache Kafka and **Babelfish** for Aurora PostgreSQL; **S3 can also be a source**. DMS → Redshift beats Glue/EMR for *continuous replication into a warehouse*.
+- **DMS Serverless** vs **DMS Standard**: Serverless auto-provisions and auto-scales capacity with built-in HA and pay-for-use, and removes capacity estimation, provisioning and engine patching. You define a **replication configuration**, not a replication instance. Trigger: spiky/variable volume + least operational overhead.
+- **DMS with Snowball Edge:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction.
+*Verified against AWS docs 2026-09-30.*
+
 ## Comparisons
 
 ### Step Functions — Standard vs Express
@@ -320,6 +361,24 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 ## Traps
 
+> [!warning] Trap — DMS offered as the tool that extracts to the Snowball Edge device
+> For a database too large for the available bandwidth, the shape of the answer is **SCT extracts
+> to the device, DMS finishes in the cloud**. Options reverse it — "use **DMS** to extract and load
+> the data to a Snowball Edge device" — and it is wrong because the cloud service has no presence
+> in your data centre; the local extraction is done by **AWS SCT** together with a **DMS Agent**
+> installed on-premises. Also wrong: **Direct Connect** "so DMS can migrate directly", which
+> solves bandwidth with months of lead time and cost when the stem said *within the next few
+> weeks*; and **enabling compression** then migrating directly, which does not change the order of
+> magnitude.
+
+> [!warning] Trap — Glue, EMR or Kinesis offered for continuous database replication
+> A stem wanting several RDS databases **continuously consolidated into Redshift**, with least
+> development effort and no infrastructure to manage, is **DMS**. **Glue** is ETL — batch jobs and
+> a catalogue, not change data capture off a live database. **EMR** is a managed Hadoop/Spark
+> cluster, which is infrastructure the stem explicitly did not want. **Kinesis Data Streams** is a
+> stream you would still have to write producers and consumers for. DMS does CDC natively and
+> takes **Redshift as a target**, which is the whole reason it wins.
+
 > [!warning] Trap — DMS alone for a heterogeneous migration
 > DMS moves **data**. It does not translate a **schema** between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs **AWS SCT / DMS Schema Conversion** first, then DMS. An option offering "use DMS to migrate the database" with no schema-conversion step is incomplete for heterogeneous migrations — and is the correct answer only when the source and target run the **same** engine.
 
@@ -350,6 +409,9 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [Working with AWS DMS Serverless](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Serverless.html)
+- [DMS targets](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Targets.html) · [DMS sources](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Sources.html)
+- [Migrating large data stores using AWS DMS and AWS Snowball Edge](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_LargeDBs.html)
 
 - [What is AWS DMS?](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html) — replication instance, one-time vs ongoing replication, heterogeneous support, SCT / DMS Schema Conversion, Fleet Advisor, KMS/SSL; verified 2026-09-26
 - [What is Step Functions?](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) — Standard vs Express table, the three integration patterns, state types; verified 2026-09-26

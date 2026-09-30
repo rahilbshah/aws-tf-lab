@@ -128,7 +128,7 @@ Two very different answers, and the discriminator is simple.
 **The Snow Family** moves data **physically**, on a rugged device AWS ships you. Snowball Edge comes Storage Optimized (210 TB) or Compute Optimized, encryption is enforced, and the devices can also run EC2 instances and Lambda at the edge — which is the other half of why they exist, for sites with poor connectivity.
 
 > [!warning] Currency — Snowball Edge is closing to new customers
-> AWS's own documentation now states that **Snowball Edge is no longer available to new customers**, and directs new users to **DataSync** for online transfer, **AWS Data Transfer Terminal** for physical transfer, or **AWS Outposts** for edge compute. SAA-C03 material almost certainly still tests Snow, so learn it — but know it is being wound down. (Verified 2026-09-05.)
+> AWS's own documentation now states that **Snowball Edge is no longer available to new customers**, and directs new users to **DataSync** for online transfer, **AWS Data Transfer Terminal** for physical transfer, or **AWS Outposts** for edge compute. There is now a hard end date: AWS will **discontinue support for Snowball devices in all commercial Regions on 2026-12-31**, after which the Snow Console and Snowball resources become inaccessible. SAA-C03 material still tests Snow, so learn it — but know it is being retired, not merely discouraged. (Closed to new customers **2025-11-07**; re-verified 2026-09-30.)
 
 > In one line: DataSync goes over the wire and can repeat on a schedule; Snow goes in a truck because the wire would take too long.
 
