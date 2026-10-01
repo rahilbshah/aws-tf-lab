@@ -145,6 +145,8 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 ## Key facts, limits & pricing
 
+- ⚠️ verify: that programmatic, **paginated** retrieval of cost, usage and forecast data requires the **Cost Explorer API** (`ce:GetCostAndUsage`, `ce:GetCostForecast`) rather than the console's CSV export or a CUR file in S3. The direction is right — the API is the documented programmatic interface and CUR is a bulk file drop, not a query API — but I could not confirm the pagination wording first-party.
+
 - ⚠️ verify: that a **Spot request** is either **one-time** or **persistent** (a persistent request re-opens after an interruption, and after a manual stop only once you start the instance again), and that **cancelling an active Spot request does not terminate** the instance it already launched. The distinction is real and commonly tested; AWS's current Spot pages steer toward **EC2 Fleet / Spot Fleet** — which *is* the construct that maintains a **target capacity** by launching replacements — and I could not confirm the one-time-vs-persistent wording first-party.
 
 - **Two different rightsizing tools, and the exam separates them.** **Cost Explorer** has its own **rightsizing recommendations**: *"identify cost-saving opportunities by downsizing or terminating instances in Amazon EC2"*, showing **underutilised instances across member accounts in a single view** — a *spend* view, netting out what you already own. **AWS Compute Optimizer** is the one that recommends the **instance type and size** from CloudWatch metrics. Neither recommends **purchasing options** — Savings Plans and RI recommendations are a Cost Explorer feature, and Compute Optimizer never does them. *(Verified 2026-10-01.)*

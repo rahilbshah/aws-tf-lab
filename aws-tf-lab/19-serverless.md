@@ -59,6 +59,8 @@ graph LR
 
 ## Key facts, limits & pricing
 
+- **API Gateway has three API types, and WebSocket is the stateful one.** **REST** and **HTTP** APIs are stateless request/response. A **WebSocket API** keeps a **persistent, two-way connection** open, so the backend can **push** to the client — the answer for chat, live dashboards, multiplayer and streaming notifications, where polling a REST API is the distractor. ⚠️ verify: the per-connection limits and idle timeout.
+
 - **Lambda environment variables are already encrypted at rest** — *"Lambda stores environment variables securely by encrypting them at rest"* with a default service key. That protects the storage, not the *display*: anyone who can read the function configuration sees the values. To hide a value from other developers you **configure Lambda to use your own KMS key** and encrypt the value, encrypt it **client-side**, or keep it out of the function entirely in **Secrets Manager** / Parameter Store — which is the better answer whenever the value is a credential. *(Verified 2026-10-01.)*
 
 - **API Gateway throttling:** token bucket — a **steady-state rate** plus a **burst**; over the limit is **`429 Too Many Requests`** and the request never reaches the backend. Settable **per stage**, **per method**, or **per client** via a **usage plan** + API key (per-client can't exceed per-account).

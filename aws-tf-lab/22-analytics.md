@@ -165,6 +165,8 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 ## Key facts, limits & pricing
 
+- ⚠️ verify: **EMR runtime roles** — an IAM role supplied **at job-submission time** so each job gets its own permissions, instead of every job inheriting the cluster's **EC2 instance profile**. This is the multi-tenant-EMR answer (per-job isolation on a shared cluster) and is distinct from the EMR service role and the instance profile, but I could not reach a live AWS page to confirm the detail.
+
 - **Glue encryption is configured by a *security configuration***, a named object that specifies the KMS key for a job's S3 output, CloudWatch logs and job bookmarks — you attach it to the job. The consequence the exam uses: **per-client KMS keys mean one job plus one security configuration per client**, not a single shared pipeline that tags each client's rows. "Separate keys per tenant" therefore multiplies jobs, which is the cost of the requirement. *(Verified 2026-10-01.)*
 
 - **Athena** is serverless, uses standard SQL, queries S3 directly, and charges **$5 per TB scanned** (us-east-1, checked 2026-09-26 — verify current pricing). You pay only for queries you run. Athena also supports **Apache Spark** notebooks alongside SQL.

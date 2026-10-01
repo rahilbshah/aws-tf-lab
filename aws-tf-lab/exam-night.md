@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 330 pointers · ~29 min read*
+*176 recall hooks · 331 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -148,7 +148,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Spreading is placement, surviving is arithmetic — per-AZ = N ÷ (A − 1), and  
   ↳ [[04-alb-asg#Sizing min / desired / max for the loss of an AZ|explain]]
 
-**Traps** [[04-alb-asg#Comparisons|open]]
+**Traps** [[04-alb-asg#How it actually works|open]]
+- suspending ScheduledActions to protect an instance during maintenance
 - cross-zone distribution computed as if the AZs were merged
 - minimum capacity set to N when an AZ must be survivable
 - "the ALB terminates the unhealthy instance"

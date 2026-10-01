@@ -193,6 +193,55 @@ without being deleted gets moved to the **back** of the queue, and the metric th
 > In one line: never scale a queue consumer on CPU, and never on raw queue depth either — use
 > backlog per instance, or message age when the requirement is stated as latency.
 
+### Taking one instance out of service without the ASG fighting you
+
+Patching a running instance inside an Auto Scaling group is a scenario the exam likes, because
+the group's instinct is to replace anything that looks unhealthy. There are two purpose-built
+answers and they are often both correct in one question.
+
+**Standby.** *"You can put an instance that is in the `InService` state into the `Standby` state,
+update or troubleshoot the instance, and then return the instance to service. Instances that are
+on standby are **still part of the Auto Scaling group, but they do not actively handle load
+balancer traffic**."* It stays in the group — so desired capacity is unaffected — and comes back
+with exit-standby. Two neighbours to keep apart: **detaching** removes it from the group
+entirely (for managing it standalone or moving it to another group), and **instance refresh**
+terminates and replaces instances rather than preserving one.
+
+**Suspending a process.** An ASG runs several processes you can suspend individually:
+**`Launch`**, **`Terminate`**, **`AddToLoadBalancer`**, **`AlarmNotification`**, **`AZRebalance`**,
+**`InstanceRefresh`**, **`ReplaceUnhealthy`** and **`ScheduledActions`**. To patch in place
+without the group killing the instance, suspend **`ReplaceUnhealthy`**. Suspending
+`ScheduledActions` only pauses *scheduled scaling* — it does nothing about replacement.
+
+> [!warning] Trap — suspending `ScheduledActions` to protect an instance during maintenance
+> It is the wrong process. `ScheduledActions` pauses **scheduled scaling actions**; the process
+> that terminates and relaunches an instance the group considers unhealthy is
+> **`ReplaceUnhealthy`**. A stem about patching one instance "as quickly as possible" usually
+> wants **Standby** and/or suspending **`ReplaceUnhealthy`** — and `ScheduledActions` sits there
+> as the plausible distractor precisely because it is the one process everyone has heard of.
+
+### Cooldown is a simple-scaling-only mechanism
+
+*"After your Auto Scaling group launches or terminates instances, it waits for a cooldown period
+to end before any further scaling activities **initiated by simple scaling policies** can start.
+The intention… is to let your Auto Scaling group stabilize and prevent it from launching or
+terminating additional instances **before the effects of the previous scaling activity are
+visible**."* The API default is **`DefaultCooldown`: 300 seconds**.
+
+The discrimination that matters: **target tracking and step scaling ignore cooldown entirely** —
+they *"can initiate a scale-out activity immediately without waiting for the cooldown period to
+end"* and use **instance warm-up** instead. So cooldown is the answer only when the stem is on
+**simple scaling**.
+
+So a group **oscillating up and down within the hour** under simple scaling is fixed by
+**raising the cooldown** (and widening the CloudWatch alarm thresholds so the two policies stop
+tripping over each other). Two more details: when several instances launch at once the cooldown
+starts from the **last** one finishing, and **manual** scaling does *not* honour the cooldown by
+default.
+
+⚠️ Currency: AWS now says *"we recommend that you do not use simple scaling policies and scaling
+cooldowns"* — target tracking is preferred. The exam still asks the cooldown mechanics.
+
 ### Three ASG mechanics the exam asks about
 
 **Instance warm-up.** A newly launched instance is counted toward capacity but its metrics are
@@ -282,6 +331,12 @@ flowchart TD
 ```
 
 ## Key facts, limits & pricing
+
+- **`Standby`** holds an `InService` instance **in the group but out of load-balancer traffic** for patching; **detach** removes it from the group; **instance refresh** replaces instances instead.
+- **Suspendable ASG processes:** `Launch`, `Terminate`, `AddToLoadBalancer`, `AlarmNotification`, `AZRebalance`, `InstanceRefresh`, **`ReplaceUnhealthy`**, `ScheduledActions`. Suspend **`ReplaceUnhealthy`** to patch in place — **not** `ScheduledActions`, which only pauses scheduled scaling.
+- **Cooldown** (`DefaultCooldown`, default **300 s**) applies **only to simple scaling policies** — target tracking and step scaling scale out immediately and use **instance warm-up** instead. Starts from the **last** instance finishing; **manual** scaling ignores it by default. Raising it is the fix for a simple-scaling group oscillating.
+- ⚠️ verify: that an ASG will not terminate an instance in **`Impaired`** status (waiting a few minutes for recovery), and that ASG does **not** act on **custom** health checks at all.
+*Verified against AWS docs 2026-10-01.*
 
 - **ALB requires at least 2 AZs** (enforced). NLB recommended 2+, not strictly required.
 - **Cross-zone load balancing:** ALB — always on at the LB level, can't disable there (only override off per target group); **free**. NLB/GWLB — **off by default**; enabling it means each node spreads to all AZs but **inter-AZ data transfer is billed**. (Exam-frequent.)
@@ -442,6 +497,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [Temporarily remove an instance (Standby)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html) · [Suspend and resume processes](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) · [Scaling cooldowns](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scaling-cooldowns.html)
 - [Scaling based on an SQS queue (backlog per instance)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html) · [Lifecycle hooks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html) · [Step and simple scaling (warm-up)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-simple-step.html)
 - [ALB target group health checks (defaults and ranges)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html)
 

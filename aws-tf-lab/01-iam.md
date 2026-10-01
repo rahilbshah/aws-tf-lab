@@ -168,6 +168,10 @@ flowchart TD
 
 ## Key facts, limits & pricing
 
+- **One account-wide password policy, not per user.** *"You can set a custom password policy on your AWS account to specify complexity requirements and mandatory rotation periods for your IAM users' passwords"* — and without one, users fall back to the **default AWS password policy**. It is an account setting: not an IAM policy you attach, not a Config rule, and not settable per user.
+- **An IAM user created by CLI/API/SDK starts with no credentials at all** — no console password and no access keys. Only the **console** create-user flow offers to make them. So "the new user cannot call the API" after programmatic creation is expected: you must create an access key (or better, a password + MFA for a human, or skip the user entirely and use a role).
+- **A `Deny` carrying a `Condition` only denies while the condition is true.** A statement denying an action when `aws:SourceIp` matches one address blocks it *from that address* and leaves it allowed everywhere else. Reading a conditional Deny as a blanket Deny is a common misread — and the mirror case is a conditional **Allow**, which grants nothing outside its condition. *(Verified 2026-10-01.)*
+
 - **Tasks only the root user can do** — AWS keeps a documented list, and these are the ones the exam uses: **close the AWS account**, **change account settings** (name, root email, root password), **restore IAM user permissions** when an administrator has locked everyone out, **remove a misconfigured bucket policy that denies all principals**, **delete an SQS resource-based policy that denies all principals**, **activate IAM access to the Billing console**, and **remove a member account's root credentials**. A principal holding `AdministratorAccess` **cannot** do them. Elsewhere in the vault: enabling **S3 MFA Delete** is also root-only ([[09-s3-security]]).
 - **`Sid` is a free-form label** with no effect on evaluation — it exists to name a statement, not to scope it. What a statement applies to comes from **`Resource`**, and in an ARN the resource is the **trailing segment** (`…:directory/d-1234567890`); the 12-digit number earlier in the ARN is the **account ID**, not the resource. *(Verified 2026-10-01.)*
 
@@ -340,6 +344,7 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
 
 ## 🔗 Docs
+- [Set an account password policy for IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_passwords_account-policy.html)
 - [Tasks that require root user credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html)
 - [Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)
 

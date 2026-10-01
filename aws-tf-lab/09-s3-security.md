@@ -160,6 +160,9 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
+- **Conditions in one `Condition` block are ANDed.** So `IpAddress` (allow this CIDR) together with `NotIpAddress` (except this address) in the **same statement** authorises *the range **minus** the carved-out address* — one grant with two tests, not two separate grants. The same shape appears as `aws:SourceIp` allow-plus-exclude in bucket policies and SCPs. Getting this backwards and reading them as alternatives is why a policy looks more permissive than it is.
+- **S3 Access Point use can itself be governed by an SCP** across an Organization, which is how per-team least privilege is enforced at scale on a shared bucket — the access point carries its own policy, and the SCP bounds what member accounts may do with access points at all.
+
 ### Access control
 - **IAM policy** = attached to a *principal*, answers "what can this user/role do?" Use for your own account's identities.
 - **Bucket policy** = attached to the *bucket*, answers "who may act on this bucket?" Required for **cross-account** access and for **anonymous/public** access. Max size **20 KB**.
