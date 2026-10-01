@@ -141,6 +141,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **S3 static website behind a custom domain: the bucket name must equal the domain name.** AWS is explicit — *"These bucket names must match your domain name exactly."* So `example.com` is served from a bucket called `example.com`, and the usual pattern adds a second bucket named `www.example.com` configured purely as a **redirect** to it. A Route 53 alias resolves to the **website endpoint**, which is derived from the bucket name — which is why the names cannot differ. (The website endpoint is **HTTP-only**; HTTPS needs CloudFront in front.) *(Verified 2026-10-01.)*
+
 - **Namespace:** bucket names are **globally unique across all AWS accounts**; buckets are **regional** resources. Names are DNS-compatible (3–63 chars, lowercase, no underscores).
 - **Object size:** 0 bytes to **50 TB** (raised from 5 TB on 2025-12-02; AWS's multipart limits table states the exact ceiling as **48.8 TiB**). Older practice questions still answer 5 TB. A single `PUT` maxes at **5 GB** — beyond that you must use **multipart upload** (see [[09-s3-advanced]]).
 - **Durability: 99.999999999% (11 nines)** — *designed for* — on **every** storage class. Achieved by redundantly storing across **≥3 AZs** (One Zone classes: **1 AZ**, same 11-nines durability but **lost if that AZ is destroyed**).
@@ -210,6 +212,7 @@ flowchart LR
 - [ ] **`etag = filemd5()`** required with `source`, and **`content_type`** required for browser rendering.
 
 ## 🔗 Docs
+- [Static website with a custom domain (bucket names must match exactly)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/website-hosting-custom-domain-walkthrough.html)
 
 - [S3 storage classes comparison](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html) — durability/availability/AZs/min-duration/min-size table; **verified 2026-08**
 - [Using versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html) — delete markers

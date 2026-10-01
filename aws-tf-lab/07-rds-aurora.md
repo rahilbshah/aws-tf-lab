@@ -316,6 +316,10 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
+- **Aurora failover priority tiers run 0–15, and 0 is the *highest* priority** — *"Priorities range from 0 for the highest priority to 15 for the lowest priority"*, and RDS promotes the replica with the highest priority. Ties: *"If two or more Aurora Replicas share the same priority, then Amazon RDS promotes the replica that is **largest in size**"*, and if size ties too, an arbitrary one in that tier. Changing a priority does **not** trigger a failover. And **after five unsuccessful failover attempts, promotion tiers are no longer considered**.
+- **RDS can replicate automated backups cross-Region:** *"you can configure your Amazon RDS database instance to replicate snapshots and transaction logs to a destination AWS Region of your choice"*, copied as soon as they are ready — which gives **cross-Region point-in-time restore**. Plain automated backups are single-Region, so Multi-AZ alone is **not** a DR story. *(Verified 2026-10-01.)*
+- ⚠️ verify: that a read replica **inherits** the source's encryption state (an encrypted source cannot have an unencrypted replica, and vice versa). The dedicated AWS page for this has been removed; the rule is widely stated but I could not confirm it first-party.
+
 - **RDS storage autoscaling** (plain RDS, not just Aurora): set a **maximum storage threshold** and RDS grows allocated storage automatically. Triggers at **≤10% free**, sustained **5 minutes**, **<4 modifications in 24h**; each step is the greater of **10 GiB or 10%**. Not supported for additional storage volumes.
 - **Aurora cloning:** a new cluster sharing the source volume **copy-on-write** — ready in minutes, minimal extra storage, isolated from the source. **Up to 15** clones; the 16th is a **full copy**. Not a snapshot restore (copies bytes) and not Backtrack (rewinds the source).
 - **Stopped RDS still bills** provisioned storage (incl. PIOPS), backup storage, and a public IPv4 if publicly accessible — only **instance hours** stop. RDS **auto-starts it after 7 consecutive days**. Long parking = snapshot + delete + restore.
@@ -500,6 +504,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 - [ ] **Aurora Replicas double as failover targets** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
 
 ## 🔗 Docs
+- [Aurora high availability and failover priority tiers](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html) · [Replicating automated backups to another Region](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReplicateBackups.html)
 - [RDS storage autoscaling](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIOPS.Autoscaling.html) · [Aurora cloning (copy-on-write)](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Managing.Clone.html) · [Stopping a DB instance (7-day restart, what still bills)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html) · [Read replicas (same-Region replication is free)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) · [Failing over an Aurora cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-failover.html) · [Amazon DocumentDB](https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html)
 - [Using Babelfish for Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/babelfish.html)
 - [Monitoring OS metrics with Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html)

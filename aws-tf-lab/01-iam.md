@@ -168,6 +168,9 @@ flowchart TD
 
 ## Key facts, limits & pricing
 
+- **Tasks only the root user can do** — AWS keeps a documented list, and these are the ones the exam uses: **close the AWS account**, **change account settings** (name, root email, root password), **restore IAM user permissions** when an administrator has locked everyone out, **remove a misconfigured bucket policy that denies all principals**, **delete an SQS resource-based policy that denies all principals**, **activate IAM access to the Billing console**, and **remove a member account's root credentials**. A principal holding `AdministratorAccess` **cannot** do them. Elsewhere in the vault: enabling **S3 MFA Delete** is also root-only ([[09-s3-security]]).
+- **`Sid` is a free-form label** with no effect on evaluation — it exists to name a statement, not to scope it. What a statement applies to comes from **`Resource`**, and in an ARN the resource is the **trailing segment** (`…:directory/d-1234567890`); the 12-digit number earlier in the ARN is the **account ID**, not the resource. *(Verified 2026-10-01.)*
+
 - **Securing a brand-new account (the root user):** use a **strong, unique password** and **turn on MFA for the root user** — AWS now states that **all account types (standalone, management, member) require MFA for their root user**, registered within **35 days** of the first console sign-in attempt, and you may register **up to 8 MFA devices**. Use root only for [the tasks that require it](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html), and **never share** the root password, MFA, access keys, CloudFront key pairs or signing certificates. For accounts inside **Organizations**, AWS recommends **removing root credentials from member accounts** entirely — password, access keys, signing certificates and MFA — after which those accounts cannot sign in as root at all.
   **The testable point:** root **access keys should not exist**. Distractors that offer to *encrypt* root keys and store them in S3, or share them "only with the owner", or email them, are all wrong however careful the handling sounds. *(Verified 2026-10-01.)*
 
@@ -337,6 +340,7 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
 
 ## 🔗 Docs
+- [Tasks that require root user credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html)
 - [Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)
 
 - [AWS IAM User Guide (entry point)](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html)

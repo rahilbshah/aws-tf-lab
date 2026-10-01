@@ -103,6 +103,10 @@ graph TB
 
 ## Key facts, limits & pricing
 
+- **An AWS CloudHSM key store** (the custom key store) is *"a custom key store backed by an AWS CloudHSM cluster"*: KMS *"generates and stores **non-extractable** key material for the KMS key in an AWS CloudHSM cluster **that you own and manage**"*, and cryptographic operations run **in the HSMs in that cluster**. That one design gives all three things a stem usually asks for together — KMS's integrations, **full control** of the cluster, and an **independent audit trail** via the CloudHSM client (*"view, audit, and manage the key material"*). Also: **while the key store is disconnected, KMS cannot access it** and the keys cannot be used — the "make key material unavailable immediately" answer. The cluster needs **at least two active HSMs in different AZs**.
+- **Shield Advanced's $3,000/month is charged once per consolidated-billing family:** *"When you subscribe multiple accounts that are in the same AWS Organizations consolidated billing account family, one subscription price covers all subscribed accounts in the family. The organization must own all of the AWS accounts and all of their resources."* So a surprisingly large Shield Advanced bill across many accounts points at **accounts outside the consolidated bill**, each paying its own $3,000 — not at the protection. *(Verified 2026-10-01.)*
+- ⚠️ verify: that a third-party CA certificate can be imported into ACM, that the legacy **IAM certificate store** (CLI-only) is the fallback where ACM is unavailable, and that a certificate uploaded for CloudFront cannot be exported for reuse on an ELB or EC2.
+
 - **WAF geo match rule statement:** manages requests by **country and region of origin**, matching **ISO 3166-1 alpha-2** country codes (`HK`, `DE`…). WAF derives the country from the **request's IP address**, and can be told to read an alternate header such as **`X-Forwarded-For`** via forwarded-IP configuration. It also **adds country/region labels** to every request, match or not, which a later label-match rule can use. *(Verified 2026-10-01.)*
 *Verified against AWS docs 2026-09-25.*
 
@@ -361,6 +365,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+- [AWS CloudHSM key stores](https://docs.aws.amazon.com/kms/latest/developerguide/keystore-cloudhsm.html) · [Shield Advanced subscription and consolidated billing](https://docs.aws.amazon.com/waf/latest/developerguide/ddos-advanced-summary.html)
 - [WAF geographic match rule statement](https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-geo-match.html)
 - [KMS key policies — IAM policies have no effect without key-policy permission](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)
 - [Deleting AWS KMS keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html)

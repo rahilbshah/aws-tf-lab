@@ -279,6 +279,10 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 ## Key facts, limits & pricing
 
+- **App2Container vs App Runner** — both sound like "containers", and only one *containerises*. **AWS App2Container (A2C)** inspects existing applications on **Windows or Linux** servers and **generates OCI container images**, including **commercial off-the-shelf** apps, and *"does not need source code for the application to containerize it"*. **App Runner** is only a **runtime**: it takes an image or a source repo that is already buildable and runs it — it cannot containerise anything.
+  ⚠️ **Currency:** A2C is **no longer open to new customers** (sign-up ended **2025-11-07**); AWS now points to **AWS Transform**. Still answerable on the exam — treat it like Kendra and Fraud Detector.
+- **DynamoDB auto scaling is on by default only from the console:** *"If you use the AWS Management Console to create a table or a global secondary index, DynamoDB auto scaling is enabled by default."* A table created by **CLI, API, SDK or IaC** does **not** get it, so a stem where the table was created programmatically needs it **explicitly enabled** — and AWS recommends applying it to the table's **GSIs** too, or writes throttle. *(Verified 2026-10-01.)*
+
 - **AWS DMS** migrates relational databases, data warehouses, NoSQL databases and other data stores, into AWS or between cloud and on-premises. It is *"a server in the AWS Cloud that runs replication software"* — the **replication instance**. It **creates target tables and primary keys if they don't exist**, supports **one-time migration or ongoing replication to keep source and target in sync**, provides **automatic failover to a backup replication server**, and encrypts data at rest with **KMS** and in flight with **SSL**. It supports **fully heterogeneous** migrations between supported engines.
 - **AWS SCT / DMS Schema Conversion** converts source schemas and code objects (tables, indexes, views, triggers) to the target engine. **DMS Fleet Advisor** inventories on-premises database and analytics servers to identify migration candidates.
 - **Step Functions Standard workflows:** exactly-once, up to **one year**, **2,000 executions/sec**, **4,000 state transitions/sec**, priced **by state transition**, execution history retained in Step Functions.
@@ -404,6 +408,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [What is AWS App2Container](https://docs.aws.amazon.com/app2container/latest/UserGuide/what-is-a2c.html) · [DynamoDB auto scaling](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AutoScaling.html)
 - [Working with AWS DMS Serverless](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Serverless.html)
 - [DMS targets](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Targets.html) · [DMS sources](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Sources.html)
 - DMS + Snowball Edge: **chapter removed from the AWS DMS user guide** — no live citation exists. Mechanism from the [archived 2022 copy](https://web.archive.org/web/20221129212529/https://docs.aws.amazon.com/dms/latest/userguide/CHAP_LargeDBs.Process.html); retirement dates from [AWS Snowball Edge availability change](https://docs.aws.amazon.com/snowball/latest/developer-guide/snowball-edge-availability-change.html).

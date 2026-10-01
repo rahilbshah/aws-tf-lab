@@ -165,6 +165,8 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 ## Key facts, limits & pricing
 
+- **Glue encryption is configured by a *security configuration***, a named object that specifies the KMS key for a job's S3 output, CloudWatch logs and job bookmarks — you attach it to the job. The consequence the exam uses: **per-client KMS keys mean one job plus one security configuration per client**, not a single shared pipeline that tags each client's rows. "Separate keys per tenant" therefore multiplies jobs, which is the cost of the requirement. *(Verified 2026-10-01.)*
+
 - **Athena** is serverless, uses standard SQL, queries S3 directly, and charges **$5 per TB scanned** (us-east-1, checked 2026-09-26 — verify current pricing). You pay only for queries you run. Athena also supports **Apache Spark** notebooks alongside SQL.
 - **Athena cost reduction**, per AWS's own worked example: 3:1 **compression** takes $15 → $5; converting to **Apache Parquet** so only the queried column is read takes it to ~$1.25 — a **12x** reduction. **Partitioning** skips whole prefixes.
 - **Athena federated queries** (non-S3 sources via connectors) carry a **10 MB minimum per query**.
