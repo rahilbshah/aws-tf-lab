@@ -141,6 +141,56 @@ first-party AWS docs at write time and link the source, per §13.10.
 6. **Question ids stay out of the notes.** §13.12: the bank may shape *emphasis*,
    never supply *facts*. Ids belong in the report and the commit message.
 
+## What it actually cost and found — RUN 2026-09-30/10-01
+
+| | wave 1 | wave 2 |
+|---|---|---|
+| coverage model | session model | **Sonnet**, `effort: low` |
+| questions | 200 | 175 |
+| gaps claimed | 54 | 29 |
+| **confirmed** | **52** | **22** |
+| overturned | 2 (**4%**) | 7 (**24%**) |
+| agents | 62 | 36 |
+| subagent tokens | **5,576,870** | **2,725,695** |
+| tokens / question | 27,884 | **15,575** |
+
+**The model split is worth keeping.** Sonnet on coverage with the strong model on
+verify roughly **halved cost per question** and took the overturn rate from 4% to
+24% — i.e. the adversarial stage started doing visible work instead of
+rubber-stamping. Note the wave-2 verify prompt also *told* the verifier the
+upstream stage was cheap and over-flagging, so prompt and model changed together.
+
+**Do not read wave 2's lower yield (0.126 confirmed/question vs 0.260) as Sonnet
+missing things.** Two variables moved at once: the cheaper coverage model, and
+the 52 facts written into the notes between the waves, which genuinely left less
+to find.
+
+### Decision 2026-10-01: stop here. Waves 3–5 will not run.
+
+385 of the 920-question pool intersected the measured-weak topics; waves 1 and 2
+covered all of it. The remaining **535 questions are on topics already scoring
+70%+**, which is the lowest-yield third of the bank, and each wave costs ~2.7M
+subagent tokens. Agreed with the human: the constraint is no longer coverage.
+
+### What the hunt was actually worth
+
+73 confirmed gaps written. But the highest-value findings were not gaps at all —
+they were **four places where the vault taught the wrong thing**:
+
+- `01-iam-advanced:129` — "identity + resource policy → either one allowing is
+  enough" with no KMS carve-out, when a KMS key policy is the one resource policy
+  that must independently allow.
+- `07-rds-aurora:422` — storage autoscaling called an Aurora-only feature.
+- `13-cost-optimization:118` — "cross-AZ traffic is charged" stated flat, when
+  same-Region read-replica replication is free across AZs.
+- `04-alb-asg:303` — taught suspending `ScheduledActions`, which is the
+  *distractor* for protecting an instance during maintenance; the answer is
+  `ReplaceUnhealthy` or Standby.
+
+**Lesson for any future audit: ask agents to report where the vault is WRONG, not
+only where it is silent.** A missing fact costs a question; a confidently wrong
+one costs the question and the trust.
+
 ## Scale and cost
 
 37 batches is far past the 10-agent guideline, so it runs in **waves**, each a
