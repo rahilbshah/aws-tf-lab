@@ -49,19 +49,19 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]] · [[01-iam-advanced#RAM shares resources; it never enforces policy|RAM shares resources; it never enforces policy]]
 
 - **RAM offered where an SCP or Control Tower belongs** — The word "multi-account" pulls toward RAM, but ask what the requirement does. Restricting what may be launched is an SCP — a deny at the OU, which is also the least-effort answer because it applies to every account at once.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **"attach an SCP to give that account access"** — SCPs never grant. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **root user and SCPs** — Both halves matter and they point opposite ways. The management account is immune to SCPs entirely — including its root user and every IAM principal in it. A member account's root user is not immune — it is capped like everyone else. That's exactly why AWS recommends keeping no workloads in the management account.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **permissions boundary vs SCP** — Same idea, different blast radius. SCP = whole account(s), needs Organizations. Boundary = one user or role, works in a standalone account. If the scenario is a single account delegating admin duties → boundary. If it's "enforce across all accounts / prevent anyone in the org" → SCP.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **Bool vs BoolIfExists for MFA** — aws:MultiFactorAuthPresent is not present at all for long-term access-key requests. A Deny on Bool: {"aws:MultiFactorAuthPresent": "false"} therefore does not fire for CLI access-key calls (the key is missing, not false), while an Allow gated on Bool ... "true" blocks them.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **Control Tower vs Organizations** — Organizations is the primitive: accounts, OUs, SCPs. Control Tower orchestrates it — it builds a landing zone using Organizations + IAM Identity Center + Service Catalog, provides Account Factory for standardised account vending, and applies controls/guardrails (preventive — implemented as SCPs; detective — implemented as AWS Config rules; proactive — CloudFormation hooks), plus drift detection.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 - **aws:SourceIp behind a VPC endpoint** — The key is simply absent for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic.  
-  ↳ [[01-iam-advanced#Traps|note]]
+  ↳ [[01-iam-advanced|note]]
 
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]

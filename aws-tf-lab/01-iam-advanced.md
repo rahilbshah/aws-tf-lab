@@ -3,7 +3,7 @@ topic: 01-iam-advanced
 domain: secure
 status: reviewed
 services: [IAM, Organizations, ControlTower, IdentityCenter]
-related: [01-iam, 09-s3-security, 06-capstone]
+related: [01-iam, 21-security, 09-s3-security, 05-vpc-endpoints-peering]
 tags: [topic, domain/secure]
 ---
 
@@ -17,10 +17,10 @@ The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do
 > - **An `Allow` must exist at *every* level** root → OU → account. A **`Deny` at *any* level** kills it for everything beneath. This is why **`FullAWSAccess`** is attached by default — remove it without replacing it and every action in that subtree fails.
 > - SCPs require **all features enabled**; they don't exist in consolidated-billing-only mode.
 > - **Permissions boundary** = a managed policy setting the max an **identity-based policy** can grant to **one user or role**. Also grants nothing. Effective = **intersection**.
-> - **Combining rules:** identity + resource-based = **UNION**. identity + boundary = **INTERSECTION**. identity + SCP = **INTERSECTION**. **Explicit `Deny` anywhere wins, always.**
+> - **Combining rules:** identity + resource-based = **UNION** — *within one account*, and not for a KMS key policy. identity + boundary = **INTERSECTION**. identity + SCP = **INTERSECTION**. A **cross-account** request is evaluated twice, so there both sides must allow. **Explicit `Deny` anywhere wins, always.**
 > - **ABAC** = access by **tags** — `aws:PrincipalTag/x` compared against `aws:ResourceTag/x`. Scales where RBAC needs a new policy per team.
 > - **`aws:PrincipalOrgID`** lets one resource policy trust a whole organization without listing account IDs.
-> - **MFA conditions must use `BoolIfExists`**, not `Bool` — the key is absent for long-term access keys, so plain `Bool` denies things you didn't mean to.
+> - **MFA conditions must use `BoolIfExists`**, not `Bool`. The key is *absent* — not `false` — for long-term access keys, so plain `Bool` misbehaves in **both** directions: a `Deny` on `"false"` never fires (access-key calls slip through), and an `Allow` on `"true"` never matches (access-key calls are blocked). Which way it bites depends on whether your statement is a `Deny` or an `Allow`.
 
 > [!warning] Build tier — **conceptual-only**
 > Do **not** create an organization or attach SCPs in your learning account. An SCP mistake can lock you out of your own account, the management account can't be changed once set, and leaving an organization is deliberately awkward. This topic is learned from the notes and the exam framing, not by building it.
@@ -28,6 +28,8 @@ The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do
 ## What problem does this solve?
 
 One AWS account is one blast radius. Everything inside it can potentially reach everything else, and one careless IAM policy is all it takes.
+
+The vocabulary first, because every rule below is phrased in it. Inside an organization, accounts are grouped into **OUs (organizational units)** — nestable folders such as *Production* or *Sandbox*. The **root** is the single node above all of them. One account is the **management account**: the one that created the organization, pays the consolidated bill and writes the policies. Every other account is a **member account**. A policy can be attached at the root, at an OU, or at one account — and whatever is attached above an account applies to it.
 
 So real companies don't use one account. They use dozens or hundreds — one per team, per environment, per product — so that a mistake in one cannot reach the others.
 
@@ -109,9 +111,11 @@ Why you'd want that: you need your junior admin to handle user onboarding, but t
 
 Three pieces make it work:
 
-1. A policy describing the **maximum** any new user may ever have.
+Two boundaries are in play, and the difference is the whole trick. **Boundary A** is the ceiling every *new* user must be created with. **Boundary B** is the junior admin's own boundary, which permits `iam:CreateUser` only if the request attaches Boundary A to the new user. So the admin is capped by B, and everyone the admin creates is capped by A.
+
+1. **Boundary A** — a policy describing the **maximum** any new user may ever have.
 2. The junior admin's own IAM policy, allowing `iam:CreateUser`.
-3. The junior admin's own **boundary**, which allows `iam:CreateUser` **only when** the user being created is stamped with that maximum-permissions policy.
+3. **Boundary B** — the junior admin's own boundary, which allows `iam:CreateUser` **only when** the user being created is stamped with Boundary A.
 
 Now if they create a user and forget to attach the boundary, the call simply fails. They cannot mint anything more powerful than the ceiling they're forced to apply.
 
@@ -119,12 +123,12 @@ Now if they create a user and forget to attach the boundary, the call simply fai
 
 ### Why one combining rule is the odd one out
 
-Nearly every policy type **narrows** your access:
+A caution on what is being compared here. [[01-iam]] counts which policy types can **hand out** access at all (four of the nine can). This section asks a different question: when a type is combined **with an identity policy**, does the pair behave as an intersection or a union? Almost all of them intersect:
 
 - identity policy **+ SCP** → both must allow
 - identity policy **+ permissions boundary** → both must allow
 
-Exactly one type **widens** it:
+Exactly one combination **widens**:
 
 - identity policy **+ resource-based policy** → **either** one allowing is enough — **except a KMS key policy**, which is the one resource policy that must independently allow (see [[21-security#KMS is the exception to the resource-policy rule]])
 
@@ -132,13 +136,13 @@ That exception looks inconsistent until you notice what a resource policy actual
 
 Above all of it: an **explicit `Deny` anywhere wins.** In any policy, of any type, at any level. Nothing overrides it.
 
-> In one line: resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.
+> In one line: a resource policy can add access on its own; SCPs, RCPs, boundaries and session policies only ever subtract; and an explicit `Deny` beats the lot.
 
 ## Architecture diagram
 
 ```mermaid
 flowchart TB
-    subgraph ORG["AWS Organization (feature_set = ALL)"]
+    subgraph ORG["AWS Organization (All features enabled)"]
       MGMT["Management account<br/>❗ SCPs do NOT apply here"]
       ROOT["Root"]
       OU1["OU: Production"]
@@ -169,8 +173,7 @@ flowchart LR
 ## Key facts, limits & pricing
 
 - **Tag policies** are a **separate Organizations policy type** from SCPs: *"Tag policies allow you to standardize the tags attached to the AWS resources in your organization's accounts"*, including the **preferred case** of tag keys and the **allowed values**. So "enforce which tag keys and values are permitted across the OU" is a **tag policy**, not an SCP condition and not AWS Config. *(Verified 2026-10-01.)*
-
-- **Organizations is free.** You pay only for what the member accounts use. Consolidated billing aggregates usage across accounts, which can earn **volume discounts** and lets **Reserved Instances / Savings Plans** be shared across the organization.
+- **Organizations is free.** You pay only for what the member accounts use. (What consolidated billing changes about discounts is in the Comparisons table below, and in [[13-cost-optimization]].)
 - **Two feature sets:** *All features* (default, and required for SCPs, RCPs and service integrations) and *Consolidated billing only* (billing aggregation, no policy control). Upgrading to all features requires every invited member account to accept.
 - **One root per organization.** OU hierarchy can nest **five levels deep** below the root.
 - The **management account cannot be changed** after the organization is created, and it is the payer. A member account belongs to **only one organization** at a time.
@@ -182,24 +185,27 @@ flowchart LR
 - **SCPs don't reach outside the organization.** If your bucket policy grants access to an account that isn't in your org, your SCP does nothing about it — SCPs constrain *your* principals, not other people's.
 - **Disabling the SCP policy type detaches every SCP** and those attachments are **not recoverable** — you must reattach manually.
 - **Permissions boundaries apply to users and roles — not groups.** They use a managed policy and grant nothing on their own.
-- **Implicit denies in a boundary don't limit resource-based policies.** If a Secrets Manager resource policy grants the user directly and the boundary merely fails to mention Secrets Manager, the access still works. An **explicit** `Deny` in the boundary *does* block it. (Same nuance applies to session policies.)
+- **Implicit denies in a boundary don't limit resource-based policies.** This is the one place the "identity + boundary = intersection" rule has an exception, so the boundary box in the diagram above should be read as gating what the *identity-based* policy grants. If a Secrets Manager resource policy grants the user directly and the boundary merely fails to mention Secrets Manager, the access still works. An **explicit** `Deny` in the boundary *does* block it. (Same nuance applies to session policies.)
 - **`aws:MultiFactorAuthPresent` is absent for long-term access keys.** Use **`BoolIfExists`**; a plain `Bool` test denies CLI access-key requests unintentionally.
-- **`aws:SourceIp` is not present for requests through a VPC endpoint** — use `aws:VpcSourceIp` there, or the endpoint's own policy.
 - **Control Tower is free itself**; you pay for what it provisions (CloudTrail, Config, S3 logging).
 
 ## Comparisons
 
 ### Which multi-account requirement does this solve?
 
+One service in this table has not been introduced yet. **IAM Identity Center** is the single front door: an employee signs in once, then picks which AWS account and which role to enter. Each choice in that picker is a **permission set**, and assigning one creates a matching IAM role in the target account. It can draw its users from a company directory rather than from IAM.
+
 | The requirement in the stem | The answer | The detail that decides it |
 |---|---|---|
 | "one bill across all our accounts", volume discounts, shared RIs / Savings Plans | **AWS Organizations — consolidated billing** | the **management account becomes responsible for all charges** accrued by member accounts; the member's own payment method stops being used. Combined usage *"shares the volume pricing discounts, Reserved Instance discounts, and Savings Plans"* |
 | "bring our **existing** accounts under one organization" | **Invite** each account from the management account; its owner accepts | invitations can be sent **only from the management account**, expire after **15 days**, and an account can join **only one organization**. Accounts *created* by Organizations join automatically. **To move an account between organizations, remove it from the old one first, then invite it** — the one-org rule makes the order mandatory |
-| "one sign-on for all accounts, using our on-prem AD" | **IAM Identity Center**, with **AD Connector** (or AWS Managed Microsoft AD) as the identity source | an **organization instance must be enabled in the Organizations management account**; **permission sets** — which become IAM roles in each account — need one, since *"Account instances do not support permission sets and therefore do not support access to AWS accounts"*. The directory must reside in the management account (or the delegated admin account, if one exists) |
+| "one sign-on for all accounts, using our on-prem AD" | **IAM Identity Center**, with **AD Connector** (or AWS Managed Microsoft AD) as the identity source | an **organization instance must be enabled in the Organizations management account**; **permission sets** ([[01-iam]] has the mechanics) need one, since *"Account instances do not support permission sets and therefore do not support access to AWS accounts"*. The directory must reside in the management account (or the delegated admin account, if one exists) |
 | "divisions keep their own accounts, corporate IT keeps oversight" | **cross-account IAM role** in each member account trusting the management account | the built-in one is **`OrganizationAccountAccessRole`** — created automatically for accounts Organizations **creates**, and **not** created for **invited** accounts, where you add it yourself |
 | "stop anyone in these accounts from doing X" | **SCP** | caps only — it answers **none of the rows above**. No billing, no sign-on, no access granted |
 
 ### The four things that can cap a permission
+
+Two of these need introducing. An **RCP (resource control policy)** is the mirror image of an SCP: attached the same way — root, OU or account — but where an SCP caps what *principals* in your member accounts may do, an RCP caps what may be done *to the resources* in them, including by principals from outside your organization. A **session policy** is a policy handed over at the moment a role is assumed; it narrows that one session and dies with it.
 
 |   | **SCP** | **RCP** | **Permissions boundary** | **Session policy** |
 |---|---|---|---|---|
@@ -209,14 +215,17 @@ flowchart LR
 | Needs Organizations | ✅ (all features) | ✅ (all features) | ❌ | ❌ |
 | Typical use | "no one may leave the org / use other regions" | "only our org's identities may touch our buckets" | "you may create users, but not admins" | temporary least-privilege on assume |
 
+Full RCP detail — the services it covers and the two things it cannot touch — is in [[01-iam]] under *Key facts, limits & pricing*.
+
 ### How policy types combine
 
 | Combination | Result |
 |---|---|
-| Identity-based **+ resource-based** | **UNION** — either one allowing is enough |
+| Identity-based **+ resource-based**, same account | **UNION** — either one allowing is enough (a **KMS key policy** is the exception: it must allow independently) |
 | Identity-based **+ permissions boundary** | **INTERSECTION** — both must allow |
 | Identity-based **+ SCP / RCP** | **INTERSECTION** — both must allow |
 | Identity **+ SCP + boundary** | all **three** must allow |
+| Identity-based **+ resource-based, cross-account** | **BOTH must allow** — the union rule holds only inside one account |
 | **Explicit `Deny`** in any of them | **denied**, unconditionally |
 
 *The union case is the odd one out — but it's a union **within one account**. A cross-account request is evaluated twice: the caller's identity policy **and** the bucket policy must both allow it.*
@@ -277,7 +286,7 @@ a standard, or an account factory, RAM cannot be the answer however much the sce
 > [!failure] Failure mode — the deny-only SCP that locked out the whole organization
 > A team wants to block S3 in the Sandbox OU, so they write an SCP containing **only** a `Deny` on `s3:*`, detach `FullAWSAccess`, and attach theirs. Every account under Sandbox immediately loses access to **everything** — not just S3. The cause is that SCP evaluation is **deny-by-default and requires an explicit `Allow` at every level**: with `FullAWSAccess` gone there is no `Allow` anywhere in the path, so nothing is permitted. The fix is to keep `FullAWSAccess` attached *and* add the Deny policy alongside it. The same trap in reverse: attaching an allow-list SCP at the **root** silently caps every OU beneath it, because the effective permission is the **intersection** down the path — a `FullAWSAccess` on the OU cannot widen what the root already narrowed.
 
-## Traps
+## ⚠️ Traps & why the wrong answers are wrong   #trap
 
 > [!warning] Trap — "attach an SCP to give that account access"
 > SCPs **never grant**. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes. Any answer phrased as *"use an SCP to grant/enable/allow"* is a distractor.
@@ -290,6 +299,8 @@ a standard, or an account factory, RAM cannot be the answer however much the sce
 
 > [!warning] Trap — `Bool` vs `BoolIfExists` for MFA
 > `aws:MultiFactorAuthPresent` is **not present at all** for long-term access-key requests. A `Deny` on `Bool: {"aws:MultiFactorAuthPresent": "false"}` therefore does **not** fire for CLI access-key calls (the key is missing, not false), while an `Allow` gated on `Bool ... "true"` blocks them. Use `BoolIfExists` to get the behaviour you actually meant.
+
+**Control Tower**, before the trap compresses it: it is the "set it up for me" layer on top of Organizations. It builds a ready-made multi-account environment, lets you stamp out new pre-configured accounts, and applies a standard set of rules — some of which block an action outright, while others only report that it happened. The named parts follow.
 
 > [!warning] Trap — Control Tower vs Organizations
 > **Organizations** is the primitive: accounts, OUs, SCPs. **Control Tower** *orchestrates* it — it builds a **landing zone** using Organizations + IAM Identity Center + Service Catalog, provides **Account Factory** for standardised account vending, and applies **controls/guardrails** (*preventive* — implemented as SCPs; *detective* — implemented as AWS Config rules; *proactive* — CloudFormation hooks), plus **drift detection**. "Set up a compliant multi-account environment quickly, following best practices" → **Control Tower**. "Apply a specific permission guardrail" → **SCP**.
@@ -307,7 +318,6 @@ a standard, or an account factory, RAM cannot be the answer however much the sce
 
 ## 🔗 Docs
 - [Organizations tag policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
-
 - [Service control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html) — "no permissions are granted by an SCP", management-account exemption, member root capped, FullAWSAccess, service-linked-role exemption, unrestricted tasks; verified 2026-08-30
 - [SCP evaluation](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html) — Allow needed at every level, Deny at any level, allow-list vs deny-list strategy, the seven scenarios; verified 2026-08-30
 - [Permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) — intersection semantics, the delegation example, `iam:PermissionsBoundary`, resource-policy nuance; verified 2026-08-30

@@ -64,10 +64,10 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam-advanced#The root-user rule that catches everyone|explain]]
 - An SCP caps an account, a boundary caps one identity, and neither one grants anything.  
   ↳ [[01-iam-advanced#Permissions boundaries — the same idea, one identity at a time|explain]]
-- Resource policies add access, everything else subtracts it, and an explicit Deny beats the lot.  
+- A resource policy can add access on its own; SCPs, RCPs, boundaries and session policies only ever subtract; and an explicit Deny beats the lot.  
   ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
 
-**Traps** [[01-iam-advanced#Traps|open]]
+**Traps** [[01-iam-advanced|open]]
 - RAM offered where an SCP or Control Tower belongs
 - "attach an SCP to give that account access"
 - root user and SCPs
