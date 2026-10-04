@@ -175,6 +175,8 @@ graph TB
 
 ## Key facts, limits & pricing
 
+- **EventBridge can match an API call recorded by CloudTrail** — rules on the detail-type *AWS API Call via CloudTrail* fire on a specific `eventSource` and `eventName` (for example `ec2` / `CreateImage`) and can target **SNS directly**. That is far less machinery than shipping CloudTrail logs to S3 and querying them with Athena, or running a Lambda poller, when the requirement is simply "notify us when someone does X". ⚠️ verify: the exact detail-type string and whether the trail must be in the same Region as the rule.
+
 - **EventBridge can target an ECS task directly** — *"Amazon ECS tasks as targets"*, with the rule's input mapped through to **`ecs.RunTask`**. So "run a containerised job when X happens, or on a schedule" needs **no Lambda in between**; a Lambda that only calls `RunTask` is a distractor. *(Verified 2026-10-01.)*
 
 - **Systems Manager requires the SSM Agent** on the node plus network reachability to the service; both together make it a **managed node**. Preinstalled on Amazon Linux 2/2023, Ubuntu and Windows Server AMIs, and it needs an **instance profile** granting `AmazonSSMManagedInstanceCore`.

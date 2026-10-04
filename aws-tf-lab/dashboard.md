@@ -6,7 +6,7 @@ tags: [exam-prep, generated]
 
 > [!warning]- Generated file — do not edit
 > Built by `_scripts/build_dashboard.py` from the trainer's `state/mastery.json`
-> (last trainer update **2026-09-27**). Re-run after a practice session.
+> (last trainer update **2026-10-04**). Re-run after a practice session.
 
 > [!info] What this is for
 > The trainer app already shows your scores, domain breakdown and readiness, live. This page answers the one question it cannot: **given how you are scoring, what should you read?**
@@ -15,24 +15,24 @@ tags: [exam-prep, generated]
 
 | Topic | Score | Accuracy | Read |
 |---|---:|---:|---|
-| **DataSync** | 4/8 | 50% | [[12-storage-extras]] |
-| **Snow** | 4/8 | 50% | [[12-storage-extras]] |
-| **KMS** | 8/15 | 53.3% | [[21-security]] |
-| **Aurora** | 14/26 | 53.8% | [[07-rds-aurora]] |
-| **Route53** | 7/13 | 53.8% | [[10-route53]] |
-| **Organizations/SCP** | 9/16 | 56.3% | [[01-iam-advanced]] |
-| **WAF/Shield** | 6/10 | 60% | [[21-security]] |
-| **APIGateway** | 3/5 | 60% | [[19-serverless]] |
-| **ECS/EKS/Fargate** | 3/5 | 60% | [[17-containers]] |
-| **Cost** | 8/13 | 61.5% | [[13-cost-optimization]] |
+| **DataSync** | 4/9 | 44.4% | [[12-storage-extras]] |
+| **KMS** | 8/16 | 50% | [[21-security]] |
+| **DMS** | 4/8 | 50% | *no note mapped* |
+| **Organizations/SCP** | 9/17 | 52.9% | [[01-iam-advanced]] |
+| **Snow** | 5/9 | 55.6% | [[12-storage-extras]] |
+| **Aurora** | 17/30 | 56.7% | [[07-rds-aurora]] |
+| **EventBridge** | 6/10 | 60% | [[20-monitoring]] |
+| **ECS/EKS/Fargate** | 5/8 | 62.5% | [[17-containers]] |
+| **IAM** | 25/39 | 64.1% | [[01-iam]] |
+| **Route53** | 11/17 | 64.7% | [[10-route53]] |
 
-*Too few questions to judge (under 5): Glue 1/1, Athena 0/1, SSM 1/1, CloudTrail 1/1, Kinesis 1/2, EventBridge 1/2, SecretsManager 2/2, Backup 3/3, SQS 4/4, SNS 3/4, Cognito 1/4*
+*Too few questions to judge (under 5): EMR 0/1, Kinesis 1/2, Glue 2/3, SecretsManager 3/3, Backup 4/4, Athena 3/4, Cognito 1/4*
 
 ## Confidence & pacing
 
-- **50** answers marked *sure* were wrong (31 of them in the last 200). These are the misses most likely to repeat on exam day, because nothing tells you to doubt them. Drill them with [[discriminators]].
-- **53** correct answers were guesses, and the scores above count them. Treat that part as luck, not knowledge.
-- Average **67s** per question against a budget of 120s. 32 answers went over 2 minutes.
+- **58** answers marked *sure* were wrong (26 of them in the last 200). These are the misses most likely to repeat on exam day, because nothing tells you to doubt them. Drill them with [[discriminators]].
+- **67** correct answers were guesses, and the scores above count them. Treat that part as luck, not knowledge.
+- Average **66s** per question against a budget of 120s. 34 answers went over 2 minutes.
 
 ## Drill
 

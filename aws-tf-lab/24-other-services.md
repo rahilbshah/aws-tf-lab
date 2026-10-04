@@ -279,6 +279,9 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 ## Key facts, limits & pricing
 
+- **AWS Batch multi-node parallel jobs** run *"single jobs that span multiple Amazon EC2 instances"* — known as **gang scheduling** — and are *"compatible with any framework that supports IP-based, inter-node communication… including **Message Passing Interface (MPI)**"*. The job is submitted **once**; the definition says how many nodes, a **main node** starts first, child nodes follow, and the job ends when the main node exits. So **tightly coupled MPI HPC with minimal operational overhead** is Batch MNP — not an Auto Scaling group, not a CloudFormation-managed cluster placement group, not Elastic Beanstalk, all of which make you build the coordination yourself.
+- For a **pipeline** of batch stages, **Batch + Step Functions** is the lower-overhead pairing: Step Functions sequences, retries and branches between jobs, where Fargate-plus-SQS leaves you writing the orchestration. *(Verified 2026-10-04.)*
+
 - **App2Container vs App Runner** — both sound like "containers", and only one *containerises*. **AWS App2Container (A2C)** inspects existing applications on **Windows or Linux** servers and **generates OCI container images**, including **commercial off-the-shelf** apps, and *"does not need source code for the application to containerize it"*. **App Runner** is only a **runtime**: it takes an image or a source repo that is already buildable and runs it — it cannot containerise anything.
   ⚠️ **Currency:** A2C is **no longer open to new customers** (sign-up ended **2025-11-07**); AWS now points to **AWS Transform**. Still answerable on the exam — treat it like Kendra and Fraud Detector.
 - **DynamoDB auto scaling is on by default only from the console:** *"If you use the AWS Management Console to create a table or a global secondary index, DynamoDB auto scaling is enabled by default."* A table created by **CLI, API, SDK or IaC** does **not** get it, so a stem where the table was created programmatically needs it **explicitly enabled** — and AWS recommends applying it to the table's **GSIs** too, or writes throttle. *(Verified 2026-10-01.)*
@@ -408,6 +411,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [AWS Batch multi-node parallel jobs](https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)
 - [What is AWS App2Container](https://docs.aws.amazon.com/app2container/latest/UserGuide/what-is-a2c.html) · [DynamoDB auto scaling](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AutoScaling.html)
 - [Working with AWS DMS Serverless](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Serverless.html)
 - [DMS targets](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Targets.html) · [DMS sources](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Introduction.Sources.html)

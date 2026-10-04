@@ -131,6 +131,9 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 
 ## Key facts, limits & pricing
 
+- **SQS has no message priority — not in Standard, not in FIFO.** There is no priority attribute and no way to make one message jump the queue. The pattern is **a queue per tier** — say `premium` and `free` — with consumers **polling the premium queue first** and falling back to the other. Any option offering a "priority" setting on a single queue is describing a feature that does not exist, which makes it an easy eliminate once you know.
+- **EventBridge is the only one of the three with SaaS integration.** It supports **partner event sources** and **custom event buses**, so a third-party SaaS application can deliver events into your account natively. **SQS and SNS have no SaaS event-source concept** — they are AWS-side messaging primitives. A stem about decoupling from a **SaaS provider's events** is EventBridge, even though SNS fan-out is the right answer to most other "one event, several consumers" questions in this note.
+
 - **Retention:** default **4 days** (345,600s); minimum **60 seconds**; maximum **1,209,600 seconds (14 days)**.
 - **Visibility timeout:** default **30 seconds**; minimum 0; maximum **12 hours**.
 - **Message size:** minimum 1 byte, **maximum 1,048,576 bytes (1 MiB)**. For larger, the Extended Client Library stores the payload in S3 and puts a reference in the message — up to **2 GB**. ⚠️ Most course material and many practice questions still say **256 KB**; know both.

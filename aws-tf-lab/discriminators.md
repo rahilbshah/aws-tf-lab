@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*103 comparison tables · 196 discriminators · ~37 min read*
+*104 comparison tables · 196 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -70,7 +70,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
-**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
+**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
 - **cluster chosen for availability, or spread for scale** — They pull in opposite directions and the wrong one is always offered. Cluster is a single AZ — picking it for "high availability" actively concentrates risk; it is a performance choice.  
   ↳ [[02-ec2|note]]

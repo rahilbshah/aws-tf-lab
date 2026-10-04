@@ -332,6 +332,8 @@ flowchart TD
 
 ## Key facts, limits & pricing
 
+- **One HTTPS listener can hold many certificates, via SNI.** You attach a **certificate list** to the listener; the load balancer *"uses a smart certificate selection algorithm with support for SNI"* and picks the cert whose CN or SAN matches the hostname the client asked for. The **default certificate** is used only when a client connects **without SNI**, or when nothing in the list matches — and it does **not** act as a fallback once a match fails. So **several unrelated domains behind one ALB** is "add each certificate to the listener", at no extra charge: not a wildcard (which covers only subdomains of **one** domain), not a SAN re-issue, and certainly not a new CloudFront distribution. *(Verified 2026-10-04.)*
+
 - **`Standby`** holds an `InService` instance **in the group but out of load-balancer traffic** for patching; **detach** removes it from the group; **instance refresh** replaces instances instead.
 - **Suspendable ASG processes:** `Launch`, `Terminate`, `AddToLoadBalancer`, `AlarmNotification`, `AZRebalance`, `InstanceRefresh`, **`ReplaceUnhealthy`**, `ScheduledActions`. Suspend **`ReplaceUnhealthy`** to patch in place — **not** `ScheduledActions`, which only pauses scheduled scaling.
 - **Cooldown** (`DefaultCooldown`, default **300 s**) applies **only to simple scaling policies** — target tracking and step scaling scale out immediately and use **instance warm-up** instead. Starts from the **last** instance finishing; **manual** scaling ignores it by default. Raising it is the fix for a simple-scaling group oscillating.
@@ -497,6 +499,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [HTTPS listener certificates and SNI](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)
 - [Temporarily remove an instance (Standby)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html) · [Suspend and resume processes](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) · [Scaling cooldowns](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scaling-cooldowns.html)
 - [Scaling based on an SQS queue (backlog per instance)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html) · [Lifecycle hooks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html) · [Step and simple scaling (warm-up)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-simple-step.html)
 - [ALB target group health checks (defaults and ranges)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html)

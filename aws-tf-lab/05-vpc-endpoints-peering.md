@@ -125,6 +125,8 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
+- **A security group cannot reference a peer VPC's security group across Regions.** AWS: *"You **can't reference the security group of a peer VPC that's in a different Region**. Instead, use the **CIDR block** of the peer VPC."* Same-Region peering *can* reference it, including **cross-account**, by writing the owner's account in front of the id — `123456789012/sg-1a2b3c4d`. So in an **inter-Region** peering question the database rule must be written against the app tier's **IP ranges**, and any option offering a cross-Region SG reference is impossible, not merely untidy. *(Verified 2026-10-04.)*
+
 - **VPC sharing (via AWS RAM)** lets the VPC **owner** share **one or more subnets** — *not the VPC itself* — with **participant** accounts in the **same AWS Organization**. Participants create their own EC2, RDS, Redshift and Lambda resources in those subnets, and **cannot view, modify or delete** resources belonging to other participants or to the owner. It is the cheapest way to get many accounts onto one network: no peering mesh, no Transit Gateway, and traffic uses the VPC's **implicit routing** rather than crossing an attachment.
 - **AWS Resource Access Manager (RAM)** is the sharing mechanism — it shares resources across accounts/OUs/an organization without writing a resource-based policy per resource. Commonly shared: **VPC subnets, Transit Gateway attachments, Route 53 Resolver rules, License Manager configurations**.
 
@@ -195,6 +197,7 @@ flowchart TB
 - [ ] **"Which endpoint for which service"** decision (S3/DynamoDB → gateway/free; everything else → interface/paid).
 
 ## 🔗 Docs
+- [Security groups and VPC peering](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-security-groups.html)
 
 - [Gateway endpoints (S3/DynamoDB)](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html)
 - [Interface endpoints / AWS PrivateLink](https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html)

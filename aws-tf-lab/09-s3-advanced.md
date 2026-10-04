@@ -121,6 +121,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **S3 request rates are per prefix, not per bucket.** AWS: *"your application can achieve at least **3,500 PUT/COPY/POST/DELETE** or **5,500 GET/HEAD** requests per second **per partitioned Amazon S3 prefix**. There are **no limits to the number of prefixes** in a bucket."* So you scale by **spreading keys across prefixes inside one bucket** — their own example: 10 prefixes gives **55,000 reads/sec**. More buckets is not the answer, EFS is not the answer, and the old advice to **randomise key prefixes is obsolete** — S3 partitions automatically, so a sensible scheme like `logs/2026/10/04/` is fine. If the stem's rate is already under the limit, the answer may simply be **do nothing**. *(Verified 2026-10-04.)*
+
 ### Replication
 - **Two live types:** **CRR** (cross-region) and **SRR** (same-region). Both are **asynchronous**. Buckets may be in **different AWS accounts**.
 - **Requirements:** versioning **enabled on source *and* destination**, plus an **IAM role** S3 assumes (read source versions, write destination).
@@ -213,6 +215,7 @@ flowchart LR
 - [ ] **Incomplete multipart uploads bill invisibly** — lifecycle abort rule is mandatory hygiene.
 
 ## 🔗 Docs
+- [S3 performance — request rates per prefix](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)
 - [S3 Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
 
 - [Replicating objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html) — CRR/SRR, Batch Replication, RTC 15-min SLA; **verified 2026-08**

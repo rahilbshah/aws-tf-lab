@@ -141,6 +141,8 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
+- **Request rates scale per prefix, and you no longer randomise key names.** At least **3,500** write and **5,500** read requests per second **per prefix**, with no limit on prefixes per bucket — see [[09-s3-advanced#Key facts, limits & pricing]]. If a stem's rate is already inside that, the correct answer can be **do nothing**.
+
 - **S3 static website behind a custom domain: the bucket name must equal the domain name.** AWS is explicit — *"These bucket names must match your domain name exactly."* So `example.com` is served from a bucket called `example.com`, and the usual pattern adds a second bucket named `www.example.com` configured purely as a **redirect** to it. A Route 53 alias resolves to the **website endpoint**, which is derived from the bucket name — which is why the names cannot differ. (The website endpoint is **HTTP-only**; HTTPS needs CloudFront in front.) *(Verified 2026-10-01.)*
 
 - **Namespace:** bucket names are **globally unique across all AWS accounts**; buckets are **regional** resources. Names are DNS-compatible (3–63 chars, lowercase, no underscores).

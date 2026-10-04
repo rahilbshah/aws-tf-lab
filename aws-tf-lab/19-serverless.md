@@ -59,6 +59,11 @@ graph LR
 
 ## Key facts, limits & pricing
 
+- **A Lambda function URL is a built-in, dedicated HTTPS endpoint** on the function itself — *"A function URL is a dedicated HTTP(S) endpoint for your Lambda function"*. A third-party **webhook** can POST straight to it with **no API Gateway in the path**. Use API Gateway instead when you need what it adds: throttling, usage plans and API keys, request validation, canary stages, WAF, or a private integration.
+- **DynamoDB on-demand absorbs a spike instantly; provisioned + auto scaling does not.** On-demand *"instantly accommodates your workloads as they ramp up or down to any previously reached traffic level"* and **instantly handles up to double the previous peak**; a brand-new on-demand table already sustains **4,000 writes/sec and 12,000 reads/sec**, you pay **nothing at zero traffic**, and it is now AWS's **default and recommended** mode. Provisioned auto scaling reacts only **after a CloudWatch alarm fires** — minutes — so a sudden unpredictable spike throttles in the meantime. "Unpredictable" or "sudden spike" → **on-demand**; steady, forecastable traffic → provisioned (cheaper per request).
+- **To alert on new items without touching the application:** enable **DynamoDB Streams**, trigger a **Lambda** from the stream, and have it publish to **SNS**. That is the native change-notification path — no polling, no application change, and the stream is the only thing that sees every insert/update/delete.
+*Verified against AWS docs 2026-10-04.*
+
 - **API Gateway has three API types, and WebSocket is the stateful one.** **REST** and **HTTP** APIs are stateless request/response. A **WebSocket API** keeps a **persistent, two-way connection** open, so the backend can **push** to the client — the answer for chat, live dashboards, multiplayer and streaming notifications, where polling a REST API is the distractor. ⚠️ verify: the per-connection limits and idle timeout.
 
 - **Lambda environment variables are already encrypted at rest** — *"Lambda stores environment variables securely by encrypting them at rest"* with a default service key. That protects the storage, not the *display*: anyone who can read the function configuration sees the values. To hide a value from other developers you **configure Lambda to use your own KMS key** and encrypt the value, encrypt it **client-side**, or keep it out of the function entirely in **Secrets Manager** / Parameter Store — which is the better answer whenever the value is a credential. *(Verified 2026-10-01.)*
@@ -236,6 +241,7 @@ a subnet behind a NACL. Two consequences:
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [Lambda function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html) · [DynamoDB on-demand capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html)
 - [Lambda environment variables (encryption at rest)](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html)
 - [API Gateway request throttling (token bucket, 429, stage/method/usage plan)](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html)
 - [Canary release deployments](https://docs.aws.amazon.com/apigateway/latest/developerguide/canary-release.html)
