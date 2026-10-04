@@ -58,7 +58,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[01-iam-advanced|note]]
 - **Bool vs BoolIfExists for MFA** — aws:MultiFactorAuthPresent is not present at all for long-term access-key requests. A Deny on Bool: {"aws:MultiFactorAuthPresent": "false"} therefore does not fire for CLI access-key calls (the key is missing, not false), while an Allow gated on Bool ... "true" blocks them.  
   ↳ [[01-iam-advanced|note]]
-- **Control Tower vs Organizations** — Organizations is the primitive: accounts, OUs, SCPs. Control Tower orchestrates it — it builds a landing zone using Organizations + IAM Identity Center + Service Catalog, provides Account Factory for standardised account vending, and applies controls/guardrails (preventive — implemented as SCPs; detective — implemented as AWS Config rules; proactive — CloudFormation hooks), plus drift detection.  
+- **Control Tower vs Organizations** — Organizations is the primitive: accounts, OUs, SCPs. Control Tower orchestrates it — it builds a landing zone using Organizations + IAM Identity Center + Service Catalog, provides Account Factory for standardised account vending, and applies controls/guardrails in three flavours: preventive, implemented using SCPs, RCPs and declarative policies (all part of Organizations); detective, implemented using AWS Config rules; and proactive, implemented using CloudFormation hooks, plus drift detection.  
   ↳ [[01-iam-advanced|note]]
 - **aws:SourceIp behind a VPC endpoint** — The key is simply absent for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic.  
   ↳ [[01-iam-advanced|note]]

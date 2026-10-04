@@ -14,7 +14,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | Note | truth | consistency | clarity | committed |
 |---|---|---|---|---|
 | 01-iam.md | 3 WRONG · 7 OVERSTATED · 1 UNVERIFIABLE | 11 | 10 | `13e94e6`, `0091f77` |
-| 01-iam-advanced.md | *running* | 13 | 8 | `40ab3c3` (2 lenses) |
+| 01-iam-advanced.md | 128 claims · 29 pages · 4 WRONG · 7 OVERSTATED · 1 STALE · 1 UNVERIFIABLE | 13 | 8 | `40ab3c3` + truth |
 | 02-ec2.md | | | | |
 | 04-alb-asg.md | | | | |
 | 05-vpc-core.md | | | | |
@@ -60,6 +60,16 @@ Not audited on purpose — `exam: false`, excluded from every generator:
   | 04-alb-asg.md · 05-vpc-security.md · 13-cost-optimization.md · 19-serverless.md · 20-monitoring.md · 21-security.md | 2 each |
   | 02-ec2.md · 05-vpc-hybrid.md · 17-containers.md · 22-analytics.md | 1 each |
   | cheatsheet.md | 6 |
+
+## Carry-forward defects found while auditing another note
+Fix these when that note's own turn comes, not before.
+
+- **`19-serverless.md:132`** — the trap *"the certificate Region for a custom domain"* opens an
+  italic quote (`AWS: to use an ACM certificate with a …`) that the discriminators generator
+  truncates mid-quote, so `discriminators.md:419` ends with a dangling unclosed quote. The lesson
+  generalises: **a trap body's first sentence is what gets harvested, so never let a quote span
+  sentences inside a trap** — the same thing happened to the Control Tower trap in
+  `01-iam-advanced.md` and was rewritten as a single sentence.
 
 ## Known limitation, not a defect
 The generators cannot anchor a heading that contains an inline tag, so every note's
