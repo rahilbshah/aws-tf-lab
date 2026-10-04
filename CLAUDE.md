@@ -502,6 +502,58 @@ Notes are worse than useless if they're wrong, because the human will *memorise*
 - Prices and free-tier limits change; date them or mark "check current pricing."
 - When unsure whether something is exam-relevant, say so rather than padding with filler. Lean and correct beats comprehensive and wrong.
 
+### 13.10a The asymmetry rule — negatives, absolutes and eliminations (added 2026-10-04)
+
+§13.10 above governs **positive** facts: limits, quotas, defaults, prices, names. It worked. Every
+error that still reached the notes walked past it, because **all six confirmed contradictions were
+absolutes, negatives or equations — not one was a numeric fact**:
+
+| Shape | Example that shipped wrong |
+|---|---|
+| Equation — "X means Y" | *"Spark means EMR"* (Glue runs Spark too) |
+| Elimination — "the answer is not X" | *"Eliminate: AWS Config"* (the managed rule is the right answer for imported certs) |
+| Absolute — "always / every" | *"the answer to **every** Windows lift-and-shift question"* (not when the stem wants iSCSI block) |
+| Absolute negative | *"it does **not** store data itself"* (Lake Formation also ingests) |
+
+So three further rules, which bind as hard as §13.10:
+
+**(a) Asymmetric evidence.** A negative, an absolute or an equation needs **stronger** evidence than
+a positive fact, because a single counter-example destroys it. You must **actively search for the
+counter-example and fail to find it**. Finding supporting evidence is *not* sufficient. If you
+cannot run that search, write the weaker claim that is actually true — *usually*, *the common
+case*, *unless…* — or mark it `⚠️ verify:`.
+
+**(b) Eliminations are facts.** "Eliminate X" asserts something about X and carries the **same
+verification burden** as asserting Y is correct. Every distractor a trap dismisses must be checked
+against the docs, not just the answer it endorses. This single rule would have caught the ACM/Config
+error, the Glue/Spark error and the FSx error.
+
+**(c) No unearned absolutes.** Do not write *always*, *never*, *every*, *only*, or *the answer to
+every X* unless AWS's own wording supports that strength. Prefer the conditional that is true.
+
+### 13.10b Seam concepts (added 2026-10-04)
+
+The vault is one note per service, so a fact belonging to **two** services falls into the gap and
+both notes assume the other covers it. Babelfish, SSM, Cognito, Glue and SNS were all lost this
+way, and 77 of 113 confirmed gaps in the final audit spanned two or more notes.
+
+When a fact spans notes: **write it in full in the note that owns it, and link to it from the
+other.** Never leave it implicit in both. A service name appearing in a note is not coverage.
+
+### 13.10c Who verifies (added 2026-10-04)
+
+The human has stated they will **not** independently check these notes against AWS documentation.
+The vault is their source of truth, so the verification burden is entirely ours.
+
+- **Do not write a fact from memory, including your own.** Memory carries bias toward what was
+  true when it was learned. Fetch the page.
+- **Confirm the page is live** before citing it: fetch `<page>.md` and compare the byte size
+  against the ~2,328-byte not-found shell. A 200 on `.html` proves nothing — the docs site is a
+  single-page app that serves a shell for removed paths.
+- When an agent reports a finding, **check its citation resolves and its quote exists** rather than
+  re-deriving the fact from memory — that keeps the agent honest without substituting your bias
+  for theirs.
+
 ### 13.11 Style
 
 Recall-first, not transcription. Diagrams and tables earn their place only when they make something clearer. If a section would just restate the video, cut it. The test of a good note: could the human pass a question on this concept using only the TL;DR + worked example + cards file? If not, the note is missing something; if yes, it's done.
