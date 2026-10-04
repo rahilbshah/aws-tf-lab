@@ -1,5 +1,32 @@
 # Wave 3 findings — HANDOFF (not yet applied)
 
+> **UPDATE 2026-10-04: verification is COMPLETE. 0 unverified remain.**
+> The 43 outstanding claims were checked by a verify-only run (`wf_4548005a-7eb`):
+> **18 confirmed, 25 overturned — a 58% overturn rate**, the highest of any stage.
+> Final wave-3 tally: **232 claims → 131 CONFIRMED, 101 OVERTURNED**
+> (30 high value · 91 medium · 10 low), including **6 contradictions**.
+>
+> That 58% is the point: had those 43 been written up unverified, **more than half would
+> have been wrong** — duplicating text that already exists or inventing gaps. The overturn
+> rate across the whole hunt ran 4% → 24% → 40% → 58%, climbing as coverage moved to a
+> cheaper model and the verifier was told to expect over-flagging. The verify stage is not
+> overhead; it is what makes the survivors worth writing.
+>
+> Four high-value additions from this last pass:
+> - **`15-decoupling`** — EventBridge is the only option with **SaaS partner event sources
+>   and event buses**. That note has *zero* occurrences of EventBridge, its frontmatter is
+>   `services: [SQS, SNS, AmazonMQ]`, and its routing table at :204 actively sends the
+>   reader to SNS. A gap and a mis-steer in one.
+> - **`04-alb-asg`** — **SNI** lets one ALB listener hold several certificates, chosen per
+>   hostname; a wildcard cert covers only subdomains of *one* domain. "SNI" appears nowhere
+>   in the vault, and the note pushes the HTTP→HTTPS redirect hard, priming the wrong
+>   distractor. Two bank questions turn on this.
+> - **`02-ec2`** — **EBS Recycle Bin retention rules** recover deleted snapshots. The
+>   vault's entire deletion vocabulary is *prevention* (Object Lock, Vault Lock), never
+>   *recovery*.
+> - **`07-rds-aurora`** — multi-hop relationship traversal (friends-of-friends) is a graph
+>   workload → **Neptune**, not Aurora/Redshift/OpenSearch.
+
 Harvested 2026-10-03 from workflow `wf_6f05199c-6e9`, stopped at 97% session usage with
 all 22 coverage batches complete and 189 of 232 verifications done.
 
@@ -66,19 +93,21 @@ A contradiction is worse than a gap: the note actively steers you to the wrong o
 | `02-ec2.md` | 2025-8-T6-Q09 | io1/io2 Provisioned IOPS SSD gives the most consistent low-latency performance for sustained high-IOPS databases; gp2 is burst/credit based and HDD ty |
 | `20-monitoring.md` | 2025-8-T5-Q27 | An EventBridge rule can match 'AWS API Call via CloudTrail' events (e.g. ec2 CreateImage) and target SNS directly, with less overhead than Lambda/Athe |
 
-## The 43 unverified claims
+## The 43 unverified claims — RESOLVED
 
-These were claimed by the Sonnet coverage stage but the adversarial verifier never ran on
-them. Given the 40% overturn rate on the ones that WERE checked, expect roughly four in ten
-to be wrong. **Do not treat them as findings until verified.** Full records, including the
-`verified: false` flag, are in `wave3-harvest.json`.
+All 43 were verified on 2026-10-04. 18 confirmed (now folded into the counts above), 25
+overturned. Nothing is left unverified; `wave3-harvest.json` carries the final verdict on
+every record.
 
-## How to resume this
+## Status
 
-The workflow cache is same-session only and that session is gone, so `resumeFromRunId` will
-not work. To verify the 43, read them out of `wave3-harvest.json` (filter `verified == false`)
-and run a fresh verify-only workflow over just those — the expensive coverage pass is already
-done and must not be repeated.
+The gap hunt is **finished**: 920 of 920 clean questions audited, every claim verified.
+There is no wave 4. The only remaining use of the bank is the caveat harvest (Stage 0b of
+`_scripts/GAP_WORKFLOW_PLAN.md`) over the 223 caveated questions — a currency feed, never a
+source of facts.
+
+**Writing order:** the 6 contradictions first (a wrong fact costs more than a missing one),
+then the 30 high-value gaps, then decide on the 91 medium.
 
 ## Rules that apply when writing any of this up
 

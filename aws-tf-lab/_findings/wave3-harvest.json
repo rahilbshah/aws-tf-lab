@@ -2144,7 +2144,8 @@
 "14-dr-resilience",
 "12-storage-extras"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#6",
@@ -2247,14 +2248,20 @@
 "discriminator": "EventBridge is the only option with native SaaS partner event sources and event buses. SQS and SNS have no SaaS integration.",
 "verdict": "ABSENT",
 "target_note": "15-decoupling.md",
-"closest": "20-monitoring.md:14 and :36 frame EventBridge as the 'reaction layer'. 15-decoupling.md never mentions EventBridge (0 hits) and has no SQS vs SNS vs EventBridge decoupling comparison. 24-other-services.md:264 mentions AppFlow for SaaS data transfer, which is a different service.",
+"closest": "20-monitoring.md:14 and :36 frame EventBridge as the 'reaction layer'. 15-decoupling.md never mentions EventBridge (0 hits) and has no SQS vs SNS vs EventBridge decoupling comparison. 24-other-services.md:264 mentions AppFlow for SaaS data transfer, which is a",
 "searched": "grep EventBridge, partner, SaaS, event bus in 15-decoupling and 20-monitoring; grep SaaS across all numbered notes",
 "treatment": "comparison-table-row",
 "spans_notes": [
 "15-decoupling",
 "20-monitoring"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"is_contradiction": false,
+"polarity": "normal",
+"exam_value": "high",
+"evidence": "Stem (batch9.txt:200, 2025-4-T4-Q35, topics=['EventBridge']) read in full: a SaaS app feeding updates to in-house and third-party apps, asking which service asynchronously decouples it; key=EventBridge. No NOT/EXCEPT -> polarity normal.\n\nSearched the vault with words the claim did not use: partner, event bus/eventbus/bus/buses, webhook, event source, event pattern, custom event, archive/replay, schema registry, loosely coupled, inter-application, application integration, Salesforce/Zendesk/Shopify/PagerDuty. Zero hits for event bus, buses, webhook, loosely coupled, inter-application anywhere in NN-*.md. Read 15-decoupling.md and 20-monitoring.md end to end.\n\nABSENT confirmed. 15-decoupling.md (262 lines) contains no occurrence of \"EventBridge\"; its frontmatter is services: [SQS, SNS, AmazonMQ] (15-decoupling.md:5) and its routing table actively steers to the wrong option: 15-decoupling.md:204 \"| one event, several independent consumers | **SNS** (fan-out into SQS queues) |\". A reader with only this note picks C.\n\nEventBridge appears only as the monitoring reaction layer: 20-monitoring.md:36 \"**EventBridge** is the *reaction layer* - when any of the above notices something, EventBridge is what turns it into an action.\"; 20-monitoring.md:223 \"| \\\"**Automatically** do X when Y happens\\\", \\\"run something on a schedule\\\" | **EventBridge** | routes events to targets - **the reaction** |\". Every EventBridge source named in the vault is AWS-internal (CloudTrail, Config, alarms, aws.health, Spot interruption, ECS SERVICE_DEPLOYMENT_FAILED at 17-containers.md:160, S3 event notifications at 09-s3-advanced.md:98). No partner event source, no partner/custom event bus, no SaaS ingestion.\n\nThe only SaaS-integration fact in the vault is 24-other-services.md:264 \"| **Amazon AppFlow** | no-code data transfer between **SaaS apps** (Salesforce, Slack, Zendesk) and AWS |\" - a different mechanism that pulls a reader away from EventBridge, not toward it. There is also no EventBridge vs SQS vs SNS comparison table or trap callout anywhere, so per the self-test generator nothing on this distinction is drillable.\n\nexam_value high: this is a service-choice discriminator on the vault's self-described most-tested architectural pattern, and the existing text makes a confident wrong answer more likely, not less."
 },
 {
 "qid": "#23",
@@ -2268,7 +2275,13 @@
 "04-alb-asg",
 "21-security"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "high",
+"evidence": "Could not refute. Q is batch9 #23 = 2025-4-T4-Q40 (ELB): one ALB, target groups for checkout.mycorp.com, www.mycorp.com, yourcorp.com/profile, yourcorp.com/search, all HTTPS, \"MINIMAL configuration effort\"; key = SSL certificate with SNI, distractors = wildcard cert / HTTP-to-HTTPS redirect / change ELB SSL security policy. Positive framing, so polarity normal. Stem spans TWO apex domains (mycorp.com and yourcorp.com), which is exactly what defeats the wildcard option.\n\nSearched with different vocabulary than the claim (server name indication, additional certificate, bind multiple, same listener, one listener, alternate domain, dedicated IP, Subject Alternative Name, SAN, \"*.\", host header, host-based, per-domain, different domain, plus every certificat|ACM|TLS hit vault-wide) and read all 512 lines of 04-alb-asg.md, the ACM section of 21-security.md, and the certificate sections of 11-cloudfront.md.\n\nAbsent:\n- /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/04-alb-asg.md:61 \u2014 \"| :443 (carries the ACM certificate) | `forward` to the target group \u2014 the real traffic |\" \u2014 singular certificate, repeated at 04-alb-asg.md:462 \":443 carries the certificate and `forward`s to the target group\". The note is detailed on listener RULES (host/path/header routing, forward/redirect/fixed-response, redirect loops, no HTTPS->HTTP) but never states a listener can hold more than one certificate.\n- /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/21-security.md:219-248 (\"ACM \u2014 where the certificate has to live\") covers only Region placement and DNS-vs-email validation; no SAN, wildcard, multi-domain or SNI.\n- /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/11-cloudfront.md:89-97 and :135 cover only the us-east-1 rule and the ELB-origin exception; no SNI Custom SSL vs dedicated-IP framing (the CloudFront sibling of this fact).\n- \"wildcard\" never appears in a certificate context in any NN-*.md: hits are IAM action wildcards (01-iam.md:125), RDS IAM-auth wildcard (07-rds-aurora.md:422), CloudFront invalidation paths (11-cloudfront.md:231). So the vault also cannot help eliminate option B.\n- The only \"SNI\" string in the whole vault is _findings/WAVE3-HANDOFF.md:56, which records this same gap for the sibling question 2025-7-T3-Q48 (batch14 #4). That is a findings/handoff file, not a teaching note, and it corroborates rather than refutes the gap.\n\nAggravating: 04-alb-asg.md pushes the HTTP->HTTPS redirect action hard (TL;DR bullet, worked example at :462, a trap, and a weak-spot entry \"missed while marked sure\"), so a learner relying on this note is primed toward distractor C. Exam value high \u2014 two questions in this bank turn on it and it is a service-behaviour discriminator, not a CLI/SDK detail."
 },
 {
 "qid": "#25",
@@ -3312,7 +3325,8 @@
 "verdict": "PARTIAL",
 "target_note": "05-vpc-hybrid.md",
 "closest": "05-vpc-hybrid.md:91",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T6-Q10-dup2",
@@ -3320,7 +3334,8 @@
 "verdict": "PARTIAL",
 "target_note": "05-vpc-hybrid.md",
 "closest": "05-vpc-hybrid.md:91",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T6-Q10-dup3",
@@ -3328,7 +3343,8 @@
 "verdict": "PARTIAL",
 "target_note": "05-vpc-hybrid.md",
 "closest": "05-vpc-hybrid.md:91",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T6-Q10",
@@ -3512,7 +3528,13 @@
 "19-serverless",
 "11-cloudfront"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Tried to refute and could not. Searched /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/ with terms the claim did not use: \"Event Notification\", \"s3:ObjectCreated\", \"ObjectRemoved\", \"on the fly\", \"in flight\", \"redact\", \"watermark\", \"custom code\", \"your own code\", \"modify the data\", \"derivative cop\", \"resiz\", \"thumbnail\", \"Access Point\", \"byte-range\", \"Lambda@Edge\", \"origin response\", \"at the edge\", \"400 KB / item size / blob\". Read 09-s3-advanced.md in full (lines 90-230), plus the relevant sections of 09-s3.md, 09-s3-security.md, 11-cloudfront.md and 19-serverless.md.\n\nA full-vault `grep -rli \"object lambda\"` returns exactly ONE teaching note: 11-cloudfront.md:129, and only as an allowed origin type \u2014 \"**Origins:** an S3 bucket (REST endpoint), ... S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, ...\". Nothing anywhere names the mechanism (a Lambda attached to S3 GET via an Object Lambda Access Point, returning transformed bytes with no derivative copy stored). Zero hits for \"custom code\", \"your own code\", \"modify the data\", \"redact\", \"watermark\", \"GET request\", \"on the fly\". This independently matches an earlier verification of the same gap on a different question (_findings/wave3-harvest.json:739-753), which also found only the CloudFront origin-list hit.\n\nThe claim's SECOND half is taught, and taught drillably: 09-s3-advanced.md:98 \u2014 \"The triggers are `s3:ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, and more\" \u2014 repeated at :22 and :144, with the diagram at :115 labelling the edge \"ObjectCreated / ObjectRemoved\". No read/GET trigger is listed, so a careful reader can eliminate option B. The note even carries the closest rival mechanism as a worked example (:184-185, the ObjectCreated \u2192 Lambda \u2192 `thumbs/` thumbnail pipeline), i.e. the vault teaches the PUT-time way to derive an image and never the GET-time way \u2014 which, if anything, nudges toward B's shape before the trigger list rules it out.\n\nWhat is genuinely missing is the positive half: the reader has no basis to recognise C as correct, and must land on it by elimination plus non-recognition. A and D are not cleanly eliminable from the notes either \u2014 no DynamoDB item-size limit is taught anywhere (`grep` for 400 KB / item size returns nothing in a DynamoDB context); the nearest principle is 07-rds-aurora.md:323, \"Keep large binary objects out of the row ... the object in S3, a pointer plus metadata in the database\", which is framed for relational databases. 09-s3-advanced.md:141's S3 Select text is accurate and dated, and the :202-203 trap pushes Athena \u2014 neither can mislead here, since Athena and S3 Select are not on the ballot, so this is not a contradiction.\n\nStem read in full at /private/tmp/claude-501/-Users-rahilshah-Documents-devops-terraform/9ecff1b2-42b7-46d3-a369-b78eb5777fde/scratchpad/gap3/batch19.txt:47 \u2014 \"Which scenario represents the easiest solution for this task?\" No NOT/EXCEPT/least framing, so polarity normal.\n\nexam_value medium, not high: a real in-scope S3 feature that the bank hits at least twice, and the fact belongs as one line in 09-s3-advanced.md's \"Speed & query\" section (plugging the hole S3 Select's deprecation left for \"return only what's needed without downloading the whole object\") plus a trap callout contrasting it with event notifications so the self-test generator drills it. Held below high because the existing trigger list already lets a careful reader kill the only plausible distractor."
 },
 {
 "qid": "2025-8-T4-Q24",
@@ -3527,7 +3549,13 @@
 "10-route53",
 "05-vpc-hybrid"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"evidence": "Stem read in full from /private/tmp/.../gap3/batch19.txt:56-63 \u2014 \"The company currently advertise the application using two public IP addresses from separate /24 address ranges and would prefer not to change these\u2026 Which actions should a solutions architect take? (Select TWO.)\" Keys: B (create GA, endpoints per Region) + D (migrate both public IP addresses to GA). No negation, so polarity normal.\n\nThe vault teaches answer B but not D. 11-cloudfront.md is the only GA teaching note and every GA statement in it frames the addresses as AWS-supplied:\n- 11-cloudfront.md:127 \u2014 \"A *standard* accelerator gives you **two static anycast IPv4 addresses** (four for dual-stack) advertised from the **AWS edge network**\u2026\"\n- 11-cloudfront.md:105 \u2014 \"Global Accelerator gives you **two static anycast IPs** (four dual-stack) and **those IPs never change**.\"\n- 11-cloudfront.md:151 (comparison table) \u2014 \"Static IPs | \u2026 | \u2705 **two static anycast IPs** (four dual-stack)\"\n- 11-cloudfront.md:207-208 (Trap callout) \u2014 trigger words listed are \"static IP addresses, non-HTTP protocol, gaming / VoIP / IoT, failover in seconds\" \u2014 nothing about preserving existing advertised IPs.\n\nOther GA touchpoints add nothing: 14-dr-resilience.md:149 (\"Global Accelerator when you need static IPs and failover that doesn't wait for DNS caches\"), 14-dr-resilience.md:120 (traffic dial = control plane), 10-route53.md:177 (GA as an alias target). exam-prep.md:65 scopes GA coverage to \"anycast, why it fails over faster than DNS\".\n\nGreps for BYOIP, \"bring your own\", \"two /24\", \"/24 range\", \"IPv4 address range\", \"address pool\", \"migrate\u2026IP\", IPAM, ROA/RPKI returned zero hits in any NN-*.md note. So the vault gives no basis for D, and a careful reader of :127 (\"advertised from the AWS edge network\") could reasonably infer the IPs must be AWS-assigned and pick C (\"assign new static anycast IP addresses and modify any existing pointers\") as the second answer \u2014 the exact distractor. The deciding fact is genuinely missing, not merely thin. Also worth noting the note's comparison table (:146-156) and the trap callout are what the self-test generator drills, so adding BYOIP to prose alone would not be drilled.\n\nexam_value medium: a durable AWS capability (up to two /24 IPv4 prefixes migrated to an accelerator, choosing the /32s) that is the entire basis of a select-TWO question and a recurring \"must keep existing advertised IPs\" cue \u2014 not a CLI flag or error code, but a narrower feature detail on top of GA coverage the vault otherwise handles well.",
+"exam_value": "medium",
+"is_contradiction": false,
+"outcome": "CONFIRMED",
+"polarity": "normal"
 },
 {
 "qid": "2025-8-T5-Q04",
@@ -3542,7 +3570,8 @@
 "12-storage-extras",
 "13-cost-optimization"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T5-Q05",
@@ -3558,7 +3587,8 @@
 "05-vpc-endpoints-peering",
 "05-vpc-hybrid"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T4-Q05",
@@ -3574,7 +3604,8 @@
 "19-serverless",
 "07-rds-aurora"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T5-Q23",
@@ -3588,7 +3619,8 @@
 "23-machine-learning",
 "22-analytics"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T2-Q38",
@@ -3603,7 +3635,8 @@
 "19-serverless",
 "08-elasticache"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T2-Q48",
@@ -3613,7 +3646,8 @@
 "closest": "12-storage-extras.md:161 states Single-AZ or Multi-AZ with a standby file server, but never links it to Windows failover clustering / active-passive",
 "searched": "Multi-AZ, failover cluster, Windows failover, shared in 12-storage-extras; File Gateway lines 108-109",
 "treatment": "trap-callout",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T2-Q50",
@@ -3629,7 +3663,8 @@
 "20-monitoring",
 "24-other-services"
 ],
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T2-Q56",
@@ -3644,7 +3679,13 @@
 "03-ami-bake",
 "12-storage-extras"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "high",
+"evidence": "Searched with vocabulary different from the claim's \u2014 \"trash\", \"undelete\", \"soft delete\", \"deletion protection\", \"restore a deleted\", \"deleted snapshot\", \"retain 7 days\", \"retention rule\", \"accidental\", plus neighbouring mechanisms (Object Lock, Backup Vault Lock, versioning, DLM) \u2014 and read the full EBS/snapshot sections of 02-ec2.md, 12-storage-extras.md, 14-dr-resilience.md and 03-ami-bake.md rather than grep hits alone. Zero \"recycle\" matches in any teaching note; the only occurrences under the repo are inside aws-tf-lab/_findings/wave3-harvest.json, i.e. the finding record itself. The vault's entire deletion-protection vocabulary is PREVENTION, never RECOVERY: S3 Object Lock WORM (09-s3-security.md:205-210), AWS Backup Vault Lock (12-storage-extras.md:155 \"AWS Backup Vault Lock, which enforces WORM \u2014 no one can delete a backup or shorten its retention while the lock holds\"), delete-marker behaviour (14-dr-resilience.md:147). None of those answers \"a snapshot was deleted, get it back\", and none is an offered option here. Worse than neutral: the vault positively teaches the distractor. 02-ec2.md:333 \u2014 \"In production the snapshot half is pre-automated with **Amazon Data Lifecycle Manager (DLM)** schedules, so a recent snapshot already exists the day you need it\" \u2014 and 03-ami-bake.md:88 \u2014 \"The fix is a retention policy \u2014 keep the last N stable images, deregister and delete the rest \u2014 automated with **Amazon Data Lifecycle Manager**\" \u2014 present DLM as THE snapshot/AMI retention answer, with nothing anywhere stating that DLM only creates and expires on a schedule and cannot recover an already-deleted snapshot. So a learner drilled on this vault has an affirmative reason to pick option C and no way to know option D's feature exists. Option A gets similar wrong-way support from 01-iam.md:61 (\"a Deny can never be out-voted by piling on more Allows, so a Deny is a guarantee rather than a vote\") with no counterweight about a blanket deny blocking legitimate cleanup. Suggested target 02-ec2.md is correct (it owns the EBS/snapshot material); note the claim's secondary citation 03-ami-bake.md:88 sits in a note whose frontmatter is exam: false (verified 03-ami-bake.md:1-8), so per CLAUDE.md \u00a713.5 it is excluded from every generator and cannot carry this fact. Polarity: full stem read from scratchpad/gap3/batch18.txt entry #6 \u2014 \"Which solution will meet these requirements with the LEAST development effort?\", a positive superlative, no NOT/EXCEPT/least-appropriate framing, so normal. exam_value high rather than low: Recycle Bin is a console-level AWS feature, not a CLI flag, error code, account id or SDK name; it is the whole answer to the recurring \"a cleanup script deleted our backups\" question shape; and the vault already teaches its nearest neighbour (DLM) with no axis separating them, which is exactly the discrimination failure mode the study system exists to fix (CLAUDE.md \u00a713.7). A single trap callout in 02-ec2.md contrasting Recycle Bin (recovers after delete, time-limited) vs DLM (creates/expires on schedule) vs IAM deny (blocks legitimate cleanup) closes it."
 },
 {
 "qid": "2025-8-T2-Q57",
@@ -3659,7 +3700,13 @@
 "11-cloudfront",
 "14-dr-resilience"
 ],
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Absent confirmed after searching with wording different from the claim (global endpoint, single endpoint, nearest bucket, active-active, anycast, multi-region, two regions, closest, failover, \"Access Point\"). The only MRAP string in the whole vault is 11-cloudfront.md:129, a bare list item: \"**Origins:** an S3 bucket (REST endpoint), ... S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, MediaStore/MediaPackage, **ALB**, **NLB**...\" \u2014 no mechanics, no routing, no failover. Nearest real teaching, all insufficient for this question: 09-s3-security.md:171 teaches single-region access points only (\"**Access Points** \u2014 named endpoints on a shared bucket, each with its own policy and optional VPC restriction. Simplifies \\\"one bucket, many teams\\\" without one giant bucket policy.\"); 09-s3-advanced.md:140 Transfer Acceleration is about uploads to one unmoved bucket (\"the bucket does **not** move\"); 11-cloudfront.md:127 teaches the same single-entry/AWS-backbone/nearest-healthy-Region idea but only for Global Accelerator with \"**NLB, ALB, EC2 instances or Elastic IPs**\" endpoints, never S3; 14-dr-resilience.md:84 defines active/active as a DR strategy, not an MRAP mode. Nothing states that an MRAP is ONE global endpoint fronting buckets in several Regions, so a reader cannot eliminate option B (\"Create a global endpoint for each of the Regions\") \u2014 that is precisely the misconception the missing fact corrects. Stem read in full from batch18.txt line 56ff; normal polarity, no NOT/EXCEPT. Target 09-s3-advanced.md is right since it already owns CRR, which the key pairs with MRAP; the fact needs to land in a comparison table or trap callout to be drilled."
 },
 {
 "qid": "2025-8-T3-Q03",
@@ -3669,7 +3716,8 @@
 "closest": "12-storage-extras.md:34 (EBS one instance, S3 is an API) and the line-194 table; no relative cost ranking of S3 vs EFS vs EBS",
 "searched": "cost, cheapest, per GB, most cost in 12-storage-extras and 09-s3-intro",
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13",
@@ -3679,55 +3727,85 @@
 "closest": "05-vpc-security.md:32,90-92 covered",
 "searched": "deny, rule number in 05-vpc-security",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13b-SKIP",
 "discriminator": "placeholder removed",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13-VPN",
 "discriminator": "Placeholder",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"contradiction": "",
+"closest": "",
+"target_note": "",
+"outcome": "CONFIRMED",
+"is_contradiction": false,
+"polarity": "normal",
+"exam_value": "medium",
+"evidence": "Claim's deciding-fact field is literally \"Placeholder\", so I verified the gap against the question itself. Stem (batch18.txt:128-135): Production VPC has VPNs via a customer gateway to \"a single device\" on-prem; Pre-Prod has a VGW + two DX; one VPC peering joins them; \"remove any single point of failure\"; key = B, add VPNs from a SECOND CUSTOMER GATEWAY DEVICE. Searched the vault with AWS wording (customer gateway, two tunnels, single point of failure, redundant, VGW, virtual private gateway, Site-to-Site, peering HA) and read 05-vpc-hybrid.md and 05-vpc-endpoints-peering.md in full. The hybrid note gets close but stops short of every deciding step: 05-vpc-hybrid.md:47 \"The device itself stays physical and stays yours, in your building; the CGW is only AWS's record of it\" \u2014 teaches CGW is your device, never that it is the SPOF. 05-vpc-hybrid.md:51 \"every Site-to-Site VPN connection comes with two tunnels, always. That's the built-in redundancy \u2014 the VPN has HA baked in before you've designed any.\" 05-vpc-hybrid.md:147 \"HA patterns: DX + VPN backup ...; dual DX ...; VPN itself already has 2 tunnels.\" Those two sentences are the note's entire VPN-resilience teaching and they steer the reader AWAY from the VPN leg, where the fix lives \u2014 they never say the two tunnels land on ONE on-prem device, so that device stays a SPOF, and the remedy is a second CGW device. Vault-wide greps over NN-*.md for \"second customer gateway\" / \"redundant customer\" / \"customer gateway device\" return zero hits; \"one VGW\" / \"VGW per VPC\" / \"only one virtual private gateway\" return zero hits, so nothing eliminates option D (you cannot attach a second VGW to a VPC, and the AWS side is already redundant). 05-vpc-endpoints-peering.md:134 describes peering as \"private, uses AWS backbone, cross-account and cross-region supported\" with limits non-transitive / no overlapping CIDRs / no edge-to-edge \u2014 it never says a peering connection is itself redundant, so nothing eliminates option A either. Genuinely missing, not merely thin. Target: 05-vpc-hybrid.md, HA-patterns material at lines 112 and 147. Not scored a contradiction: lines 51/147 are true about the tunnels and the claimed verdict is PARTIAL, not CONTRADICTS."
 },
 {
 "qid": "2025-8-T3-Q13_",
 "discriminator": "Placeholder",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"contradiction": "",
+"closest": "",
+"target_note": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Stem (batch18.txt:128-133, read in full): Production VPC uses VPNs through a customer gateway to \"a single device\" on-prem; Pre-Prod uses a VGW + two DX; both VPCs joined by one VPC peering. Asks how to remove the single point of failure. Key = add VPNs from a SECOND customer gateway device. Framing is normal (no NOT/EXCEPT).\n\nSearched the vault with different wording than the claim: \"single point of failure\", \"SPOF\", \"redundant device\", \"second device\", \"on-prem router\", \"redundan*\", \"failover\", \"two VPN\", \"peering connection\", across all NN-*.md. Only 05-vpc-hybrid.md covers this area; cheatsheet/exam-night/discriminators ignored per instructions.\n\nWhat 05-vpc-hybrid.md DOES teach:\n- :47 \"It is a configuration object inside AWS that describes the router you already own \u2026 The device itself stays physical and stays yours, in your building.\"\n- :51 \"every Site-to-Site VPN connection comes with two tunnels, always. That's the built-in redundancy \u2014 the VPN has HA baked in before you've designed any.\"\n- :147 \"HA patterns: DX + VPN backup (cheap failover if the line drops); dual DX (two connections/locations) for max resilience; VPN itself already has 2 tunnels.\"\n- :194 Trap \u2014 VGW = AWS side, CGW = on-prem side.\n\nWhat is MISSING (the deciding chain for this question):\n1. No note anywhere states that the on-premises customer gateway DEVICE is the remaining single point of failure, or that both tunnels of a VPN connection terminate on that one device \u2014 so a second CGW device / second VPN pair is the fix. Grep for \"single point of failure\"/\"SPOF\" hits only 05-vpc-core.md:100,106,190,204 (single NAT gateway as an AZ SPOF) and 24-other-services.md:359 (SFTP on EC2). Nothing hybrid-side.\n2. No note states the AWS side (VGW) is itself redundant / that you cannot usefully add a second VGW to a VPC \u2014 needed to eliminate option D.\n3. No note states a VPC peering connection is already highly available, so a second peering adds nothing \u2014 05-vpc-endpoints-peering.md:72,88,135,179 covers mechanics, both-side routes and N(N-1)/2 mesh math, but never its availability characteristics (grep for \"redundan|highly available|availab\" in that file returns zero hits).\n\nThe existing line :51/:147 (\"VPN has HA baked in before you've designed any\") arguably pushes a careful reader AWAY from the correct answer, since it frames the VPN leg as already redundant without noting the on-prem device is outside that guarantee. Not scored as a contradiction (claimed verdict is PARTIAL and no quoted sentence is factually wrong \u2014 two tunnels really are AWS-side HA), but it is why the gap is decisive rather than cosmetic. PARTIAL stands: topic objects are taught, the SPOF-reasoning that answers the question is not, and it lives in prose with no comparison table or trap callout, so the self-test generator would never drill it."
 },
 {
 "qid": "2025-8-T3-Q13-end",
 "discriminator": "Placeholder",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13",
 "discriminator": "Duplicate of covered NACL item.",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13a",
 "discriminator": "Duplicate",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"contradiction": "",
+"closest": "",
+"target_note": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Gap is real, though the claim's \"closest text: nothing\" is wrong \u2014 the closest text is /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/05-vpc-hybrid.md:147: \"**HA patterns:** DX + **VPN backup** (cheap failover if the line drops); dual DX (two connections/locations) for max resilience; VPN itself already has 2 tunnels.\" That line is the note's explicit enumeration of VPN/DX HA patterns and it omits the deciding fact this question turns on: the on-prem customer gateway DEVICE is the remaining single point of failure, remedied by a SECOND customer gateway device with additional VPN connections. Searching all NN-*.md with synonyms (customer gateway, CGW, redundant, single point of failure, dual, second device, router fails, ECMP, tunnel endpoint) finds no such teaching anywhere \u2014 the only SPOF callouts in the vault are the single-NAT AZ trap (05-vpc-core.md:190) and the self-managed SFTP box (24-other-services.md:359). The vault gets a reader partway: 05-vpc-hybrid.md:47 \"a configuration object inside AWS that describes the router you already own ... The device itself stays physical and stays yours, in your building\" and :51 \"every Site-to-Site VPN connection comes with two tunnels, always. That's the built-in redundancy \u2014 the VPN has HA baked in before you've designed any\" (which weakly eliminates distractor D, a second VGW). But distractor A is not covered at all: 05-vpc-endpoints-peering.md never states a peering connection is itself redundant/HA, and its only mention of a second peering is as a workaround for non-transitivity, which nudges toward the wrong option. Hence PARTIAL, and the right target note is 05-vpc-hybrid.md. Stem read in full at batch18.txt:128 (\"How can a Solutions Architect improve this architecture to remove any single point of failure?\") \u2014 positive framing, so polarity normal; verdict is not CONTRADICTS so is_contradiction is false. Note the claim's deciding-fact field was the placeholder string \"Duplicate\", not a fact; the judgement above is of the underlying gap for this question."
 },
 {
 "qid": "2025-8-T3-Q13x",
 "discriminator": "Duplicate",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "2025-8-T3-Q13-dup",
 "discriminator": "Duplicate",
 "verdict": "PARTIAL",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#4 2025-4-T4-Q11",
@@ -3737,7 +3815,13 @@
 "closest": "24-other-services.md:16 and 13-cost-optimization.md:158 mention Neptune only as a DMS target or Savings Plan service; no sentence says graph database. 'graph', 'Gremlin' have no hits outside Mermaid.",
 "searched": "grep Neptune, graph, Gremlin, SPARQL across [0-2]*.md",
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "high",
+"evidence": "Searched with vocabulary the claim did not use (traversal, nodes and edges, connected data, openCypher, social graph, knowledge graph, fraud ring, recommendation engine, many-to-many) across all NN-*.md notes and read the candidate notes whole. All 6 Neptune mentions in the vault are membership lists, never a definition: 12-storage-extras.md:149 \"It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx file systems, Storage Gateway volumes, DocumentDB, Neptune, Redshift, and more.\" (AWS Backup) and :168 (same list); 13-cost-optimization.md:158 \"Database Savings Plans \u2014 up to 35% across Aurora, RDS, DynamoDB, ElastiCache, DocumentDB, Timestream, Neptune, Keyspaces, DMS and OpenSearch\"; 24-other-services.md:16, :75, :299 all DMS target lists. 24-other-services.md:259-278 is an explicit one-line-per-service \"long tail \u2014 recognise and eliminate\" table (QLDB, AppFlow, MGN, Wavelength, Proton, Pinpoint, License Manager...) and Neptune is absent from it and from that note's services: frontmatter. 07-rds-aurora.md reaches only DocumentDB among non-relational cousins (:334 \"Amazon DocumentDB is MongoDB-compatible...\") and its ## Comparisons section (Multi-AZ vs Read Replica, RDS vs Aurora, monitoring layers, auth methods) has no engine-selection table. The vault's only database/engine picker, 22-analytics.md:201-216 \"Which engine does the exam mean?\", has no graph row (Athena, Parquet, Redshift, Spectrum, EMR, OpenSearch, Glue, Lake Formation, MSK, QuickSight only). grep -i graph outside Mermaid yields only AppSync/GraphQL and Detective's \"behaviour graph\" (21-security.md:199). No sentence anywhere states that Neptune is a graph database or that multi-hop relationship traversal implies a graph engine. Stem read in full at /private/tmp/claude-501/-Users-rahilshah-Documents-devops-terraform/9ecff1b2-42b7-46d3-a369-b78eb5777fde/scratchpad/gap3/batch21.txt:29 \u2014 \"which of the following AWS database services would you suggest as the BEST fit\", normal polarity. The three distractors are taught (Redshift=warehouse, OpenSearch=search/logs, Aurora=relational), so elimination could stumble onto the undefined fourth name for this particular question, but that is guessing rather than knowing, and it collapses if a stem pairs Neptune against DocumentDB or DynamoDB. Target: add a one-liner to the 24-other-services.md long-tail table (line 259) or a graph row to the engine-selection table."
 },
 {
 "qid": "#7 2025-4-T4-Q47",
@@ -3751,7 +3835,8 @@
 "20-monitoring.md"
 ],
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#9 2025-7-T1-Q30",
@@ -3761,7 +3846,13 @@
 "closest": "None. Case-insensitive grep 'artifact' only hits 03-ami-bake build artifacts. 21-security.md:19 describes Inspector, Macie and Security Hub but no compliance-report service.",
 "searched": "grep -i artifact, compliance report, SOC, BAA across notes",
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Independently confirmed ABSENT. Searched with wording the claim did not use: \"compliance report\", \"regulator*\", \"auditor\", \"audit team\", \"shared responsib*\", \"governance\", \"SOC 2\", \"PCI\", \"ISO 27\", \"BAA\", \"business associate\", \"attestation\", \"NDA\", \"nondisclosure\", \"HIPAA\", \"FedRAMP\". AWS Artifact is named in no NN-*.md note; the only 'artifact' hits are build artifacts (03-ami-bake.md:92 \"## The core idea: build artifacts vs manage infrastructure\") and this repo's own docs under _scripts/. Read whole notes: 24-other-services.md:257-276 is the \"long tail \u2014 recognise and eliminate\" one-line table (QLDB, AppFlow, MGN, Migration Hub, License Manager, Wavelength, Proton, Pinpoint...) \u2014 exactly where an Artifact entry belongs, and it is not listed. 21-security.md:195-202 \"### Which detection service\" table covers GuardDuty/Inspector/Macie/Security Hub/Detective/Firewall Manager by input, with Security Hub's trigger as \"single pane of glass, aggregate findings, CIS benchmark compliance\" \u2014 the nearest compliance word in the vault, and it is about aggregating findings, not AWS's own audit reports. The other compliance-adjacent text is a different axis entirely: 25-well-architected.md:168 discriminates \"review vs inspect vs continuously enforce\" (WA Tool / Trusted Advisor / Config), 20-monitoring.md:221-222 does CloudTrail-vs-Config for \"audit for compliance\", 09-s3-security.md:231-235 uses COMPLIANCE only as an Object Lock mode. Stem read in full at batch21.txt:76-81; plain \"Which action should a solutions architect consider?\", no NOT/EXCEPT/least-appropriate framing, so polarity normal. The vault does let a reader eliminate A, C and D from 21-security.md:198-201, but the keyed answer names a service that appears nowhere in the vault, so the human is guessing an unknown name rather than recognising it \u2014 too thin to answer from. Target: one line in 24-other-services.md's long-tail table or 21-security.md."
 },
 {
 "qid": "#10 2025-7-T1-Q51",
@@ -3775,7 +3866,8 @@
 "01-iam-advanced.md"
 ],
 "treatment": "trap-callout",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#11 2025-7-T3-Q27",
@@ -3785,7 +3877,13 @@
 "closest": "None. 24-other-services.md CloudFormation table lists only StackSets, change sets, drift and DeletionPolicy.",
 "searched": "grep CreationPolicy, cfn-signal, DependsOn, WaitCondition, UpdatePolicy, helper script",
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"is_contradiction": false,
+"polarity": "normal",
+"exam_value": "medium",
+"evidence": "Genuinely absent. Searched the whole vault with vocabulary the claim did not use \u2014 CreationPolicy, cfn-signal, cfn-init, cfn-hup, WaitCondition/\"wait condition\", DependsOn, UpdatePolicy, UpdateReplacePolicy, SignalResource, \"success signal\", \"helper script\", CREATE_COMPLETE, \"stack creation\", \"resource attribute\", and a bare sweep for \"signal\" \u2014 and the only hits anywhere under /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/ are in _findings/wave3-harvest.json:3782 (the claim's own harvest record), not in any note. The vault's complete CloudFormation teaching is 24-other-services.md:233-256, a four-row table whose only resource attribute is DeletionPolicy: \"| **`DeletionPolicy`** | what happens to a resource when the stack is deleted \u2014 default is **Delete**; `Retain` keeps it, `Snapshot` takes one first (RDS, EBS and friends) |\" (24-other-services.md:247) \u2014 stack deletion, not create-time signalling. The other three rows are StackSets, change sets and drift detection. All three distractors (DependsOn, UpdatePolicy, UpdateReplacePolicy) are equally absent, so the note offers nothing to eliminate against. exam-prep.md:92 scopes that gap closure as \"stacks, StackSets, change sets, drift, `DeletionPolicy`\", confirming the attribute family was never claimed. Neighbouring notes checked and clear: 04-alb-asg.md (ASG health/lifecycle), 14-dr-resilience.md:78,168 (IaC + CloudFormation drift detection), 12-storage-extras.md:168, 01-iam-advanced.md:295 (Control Tower proactive controls = CloudFormation hooks) \u2014 none teaches waiting on bootstrap completion. Stem read in full at batch21.txt:92-99; positive framing (\"should the Architect do to meet this requirement\"), so polarity normal. Target note 24-other-services.md is correct."
 },
 {
 "qid": "#12 2025-7-T3-Q40",
@@ -3795,7 +3893,8 @@
 "closest": "23-machine-learning.md:120 chains Transcribe to Comprehend; :19 defines Translate. The three-service chain is never stated, and Comprehend's multi-language support removing the need to translate is not discussed.",
 "searched": "23-machine-learning.md Transcribe, Translate, Comprehend lines and trap callouts",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#13 2025-7-T4-Q06",
@@ -3809,7 +3908,8 @@
 "01-iam-advanced.md"
 ],
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#14 2025-7-T4-Q12",
@@ -3819,7 +3919,8 @@
 "closest": "24-other-services.md:~233 'no charge for CloudFormation itself' and template/stack definition; infrastructure-as-code, text file and version control are not stated.",
 "searched": "grep CloudFormation, infrastructure as code, version-control",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#16 2025-7-T4-Q52",
@@ -3833,7 +3934,13 @@
 "21-security.md"
 ],
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"evidence": "No note teaches Comprehend Medical. 23-machine-learning.md is the vault's only ML note and is built on a closed eleven-service list that omits it: frontmatter line 5 `services: [Rekognition, Transcribe, Polly, Translate, Comprehend, Textract, Lex, Kendra, SageMaker, Forecast, FraudDetector]`, and line 144 names the in-scope eleven plus an explicit out-of-scope list (which includes HealthLake but not Comprehend Medical). Recognition table line 57 reads `| **Comprehend** | **text** -> **sentiment, entities, key phrases, PII, language** | \"sentiment\", \"NLP\", \"analyse reviews\", \"detect PII in text\" |` \u2014 plain Comprehend only. The claim's cited closest text is accurate: line 23 `**Chain services** when the scenario has two verbs: Transcribe -> Comprehend (call sentiment), Textract -> Comprehend (extract then redact PII).` and line 120 repeats it, teaching the right pipeline shape with the wrong second hop. Independent searches for medical/healthcare/patient/clinical/PHI/HIPAA/HealthLake across all NN-*.md returned only the HealthLake out-of-scope mentions (23-machine-learning.md:64, :144); Macie hits in 21-security.md (:19, :72, :125, :197, :343) cover S3 sensitive-data discovery, a different service that is not an option here. Textract's real specialised APIs are listed at line 145 (AnalyzeExpense, AnalyzeID, Queries, Analyze Lending) with no \"Textract Medical\", which helps eliminate option A's first half but does not supply the deciding fact that a distinct PHI/clinical-text service exists.",
+"exam_value": "medium",
+"is_contradiction": false,
+"polarity": "normal"
 },
 {
 "qid": "#17 2025-7-T5-Q30",
@@ -3843,7 +3950,8 @@
 "closest": "24-other-services.md:135 'One endpoint fronts multiple data sources ... in one round trip'; the term pipeline resolver is absent.",
 "searched": "grep pipeline resolver, resolver, AppSync",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#18 2025-7-T5-Q33",
@@ -3858,7 +3966,13 @@
 "05-vpc-hybrid.md"
 ],
 "treatment": "comparison-table-row",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Genuinely absent. Searched with wording the claim did not use \u2014 virtual desktop, VDI, thin client, workstation, BYOD, end-user computing, PCoIP/WSP/DCV, AppStream 2, WorkDocs, WorkMail, DaaS, remote worker, ClassicLink \u2014 across all 34 NN-*.md notes (plus decisions/ and library/). Only occurrence of the string anywhere in teaching notes: 13-cost-optimization.md:168 \"**AWS Compute Optimizer** analyses **CloudWatch metrics from the last 14 days** ... Covers EC2, Auto Scaling groups, EBS volumes, Lambda, ECS on Fargate, Aurora/RDS, NAT Gateway, DynamoDB, ElastiCache, MemoryDB, DocumentDB, WorkSpaces and SageMaker.\" \u2014 a coverage list that never says what WorkSpaces does. ClassicLink: zero hits vault-wide. The two shared legs of the stem ARE taught well (Directory Service: 01-iam.md:112, 24-other-services.md:182-194 and the comparison table at 24-other-services.md:318; Site-to-Site VPN: 05-vpc-hybrid.md), but all four options contain \"AWS Directory Services, VPN connection\", so those discriminate nothing \u2014 the entire question turns on which third service delivers desktops, and that fact is nowhere. 24-other-services.md:257-280 is the \"long tail \u2014 recognise and eliminate\" table where the one-liner belongs, and WorkSpaces is not among its 14 rows. Stem read in full at /private/tmp/claude-501/-Users-rahilshah-Documents-devops-terraform/9ecff1b2-42b7-46d3-a369-b78eb5777fde/scratchpad/gap3/batch21.txt:157; no NOT/EXCEPT/least-appropriate framing, so polarity normal. exam_value medium not high: WorkSpaces is the subject of exactly one question across the sampled batches (the other string hit, batch19.txt, is an FSx for Windows question that only names it in passing), and it is recognition-only \u2014 one line in the long-tail table, not a section."
 },
 {
 "qid": "#19 2025-7-T5-Q61",
@@ -3873,7 +3987,8 @@
 "21-security.md"
 ],
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"outcome": "OVERTURNED"
 },
 {
 "qid": "#22 2025-7-T6-Q26",
@@ -3883,7 +3998,13 @@
 "closest": "19-serverless.md:144 table cell 'horizontal, effectively unbounded | vertical, plus read replicas' is the only use; no definition of scale up versus scale out.",
 "searched": "grep horizontal, vertical, scale up, scale out",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Stem read in full (gap3/batch21.txt:192-198): plain \"What is the difference between Horizontal scaling and Vertical scaling?\" \u2014 no NOT/EXCEPT, so polarity normal. Note that A and C BOTH state the horizontal half correctly (\"adding more servers to the existing pool and it doesn't run into limitations of individual server\"); the only discriminator is the VERTICAL half (C: bigger machines capped by one server; A: Lambda/serverless). So the vertical definition is the deciding fact, exactly as claimed.\n\nI searched with different vocabulary than the claim: \"scale out/scale up/scale-out/scale-up\", \"bigger machine|bigger box|bigger instance|larger instance|instance size|resize|more instances|add more|elasticity|scale vertically|scale horizontally\", \"individual server|existing pool|change the instance type|instance class|monolith\", and read 04-alb-asg.md, 13-cost-optimization.md, 25-well-architected.md, 02-ec2.md, 15-decoupling.md, 17-containers.md, 19-serverless.md sections in full.\n\nResult: across every NN-*.md note, the word \"vertical\" appears exactly TWICE, both as bare table cells with no definition \u2014 /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/19-serverless.md:144 \"| Scale story | horizontal, effectively unbounded | vertical, plus read replicas |\" and /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/22-analytics.md:225 \"| Scaling model | **MPP** across nodes | vertical + read replicas |\". The claim missed 22-analytics:225 but it is equally non-teaching. Neither says what vertical scaling IS, nor that it is capped by a single server's capacity.\n\nThe horizontal half is genuinely taught: /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/04-alb-asg.md:12 \"The two halves of horizontal scaling on EC2: an **Application Load Balancer** spreads incoming traffic across many instances (Layer 7), and an **Auto Scaling Group** keeps the right number of instances running\", and 04-alb-asg.md:32 gestures at the vertical ceiling without naming it: \"You picked an instance type once, and that fixed the capacity you have.\" But 04-alb-asg.md's section list (lines 26-499) has no scaling-axis comparison; its Comparisons section is ALB/NLB/GWLB, policy types, termination policies, cross-zone, AZ sizing. 13-cost-optimization.md:140/152 teaches Compute Optimizer as the tool that \"says the instance is too big\" \u2014 the vertical half's tooling \u2014 but never names vertical scaling or the one-server cap. 25-well-architected.md mentions scaling only once (line 146, a pillar table row). So a reader can eliminate B and D from 04-alb-asg:12, but has nothing in the vault to separate A from C, which is the whole question.\n\nIndependent corroboration that this is a real hole: /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/_scripts/GAP_HUNT_2026-09-12.md:345 recorded \"I grepped the whole vault: 'vertical' appears in no note, so this axis is genuinely absent\", and drafted a vertical/horizontal table for 04-alb-asg.md (line 332) and 13-cost-optimization.md (line 856). Grepping both notes for \"Vertical\" and \"scale up/down\" returns nothing \u2014 that draft was never applied, so the gap the prior hunt identified is still open. Suggested target 04-alb-asg.md is right (13-cost-optimization.md is the alternative, since it already owns Compute Optimizer).\n\nexam_value medium, not high: it is a foundational definitional distinction named in the Well-Architected reliability pillar and the question is pure discrimination between two neighbours (this user's measured failure mode), but it is also general-knowledge-level and not an AWS service behaviour, limit or price. Not low \u2014 it is not a CLI flag, error code, account ID or SDK name."
 },
 {
 "qid": "#23 2025-7-T6-Q33",
@@ -3897,7 +4018,13 @@
 "20-monitoring.md"
 ],
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"polarity": "normal",
+"is_contradiction": false,
+"exam_value": "medium",
+"evidence": "Genuinely absent. Searched with wording the claim did not use \u2014 \"source bundle\", \"application version\", \".ebextensions\", \"eb cli\", \"server log\", \"every hour\", \"environment configuration settings\", plus Beanstalk crossed against S3/Glacier/CloudTrail/EBS/store \u2014 and read the full Beanstalk treatment rather than grep hits.\n\nBeanstalk appears in only three teaching locations, none of which states storage:\n- 24-other-services.md:156-168 \"### Elastic Beanstalk \u2014 PaaS with the lid off\". Line 161 is explicit about the scope: \"Two facts do the work on the exam:\" \u2014 then 162 (no additional charge) and 164 (you keep full control of the resources). Line 166 adds web-server vs worker environment types. Nothing on where the uploaded code or the server logs go.\n- 24-other-services.md:293 (Key facts bullet): \"Elastic Beanstalk provisions EC2 instances (or EKS clusters), configures load balancing, sets up health monitoring and scales the environment. Platforms: Go, Java, .NET, Node.js, PHP, Python, Ruby, and Docker. 'There is no additional charge for Elastic Beanstalk. You pay only for the underlying AWS resources.' Web server and worker environment types.\" \u2014 again no storage.\n- 24-other-services.md:396-397 the only Beanstalk trap is \"assuming Elastic Beanstalk costs extra or hides the resources\" \u2014 cost/control only.\n- 10-route53.md:177 lists Beanstalk only as a valid Route 53 alias target.\n\nChecked and rejected as false positives: 20-monitoring.md:98 and :182 (\"sessions can be logged to S3 or CloudWatch Logs\") are about Systems Manager Session Manager, not Beanstalk. 12-storage-extras.md, 13-cost-optimization.md, 19-serverless.md and 09-s3-intro.md contain no Beanstalk mention at all.\n\nStem read in full from batch21.txt:201-206 \u2014 plain \"where does it store the application files and server log files?\", no NOT/EXCEPT framing, so polarity normal. The claim's cited closest text (24-other-services.md:156-166) is accurate. A reader could eliminate option C from 20-monitoring.md (CloudTrail records API calls, not application logs) and Glacier on general archive grounds, but the positive fact that distinguishes D from A \u2014 logs optionally to S3 *in addition to* CloudWatch Logs, copied hourly \u2014 is taught nowhere in the vault.\n\nexam_value medium: a real recurring service-behaviour fact about a named service (not a CLI flag, error code, account id or SDK name), but it is single-service trivia rather than an architecture discriminator the human must reason from."
 },
 {
 "qid": "#24 2025-7-T6-Q42",
@@ -3912,7 +4039,13 @@
 "20-monitoring.md"
 ],
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"evidence": "Claim partly overstated but the deciding axis is genuinely missing. TAUGHT: 23-machine-learning.md:146 \"Amazon Comprehend returns entities, key phrases, PII, dominant language, sentiment... Real-time for small workloads, asynchronous jobs for large document sets\"; 23-machine-learning.md:204 worked example is this exact scenario (\"Transcribe turns the audio into text; Comprehend runs sentiment analysis over that text... nothing here needs a custom model\"); 23-machine-learning.md:211 trap \"Rekognition where Textract belongs\" + :53 table (\"Textract | documents (scans, PDFs) -> text, forms, tables\") eliminates option B; 23-machine-learning.md:214 trap \"SageMaker as the serious-sounding answer\" (\"When the question says 'without machine learning expertise', 'fully managed', 'minimal development effort'... SageMaker is the distractor\") eliminates option D. MISSING: the only difference between keyed A and distractor C is OpenSearch Dashboards vs Amazon Managed Grafana, and no teaching note covers that. Managed Grafana appears once, as a long-tail one-liner: 24-other-services.md:272 \"Amazon Managed Grafana / Managed Service for Prometheus | managed observability dashboards and metrics\". 22-analytics.md:262 mentions \"Kibana/OpenSearch Dashboards\" only as a trigger phrase for OpenSearch-vs-Athena, and the OpenSearch section (22-analytics.md:115-123) never states that Dashboards is included with the domain, so nothing supports \"adding Grafana is the heavier option\". Reader can reach A/C from the vault but cannot break the tie. Better target note is 22-analytics.md (OpenSearch section), not 23-machine-learning.md.",
+"exam_value": "medium",
+"is_contradiction": false,
+"polarity": "normal"
 },
 {
 "qid": "#25 2025-7-T6-Q52",
@@ -3922,6 +4055,12 @@
 "closest": "None. No note lists template sections or says Resources is required.",
 "searched": "grep template sections, Resources section, Mappings, Conditions, AWSTemplateFormatVersion",
 "treatment": "key-fact",
-"verified": false
+"verified": true,
+"contradiction": "",
+"outcome": "CONFIRMED",
+"is_contradiction": false,
+"polarity": "normal",
+"exam_value": "medium",
+"evidence": "Stem read in full at /private/tmp/claude-501/-Users-rahilshah-Documents-devops-terraform/9ecff1b2-42b7-46d3-a369-b78eb5777fde/scratchpad/gap3/batch21.txt:220 \u2014 a JSON template with AWSTemplateFormatVersion, Parameters and Outputs but no Resources; asks \"why will this template fail to deploy the stack?\", key = B \"The Resources section is missing.\" Normal polarity, no NOT/EXCEPT framing.\n\nI searched with vocabulary the claim did not use: AWSTemplateFormatVersion, Mappings, Transform, intrinsic, !Ref, Fn::, pseudo parameter, \"top-level section\", \"mandatory/required section\", \"only required\", \"template body\", CDK, SAM, \"stack creation\", rollback, plus case-sensitive \"Resources\" across all NN-*.md notes. The only hits for \"Resources\" in teaching notes are /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/06-capstone.md:145, about Terraform module addressing \u2014 unrelated.\n\nThe one CloudFormation teaching block is /Users/rahilshah/Documents/devops/terraform/aws-tf-lab/24-other-services.md:233-257 (\"### AWS CloudFormation \u2014 the standardisation answer\"), read in full. It teaches: template vs stack (\"A **template** describes the resources; a **stack** is what that template creates, managed **as a single unit**\"), no charge for CloudFormation itself, and a four-row table of StackSets / change sets / drift detection / DeletionPolicy, then Service Catalog as the approved-products layer. It never enumerates the template's top-level sections and never states that Resources is the only mandatory one. The other CloudFormation mentions in the vault are all incidental: 14-dr-resilience.md:27,78,168,194,271 (IaC for backup-and-restore, drift detection in the DR Region), 12-storage-extras.md:168 (AWS Backup supported resource types), 01-iam-advanced.md:295 (Control Tower proactive controls as CloudFormation hooks), 24-other-services.md:284 (DynamoDB auto scaling not enabled when a table is created via IaC). None touch template anatomy. 25-well-architected.md, 19-serverless.md, 13-cost-optimization.md and 21-security.md contain no CloudFormation mention at all.\n\nSo the vault cannot answer this question: a reader who knows everything 24-other-services.md teaches about CloudFormation still has no basis to eliminate C (\"an invalid section named Parameters is present\") or D (\"the Conditions section is missing\") in favour of B. Genuinely ABSENT; target note 24-other-services.md is correct, and it is a one-line addition to the existing section (Format Version, Description, Metadata, Parameters, Rules, Mappings, Conditions, Transform, Resources, Outputs \u2014 Resources alone is mandatory).\n\nexam_value medium, not high: it is template-structure syntax rather than an architectural discriminator, and the vault deliberately avoids IaC syntax. But it is not CLI-flag-grade trivia either \u2014 the bank tests it directly, it is a pure recall one-liner, and the vault already commits a section to CloudFormation where it would sit naturally."
 }
 ]
