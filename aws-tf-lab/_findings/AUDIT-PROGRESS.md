@@ -15,7 +15,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 |---|---|---|---|---|
 | 01-iam.md | 3 WRONG · 7 OVERSTATED · 1 UNVERIFIABLE | 11 | 10 | `13e94e6`, `0091f77` |
 | 01-iam-advanced.md | 128 claims · 29 pages · 4 WRONG · 7 OVERSTATED · 1 STALE · 1 UNVERIFIABLE | 13 | 8 | `40ab3c3` + truth |
-| 02-ec2.md | | | | |
+| 02-ec2.md | 168 claims · 33 pages · 2 WRONG · 8 OVERSTATED · 1 STALE · 4 UNVERIFIABLE | 19 | 10 | `pending` |
 | 04-alb-asg.md | | | | |
 | 05-vpc-core.md | | | | |
 | 05-vpc-security.md | | | | |
@@ -47,6 +47,17 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 Not audited on purpose — `exam: false`, excluded from every generator:
 `03-ami-bake.md`, `06-capstone.md`, `18-containers-capstone.md`.
 
+## Judgment calls made, so they are not re-litigated
+- **Layered repetition is by design, not duplication.** An agent flagged placement-group facts
+  appearing in the body prose, the Key facts bullets and the Comparisons table as triplication.
+  Declined: the body is the comprehension layer, the table is the drillable compression, and the
+  Key facts bullets carry limits the table does not (free, one group at a time, cannot merge,
+  no Dedicated Hosts, peered VPCs, the 10/5 Gbps split, T-family unsupported). Same reasoning
+  applies to TL;DR bullets that restate body facts.
+- **Note titles that look mis-numbered may be load-bearing.** `01b – IAM Advanced` sorts after
+  `01 – IAM` in the generated views, which sort by title. Renaming it to `01` pushed Advanced
+  ahead of basic IAM. Left as `01b`.
+
 ## Still outstanding across the vault
 - `cheatsheet.md` (672 facts) has never been truth-checked against AWS docs.
 - 91 medium-value gaps from wave 3 remain unwritten (deliberately deferred).
@@ -63,6 +74,23 @@ Not audited on purpose — `exam: false`, excluded from every generator:
 
 ## Carry-forward defects found while auditing another note
 Fix these when that note's own turn comes, not before.
+
+- **`17-containers.md:173`** — a surviving Terraform leftover: `target_type`, `"instance"` and
+  `terraform apply` inside a trap callout. §13.5 says the notes carry no Terraform. Restate the
+  AWS fact (an `awsvpc` task registers by IP, so the target group must be IP-type) and drop the
+  tooling framing.
+
+- **`cheatsheet.md`** — six entries are IaC argument names rather than AWS facts: lines 155, 159
+  (`delete_on_termination`), 207 (`map_public_ip_on_launch` / `associate_public_ip_address`), 375
+  (same), and two that have no exam value at all and should simply go: line 238 ("Attributes that
+  force instance replacement") and line 246 ("Accepted `ip_protocol` values"). The matching traps
+  were removed from `02-ec2.md` on 2026-10-04; the cheatsheet still asserts them.
+
+- **`13-cost-optimization.md:120`** and **`09-s3-security.md:265-272`** — both restate facts
+  `02-ec2.md` owns (public IPv4 hourly billing; EBS snapshot-encryption inheritance). 02-ec2 now
+  links out to both; on their own passes they should link back rather than restate. Note
+  13-cost-optimization also still carries the pre-correction form of the public-IPv4 rule
+  ("whether attached or not") without the BYOIP and 750-hour Free Tier exemptions.
 
 - **`19-serverless.md:132`** — the trap *"the certificate Region for a custom domain"* opens an
   italic quote (`AWS: to use an ACM certificate with a …`) that the discriminators generator

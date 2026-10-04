@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 330 pointers · ~29 min read*
+*176 recall hooks · 331 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -106,9 +106,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[02-ec2#Placement groups — telling EC2 where to put the instances relative to each other|explain]]
 
 **Traps** [[02-ec2|open]]
+- EFA offered for any HPC stem
 - cluster chosen for availability, or spread for scale
-- All EC2 attributes can be changed in-place
-- ip_protocol accepts "ssh" / "http"
+- any EC2 attribute can be changed on a live instance
 - t3-micro works
 - IAM changes are instant
 - EBS volumes can be moved across AZs by detach + attach
@@ -121,6 +121,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[02-ec2#Stop vs Terminate|Stop vs Terminate]]
+- [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]]
 - [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]]
 - [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]]
 - [[02-ec2#The three placement strategies|The three placement strategies]]
