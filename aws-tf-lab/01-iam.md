@@ -14,7 +14,7 @@ The global, free AWS service that authenticates and authorizes every AWS API cal
 > [!info] Exam TL;DR
 > - **IAM is global, free, and always-on.** No region selection. Same identities and policies seen from every region.
 > - **Four core objects:** User, Group, Role, Policy. Groups can't log in; only Users can.
-> - **Explicit Deny always wins.** Evaluation: implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything. One Deny anywhere in any attached policy = no access. Order, count, and specificity all don't matter.
+> - **Explicit Deny wins — with two documented exceptions.** Evaluation: implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything, and order, count and specificity never matter. The exceptions are both about **SCPs**: they *"don't affect users or roles in the management account"*, and *"SCPs **do not** affect any service-linked role"*. So a Deny written in an SCP does **not** stop a principal in the management account, which is exactly why you do not run workloads there.
 > - **Users have long-lived credentials** (password, access key). **Roles have none** — on assume, AWS STS issues temporary credentials (default 1h, max 12h). Prefer Roles + federation for both humans and services.
 > - **Roles use two distinct policies:** *trust policy* (`assume_role_policy` — WHO can assume) + *permissions policy* (attached separately — WHAT can be done once assumed). Either half missing = role doesn't work.
 > - **Roles reach past AWS APIs.** With **IAM database authentication** an EC2/Lambda role can log in to RDS with a 15-minute token instead of a password — the IAM action is `rds-db:connect` (note: *not* the `rds:` management prefix). See [[07-rds-aurora]].
@@ -60,13 +60,13 @@ No. And the reasons people give for "yes" are all the traps:
 
 Once you see that the default is deny, the rest follows. An Allow is the only thing that can open anything, so nothing is ever accidentally left open. And a Deny can never be out-voted by piling on more Allows, so a Deny is a guarantee rather than a vote.
 
-The three states are real, not just a mental model — `aws iam simulate-principal-policy` reports them as distinct verdicts: `allowed`, `implicitDeny`, `explicitDeny`. AWS now surfaces the same split **in the error message itself**: an implicit deny reads *"because no identity-based policy allows the `s3:GetObject` action"*, while an explicit one reads *"with an explicit deny in an identity-based policy, with policy ARN: …"* — and it names the policy type, so you learn whether it was an SCP, an RCP, a VPC endpoint policy, a permissions boundary, a session policy or an identity/resource policy that stopped you. Two caveats: *"Some AWS services do not support this access denied error message format"*, and anonymous requests still get a bare `AccessDenied`. *(Verified 2026-10-04.)*
+The three states are real, not just a mental model — the **IAM policy simulator** (`aws iam simulate-principal-policy`) reports them as distinct verdicts. The simulator is an IAM API call that evaluates your existing policies against a hypothetical request and tells you the answer without ever making the request: *"The simulation does not perform the API operations; it only checks the authorization to determine if the simulated policies allow or deny the operations."* Its verdicts are `allowed`, `implicitDeny`, `explicitDeny`. AWS now surfaces the same split **in the error message itself**: an implicit deny reads *"because no identity-based policy allows the `s3:GetObject` action"*, while an explicit one reads *"with an explicit deny in an identity-based policy, with policy ARN: …"* — and it names the policy type, so you learn whether it was an SCP, an RCP, a VPC endpoint policy, a permissions boundary, a session policy or an identity/resource policy that stopped you. Two caveats: *"Some AWS services do not support this access denied error message format"*, and anonymous requests still get a bare `AccessDenied`. *(Verified 2026-10-04.)*
 
 > In one line: the default is no, an Allow lifts it, and an explicit Deny puts it back forever — order, count and specificity change nothing.
 
 ### A role is a hat, and it needs two policies
 
-A User is a specific someone. It owns long-lived credentials — a console password, an access key and secret — and those stay valid until you rotate them. Which is the problem: if one leaks, the attacker has access for as long as you don't notice.
+A User is a specific someone. It *may* hold long-lived credentials — a console password, an access key and secret — and whichever it holds stay valid until you rotate them. Which is the problem: if one leaks, the attacker has access for as long as you don't notice.
 
 A Role is not a someone. It's a hat that anybody permitted may put on. It owns **no credentials at all**. When something assumes it, AWS STS mints **temporary** credentials on the spot — default one hour, up to twelve. Nothing to store, nothing to rotate, and a leak expires on its own.
 
@@ -76,7 +76,7 @@ Because a role belongs to nobody, one object has to answer two completely differ
 |---|---|---|
 | The question | *Who is allowed to wear this hat?* | *What can the wearer do?* |
 | Where it lives | On the role itself — the `assume_role_policy` argument | Attached separately, like any other policy |
-| If it's missing | Nobody can assume the role at all | The role assumes fine and then does nothing |
+| If it's missing | Nobody can assume the role at all | The role assumes fine and can still act **only where a resource's own policy names it** |
 
 Both halves are required, and the failure modes look nothing alike, which is what makes the distinction stick. Forget the trust policy and the door won't open. Forget the permissions policy and the door opens onto an empty room.
 
@@ -94,7 +94,7 @@ Lambda takes a role directly. ECS takes a role directly. EC2 is the odd one.
 
 You never notice this in the console, because the console creates the instance profile for you, silently, and shows you only the role.
 
-Which gives this failure a signature worth memorising: the apply succeeds, the role exists, the role's permissions are correct — and the instance still can't reach S3. Two likely causes, and both are ordinary. Either the instance profile is missing or unreferenced (a role went where a profile belonged), or you hit IAM's **eventual consistency** — a brand-new role can take a few seconds to become visible everywhere, so an apply that creates a role and immediately uses it can race. Usually a retry resolves that one.
+Which gives this failure a signature worth memorising: the apply succeeds, the role exists, the role's permissions are correct — and the instance still can't reach S3. The usual causes, all ordinary. Either the instance profile is missing or unreferenced (a role went where a profile belonged), or you hit IAM's **eventual consistency** — a brand-new role can take a few seconds to become visible everywhere, so an apply that creates a role and immediately uses it can race. Usually a retry resolves that one. A third cause lives in [[02-ec2]]: the call to the metadata endpoint itself failing because **IMDSv2** requires a token first, which looks like "no credentials" rather than like a permissions error.
 
 > In one line: EC2 wears the hat through an instance profile, not the role itself — the console hides that wrapper, and EC2 is the only service with it.
 
@@ -106,10 +106,10 @@ The reason is deprovisioning. Copy the identities into IAM and the same person n
 
 The route ends at a **role** in every case. **AD groups map to IAM roles.** Two ways to get there:
 
-- **IAM Identity Center** (the successor to AWS SSO, and the modern answer). It connects to AD or an external IdP; you map AD groups to **permission sets**, which are provisioned into each account as IAM roles. Users get short-term credentials for the console, the CLI and the SDK.
+- **IAM Identity Center** (the successor to AWS SSO, and the modern answer). It connects to AD or an external IdP; you map AD groups to **permission sets**. A permission set is *"a template that you create and maintain that defines a collection of one or more IAM policies"* — AWS managed, customer managed and inline policies, optionally with a permissions boundary — written once centrally. When you assign it, Identity Center *"creates corresponding IAM Identity Center-controlled IAM roles in each account, and attaches the policies specified in the permission set to those roles"*, and keeps those roles in sync as you edit the set. Default session duration is 1 hour, maximum 12. Users get short-term credentials for the console, the CLI and the SDK.
 - **SAML 2.0 federation straight to IAM** — register a SAML identity provider, then create roles whose trust policy trusts `Federated: <provider ARN>` for `sts:AssumeRoleWithSAML`. Older, more moving parts, still valid.
 
-Behind either one sits a directory, and which one is a question in its own right. **AWS Managed Microsoft AD** is a real Microsoft AD run by AWS in your VPC — pick it when you need actual AD in the cloud, AD-aware apps, RDS for SQL Server, or a trust with on-prem. **AD Connector** is a proxy: it forwards sign-ins to your on-prem domain controllers and stores no directory data in AWS at all, which is precisely the phrase a question will use to point at it. **Simple AD** is the cheap Samba-4 lookalike, and it's disqualified the instant a question mentions trusts, MFA, schema extensions, LDAPS or RDS SQL Server — it supports none of them.
+Behind either one sits a directory, and which one is a question in its own right. **AWS Managed Microsoft AD** is a real Microsoft AD run by AWS in your VPC — pick it when you need actual AD in the cloud, AD-aware apps, RDS for SQL Server, or a trust with on-prem. **AD Connector** is a proxy: it forwards sign-ins to your on-prem domain controllers and stores no directory data in AWS at all, which is precisely the phrase a question will use to point at it. **Simple AD** is the cheap Samba-4 lookalike, and it's disqualified the instant a question mentions trusts, MFA, schema extensions, LDAPS or RDS SQL Server — AWS states it supports none of them. ⚠️ Currency: *"new customer onboarding to Simple AD is not permitted"* — existing customers keep full functionality, and the exam still asks it, so learn the eliminations and know it is closed to newcomers. *(Verified 2026-10-04.)*
 
 Notice that this is the trust-policy mechanic again. AD group, EC2 instance, GitHub Actions workflow — every one of them ends up assuming a role. Only the principal the trust policy names changes.
 
@@ -136,8 +136,13 @@ elements in this order — the answer usually falls out before you reach the end
      need **`aws:VpcSourceIp`** (or `aws:SourceVpc` / `aws:SourceVpce`) instead. So an `Allow`
      conditioned on `aws:SourceIp` **fails silently** the day traffic moves onto a VPC endpoint.
      *(Verified 2026-10-04.)*
-   - `aws:RequestedRegion` — the region the **API call targets**. The caller can sit
-     anywhere; this constrains *where the resource goes*, not *where you are*.
+   - `aws:RequestedRegion` — the region the **API call targets**, not where the caller sits.
+     Precisely, it *"allows you to control which **endpoint** of a service is invoked but does
+     **not** control the impact of the operation"* — and *"some services have cross-Region
+     impacts"*, so an action invoked in one Region can still affect another (replication being
+     the obvious case). Note too that *"global services, such as IAM, have a single endpoint"*,
+     so this key does not constrain them the way it constrains a regional service.
+     *(Verified 2026-10-04.)*
    - `aws:MultiFactorAuthPresent` — MFA used for this session.
 5. **`Principal`** — present only in a **resource-based** policy. If you see one, you are
    reading a bucket policy or a trust policy, not an identity policy.
@@ -163,7 +168,7 @@ flowchart TD
     G -- group_policy_attachment --> P1
     R -- role_policy_attachment<br/>permissions policy --> P1
 
-    R --- T["assume_role_policy<br/>(trust policy)"]
+    R --- T["trust policy<br/>(who may assume this role)"]
     T -. allows .-> EC2svc["EC2 service"]
     T -. allows .-> Lambdasvc["Lambda service"]
     T -. allows .-> XAcct["Other AWS accounts"]
@@ -187,13 +192,13 @@ flowchart TD
 
 - **The trust policy is the only resource-based policy IAM itself supports.** AWS's wording: *"The IAM service supports only one type of resource-based policy called a role trust policy, which is attached to an IAM role."* A role is therefore **both an identity and a resource**, which is why it needs two policies. If a question asks "which is the only resource-based policy in IAM", the answer is the **trust policy** — permissions boundaries, SCPs and ACLs are all something else.
 - **AWS now lists nine policy types:** identity-based · resource-based · VPC endpoint policies · permissions boundaries · SCPs · **RCPs** · ACLs · **RAM resource shares** · session policies. **Four can hand out access, five can only cap.** Granting: identity-based, resource-based, **ACLs** — *"service policies that allow you to control which principals in another account can access a resource"*, cross-account only, and the one type that is **not JSON** — and **RAM resource shares**, which *"let you share resources you create in one AWS account with other AWS accounts"* as a *"managed, centralized alternative"* to writing a resource-based policy per resource. Capping only: **permissions boundaries, SCPs, RCPs, session policies**, and **VPC endpoint policies** — the last being a resource-based policy that *"do[es] not override or replace"* the others but acts as *"an additional access boundary scoped to traffic that traverses the endpoint"*. *(Verified 2026-10-04.)*
+- **RCPs are resource control policies** — the organization-wide counterpart to SCPs, and the newest of the nine. AWS states the split in one line: *"Use an SCP when you need to limit permissions of IAM principals within your organization's member accounts. Use an RCP when you need to restrict IAM principals that are **external** to your organization accounts making requests to access resources within your organization's member accounts."* So an SCP caps **your principals**; an RCP caps **who may reach your resources**, including principals from outside the org and including the root user. Like an SCP it only caps — *"No permissions are granted by an RCP"* — and it shares the same two blind spots: no effect on resources in the **management account**, and no effect on calls made by **service-linked roles**. Both require all features enabled, and RCPs cover only a subset of services (S3, SQS, KMS, STS, Secrets Manager, CloudFront and others). *(Verified 2026-10-04.)*
 
 - **Global service** — no region picker. Same IAM seen from every region. (The IAM API endpoint historically lives in `us-east-1` infrastructure, but the concept and the data are global.)
-- **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. Access Analyzer's external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.
+- **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. **IAM Access Analyzer** — the review tool that reads the policies you already have and reports who can actually reach what: *"external access analyzers help identify resources in your organization and accounts that are shared with an external entity"*, **internal** access analyzers show which of your own principals can reach a chosen business-critical resource, **unused access** analyzers flag roles, access keys, passwords and actions nobody has used, **policy validation** checks a policy against grammar and AWS best practices, and **policy generation** writes a least-privilege policy from an entity's CloudTrail history. On price: its external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.
 - **Eventually consistent** — newly created users/roles/policies may take a few seconds to become globally visible. Automation that creates a role and uses it a second later can race; a retry usually resolves it. Worth knowing for real-world AND exam scenarios.
-- **Principal identification is by name; policy identification is by ARN.** Reason: principals only exist within your account (name is unambiguous in that scope); policies may live in the `aws` account namespace (AWS-managed, e.g. `arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`) or your account namespace, so the full ARN with account ID is needed for disambiguation.
+- **AWS-managed policies live in the `aws` namespace** — `arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess` — while customer-managed ones carry your account id. That is how you tell them apart at a glance, and why an AWS-managed policy ARN is stable to hardcode.
 - **Inline vs managed policies:**
-  - *Managed* — standalone, reusable, versioned (up to 5 versions retained, can roll back), attachable to many principals.
   - *Inline* — embedded directly on one principal; deleted when the principal is deleted; not reusable; no versioning.
 - **Service quotas** (max users per account, max policies per principal, policy size limits, etc.) change over time. ⚠️ Don't memorize specific numbers — refer to the AWS service quotas page (linked in Docs).
 
@@ -203,7 +208,7 @@ flowchart TD
 
 |   | User | Role |
 |---|---|---|
-| Credentials | Long-lived (password and/or access key + secret) | None of its own; temporary credentials via STS on assume (default 1h, configurable to 12h) |
+| Credentials | Long-lived (password and/or access key + secret) | None of its own; temporary credentials via STS on assume — *"the maximum session duration setting can have a value from 1 hour to 12 hours"*, default 1 h. **Role chaining caps it at 1 hour regardless** |
 | "Owned" by | A specific identity (usually a human) | Nobody — a hat anyone allowed can wear |
 | When to use | A specific human (legacy), a specific service account (legacy) | AWS services accessing other AWS services; cross-account access; federated humans; temporary privilege elevation |
 | Modern best practice | **Avoid for humans** — prefer IAM Identity Center (federation → role) | Default for everything else |
@@ -229,13 +234,15 @@ flowchart TD
 
 ### How an application authenticates to RDS
 
+Three mechanisms, in decreasing order of how much credential there is to steal. A password in config is stored forever and never changes. Secrets Manager still stores a password, but rotates it on a schedule — and *which* rotation you get depends on whose credential it is: a Lambda rotation function you own for ordinary application users, or **managed rotation**, where *"the service configures and manages rotation for you"* and *"you don't use an AWS Lambda function"*, for the RDS/Aurora/DocumentDB **master user** credential (also Redshift admin passwords). IAM database authentication stores no password at all.
+
 |   | Password in config | Password in Secrets Manager | **IAM database authentication** |
 |---|---|---|---|
 | What the app presents to the DB | a long-lived password | a password fetched at runtime from the secret | an **authentication token, lifetime 15 minutes** |
 | Credential stored anywhere? | yes, forever | yes — but Secrets Manager rotates it on a schedule (a **Lambda rotation function** for application credentials; **managed rotation**, no Lambda, for RDS/Aurora *master user* credentials) | **no password at all** |
 | Who the DB is really trusting | whoever holds the password | whoever may read the secret | the caller's **IAM role** — e.g. the EC2 instance profile or the Lambda role |
 | IAM action required | — | `secretsmanager:GetSecretValue` | **`rds-db:connect`** on `arn:aws:rds-db:…:dbuser:…` |
-| Traffic encrypted in transit? | only if you configure SSL/TLS yourself | only if you configure SSL/TLS yourself | **yes** — AWS lists it as a benefit: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"*. Not the same as "no TLS setup": the client still points at the RDS CA bundle (`--ssl-ca` / `sslrootcert`) |
+| Traffic encrypted in transit? | only if you configure SSL/TLS yourself | only if you configure SSL/TLS yourself | **yes** (CA bundle still required — see the trap below). AWS: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"*. Not the same as "no TLS setup": the client still points at the RDS CA bundle (`--ssl-ca` / `sslrootcert`) |
 | Extra setup beyond IAM | — | rotation function with network access to the DB | **enable IAM DB auth on the instance/cluster**, **create the DB user** — MySQL/MariaDB `CREATE USER 'jane_doe' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`, PostgreSQL `CREATE USER db_userx; GRANT rds_iam TO db_userx;` — and pass the CA bundle from the client |
 | Engines | all | all | **RDS MariaDB, MySQL, PostgreSQL; Aurora MySQL, Aurora PostgreSQL** — not Oracle, not SQL Server |
 | Exam trigger | — | "rotate the database password automatically" | "**short-lived / temporary credentials** to the database", "**no password stored** in the application", "use the **EC2 instance's profile credentials** to reach the database" |
@@ -244,24 +251,18 @@ flowchart TD
 
 The exam's phrasing is almost always *"we already have users/groups in on-premises Active Directory — give them AWS access **without creating IAM users**."* The answer is never "create IAM users"; it's federation, and AD groups get **mapped to IAM roles**.
 
-| | **AWS Managed Microsoft AD** | **AD Connector** | **Simple AD** |
-|---|---|---|---|
-| What it is | a **real** Microsoft AD, run by AWS in your VPC | a **proxy** to your existing on-prem AD | Samba 4, AD-**compatible** (not real AD) |
-| Stores directory data in AWS? | ✅ yes | ❌ **no** — forwards sign-in to your on-prem DCs, no sync | ✅ yes (standalone) |
-| Trust with on-prem AD? | ✅ yes | n/a (it *is* your on-prem AD) | ❌ **not supported** |
-| MFA | ✅ | ✅ (via your existing RADIUS) | ❌ |
-| Schema extensions / LDAPS | ✅ | via on-prem | ❌ |
-| RDS for SQL Server | ✅ | ❌ not compatible | ❌ not compatible |
-| Pick it when | you need actual AD in the cloud, AD-aware apps, or a standalone AD | you *only* need on-prem users to sign in to AWS, no data in AWS | small, cheap, basic AD features / LDAP for Linux |
+The three Directory Service options and their full comparison live in
+[[24-other-services#AWS Directory Service — three options, one real discriminator]] — kept in one
+place so the matrix cannot drift. For IAM purposes the discriminator is short: **AD Connector**
+*"redirect[s] directory requests to your on-premises Microsoft Active Directory without caching any
+information in the cloud"*, so it is the answer whenever a stem insists **no directory data may be
+stored in AWS**; **AWS Managed Microsoft AD** is the answer when you need real AD *in* the cloud (a
+trust with on-prem, AD-aware apps, RDS for SQL Server); **Simple AD** is neither and is disqualified
+by trusts, MFA, schema extensions, LDAPS or RDS SQL Server.
 
-**How AD groups become AWS permissions.** Either route ends at a role:
-- **IAM Identity Center** (the successor to AWS SSO, and the modern answer) connects to AD (or an external IdP), and you map **AD groups → permission sets**, which become IAM roles provisioned into each account. Users get short-term credentials for the console, CLI and SDK.
-- **SAML 2.0 federation direct to IAM** — an IAM SAML identity provider plus roles whose trust policy trusts `Federated: <provider ARN>` for `sts:AssumeRoleWithSAML`. Older, more moving parts, still valid.
-
-Either way the AD group is the unit of assignment and the IAM **role** is what actually carries the permissions — the same trust-policy mechanic as the EC2 instance profile and the GitHub OIDC example below, only the trusted principal differs.
-
-> [!tip] Production gap
-> For human access, **IAM Identity Center + your existing IdP** (Entra ID, Okta, or AWS Managed Microsoft AD) is the target state — no IAM users, no long-lived access keys, centrally revocable. IAM users survive in production mainly for break-glass and for a few legacy service accounts that can't assume a role.
+**How AD groups become AWS permissions.** Either route — IAM Identity Center or SAML 2.0 federation
+straight to IAM — ends at a **role**; the AD group is the unit of assignment and the role carries the
+permissions. The mechanics of both are above, under *When the users already exist somewhere else*.
 
 ## Worked examples
 
@@ -274,7 +275,7 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 
 > [!failure] Failure mode — confused deputy (the missing ExternalId)
 > The vendor stores role ARNs for hundreds of customers. An attacker signs up as a *legitimate customer* of the vendor, then feeds the vendor **someone else's role ARN** (ARNs are guessable: account ID + role name). The vendor's system dutifully calls `AssumeRole` on the victim's role — and it *works*, because the victim's trust policy trusts the vendor's whole account. The vendor just became a **confused deputy**: tricked into using its legitimate access on behalf of the wrong principal.
-> With one ExternalId per customer, the vendor attaches the *attacker's* ExternalId to the call, the victim's trust policy condition fails, and the assume is rejected with `AccessDenied`. This is why AWS docs say the third party must generate the ExternalId — if customers chose their own, an attacker could supply the victim's.
+> With one ExternalId per customer, the vendor attaches the *attacker's* ExternalId to the call, the victim's trust policy condition fails, and the assume is rejected with `AccessDenied`. This is why AWS says the **third party** must generate the ExternalId: not because the value is secret — it is not — but because the *vendor* controls the customer→ExternalId mapping. If each customer picked their own, one customer could claim another's identifier and the vendor would assume the wrong role on their behalf. Vendor-generated means the mapping cannot be spoofed by a customer.
 
 > [!example] Worked example — CI deploys with zero long-lived keys (GitHub Actions OIDC)
 > The modern answer to "how does CI get AWS credentials?" — federation, not access keys in CI secrets:
@@ -285,15 +286,14 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > Same mental model as the EC2 instance profile in [[02-ec2]] — a role with a trust policy — only the trusted principal differs (federated IdP vs `ec2.amazonaws.com`).
 
 > [!tip] Verify a policy without assuming the role — `simulate-principal-policy`
-> The role trusts only `ec2.amazonaws.com`, so you can't assume it from your CLI to test it. `aws iam simulate-principal-policy` evaluates the policy for a principal without anyone assuming anything — free, instant, and it accepts `--context-entries` so you can test **condition keys** directly. Crucially it returns `allowed` / `implicitDeny` / **`explicitDeny`** as distinct verdicts, which S3's uniform `AccessDenied` never tells you. Verified results for this lab:
+> The role trusts only `ec2.amazonaws.com`, so you can't assume it from your CLI to test it. `aws iam simulate-principal-policy` evaluates the policy for a principal without anyone assuming anything — free, instant, and it accepts `--context-entries` so you can test **condition keys** directly. Crucially it returns `allowed` / `implicitDeny` / **`explicitDeny`** as distinct verdicts, which S3's uniform `AccessDenied` never tells you.
+> The policy under test allowed S3 `ListBucket` and `GetObject` **only under the `reports/` prefix**, said nothing whatsoever about any other prefix, and carried one explicit `Deny` on any request arriving without TLS (`aws:SecureTransport: false`). Each line below is one simulated request, so you can read the three verdicts off the three kinds of policy gap — allowed by a matching statement, denied by no statement matching, denied by a statement that says no:
 > ```
 > ls prefix=reports/            -> allowed        get reports/ok.txt          -> allowed
 > ls prefix=secret/             -> implicitDeny   get secret/no.txt           -> implicitDeny
 > ls no prefix                  -> implicitDeny   get reports/ok.txt via HTTP -> explicitDeny
 > ```
-
-> [!warning] Trap — "the plan showed the policy was fine"
-> It didn't, and it couldn't. A policy whose `Resource` is the ARN of a bucket being created in the same operation cannot be rendered before that bucket exists — so the permissions policy is unknowable in advance, while the **trust** policy, which references nothing, is fully known. The lesson: for any IAM policy built from resources created alongside it, **inspect the policy after it exists** with `aws iam get-policy-version`, or test it with the policy simulator. Do not assume the version you intended is the version that shipped.
+> Why simulate rather than read the JSON you wrote: a policy whose `Resource` names a resource created alongside it is not fully knowable until that resource exists, so the document you intended is not always the document that shipped. Read the live one back with `aws iam get-policy-version`, then simulate it.
 
 ## ⚠️ Traps & why the wrong answers are wrong   #trap
 
@@ -332,10 +332,15 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > Giving an application `rds:*` does **not** let it log in to a database — that's the RDS *management* API (create/describe/modify instances). Logging in with IAM auth requires `rds-db:connect` on an `arn:aws:rds-db:…:dbuser:…` resource. See [[07-rds-aurora]].
 
 > [!warning] Trap — SSL/TLS is not authentication
-> "The application must connect **without a stored database password**" is answered by **IAM database authentication**, never by an SSL/TLS option. `--ssl-ca`, "configure SSL", "force TLS" change how the connection is *encrypted*; they say nothing about *who may log in*. IAM DB auth brings the encryption with it — AWS: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"* — but that is **not** the same as "no TLS setup": AWS's own connect command still passes the RDS CA bundle (`mysql … --ssl-ca=global-bundle.pem --enable-cleartext-plugin`). The point is which *question* the option answers, not that TLS configuration disappears.
+> "The application must connect **without a stored database password**" is answered by **IAM database
+> authentication** — never by an SSL/TLS option. (One sibling worth recognising: RDS also supports
+> *"external authentication of database users using **Kerberos and Microsoft Active Directory**"*, so
+> a stem that stresses **existing AD accounts** rather than "no stored password" points at Kerberos
+> instead. For PostgreSQL the two are mutually exclusive — *"Amazon RDS does not support enabling
+> both IAM and Kerberos authentication methods at the same time."*) `--ssl-ca`, "configure SSL", "force TLS" change how the connection is *encrypted*; they say nothing about *who may log in*. IAM DB auth brings the encryption with it — AWS: *"Network traffic to and from the database is encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS)"* — but that is **not** the same as "no TLS setup": AWS's own connect command still passes the RDS CA bundle (`mysql … --ssl-ca=global-bundle.pem --enable-cleartext-plugin`). The point is which *question* the option answers, not that TLS configuration disappears.
 > Two sibling distractors on the same stem:
 > - **"Create an IAM role and attach it to the EC2 instances"** — only half the answer. You must also **enable IAM DB authentication on the DB instance** *and* **create the matching DB user** (`IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS'` for MySQL/MariaDB, `GRANT rds_iam` for PostgreSQL). A role alone logs in to nothing.
-> - **"Use STS"** — what the database sees is not an STS token. It is an RDS auth token (`aws rds generate-db-auth-token`), SigV4-signed, **valid 15 minutes**, passed as the password. STS is still upstream — the instance-profile credentials that sign the token are STS credentials, and they must still be valid at connect time — but STS is not what you present to the database.
+> - **"Use STS"** — what the database sees is not an STS token. It is an RDS auth token (`aws rds generate-db-auth-token`) — *"generated using AWS Signature Version 4"* (SigV4) from the caller's own IAM credentials, which is what ties the token to the role rather than to any stored password — **valid 15 minutes**, passed as the password. STS is still upstream — the instance-profile credentials that sign the token are STS credentials, and they must still be valid at connect time — but STS is not what you present to the database.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -345,14 +350,27 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 - [x] **Instance profile delivers role credentials to EC2 — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Was decay, not a gap. **Rebuilt from scratch in `01-iam-lab/` on 2026-08-29**, this time in an IAM frame rather than as one line of an EC2 lab, alongside the `Condition` blocks that were the other half of the weakness.
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
 
+> [!tip] Production gap
+> For human access, **IAM Identity Center + your existing IdP** (Entra ID, Okta, or AWS Managed Microsoft AD) is the target state — no IAM users, no long-lived access keys, centrally revocable. IAM users survive in production mainly for break-glass and for a few legacy service accounts that can't assume a role.
+
 ## 🔗 Docs
+- [Service control policies — management account and service-linked role exceptions](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)
+- [Identity-based vs resource-based policies (the Zhang example)](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html)
+- [AssumeRole — session duration and role chaining](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
+- [Simple AD availability change](https://docs.aws.amazon.com/directoryservice/latest/admin-guide/simple-ad-availability-change.html)
+- [RDS Kerberos authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/kerberos-authentication.html)
 - [Policies and permissions in IAM — the nine policy types](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html)
 - [Troubleshoot S3 403 errors — implicit vs explicit deny messages](https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshoot-403-errors.html)
 - [Global condition keys — `aws:SourceIp`, `aws:VpcSourceIp`](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html)
 - [Set an account password policy for IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_passwords_account-policy.html)
 - [Tasks that require root user credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html)
 - [Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)
-
+- [Resource control policies (RCPs) — SCP vs RCP, supported services, exceptions](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html) — verified 2026-10-04
+- [Using IAM Access Analyzer — the six capabilities and what each one bills](https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html) — verified 2026-10-04
+- [IAM Identity Center permission sets](https://docs.aws.amazon.com/singlesignon/latest/userguide/permissionsetsconcept.html) — definition, policy types, session duration; verified 2026-10-04
+- [Secrets Manager managed rotation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotate-secrets_managed.html) — which services rotate without Lambda; verified 2026-10-04
+- [SimulatePrincipalPolicy API](https://docs.aws.amazon.com/IAM/latest/APIReference/API_SimulatePrincipalPolicy.html) — does not perform the operations; `allowed`/`implicitDeny`/`explicitDeny`; verified 2026-10-04
+- [IAM database authentication for MariaDB, MySQL, PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) — SigV4, 15-minute token; verified 2026-10-04
 - [AWS IAM User Guide (entry point)](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html)
 - [IAM Policy Evaluation Logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html) — canonical explanation of explicit-Deny-wins
 - [IAM Service Quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html) — current numerical limits; check this rather than memorize

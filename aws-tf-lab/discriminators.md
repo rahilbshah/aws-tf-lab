@@ -12,14 +12,12 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*104 comparison tables · 195 discriminators · ~37 min read*
+*104 comparison tables · 194 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
 **Compare:** [[01-iam#User vs Role|User vs Role]] · [[01-iam#Inline vs Managed policy|Inline vs Managed policy]] · [[01-iam#Trust policy vs Permissions policy (on a Role)|Trust policy vs Permissions policy (on a Role)]] · [[01-iam#How an application authenticates to RDS|How an application authenticates to RDS]] · [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)|Bringing existing corporate identities into AWS (Directory Service + federation)]]
 
-- **"the plan showed the policy was fine"** — It didn't, and it couldn't. A policy whose Resource is the ARN of a bucket being created in the same operation cannot be rendered before that bucket exists — so the permissions policy is unknowable in advance, while the trust policy, which references nothing, is fully known.  
-  ↳ [[01-iam|note]]
 - **Policy order or count matters** — It doesn't. IAM evaluation is order-independent and count-independent. One explicit Deny anywhere is sufficient.  
   ↳ [[01-iam|note]]
 - **Specificity wins** — No. IAM has no "more specific resource ARN wins" rule like NTFS ACLs. A plausible-sounding distractor.  
@@ -42,7 +40,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[01-iam|note]]
 - **rds: vs rds-db: for database login** — Giving an application rds:* does not let it log in to a database — that's the RDS management API (create/describe/modify instances). Logging in with IAM auth requires rds-db:connect on an arn:aws:rds-db:…:dbuser:… resource. See [[07-rds-aurora]].  
   ↳ [[01-iam|note]]
-- **SSL/TLS is not authentication** — "The application must connect without a stored database password" is answered by IAM database authentication, never by an SSL/TLS option.  
+- **SSL/TLS is not authentication** — "The application must connect without a stored database password" is answered by IAM database authentication — never by an SSL/TLS option.  
   ↳ [[01-iam|note]]
 
 

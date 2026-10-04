@@ -326,7 +326,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 | Stores users in AWS | **✓** | **✗ — forwards to on-prem** | ✓ |
 | Trusts with on-prem AD | **✓** | n/a | **✗** |
 | MFA | ✓ | ✓ (via RADIUS) | **✗** |
-| Schema extensions / LDAPS | **✓** | n/a | **✗** |
+| Schema extensions / LDAPS | **✓** | **via your on-prem AD** — AD Connector *"redirect[s] directory requests to your on-premises Microsoft Active Directory without caching any information in the cloud"*, so the schema is wherever your DCs are | **✗** |
 | **RDS for SQL Server** | **✓** | **✗** | **✗** |
 | Pick when | you need actual AD features in AWS | on-prem users signing in to AWS apps | cheap, basic directory |
 

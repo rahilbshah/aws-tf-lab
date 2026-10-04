@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 331 pointers · ~29 min read*
+*176 recall hooks · 330 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -28,7 +28,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam#Reading a policy document in twenty seconds|explain]]
 
 **Traps** [[01-iam|open]]
-- "the plan showed the policy was fine"
 - Policy order or count matters
 - Specificity wins
 - Roles are only for AWS services
