@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 332 pointers · ~29 min read*
+*176 recall hooks · 331 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -36,7 +36,6 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - IAM is regional
 - Attach a role directly to an EC2 instance
 - All name arguments on IAM resources behave the same
-- validate/plan catch reference bugs (.arn vs .name, quoted strings)
 - "create IAM users for the on-premises staff"
 - "IAM Groups" in a federation question
 - AD Connector vs AWS Managed Microsoft AD

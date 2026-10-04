@@ -3,7 +3,7 @@ topic: 01-iam
 domain: secure
 status: reviewed
 services: [IAM]
-related: [02-ec2]
+related: [01-iam-advanced, 02-ec2, 07-rds-aurora, 09-s3-security]
 tags: [topic, domain/secure]
 ---
 
@@ -60,7 +60,7 @@ No. And the reasons people give for "yes" are all the traps:
 
 Once you see that the default is deny, the rest follows. An Allow is the only thing that can open anything, so nothing is ever accidentally left open. And a Deny can never be out-voted by piling on more Allows, so a Deny is a guarantee rather than a vote.
 
-The three states are real, not just a mental model — `aws iam simulate-principal-policy` reports them as distinct verdicts: `allowed`, `implicitDeny`, `explicitDeny`. Worth knowing, because the service itself won't tell you: S3 returns the same flat `AccessDenied` whichever of the two denials it was.
+The three states are real, not just a mental model — `aws iam simulate-principal-policy` reports them as distinct verdicts: `allowed`, `implicitDeny`, `explicitDeny`. AWS now surfaces the same split **in the error message itself**: an implicit deny reads *"because no identity-based policy allows the `s3:GetObject` action"*, while an explicit one reads *"with an explicit deny in an identity-based policy, with policy ARN: …"* — and it names the policy type, so you learn whether it was an SCP, an RCP, a VPC endpoint policy, a permissions boundary, a session policy or an identity/resource policy that stopped you. Two caveats: *"Some AWS services do not support this access denied error message format"*, and anonymous requests still get a bare `AccessDenied`. *(Verified 2026-10-04.)*
 
 > In one line: the default is no, an Allow lifts it, and an explicit Deny puts it back forever — order, count and specificity change nothing.
 
@@ -129,7 +129,13 @@ elements in this order — the answer usually falls out before you reach the end
    bare bucket ARN; object actions need `/*`. A policy that gets this wrong fails silently.
 4. **`Condition`** — which key, and what does it actually measure?
    - `aws:SourceIp` — the IP the **API call originates from**. Not the instance's public
-     IP, not an Elastic IP, not a private IP.
+     IP — if an instance calls an AWS API over the internet, that **is** its public IP or Elastic IP.
+     The two real eliminations: it *"can only be used for **public** IP address ranges"*, so a private
+     address never matches; and the key is **absent entirely** when the call goes through a **VPC
+     endpoint** — *"except when the requester uses a VPC endpoint to make the request"* — where you
+     need **`aws:VpcSourceIp`** (or `aws:SourceVpc` / `aws:SourceVpce`) instead. So an `Allow`
+     conditioned on `aws:SourceIp` **fails silently** the day traffic moves onto a VPC endpoint.
+     *(Verified 2026-10-04.)*
    - `aws:RequestedRegion` — the region the **API call targets**. The caller can sit
      anywhere; this constrains *where the resource goes*, not *where you are*.
    - `aws:MultiFactorAuthPresent` — MFA used for this session.
@@ -172,14 +178,15 @@ flowchart TD
 - **An IAM user created by CLI/API/SDK starts with no credentials at all** — no console password and no access keys. Only the **console** create-user flow offers to make them. So "the new user cannot call the API" after programmatic creation is expected: you must create an access key (or better, a password + MFA for a human, or skip the user entirely and use a role).
 - **A `Deny` carrying a `Condition` only denies while the condition is true.** A statement denying an action when `aws:SourceIp` matches one address blocks it *from that address* and leaves it allowed everywhere else. Reading a conditional Deny as a blanket Deny is a common misread — and the mirror case is a conditional **Allow**, which grants nothing outside its condition. *(Verified 2026-10-01.)*
 
-- **Tasks only the root user can do** — AWS keeps a documented list, and these are the ones the exam uses: **close the AWS account**, **change account settings** (name, root email, root password), **restore IAM user permissions** when an administrator has locked everyone out, **remove a misconfigured bucket policy that denies all principals**, **delete an SQS resource-based policy that denies all principals**, **activate IAM access to the Billing console**, and **remove a member account's root credentials**. A principal holding `AdministratorAccess` **cannot** do them. Elsewhere in the vault: enabling **S3 MFA Delete** is also root-only ([[09-s3-security]]).
+- **Tasks that require root credentials** — AWS's documented list, and the ones the exam uses: **close a standalone account**, **update the root email, root password or root access keys**, **restore IAM user permissions** when the only administrator has locked everyone out, **remove a bucket policy that denies all principals**, **delete an SQS resource-based policy that denies all principals**, and **activate IAM access to the Billing console**. For these, `AdministratorAccess` is not enough.
+  **Two scope limits the exam likes.** The account **name** is *not* root-only — AWS says account name, contact information, alternate contacts, payment currency and Regions *"don't require root user credentials"*; only the email, password and access keys do. And **Organizations changes the picture**: from the management or a delegated admin account, IAM principals *"can close member accounts and update the root email addresses, account names, contact information, alternate contacts, and AWS Regions of member accounts"* — and removing a member account's root credentials is done **from the management account**, not as that member's root. So "standalone account" versus "member of an organization" is the discriminator. *(Verified 2026-10-04.)* Elsewhere in the vault: enabling **S3 MFA Delete** is also root-only ([[09-s3-security]]).
 - **`Sid` is a free-form label** with no effect on evaluation — it exists to name a statement, not to scope it. What a statement applies to comes from **`Resource`**, and in an ARN the resource is the **trailing segment** (`…:directory/d-1234567890`); the 12-digit number earlier in the ARN is the **account ID**, not the resource. *(Verified 2026-10-01.)*
 
 - **Securing a brand-new account (the root user):** use a **strong, unique password** and **turn on MFA for the root user** — AWS now states that **all account types (standalone, management, member) require MFA for their root user**, registered within **35 days** of the first console sign-in attempt, and you may register **up to 8 MFA devices**. Use root only for [the tasks that require it](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html), and **never share** the root password, MFA, access keys, CloudFront key pairs or signing certificates. For accounts inside **Organizations**, AWS recommends **removing root credentials from member accounts** entirely — password, access keys, signing certificates and MFA — after which those accounts cannot sign in as root at all.
   **The testable point:** root **access keys should not exist**. Distractors that offer to *encrypt* root keys and store them in S3, or share them "only with the owner", or email them, are all wrong however careful the handling sounds. *(Verified 2026-10-01.)*
 
 - **The trust policy is the only resource-based policy IAM itself supports.** AWS's wording: *"The IAM service supports only one type of resource-based policy called a role trust policy, which is attached to an IAM role."* A role is therefore **both an identity and a resource**, which is why it needs two policies. If a question asks "which is the only resource-based policy in IAM", the answer is the **trust policy** — permissions boundaries, SCPs and ACLs are all something else.
-- **AWS now lists nine policy types:** identity-based · resource-based · VPC endpoint policies · permissions boundaries · SCPs · **RCPs** · ACLs · **RAM resource shares** · session policies. Only identity-based and resource-based ones *grant*; the rest only ever **cap**.
+- **AWS now lists nine policy types:** identity-based · resource-based · VPC endpoint policies · permissions boundaries · SCPs · **RCPs** · ACLs · **RAM resource shares** · session policies. **Four can hand out access, five can only cap.** Granting: identity-based, resource-based, **ACLs** — *"service policies that allow you to control which principals in another account can access a resource"*, cross-account only, and the one type that is **not JSON** — and **RAM resource shares**, which *"let you share resources you create in one AWS account with other AWS accounts"* as a *"managed, centralized alternative"* to writing a resource-based policy per resource. Capping only: **permissions boundaries, SCPs, RCPs, session policies**, and **VPC endpoint policies** — the last being a resource-based policy that *"do[es] not override or replace"* the others but acts as *"an additional access boundary scoped to traffic that traverses the endpoint"*. *(Verified 2026-10-04.)*
 
 - **Global service** — no region picker. Same IAM seen from every region. (The IAM API endpoint historically lives in `us-east-1` infrastructure, but the concept and the data are global.)
 - **Free** — no per-user, per-policy, or per-API-call charge. STS calls are free too, and **IAM Identity Center is free**. Access Analyzer's external-access findings, policy validation and policy generation are free; only its **unused access** and **internal access** analyzers and custom policy checks bill.
@@ -260,7 +267,7 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 
 > [!example] Worked example — third-party auditor via cross-account role + ExternalId
 > Acme Corp hires a cost-optimization vendor that needs read-only access to Acme's account. The vendor monitors many customers, so the trust must be scoped tightly:
-> 1. The vendor provides their **AWS account ID** and a **unique customer identifier** — the *ExternalId*. Crucially, the vendor generates it (one per customer); it is *not* a secret, just unique (AWS treats it as viewable by anyone who can see the role).
+> 1. The vendor provides their **AWS account ID** and a **unique customer identifier** — the *ExternalId*. Crucially, the vendor generates it (one per customer). It is **not a secret** — treat it as visible to anyone who can read the role — and that is the point: its job is not to be unguessable but to be **unique per customer**, so a vendor cannot be tricked into using account A's role while acting for customer B. That is the *confused deputy* problem it exists to solve, and it is why "keep the ExternalId secret" is never the answer.
 > 2. Acme creates a role. Trust policy: `"Principal": {"AWS": "<vendor account ID>"}` **plus** `"Condition": {"StringEquals": {"sts:ExternalId": "<id>"}}`. Permissions policy: read-only (e.g. the AWS-managed `ReadOnlyAccess`, or scoped down to Cost Explorer/billing APIs).
 > 3. Acme hands the vendor the role ARN; the vendor calls `sts:AssumeRole` with ARN + ExternalId and receives temporary credentials.
 >
@@ -311,9 +318,6 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 > [!warning] Trap — All `name` arguments on IAM resources behave the same
 > A policy's **ARN embeds its name**, so AWS cannot rename one in place — renaming means creating a new policy and re-attaching it everywhere. A **user** can be renamed in place.
 
-> [!warning] Trap — `validate`/`plan` catch reference bugs (`.arn` vs `.name`, quoted strings)
-> They don't — both shapes are type-valid strings. The errors surface only at apply (or silently produce wrong results).
-
 > [!warning] Trap — "create IAM users for the on-premises staff"
 > Any question that establishes users **already exist** in Active Directory (or any corporate IdP) and asks how to give them AWS access is testing federation. Creating IAM users duplicates the identity source, and you now have two places to deprovision someone — the exact failure the question is built around. Correct shape: directory (AWS Managed Microsoft AD / AD Connector) → **IAM Identity Center** → AD group mapped to a permission set → **IAM role**. "No new IAM users / no long-term credentials / use existing corporate credentials" are all the same trigger.
 
@@ -336,14 +340,15 @@ Either way the AD group is the unit of assignment and the IAM **role** is what a
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Enumerating IAM core objects under "list them" framing** — forgot Role in the orient step, even though I clearly knew it (used it correctly in the very next answer). Quick recall under enumeration is a different muscle than recognising/using a concept.
-- [ ] **HCL: quoted "reference" vs unquoted reference** — wrote `groups = ["aws_iam_group.developers"]` (literal string) instead of `[aws_iam_group.developers.name]`. Plan didn't catch it because the string is type-valid.
-- [ ] **`.arn` vs `.name` in IAM cross-references** — got it wrong for `user`, `groups`, `group` arguments on first pass. Internalize: principals → `.name`, policies → `.arn`.
 - [ ] **Reading plan symbols** — was unsure whether renaming a user shows `~` (in-place) or `-/+` (replacement). The deeper habit: trust the plan output, never your memory of provider behavior. Verify against source for anything you'd put in notes.
 - [ ] **AD groups mapped to IAM roles — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Directory Service and IAM Identity Center were **absent from this note** until 2026-08-29. Trigger phrase to catch: *"users already exist in Active Directory."*
 - [x] **Instance profile delivers role credentials to EC2 — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Was decay, not a gap. **Rebuilt from scratch in `01-iam-lab/` on 2026-08-29**, this time in an IAM frame rather than as one line of an EC2 lab, alongside the `Condition` blocks that were the other half of the weakness.
 - [ ] **IAM database authentication (`rds-db:connect`) — missed twice, both _sure_** (mock 2026-08-28, trainer-sourced). Roles authenticate to things that aren't AWS API endpoints. See [[07-rds-aurora]].
 
 ## 🔗 Docs
+- [Policies and permissions in IAM — the nine policy types](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html)
+- [Troubleshoot S3 403 errors — implicit vs explicit deny messages](https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshoot-403-errors.html)
+- [Global condition keys — `aws:SourceIp`, `aws:VpcSourceIp`](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html)
 - [Set an account password policy for IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_passwords_account-policy.html)
 - [Tasks that require root user credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-tasks.html)
 - [Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)

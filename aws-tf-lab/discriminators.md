@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*104 comparison tables · 196 discriminators · ~37 min read*
+*104 comparison tables · 195 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -33,8 +33,6 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Attach a role directly to an EC2 instance** — EC2 needs an instance profile in between (see [[02-ec2]]). Lambda doesn't.  
   ↳ [[01-iam|note]]
 - **All name arguments on IAM resources behave the same** — A policy's ARN embeds its name, so AWS cannot rename one in place — renaming means creating a new policy and re-attaching it everywhere.  
-  ↳ [[01-iam|note]]
-- **validate/plan catch reference bugs (.arn vs .name, quoted strings)** — They don't — both shapes are type-valid strings. The errors surface only at apply (or silently produce wrong results).  
   ↳ [[01-iam|note]]
 - **"create IAM users for the on-premises staff"** — Any question that establishes users already exist in Active Directory (or any corporate IdP) and asks how to give them AWS access is testing federation.  
   ↳ [[01-iam|note]]
