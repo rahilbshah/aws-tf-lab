@@ -16,7 +16,7 @@ Everything in AWS storage that isn't S3 or EBS. Shared file systems, the bridge 
 > - **EFS** = elastic **NFS** for **Linux**, mounted by many instances across AZs, no capacity to provision. **Not supported with Windows EC2 instances.** Regional vs One Zone; Standard / IA / Archive with lifecycle on last access.
 > - **FSx for Windows File Server** = **SMB + Active Directory + Windows ACLs**. The lift-and-shift-a-Windows-app answer. Single-AZ or Multi-AZ.
 > - **FSx for Lustre** = HPC/ML speed, sub-ms latency, **links to an S3 bucket and presents objects as files**. **Scratch** = not replicated; **Persistent** = replicated.
-> - **FSx for NetApp ONTAP** = the one that speaks **both NFS and SMB**. **OpenZFS** = NFS with cheap snapshots/clones.
+> - **FSx for NetApp ONTAP** = the **multi-protocol** one — **NFS, SMB, iSCSI and NVMe**, so it is the only FSx with **block** storage, and it does **Multi-AZ**. **OpenZFS** = NFS with cheap snapshots/clones.
 > - **Storage Gateway** = on-prem appliance. **S3 File Gateway** (NFS/SMB→S3) · **FSx File Gateway** · **Volume Gateway** (iSCSI) · **Tape Gateway** (virtual tape library).
 > - **Volume Gateway: cached** = primary in **S3**, hot subset local (shrink on-prem storage). **stored** = primary **on-prem**, snapshots to S3 (low-latency for everything + offsite backup).
 > - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object → S3/EFS/FSx, integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
@@ -84,7 +84,7 @@ EFS gives you *a* file system. Sometimes the application demands *a particular o
 
 Four of them, and for the exam two matter most.
 
-**FSx for Windows File Server** is a genuine Windows file server. It speaks **SMB**, authenticates users against **Microsoft Active Directory**, and enforces **Windows ACLs** on files and folders. That combination is the answer to every "we're lifting a Windows application into AWS" question. It offers **Single-AZ** or **Multi-AZ** (which keeps a standby file server in another AZ), SSD or HDD storage, and takes automatic daily backups made consistent with Windows' Volume Shadow Copy Service.
+**FSx for Windows File Server** is a genuine Windows file server. It speaks **SMB**, authenticates users against **Microsoft Active Directory**, and enforces **Windows ACLs** on files and folders. That combination is the usual answer to "we're lifting a Windows application into AWS" — **but check what the application needs before reaching for it.** FSx for Windows is **SMB file** storage. If the stem asks for **block** storage over **iSCSI**, it is describing **FSx for NetApp ONTAP**, which is the only FSx flavour that offers block. It offers **Single-AZ** or **Multi-AZ** (which keeps a standby file server in another AZ), SSD or HDD storage, and takes automatic daily backups made consistent with Windows' Volume Shadow Copy Service.
 
 **FSx for Lustre** is for jobs where storage speed is the bottleneck — HPC, machine learning training, video processing, financial modelling. It delivers sub-millisecond latency and up to multiple TB/s of throughput. Its distinguishing trick is **S3 integration**: link a bucket and Lustre presents the objects in it as ordinary files, and can write results back. That's why it shows up in ML questions — you keep the dataset in S3 and get a fast POSIX file system over it for the duration of the job.
 
@@ -93,7 +93,7 @@ Lustre has two deployment types and the difference is durability, not speed:
 - **Scratch** — data is **not replicated** and does not survive a file server failure. For temporary processing.
 - **Persistent** — data is replicated and failed file servers are replaced automatically. For anything you'd be upset to lose.
 
-The other two, in a line each: **FSx for NetApp ONTAP** speaks **both NFS and SMB**, which makes it the answer when Linux and Windows clients need the same data. **FSx for OpenZFS** speaks NFS and is built around cheap snapshots and clones.
+The other two, in a line each: **FSx for NetApp ONTAP** is **multi-protocol** — AWS lists *"NFS, SMB, **iSCSI** and **NVMe**"* — so it is the answer both when Linux and Windows clients need the same data **and** when the requirement is **low-latency block storage over iSCSI**, which no other FSx flavour provides. It also offers **Multi-AZ** as well as Single-AZ, so "iSCSI block + Multi-AZ HA" points at ONTAP and nothing else. **FSx for OpenZFS** speaks NFS and is built around cheap snapshots and clones.
 
 > In one line: FSx is AWS running a named file system for you — Windows/SMB/Active Directory for lift-and-shift, Lustre for speed and S3-backed compute.
 
@@ -258,6 +258,7 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 - [ ] **Lustre scratch vs persistent is a durability choice**, not a speed one.
 
 ## 🔗 Docs
+- [FSx for NetApp ONTAP (NFS, SMB, iSCSI, NVMe; Multi-AZ)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html)
 - [EFS mount targets — one per Availability Zone](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs.html)
 
 - [What is Amazon EFS](https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html) — NFSv4.1/4.0, Regional vs One Zone, General Purpose + Elastic defaults, encryption, and the explicit "not supported with Windows EC2 instances"; verified 2026-09-05

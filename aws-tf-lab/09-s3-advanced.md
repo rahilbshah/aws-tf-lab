@@ -87,7 +87,7 @@ What changes is the **route**. With Transfer Acceleration the client uploads to 
 
 A short hop to get into AWS, then the long haul on AWS's own network. Same bucket, same region, different path. It costs extra per GB, so it earns its keep on long-distance transfers of large objects.
 
-The distinction that gets tested: this is about **uploads**. If the scenario is serving *reads* to a global audience, the answer is **CloudFront** — Transfer Acceleration is not a CDN.
+The distinction that gets tested is **acceleration vs caching**, not upload vs download. AWS defines it as *"fast, easy, and secure **transfers of files** over long distances **between your client and an S3 general purpose bucket**"* — wording that covers **both directions**, and the accelerate endpoint serves `GET`s as well as `PUT`s. What makes it different from a CDN is that it **caches nothing**: every request still reaches S3, just over an optimised path from the nearest edge. So **CloudFront** is right when the same objects are read repeatedly by many people (caching helps), and **Transfer Acceleration** is right for **large objects moved over long distances** where caching would not help — a 10 GB file transferred up *or* down by geographically dispersed users. AWS's own "why use it" list is upload-flavoured, so expect upload wording in stems — but do **not** eliminate it merely because a stem mentions download. *(Verified 2026-10-04.)*
 
 > In one line: nearest edge, then AWS's private backbone — the bucket stays exactly where it was.
 
@@ -213,6 +213,7 @@ flowchart LR
 - [ ] **Incomplete multipart uploads bill invisibly** — lifecycle abort rule is mandatory hygiene.
 
 ## 🔗 Docs
+- [S3 Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
 
 - [Replicating objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html) — CRR/SRR, Batch Replication, RTC 15-min SLA; **verified 2026-08**
 - [Multipart upload overview](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) — 100 MB recommendation, 10,000 parts, incomplete-upload billing; **verified 2026-08**

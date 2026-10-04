@@ -302,9 +302,17 @@ graph TB
 > True and irrelevant. Auto-renewal can still **fail** — DNS validation records removed, a CAA
 > record blocking issuance, an email-validated certificate nobody clicked. A stem asking to be
 > **notified 30 days before expiry** wants the **`DaysToExpiry`** CloudWatch alarm and/or an
-> **EventBridge** rule on **AWS Health** ACM events → **SNS**. Eliminate: **AWS Config** "manually
-> created rule checking certificate expiry" (Config evaluates configuration, and the stem's own
-> wording gives it away), **Trusted Advisor** as an alarm source (it has an ACM check, but you do
+> **EventBridge** rule on **AWS Health** ACM events → **SNS**.
+>
+> **Correction (2026-10-04):** an earlier version of this trap told you to eliminate **AWS Config**.
+> That was wrong. **`acm-certificate-expiration-check` is a real AWS Config managed rule** —
+> *"Checks if AWS Certificate Manager Certificates in your account are marked for expiration within
+> the specified number of days"* — and it matters most for the case the rest of this note does not
+> cover: *"Certificates provided by ACM are automatically renewed. **ACM does not automatically
+> renew certificates that you import.**"* So for **imported third-party certificates**, the Config
+> managed rule plus SNS is the least-effort 30-day warning and is the **correct** answer. Eliminate
+> a Config option only when it is described as a **custom** rule you must write yourself.
+> Still eliminate: **Trusted Advisor** as an alarm source (it has an ACM check, but you do
 > not build a CloudWatch alarm on a Trusted Advisor *metric*), and **ACM Private CA** — switching
 > your public certificates to a paid private CA to get an alert is the most expensive wrong answer
 > on the page.
@@ -360,6 +368,7 @@ graph TB
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [AWS Config rule `acm-certificate-expiration-check`](https://docs.aws.amazon.com/config/latest/developerguide/acm-certificate-expiration-check.html)
 - [EventBridge targets (ECS tasks)](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html)
 - [Systems Manager Run Command](https://docs.aws.amazon.com/systems-manager/latest/userguide/run-command.html)
 - [Systems Manager Patch Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-manager.html)
