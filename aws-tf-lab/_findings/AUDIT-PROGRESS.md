@@ -16,7 +16,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | 01-iam.md | 3 WRONG · 7 OVERSTATED · 1 UNVERIFIABLE | 11 | 10 | `13e94e6`, `0091f77` |
 | 01-iam-advanced.md | 128 claims · 29 pages · 4 WRONG · 7 OVERSTATED · 1 STALE · 1 UNVERIFIABLE | 13 | 8 | `40ab3c3` + truth |
 | 02-ec2.md | 168 claims · 33 pages · 2 WRONG · 8 OVERSTATED · 1 STALE · 4 UNVERIFIABLE | 19 | 10 | `pending` |
-| 04-alb-asg.md | | | | |
+| 04-alb-asg.md | 158 claims · 34 pages · 3 WRONG · 6 OVERSTATED · 1 STALE · 3 citation/UNVERIFIABLE | 13 | 10 | `pending` |
 | 05-vpc-core.md | | | | |
 | 05-vpc-security.md | | | | |
 | 05-vpc-endpoints-peering.md | | | | |
@@ -91,6 +91,25 @@ Fix these when that note's own turn comes, not before.
   links out to both; on their own passes they should link back rather than restate. Note
   13-cost-optimization also still carries the pre-correction form of the public-IPv4 rule
   ("whether attached or not") without the BYOIP and 750-hour Free Tier exemptions.
+
+- **`cheatsheet.md:282`** — an open `⚠️ verify:` on whether the NLB flow hash includes the TCP
+  sequence number. Settled 2026-10-04: it does — AWS lists *"The protocol, The source IP address
+  and source port, The destination IP address and destination port, The TCP sequence number"*.
+  `04-alb-asg.md` now states it both places; remove the cheatsheet marker on its pass.
+
+- **`cheatsheet.md:309-315`** — same IaC argument spellings (`health_check_type`,
+  `health_check_grace_period`) that were converted to console names in `04-alb-asg.md`, plus
+  `target_type` at :279. Lines 312-313 also carry the **old, wrong** time-to-ELB-healthy
+  arithmetic that was corrected in the note (a new target needs **one** passing health check,
+  not `HealthyThresholdCount` of them).
+
+- **`15-decoupling.md:146`** — owns SQS, and restates the backlog-per-consumer formula that
+  `04-alb-asg.md` also gives in full. 04 now links out to it; on 15's pass, decide which holds
+  the formula and which links. Also reconcile "running consumers" vs "`InService` instances".
+
+- **`19-serverless.md:20,194`** and **`18-containers-capstone.md:58`** — all three restate the ALB
+  `$0.0225/hr` figure that `04-alb-asg.md` owns. Link, don't restate, so one price change is one
+  edit.
 
 - **`19-serverless.md:132`** — the trap *"the certificate Region for a custom domain"* opens an
   italic quote (`AWS: to use an ACM certificate with a …`) that the discriminators generator

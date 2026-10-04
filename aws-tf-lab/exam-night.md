@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 331 pointers · ~29 min read*
+*176 recall hooks · 332 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -135,7 +135,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#What problem does this solve?|explain]]
 - The ALB reads the request, so it can route on anything inside it and answer some requests itself; the NLB can't, but hands you a static IP and the true client IP.  
   ↳ [[04-alb-asg#The ALB opens your HTTP request, and everything follows from that|explain]]
-- The ASG registers instances into the target group, but only acts on the ALB's health verdict when health_check_type = "ELB" — and only after the grace period expires.  
+- The ASG registers instances into the target group, but only acts on the ALB's health verdict once you turn on ELB health checks (HealthCheckType = ELB) — and only after the grace period expires.  
   ↳ [[04-alb-asg#The target group is the joint — and two health checks meet inside it|explain]]
 - Target tracking is asymmetric on purpose — nothing below the target will ever scale you out, only real load above it will.  
   ↳ [[04-alb-asg#Target tracking scales out fast and scales in slowly, deliberately|explain]]
@@ -165,6 +165,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
+- [[04-alb-asg#Target-group health check vs ASG health-check type|Target-group health check vs ASG health-check type]]
 - [[04-alb-asg#Scaling policy types|Scaling policy types]]
 - [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
 - [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]]

@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*105 comparison tables · 194 discriminators · ~37 min read*
+*106 comparison tables · 194 discriminators · ~37 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -90,19 +90,19 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
 
-**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]] · [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]] · [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
+**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Target-group health check vs ASG health-check type|Target-group health check vs ASG health-check type]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]] · [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]] · [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
 
-- **suspending ScheduledActions to protect an instance during maintenance** — It is the wrong process. ScheduledActions pauses scheduled scaling actions; the process that terminates and relaunches an instance the group considers unhealthy is **ReplaceUnhealthy**.  
+- **suspending ScheduledActions to protect an instance during maintenance** — It is the wrong process. ScheduledActions pauses scheduled scaling actions; the process that terminates and relaunches an instance the group considers unhealthy is **ReplaceUnhealthy — and AWS pairs it with HealthCheck**, which stops the verdict being formed in the first place.  
   ↳ [[04-alb-asg#How it actually works|note]]
 - **cross-zone distribution computed as if the AZs were merged** — With cross-zone off, traffic splits per AZ first, then within the AZ. The wrong answer divides by the total target count and gives every target the same share — which is the cross-zone-on answer.  
   ↳ [[04-alb-asg#Comparisons|note]]
 - **minimum capacity set to N when an AZ must be survivable** — The stem gives a required capacity and an AZ count, and the wrong options are near-misses on the same arithmetic: min set to N (right total, no spare zone) · the correct total parked in one AZ · one instance per AZ across N AZs (total right, per-AZ wrong) · max below the stated peak.  
   ↳ [[04-alb-asg#Comparisons|note]]
-- **"the ALB terminates the unhealthy instance"** — It doesn't. The ALB only stops routing to it. Termination is the ASG's job, and only if health_check_type = "ELB".  
+- **"the ALB terminates the unhealthy instance"** — It doesn't. The ALB only stops routing to it. Termination is the ASG's job, and only if you have turned on ELB health checks (HealthCheckType = ELB).  
   ↳ [[04-alb-asg#Worked examples|note]]
-- **"a failed ALB health check means users get errors"** — Only if no targets are healthy. With ≥1 healthy target the ALB quietly routes around the bad one and users are fine — you're at reduced capacity with nobody alerted.  
+- **"a failed ALB health check means users get errors"** — It never does, in either direction. With at least one healthy target the ALB quietly routes around the bad one and users are fine — you are simply at reduced capacity with nobody alerted.  
   ↳ [[04-alb-asg#Worked examples|note]]
-- **NLB vs ALB for a static IP / source-IP / PrivateLink** — "Need a static IP for the LB" or "must preserve client source IP with no app changes" → NLB (static IP/EIP per AZ, native source-IP preservation). ALB is DNS-only and needs X-Forwarded-For. Frequent distractor pairing. Third trigger, same pairing: "expose one service to another VPC or account without exposing the rest of the VPC" → PrivateLink, and an endpoint service must be fronted by an NLB or a GWLB — never an ALB directly.  
+- **NLB vs ALB for a static IP / source-IP / PrivateLink** — Three different stems, one answer, and it is always the NLB: - "Need a static IP for the load balancer" → NLB: one static address per AZ, and you may attach an EIP per subnet. An ALB gives you a DNS name and "can't specify Elastic IP addresses for your subnets".  
   ↳ [[04-alb-asg#Worked examples|note]]
 - **cross-zone billing** — Cross-zone is free & always-on for ALB, but off by default and inter-AZ-billed for NLB.  
   ↳ [[04-alb-asg#Worked examples|note]]
