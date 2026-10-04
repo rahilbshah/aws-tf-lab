@@ -17,7 +17,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | 01-iam-advanced.md | 128 claims · 29 pages · 4 WRONG · 7 OVERSTATED · 1 STALE · 1 UNVERIFIABLE | 13 | 8 | `40ab3c3` + truth |
 | 02-ec2.md | 168 claims · 33 pages · 2 WRONG · 8 OVERSTATED · 1 STALE · 4 UNVERIFIABLE | 19 | 10 | `pending` |
 | 04-alb-asg.md | 158 claims · 34 pages · 3 WRONG · 6 OVERSTATED · 1 STALE · 3 citation/UNVERIFIABLE | 13 | 10 | `pending` |
-| 05-vpc-core.md | | | | |
+| 05-vpc-core.md | 96 claims · 26 pages · 4 STALE · 8 OVERSTATED | 13 | 9 | `pending` |
 | 05-vpc-security.md | | | | |
 | 05-vpc-endpoints-peering.md | | | | |
 | 05-vpc-hybrid.md | | | | |
@@ -91,6 +91,25 @@ Fix these when that note's own turn comes, not before.
   links out to both; on their own passes they should link back rather than restate. Note
   13-cost-optimization also still carries the pre-correction form of the public-IPv4 rule
   ("whether attached or not") without the BYOIP and 750-hour Free Tier exemptions.
+
+- **HELD BACK on the user's instruction (VPC/S3).** The user asked that the VPC and S3 notes not be
+  *restructured* until they have read them. Two structural findings on `05-vpc-core.md` are
+  therefore recorded rather than applied: (a) the two-hop route-table table (private RT → NAT, NAT's
+  RT → IGW) sits outside `## Comparisons`, so no generator harvests it, and (b) the two
+  public-subnet failure cases would be drillable as a two-row table. Both are additive moves, not
+  rewrites. Raise them once the user has read the VPC notes.
+
+- **`05-vpc-core.md` duplication, also held back.** The default-vs-custom NACL/SG flip is stated
+  five times in this note (TL;DR, prose section, key facts, a trap, weak spots) and
+  `05-vpc-security.md:17` owns it. A pointer was added; the trimming needs the user's read first.
+  Separately, the NAT-gateway facts appear four or five times within this one note.
+
+- **`17-containers.md:108,163,185`**, **`18-containers-capstone.md:58`** and
+  **`13-cost-optimization.md:116`** all restate the NAT gateway `$0.045/hr` figure that
+  `05-vpc-core.md` owns. Link, don't restate.
+
+- **`README.md`** still refers to "cards", which were retired. `05-vpc.md` had the same stale
+  reference plus a claim that `05-vpc-core` covers "bastion" (it does not); both fixed 2026-10-04.
 
 - **`cheatsheet.md:282`** — an open `⚠️ verify:` on whether the NLB flow hash includes the TCP
   sequence number. Settled 2026-10-04: it does — AWS lists *"The protocol, The source IP address
