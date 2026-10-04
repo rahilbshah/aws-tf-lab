@@ -293,21 +293,27 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 │   └── topic-template.md       # reference note template (§13.5)
 ├── 01-iam.md                   # reference note (reading/teaching material)
 ├── 02-vpc.md
-├── revision/                   # GENERATED — never hand-edit
-│   ├── 00-index.md
-│   ├── 01-iam-revision.md       # night-before read + self-test (§13.7)
-│   └── ...
+├── cheatsheet.md               # hand-written third tier — the compressed facts
 ├── exam-night.md               # GENERATED — morning skim
 ├── discriminators.md           # GENERATED — every "X vs Y" in the vault
+├── dashboard.md                # GENERATED — coverage + status
 ├── _scripts/                   # the generators
 └── ...
+
+**Retired, do not recreate (verified absent on disk 2026-10-04):** there is no
+`revision/` folder, no per-topic revision doc, no `## Self-test` section, no
+`revision:` frontmatter key, no `[[revision/...]]` link, no `_selftest.py` and
+no `cards/` folder. All *testing* moved to the sibling `aws-saa-trainer`
+project; the vault is three tiers of **learning** material only — notes,
+`cheatsheet.md`, and the generated views. Adding a `revision:` key or a
+self-test footer would create a broken link in every note.
 ```
 
-**One source, many derived views.** The reference note is the ONLY hand-written artifact. Everything else — the revision docs, their self-tests, `exam-night.md`, `discriminators.md` — is generated from it verbatim by `_scripts/`. This is not a style preference: the retired cards proved that any hand-maintained second copy of a fact will eventually contradict the first, and the copy nobody opens is the one that rots. **If you find yourself about to hand-write a fact twice, generate it instead.** After editing any note, re-run the generators.
+**One source, many derived views.** The reference note is the ONLY hand-written artifact apart from `cheatsheet.md`. Everything else — `exam-night.md`, `discriminators.md`, `dashboard.md` — is generated from the notes verbatim by `_scripts/`. This is not a style preference: the retired cards proved that any hand-maintained second copy of a fact will eventually contradict the first, and the copy nobody opens is the one that rots. **If you find yourself about to hand-write a fact twice, generate it instead.** After editing any note, re-run the generators.
 
 **Large topics split across concept notes.** When a topic is too big for one readable note (VPC is the canonical case — it spans subnets, routing, NAT, SG/NACL, endpoints, peering, hybrid connectivity), split it:
 - One **index / map-of-content note** (`NN-topic.md`, tag it `moc`) with the exam TL;DR, a master diagram, and a table linking each sub-note.
-- Several **concept notes** (`NN-topic-core.md`, `NN-topic-security.md`, …), each self-contained with its own frontmatter, worked examples and weak spots (its revision doc and self-test are generated).
+- Several **concept notes** (`NN-topic-core.md`, `NN-topic-security.md`, …), each self-contained with its own frontmatter, worked examples and weak spots.
 - Cross-link liberally between them so Obsidian's graph shows the real structure.
 - **Cadence for big topics:** capture per sub-concept (build → verify → note that chunk) rather than waiting for the whole topic to finish — this overrides the "notes only at §9 step 8" rule for topics genuinely too large to hold in one session. Confirm the split with the human first.
 
@@ -318,7 +324,7 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 ### 13.4 Obsidian conventions you must follow
 
 - **YAML frontmatter** on every topic note (template in §13.5).
-- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets|subnets]]`. Each reference note links to its self-test: `[[revision/01-iam-revision#Self-test]]`.
+- **Wiki-links** between notes: `[[02-vpc]]`, `[[02-vpc#Subnets|subnets]]`. Every link must resolve — the file must exist, and for an anchor a matching heading must exist in it.
 - **Tags** inline: `#weak-spot`, `#trap`, `#domain/secure`, etc.
 - **Callouts** for structured blocks (the `-` after `]` makes them foldable):
   - `> [!info] Exam TL;DR` — must-know-for-the-exam summary.
@@ -331,7 +337,7 @@ aws-tf-lab/                     # this folder = the Obsidian vault root
 
 ### 13.5 Per-topic reference note structure (template)
 
-Every reference note follows `_templates/topic-template.md`. **The notes contain no Terraform** (decided 2026-09-30): SAA-C03 does not test it, so `## AWS console ↔ Terraform map` and `## The Terraform I wrote` were removed from all 33 notes and from this template. Do not reintroduce them, do not name `aws_*` resources, and do not cite `registry.terraform.io`. If a Terraform detail carries an *AWS* fact, state the AWS fact and drop the Terraform framing. The one exception is a note whose frontmatter says `exam: false` (e.g. `03-ami-bake`), which `_lib.notes()` already excludes from every generator. Note: **there are no flashcards anywhere** (§13.7) — recall practice is generated. The reference note's job is teaching and reference; the cards file's job is recall practice.
+Every reference note follows `_templates/topic-template.md`. **The notes contain no Terraform** (decided 2026-09-30): SAA-C03 does not test it, so `## AWS console ↔ Terraform map` and `## The Terraform I wrote` were removed from all 33 notes and from this template. Do not reintroduce them, do not name `aws_*` resources, and do not cite `registry.terraform.io`. If a Terraform detail carries an *AWS* fact, state the AWS fact and drop the Terraform framing. The one exception is a note whose frontmatter says `exam: false` (e.g. `03-ami-bake`), which `_lib.notes()` already excludes from every generator. Note: **there are no flashcards anywhere** (§13.7). The reference note's job is teaching and reference; drilling happens in the `aws-saa-trainer` app.
 
 ````markdown
 ---
@@ -340,7 +346,6 @@ domain: secure                # one of: secure | resilient | performance | cost
 status: draft                 # draft | reviewed | mastered
 services: [IAM]
 related: [02-vpc]             # wiki-link targets (no .md extension)
-revision: revision/01-iam-revision   # generated night-before read + self-test
 tags: [topic, domain/secure]
 ---
 
@@ -394,8 +399,6 @@ graph LR
 - [AWS IAM docs](https://docs.aws.amazon.com/iam/)
 - [Terraform aws_iam_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
 
----
-**Self-test for this topic:** [[revision/01-iam-revision#Self-test]]
 ````
 
 ### 13.6 How you write a note — researcher+author mode (this is the biggest behavioral rule)
@@ -418,36 +421,39 @@ Run this checklist mentally; fix anything missing before saving:
 - [ ] At least one **failure mode** is described.
 - [ ] At least three **wiki-links** to related notes (where genuinely relevant — don't pad).
 - [ ] The "Production gap" / "in production you'd also want X" call-out is concrete with named services.
-- [ ] Generators re-run (§13.7) so the revision doc and self-test match the new text.
+- [ ] Generators re-run (§13.7) so `discriminators.md`, `exam-night.md` and `dashboard.md` match the new text.
 - [ ] No filler — every section earned its place.
 
 If you can't satisfy the checklist with what you know, **search before writing** rather than guessing.
 
-### 13.7 Recall practice — the generated self-test
+### 13.7 What the generators harvest — and why it dictates note shape
 
-**There are no flashcards. Do not write any.** Recall practice is generated, not authored.
+**There are no flashcards and no self-tests. Do not write any.** All drilling lives in the
+sibling `aws-saa-trainer` app (§13.12). What the vault generates are *views*, built verbatim
+from the notes by `_scripts/`:
 
-Every revision doc (`revision/NN-topic-revision.md`) ends in a `## Self-test` section built by
-`_scripts/_selftest.py`. It takes two things out of the note and turns them into drills:
+- `discriminators.md` — every comparison table, plus every `> [!warning] Trap —` callout.
+- `exam-night.md` — one recall hook per section, for the morning skim.
+- `dashboard.md` — coverage and status.
 
-- **Every comparison table** becomes a blanked grid — row labels and column headers kept, cells
-  emptied — with the real table folded underneath as the answer.
-- **Every `> [!warning] Trap —` callout** becomes a question, with the trap body as the answer.
+The harvesting rule is the thing to design around. The generators read **comparison tables**
+and **trap callouts**, and nothing else:
 
-Two consequences you must design notes around:
-
-1. **A distinction that lives only in prose is never drilled.** If a fact is worth testing, it
-   belongs in a comparison table or a trap callout. That is now the main reason to reach for a
-   table — not decoration, but making the fact drillable.
-2. **The self-test cannot contradict the note**, because every answer is lifted verbatim. This is
-   the whole point. The retired cards drifted precisely because a human wrote each fact twice.
+1. **A distinction that lives only in prose never reaches any generated view.** If a fact is
+   worth drilling, it belongs in a comparison table or a trap callout. That is the main reason
+   to reach for a table — not decoration, but making the fact harvestable.
+2. **Tables are only harvested from H3s under `## Comparisons`, or from H2s whose title
+   contains "vs".** A comparison table parked anywhere else is invisible to the generators.
+3. **A generated view can never contradict the note**, because every line is lifted verbatim.
+   That is the whole point: the retired flashcards drifted precisely because a human wrote each
+   fact twice. If you are about to hand-write a fact a second time, generate it instead.
 
 Regenerate after editing any note:
 
 ```bash
-python3 _scripts/build_revision.py        # revision docs + self-tests
-python3 _scripts/build_exam_night.py      # morning skim sheet
 python3 _scripts/build_discriminators.py  # every "X vs Y" in the vault
+python3 _scripts/build_exam_night.py      # morning skim sheet
+python3 _scripts/build_dashboard.py       # coverage + status
 ```
 
 Why this shape: the human's measured failure mode is **discrimination**, not recall — answers
