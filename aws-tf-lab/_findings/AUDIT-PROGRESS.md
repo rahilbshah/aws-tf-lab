@@ -6,6 +6,14 @@ Three agents per note, one note at a time:
 - **clarity** — cold read: can this be understood from the page alone, months later, with nothing else open? Sonnet.
 
 Harness: `Workflow` with the saved script, `args: {notes:[...], lenses:[...]}`.
+
+> **2026-10-05 — process correction.** The user asked for strictly one note at a time: do not run a
+> second note's audit while the first is still open. I had overlapped `05-vpc-endpoints-peering`
+> with `05-vpc-security`; the second was stopped and will be resumed from
+> `wf_e506dc95-340` (completed agents replay from cache) once `05-vpc-security` is closed out.
+>
+> **2026-10-05 — holding commits.** The user asked that nothing be committed until they are back,
+> then one consolidated report. Work continues in the working tree. Last commit: `4cb4cc7`.
 Rules that bind the edits: CLAUDE.md §13.10, §13.10a (asymmetry), §13.10b (seams), §13.10c (who verifies).
 
 **Every change is re-verified by me against the AWS page before it is written.** Agents over-flag
@@ -18,11 +26,11 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | 02-ec2.md | 168 claims · 33 pages · 2 WRONG · 8 OVERSTATED · 1 STALE · 4 UNVERIFIABLE | 19 | 10 | `pending` |
 | 04-alb-asg.md | 158 claims · 34 pages · 3 WRONG · 6 OVERSTATED · 1 STALE · 3 citation/UNVERIFIABLE | 13 | 10 | `pending` |
 | 05-vpc-core.md | 96 claims · 26 pages · 4 STALE · 8 OVERSTATED | 13 | 9 | `pending` |
-| 05-vpc-security.md | | | | |
-| 05-vpc-endpoints-peering.md | | | | |
-| 05-vpc-hybrid.md | | | | |
-| 05-vpc.md | | | | |
-| 07-rds-aurora.md | | | | |
+| 05-vpc-security.md | 137 claims · 18 pages · 3 WRONG · 7 OVERSTATED · 2 UNVERIFIABLE | 15 | 10 | **UNCOMMITTED** |
+| 05-vpc-endpoints-peering.md | 94 claims · 15 pages · 1 WRONG · 1 STALE · 6 OVERSTATED · 1 UNVERIFIABLE | 14 | 10 | **UNCOMMITTED** |
+| 05-vpc-hybrid.md | 103 claims · 20 pages · 2 STALE · 3 OVERSTATED | — | — | **UNCOMMITTED** |
+| 05-vpc.md | done by hand (index note, 313w) | — | — | **UNCOMMITTED** |
+| 07-rds-aurora.md | *my pass done (3 markers resolved); agent pass pending* | | | **UNCOMMITTED** |
 | 08-elasticache.md | | | | |
 | 09-s3-intro.md | | | | |
 | 09-s3-advanced.md | | | | |
@@ -46,6 +54,28 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 
 Not audited on purpose — `exam: false`, excluded from every generator:
 `03-ami-bake.md`, `06-capstone.md`, `18-containers-capstone.md`.
+
+## Two errors I introduced and then had caught (2026-10-05)
+Recorded because the pattern matters more than the two facts.
+
+On `05-vpc-security.md` I wrote two claims that the truth agent then refuted against first-party
+docs, and **both were negatives or absolutes I asserted without hunting for the counter-example** —
+the exact failure §13.10a(a) was added to prevent, committed by me:
+
+1. I wrote that AWS *"does not commit to a steady-state figure"* for flow-log delivery, and demoted
+   the vault's own correct "~5 min to CloudWatch, ~10 min to S3" to "a lab observation, not a
+   published number". AWS publishes exactly those numbers, verbatim, on `flow-log-records.html`:
+   *"typically delivers logs to CloudWatch Logs in about 5 minutes and to Amazon S3 in about 10
+   minutes"*. I had fetched `flow-logs.html`, not found it there, and generalised to "AWS does not
+   state it". **I made the note worse than it was** — it had the right numbers and I labelled them
+   folklore.
+2. I wrote "every current-generation instance type is Nitro" to argue the 600s aggregation interval
+   is moot. **T2 is current-generation and still runs on Xen** (`instancetypes/gp.html` lists
+   "T2 | Xen"), and `t2.micro` is this repo's own declared free-tier default — so the claim failed
+   precisely in the learner's own lab.
+
+**Operational lesson:** when about to write "AWS does not state X", one page not containing X is not
+evidence. Either find the page that would carry it, or write the positive claim and stop.
 
 ## Judgment calls made, so they are not re-litigated
 - **Layered repetition is by design, not duplication.** An agent flagged placement-group facts
@@ -91,6 +121,12 @@ Fix these when that note's own turn comes, not before.
   links out to both; on their own passes they should link back rather than restate. Note
   13-cost-optimization also still carries the pre-correction form of the public-IPv4 rule
   ("whether attached or not") without the BYOIP and 750-hour Free Tier exemptions.
+
+- **HELD BACK, `05-vpc-endpoints-peering.md` (same VPC instruction).** Two structural findings
+  recorded not applied: (a) the gateway-vs-interface comparison appears both at the top of "How it
+  actually works" and under `## Comparisons`, and only the latter is harvested — one copy should go;
+  (b) the cross-Region security-group-reference fact sits in Key facts but is a *peering* limit and
+  reads better inside "Why peering never becomes a hub". Both need the user's read first.
 
 - **HELD BACK on the user's instruction (VPC/S3).** The user asked that the VPC and S3 notes not be
   *restructured* until they have read them. Two structural findings on `05-vpc-core.md` are

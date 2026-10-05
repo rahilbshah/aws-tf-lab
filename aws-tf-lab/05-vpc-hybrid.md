@@ -2,7 +2,7 @@
 topic: 05-vpc-hybrid
 domain: secure
 status: reviewed
-services: [Site-to-Site VPN, Direct Connect, Virtual Private Gateway, Transit Gateway]
+services: [Site-to-Site VPN, Direct Connect, Virtual Private Gateway, Customer Gateway, Direct Connect Gateway, Client VPN, Transit Gateway]
 related: [05-vpc, 05-vpc-endpoints-peering, 05-vpc-core]
 tags: [topic, domain/secure]
 ---
@@ -12,11 +12,11 @@ tags: [topic, domain/secure]
 Connecting **on-premises ↔ AWS**. Two roads: an encrypted VPN over the internet, or a dedicated private line (Direct Connect). Conceptual-only (no build). Closes out [[05-vpc]].
 
 > [!info] Exam TL;DR
-> - **Site-to-Site VPN** = IPsec VPN **over the internet**, **encrypted**, AWS-managed, **2 tunnels** for HA. **Fast to set up (hours)**, cheap, but performance rides the public internet (variable).
+> - **Site-to-Site VPN** = IPsec VPN **over the internet**, **encrypted**, AWS-managed, **2 tunnels** for HA. **Fast to set up (hours)**, cheap, but performance rides the public internet (variable). Throughput: **1.25 Gbps** per standard tunnel, or **5 Gbps** on a large-bandwidth tunnel.
 > - **VPN endpoints:** **Virtual Private Gateway (VGW)** = AWS side (or a **Transit Gateway** for many VPCs); **Customer Gateway (CGW)** = config object representing your on-prem router.
 > - **Direct Connect (DX)** = **dedicated private physical fiber**, bypasses the internet. **Consistent low latency + guaranteed bandwidth + lower data cost**, but **expensive** and **weeks-to-months to provision**. **NOT encrypted by default** — run a VPN over it to encrypt.
 > - **DX speeds:** dedicated **1/10/100/400 Gbps**; **hosted** (via a partner) **50 Mbps–25 Gbps** — the only route to a sub-1 Gbps link. **VIFs:** Private (→VPC), Public (→S3 etc.), Transit (→TGW).
-> - **Direct Connect Gateway** = one DX reaching **VPCs across multiple regions/accounts** (non-transitive).
+> - **Direct Connect Gateway** = one DX reaching **VPCs across multiple regions/accounts**; **non-transitive by design** (with a documented supernet exception — see the body).
 > - **Decisions:** need it *fast/temporary* → VPN. *Consistent high-throughput/low-latency* → DX. *Cheap DX backup* → VPN failover. *Encrypt DX* → VPN over DX.
 
 ## What problem does this solve?
@@ -31,7 +31,7 @@ A **Site-to-Site VPN** builds an encrypted IPsec tunnel *across* the ordinary in
 
 **Direct Connect** doesn't use that road. It's a *physical* dedicated fiber running from your premises into an AWS facility, bypassing the internet entirely. You get consistent low latency, guaranteed bandwidth, and lower data-transfer cost at volume. You pay for it, and you wait weeks to months while someone physically installs it.
 
-For more than a couple of VPCs, a **Transit Gateway** becomes the on-ramp for either road, and a **Direct Connect Gateway** lets a single physical circuit serve VPCs in many regions.
+For more than a couple of VPCs, a **Transit Gateway** ([[05-vpc-endpoints-peering]] covers it as the peering replacement) becomes the on-ramp for either road, and a **Direct Connect Gateway** lets a single physical circuit serve VPCs in many regions.
 
 > In one line: a VPN rents an encrypted tunnel across the internet; Direct Connect buys a private wire that avoids it.
 
@@ -41,10 +41,12 @@ For more than a couple of VPCs, a **Transit Gateway** becomes the on-ramp for ei
 
 A VPN needs something at each end. AWS names them from its own point of view, which is where the confusion starts.
 
-- **Virtual Private Gateway (VGW)** — the **AWS side**, attached to the VPC. (Swap in a **Transit Gateway** when you have many VPCs to terminate.)
+- **Virtual Private Gateway (VGW)** — the **AWS side**, attached to the VPC ([[05-vpc-core]] for the VPC and routing it plugs into). (Swap in a **Transit Gateway** when you have many VPCs to terminate.)
 - **Customer Gateway (CGW)** — the **on-prem side**. "Customer" means you.
 
-The CGW is the odd one, and it's worth being precise about why. It is a **configuration object inside AWS that describes the router you already own** — its public IP address and its BGP ASN. The device itself stays physical and stays yours, in your building; the CGW is only AWS's record of it, which is why those two details are the whole of what you hand over.
+The CGW is the odd one, and it's worth being precise about why. It is a **configuration object inside AWS that describes the router you already own** — its external IP address and its BGP ASN. The device itself stays physical and stays yours, in your building; the CGW is only AWS's record of it, which is why those two details are the whole of what you hand over.
+
+Be careful with "public" there. AWS's requirement is that *"The IP address must be **static** and can be either IPv4 or IPv6"* — not that it must be public. If the device sits behind NAT you register *"the IP address of your NAT device"*; a **private IP VPN** over Direct Connect uses private addresses on both ends; and with certificate-based authentication via AWS Private CA, *"An IP address is not required"* at all. *(Verified 2026-10-05.)*
 
 The tunnel itself is a third object joining the two: VGW/TGW on one end, CGW on the other. Routing across it is either **static** or **BGP** (dynamic).
 
@@ -62,7 +64,15 @@ It isn't. **Direct Connect is not encrypted by default.** A dedicated circuit st
 
 Now notice the inversion, because that's what makes it stick: **the cheap option is the encrypted one and the expensive option is not.** That's not an oversight. The two products solve different problems. A VPN's entire job is making a hostile path safe, so encryption is the product. Direct Connect's job is *removing* the hostile path, which is a completely different property — and removing it doesn't scramble anything.
 
-The fix when you need both properties is to stack them: run a **Site-to-Site VPN over the Direct Connect** (IPsec over a public VIF), or use **MACsec** on ports that support it. Exam phrasing to listen for: *"needs the performance of Direct Connect **and** in-transit encryption"* → VPN over DX, never DX alone.
+The fix when you need both properties is to stack them, and there are now **two** ways plus a
+third that is narrower than it sounds:
+
+- **Site-to-Site VPN over a public VIF** — the classic answer, and the one older material teaches. It needs **public IP addresses** for the VPN endpoints, and AWS notes the cost: *"a public VIF opens access between all AWS public services and customer on-premises networks, increasing the severity of the risk."*
+- **Private IP VPN over a transit VIF** — the newer and now-preferred route: *"With private IP VPN, you can deploy IPsec VPN over Direct Connect, encrypting traffic between your on-premises network and AWS, **without the use of public IP addresses**."* It runs over a **transit VIF** and needs a **Direct Connect gateway plus a transit gateway**, with private IPs on both ends of the tunnels. It also raises route limits sharply — *"5000 outbound routes and 1000 inbound routes"* versus DX alone at *"200 outbound and 100 inbound"*.
+- **MACsec** — do not treat this as equivalent. It is Layer 2 encryption *"over the cross-connect to AWS"* only, available on **10, 100 and 400 Gbps dedicated connections** at selected locations and explicitly *"not supported on hosted connections"*, and AWS warns it *"does not provide end-to-end encryption across multiple sequential Ethernet or other network segments."* It secures the wire into AWS, not the path to your VPC.
+
+Exam phrasing to listen for: *"needs the performance of Direct Connect **and** in-transit
+encryption"* → a VPN over DX, never DX alone. *(Verified 2026-10-05.)*
 
 > In one line: DX gives you a private path, not a secret one — layer a VPN on top when the auditor asks.
 
@@ -78,7 +88,9 @@ A Direct Connect is a **physical port** at a DX location. The port on its own re
 
 Why the split exists: one fiber, but three genuinely different destinations — a single VPC, AWS's public services, or a Transit Gateway. The port can't guess which one you meant, so the VIF is where you declare it.
 
-It also pins down a detail from the previous section: the VPN-over-DX fix runs as IPsec over a **public** VIF. Nothing in the table above lets you derive that — memorise the pairing.
+It also pins down the pairing from the previous section, which you cannot derive from the table: a
+classic VPN-over-DX runs IPsec over a **public** VIF, while the newer **private IP VPN** runs over a
+**transit** VIF. Either way the VIF type is the thing the question hinges on.
 
 The port itself comes in two flavours. **Dedicated** connections run at **1, 10, 100 or 400 Gbps**. **Hosted** connections, bought through a DX partner, come in fixed steps from **50 Mbps up to 25 Gbps** — 50/100/200/300/400/500 Mbps and 1/2/5/10/25 Gbps. The exam-relevant point is the *bottom* of that range: **hosted is the only way to get a sub-1 Gbps link**, because dedicated starts at 1 Gbps. It is not a sub-1 Gbps ceiling. *(Verified 2026-09-30.)*
 
@@ -90,7 +102,22 @@ A private VIF reaches **one** VPC. Real companies have twenty. Two pieces solve 
 
 **Direct Connect Gateway** is a global object that fans one circuit out. A private VIF → DXGW → **multiple VGWs, across any region and any account**. A transit VIF → DXGW → multiple Transit Gateways. One physical circuit, VPCs everywhere.
 
-Then the limit that gets tested: a DXGW is **non-transitive**. VPCs hanging off the same DXGW **cannot reach each other through it**. It's a fan-out from your data center inward — a way *in*, not a way *across*.
+Then the limit that gets tested: a DXGW is **non-transitive by design** — *"A Direct Connect
+gateway does not allow gateway associations that are on the same Direct Connect gateway to send
+traffic to each other."* Treat it as a fan-out from your data center inward: a way *in*, not a way
+*across*. That is the exam answer.
+
+It is not an absolute, though, and the exception is dated and documented. *"An exception to this
+rule, implemented in November 2021, is when a **supernet** is advertised across two or more VPCs,
+which have their attached virtual private gateways (VGWs) associated to the same Direct Connect
+gateway and on the same virtual interface. In this case, VPCs can communicate with each other via
+the Direct Connect endpoint."* So advertising `10.0.0.0/8` from on-prem over VPCs on `10.0.0.0/24`
+and `10.0.1.0/24` quietly makes them mutually reachable. AWS's own fix is to advertise more specific
+prefixes instead, use security groups, or give each VPC its own DXGW. The **TGW** case is looser
+still: *"If you have a configuration with multiple VPCs connected to Transit Gateways associated to
+same Direct Connect gateway, the VPCs could communicate. To prevent the VPCs from communicating,
+associate a route table with the VPC attachments that have the **blackhole** option set."*
+*(Verified 2026-10-05.)*
 
 So if the VPCs also need to talk to each other, that's the other piece: **Transit Gateway**, a hub each VPC attaches to once. The scale example makes the case — 20 VPCs across 2 regions with 3 data centers. Doing that with peering is a **190-connection** mess. Doing it with a TGW hub per region, Direct Connect + Transit VIF via a DXGW to bring the data centers on, and a Site-to-Site VPN as the failover, is the canonical answer.
 
@@ -137,14 +164,19 @@ flowchart LR
 
 ## Key facts, limits & pricing
 
-- ⚠️ verify: the **Direct Connect resiliency tiers** — that *maximum* resiliency means separate connections terminating on **separate devices in more than one DX location**; *high* resiliency is one connection in each of two locations; and two connections in a **single** location is the development-and-test tier. The shape is right and widely taught, but the AWS whitepaper page I tried no longer resolves, so it is flagged rather than asserted.
+- **Direct Connect resiliency models**, and the SLA attached to each is the discriminator the exam wants:
+  - **Maximum resiliency** — *"separate connections that terminate on separate devices in more than one location"*, giving *"resiliency against device, connectivity, and complete location failures"*. This is the only model rated for an **SLA of 99.99%**.
+  - **High resiliency** — *"two single connections to multiple locations"*, resilient to *"a fiber cut or a device failure"* and helping *"prevent a complete location failure"*. **SLA 99.9%.**
+  - **Development and test** — *"separate connections that terminate on separate devices in one location"*; *"provides resiliency against device failure, but does not provide resiliency against location failure"*. No SLA tier.
+  So "separate devices" alone buys you dev/test; it is **more than one location** that buys the 99.99%. The Resiliency Toolkit also builds **link aggregation groups (LAGs)** when you order a speed that isn't 1/10/100/400 Gbps. *(Verified 2026-10-05.)*
 
 - **Direct Connect billing has exactly two elements:** *"port hours and outbound data transfer"*. Port-hour price follows capacity and connection type (dedicated vs hosted); **Data Transfer Out** is charged per GB for what actually leaves AWS over the link, and for private and transit VIFs it is *"allocated to the AWS account responsible for the Data Transfer"*. There is **no extra charge** for a multi-account DX gateway. The cost lever therefore is **how much data leaves** — moving the chatty compute into the same Region as the data cuts the bill; a bigger port does not. *(Verified 2026-10-01.)*
 
-- **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW** (needs a public IP; BGP ASN). Up to ~**1.25 Gbps per standard tunnel**. Cheap, minutes-to-hours to establish. Latency/availability depend on the internet.
+- **Site-to-Site VPN:** IPsec, over the **public internet**, **encrypted**. Two tunnels per connection for redundancy. Static routing or **BGP** (dynamic). AWS side = **VGW** or **TGW**; on-prem = **CGW**, which needs a **static** external IP (public for an internet VPN, private for a private IP VPN over DX, the NAT device's address if it is behind NAT, or none at all with AWS Private CA certificate auth) plus a **BGP ASN** for dynamic routing. ASN notes: public ASNs are allowed except **7224** (reserved in all Regions) and a few per-Region reservations; private ranges are **64512–65534** and 4200000000–4294967294, default **64512**. **Up to 1.25 Gbps per *standard* tunnel** and **140,000 packets/sec** — but AWS also offers a **large-bandwidth tunnel at up to 5 Gbps / 400,000 PPS** (transit gateway or Cloud WAN only), so "VPN caps at 1.25 Gbps" is no longer a safe absolute. For many small sites there is also a **Site-to-Site VPN Concentrator** — up to 100 remote sites per concentrator at 100 Mbps per tunnel, TGW/Cloud WAN and BGP only. On a transit gateway you can also aggregate tunnels with **ECMP** for more throughput, which requires **dynamic (BGP) routing** — *"ECMP is not supported on VPN connections that use static routing."* MTU is **1446** (MSS 1406), **no jumbo frames** and **no Path MTU Discovery**. Cheap, minutes-to-hours to establish; latency and availability depend on the internet. *(Verified 2026-10-05.)*
 - **Direct Connect:** dedicated **Ethernet fiber** to a DX location, **bypasses the internet**. **NOT encrypted by default** (private ≠ encrypted) — layer a **VPN over DX** for encryption (or MACsec on supported ports). Dedicated speeds **1 / 10 / 100 / 400 Gbps**; **hosted** (via partners) **50 Mbps – 25 Gbps** in fixed steps — the only route to a **sub-1 Gbps** link. **Weeks-to-months** to provision (physical cross-connect + telecom). Benefits: consistent low latency, guaranteed bandwidth, **lower data-transfer cost** at volume.
 - **DX Virtual Interfaces (VIFs):** **Private VIF** → one VPC (via VGW); **Public VIF** → AWS public services (S3 etc.) globally; **Transit VIF** → Transit Gateway (via DX Gateway).
-- **Direct Connect Gateway:** global; a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs. **Non-transitive** (VPCs via a DXGW can't reach each other through it).
+- **Direct Connect Gateway:** global (*"You can connect to any Region globally"*, excluding China); a private VIF → DXGW → **multiple VGWs across any region/account**; a transit VIF → DXGW → multiple TGWs; it can also associate with a **Cloud WAN core network**. **Non-transitive by design**, with the November-2021 **supernet** exception and the TGW "could communicate" caveat above. You don't need two of them for HA: it *"operates outside the data traffic path"* and *"High availability is inherently built into its design, eliminating the need for multiple Direct Connect gateways."*
+- **VGW and VPN quotas (per Region, defaults):** **one VGW attached to a VPC at a time**, 5 VGWs, 50 customer gateways, 50 VPN connections, and **10 VPN connections per VGW**. AWS's own advice when one VPN must reach several VPCs: *"we recommend that you explore using a transit gateway instead."*
 - **VPN CloudHub:** hub-and-spoke over a VGW to connect **multiple on-prem branch offices** (and/or as backup links) using BGP.
 - **HA patterns:** DX + **VPN backup** (cheap failover if the line drops); dual DX (two connections/locations) for max resilience; VPN itself already has 2 tunnels.
 - **Client VPN** (aside): OpenVPN-based access for **individual remote users** (laptops), *not* site-to-site. Don't confuse the two.
@@ -157,7 +189,7 @@ flowchart LR
 |---|---|---|
 | Path | Public internet | Dedicated private fiber |
 | Encrypted? | **Yes** (IPsec) | **No** by default (add VPN to encrypt) |
-| Bandwidth | Up to ~1.25 Gbps/tunnel, variable | 1/10/100 Gbps, consistent |
+| Bandwidth | **1.25 Gbps** per standard tunnel, **5 Gbps** per large-bandwidth tunnel; variable | dedicated **1/10/100/400 Gbps**, consistent |
 | Latency | Variable (internet) | Low, consistent |
 | Setup time | **Minutes–hours** | **Weeks–months** |
 | Cost | Low | High (port + cross-connect) |
@@ -201,11 +233,11 @@ flowchart LR
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
-- [ ] **Whole topic was cold** (hadn't reviewed since the video) — learned it fresh here; needs card review to stick.
+- [ ] **Whole topic was cold** at orientation — learned fresh here, so it needs re-reading rather than recall.
 - [ ] **DX is NOT encrypted by default** — the single most-tested nuance; encrypt via VPN-over-DX.
 - [ ] **VGW (AWS side) vs CGW (on-prem side)** — which is which.
 - [ ] **VPN = fast to set up / DX = weeks-to-months** — drives most "which connection" scenario answers.
-- [ ] **Direct Connect Gateway** = one DX to multiple regions (non-transitive).
+- [ ] **Direct Connect Gateway** = one DX to multiple regions; non-transitive *by design*, but a supernet advertised from on-prem defeats it.
 
 ## 🔗 Docs
 - [Direct Connect pricing elements (port hours + outbound data transfer)](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html)
@@ -215,3 +247,10 @@ flowchart LR
 - [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — VIF types, speeds, not-encrypted; verified 2026-07
 - [What is Site-to-Site VPN](https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html)
 - [Direct Connect Gateway](https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-gateways.html)
+- [Direct Connect Resiliency Toolkit](https://docs.aws.amazon.com/directconnect/latest/UserGuide/resiliency_toolkit.html) — the three models verbatim with the 99.99% / 99.9% SLA split, and LAG creation; verified 2026-10-05
+- [Private IP VPN with Direct Connect](https://docs.aws.amazon.com/vpn/latest/s2svpn/private-ip-dx.html) — IPsec over a transit VIF with no public IPs, DX gateway + transit gateway prerequisites, 5000/1000 vs 200/100 route limits; verified 2026-10-05
+- [MACsec in Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/MACsec.html) — Layer 2 over the cross-connect only, 10/100/400 Gbps dedicated, not hosted, "does not provide end-to-end encryption"; verified 2026-10-05
+- [Direct Connect gateways](https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-gateways-intro.html) — non-transitivity, the Nov-2021 supernet exception, the TGW blackhole caveat, and built-in HA; verified 2026-10-05
+- [Customer gateway options](https://docs.aws.amazon.com/vpn/latest/s2svpn/cgw-options.html) — static (not necessarily public) IP, the NAT and AWS Private CA cases, ASN ranges and reservations; verified 2026-10-05
+- [Site-to-Site VPN quotas](https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-limits.html) — 1.25 Gbps standard vs 5 Gbps large-bandwidth tunnels, PPS, MTU 1446, ECMP needs dynamic routing, VGW/CGW quotas; verified 2026-10-05
+- [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — the three VIF types verbatim, 400GBASE-LR4, two billing elements, no charge for a multi-account DX gateway; verified 2026-10-05

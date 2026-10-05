@@ -3,7 +3,7 @@ topic: 05-vpc
 domain: resilient
 status: reviewed
 services: [VPC]
-related: [02-ec2, 04-alb-asg]
+related: [05-vpc-core, 05-vpc-security, 05-vpc-endpoints-peering, 05-vpc-hybrid, 02-ec2, 04-alb-asg]
 tags: [topic, domain/resilient, moc]
 ---
 
@@ -12,7 +12,7 @@ tags: [topic, domain/resilient, moc]
 VPC is big enough that it's split across several concept notes rather than one file. This is the map; each sub-note is self-contained.
 
 > [!info] Exam TL;DR — the one-paragraph orientation
-> A **VPC** is your isolated virtual network in one region, defined by a CIDR block. You carve it into **subnets** (each in one AZ). A subnet is **public** if its route table sends `0.0.0.0/0` to an **Internet Gateway** *and* instances get public IPs; **private** otherwise. Private subnets reach the internet *outbound-only* through a **NAT gateway** (which itself sits in a public subnet). Two firewall layers guard traffic: **security groups** (stateful, instance-level, allow-only) and **NACLs** (stateless, subnet-level, allow+deny, ordered). Beyond one VPC: **peering** and **Transit Gateway** connect VPCs; **VPC endpoints / PrivateLink** reach AWS services privately; **Site-to-Site VPN / Direct Connect** connect on-prem.
+> A **VPC** is your isolated virtual network in one region, defined by a CIDR block. You carve it into **subnets** (each in one AZ). AWS types a subnet by its **routing alone** — **public** means its route table has a direct route to an **Internet Gateway**, **private** means it doesn't — while actually *reaching* the internet also needs the instance to have a public IP. Private subnets reach the internet *outbound-only* through a **NAT gateway** (a zonal one sits in a public subnet; a regional one needs no subnet). Two firewall layers guard traffic: **security groups** (stateful, instance-level, allow-only) and **NACLs** (stateless, subnet-level, allow+deny, ordered). Beyond one VPC: **peering** and **Transit Gateway** connect VPCs; **VPC endpoints / PrivateLink** reach AWS services privately; **Site-to-Site VPN / Direct Connect** connect on-prem.
 
 ## Sub-notes
 
@@ -42,3 +42,5 @@ flowchart TB
     IGW --- Internet([Internet])
 ```
 
+The two notes this index does *not* cover: the compute that sits in these subnets is
+[[02-ec2]], and the load balancer in the public tier is [[04-alb-asg]].
