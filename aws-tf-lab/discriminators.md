@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*106 comparison tables · 194 discriminators · ~37 min read*
+*106 comparison tables · 195 discriminators · ~38 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -196,6 +196,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[08-elasticache#Redis vs Memcached (the exam table)|Redis vs Memcached (the exam table)]] · [[08-elasticache#Caching strategies|Caching strategies]]
 
+- **"Memcached can't replicate" stated without the Serverless carve-out** — This used to be a clean engine-level split and it no longer is. Serverless Memcached replicates across AZs and supports backup, so the rule holds only against node-based Memcached. AWS's own Memcached resilience section: "Serverless caches automatically mitigate node failures with a replicated Multi-AZ architecture so that node failures are transparent to your application", and the same for AZ failures.  
+  ↳ [[08-elasticache#How it actually works|note]]
 - **DAX and ElastiCache offered for the same workload** — They front different databases and that alone usually settles it. DAX only accelerates DynamoDB; ElastiCache fronts RDS/Aurora and anything else you write caching logic for.  
   ↳ [[08-elasticache#How it actually works|note]]
 - **Memcached for anything needing HA/persistence/complex data** — Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → Redis.  

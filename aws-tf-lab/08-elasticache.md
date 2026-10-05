@@ -3,7 +3,7 @@ topic: 08-elasticache
 domain: performance
 status: reviewed
 services: [ElastiCache, Redis, Memcached, DAX]
-related: [07-rds-aurora, 06-capstone]
+related: [07-rds-aurora]
 tags: [topic, domain/performance]
 ---
 
@@ -14,11 +14,11 @@ Managed in-memory caching in front of a database — or used as a datastore in i
 > [!info] Exam TL;DR
 > - **Cache = in-memory key-value store** in front of the DB. On a read: check cache → **hit** returns instantly; **miss** → read DB, then populate cache. Slashes DB load + latency for read-heavy, repeated queries.
 > - **Redis** = single-threaded, but **HA (replication + Multi-AZ auto-failover)**, **persistence**, **backup/restore**, **rich data types** (sorted sets, lists, hashes, geospatial), **pub/sub**, transactions.
-> - **Memcached** = **multi-threaded** (big multi-core nodes), **simple** key-value only, **no** persistence/replication/failover/backup — pure ephemeral cache that scales out.
+> - **Memcached, node-based** = **multi-threaded** (big multi-core nodes), **simple** key-value only, **no** persistence/replication/failover/backup — pure ephemeral cache that scales out.
 > - **Pick Redis** for HA / durability / complex data (leaderboards, sessions, pub/sub). **Pick Memcached** for the simplest, multi-threaded, scale-horizontally object cache.
 > - **Caching strategies:** *lazy loading / cache-aside* (populate on miss) vs *write-through* (populate on write); use **TTL** to bound staleness.
 > - **Auto Discovery is Memcached-only** — the client connects to one node and learns all the others. AWS states it is **not** available for Valkey or Redis OSS.
-> - **Valkey** = the newer open-source Redis fork AWS backs; same feature profile as Redis for the exam.
+> - **Valkey** = the newer open-source Redis fork AWS backs. Treat it as Redis for engine-choice purposes, but it is **no longer feature-identical**: on ElastiCache only Valkey gets vector search (8.2+), full-text/hybrid search, hash-field TTLs and **durability** (all 9.0+). Redis OSS on ElastiCache stops at 7.1.
 > - **Read the question for engine-exclusive signals, not the use case.** "Multi-threaded" and "node discovery" are Memcached-only; persistence / replication / failover / sorted sets are Redis-only. One exclusive signal decides it.
 
 ## What problem does this solve?
@@ -69,7 +69,7 @@ Redis is the sophisticated engine. It has replication, failover, persistence, so
 
 It isn't. **Redis executes commands single-threaded** — one core per node. **Memcached is the multi-threaded one.**
 
-The consequence follows directly. Giving a Redis node more cores buys you almost nothing, because command execution won't use them. So Redis scales *horizontally* instead: **cluster mode** shards the data across multiple primaries, each with its own replicas, and every shard runs its own single thread. More throughput comes from more shards, not from a bigger box.
+The consequence follows directly. Giving a Redis node more cores does not multiply *command* throughput the way it does on Memcached, because command execution is the single-threaded part. It is not literally nothing: ElastiCache uses additional threads for network I/O, and Valkey 8.0+ adds async I/O threading. So Redis scales *horizontally* instead: **cluster mode** shards the data across multiple primaries, each with its own replicas, and every shard runs its own single thread. More throughput comes from more shards, not from a bigger box.
 
 Memcached gets to do it the other way round. Being multi-threaded, it genuinely scales **up** on a large multi-core node — *and* out, by adding nodes and partitioning keys across them on the client side.
 
@@ -79,7 +79,7 @@ Memcached gets to do it the other way round. Being multi-threaded, it genuinely 
 
 Memcached's feature list is short, and the short list is the whole point of it. No replication. No failover. No persistence. No backup.
 
-Which means: **if a Memcached node dies, the data on it is gone.** Not degraded, not slow to recover — gone. Same if it reboots, or gets replaced while scaling.
+Which means: **if a node-based Memcached node dies, the data on it is gone.** Not degraded, not slow to recover — gone. Same if it reboots, or gets replaced while scaling.
 
 For a pure object cache that is fine. A cache is allowed to lose things; the worst outcome is a miss, and a miss just means one slow read against the database.
 
@@ -119,10 +119,36 @@ So invert it. Ignore what the cache is *for*, and scan the question for a capabi
 |---|---|
 | Multi-threaded | **Memcached** |
 | Auto Discovery / node discovery | **Memcached** |
-| Persistence, replication, Multi-AZ failover, backup | **Redis** |
-| Sorted sets, pub/sub, transactions, geospatial | **Redis** |
+| Persistence, replication, Multi-AZ failover, backup | **Redis** — exclusive against **node-based** Memcached only (see the Serverless carve-out below) |
+| Sorted sets, pub/sub, geospatial, rich data types | **Redis** |
 
-One exclusive signal decides it. And when a question additionally says data loss on node failure is unacceptable, that is a Redis-only signal that outranks the others — Memcached has no way to survive it.
+One exclusive signal decides it. And when a question additionally says data loss on node failure is
+unacceptable, that points at Redis/Valkey — a **node-based** Memcached cluster has no replication,
+so AWS is blunt that *"a node failure will always result in some data loss from your cluster."*
+
+> [!warning] Trap — "Memcached can't replicate" stated without the Serverless carve-out
+> This used to be a clean engine-level split and it no longer is. **Serverless Memcached
+> replicates across AZs and supports backup, so the rule holds only against node-based Memcached.**
+> AWS's own Memcached resilience section: *"Serverless caches automatically mitigate node failures
+> with a replicated Multi-AZ architecture so that node failures are transparent to your
+> application"*, and the same for AZ failures. On backup: *"Backup and restore are supported only
+> for caches running on Valkey, Redis OSS or Serverless Memcached."* AWS now also says *"We
+> recommend creating serverless caches over node-based clusters, as you automatically obtain better
+> fault tolerance without additional configuration."*
+>
+> So scope the rule: **replication / Multi-AZ / backup is Redis-exclusive only against *node-based*
+> Memcached.** If a stem names Serverless Memcached, do not eliminate it for lacking durability.
+> The signals that remain genuinely engine-exclusive either way are **Auto Discovery** and
+> **multi-threading** (Memcached) and the **rich data types, pub/sub, transactions and geospatial**
+> (Redis/Valkey). *(Verified 2026-10-05.)*
+
+Two failover details that make good questions, both from AWS's Multi-AZ limitations list. **A
+customer-initiated reboot of the primary does *not* trigger automatic failover** — *"Other reboots
+and failures do trigger automatic failover."* And rebooting a primary is destructive in a way
+people do not expect: *"When the primary is rebooted, it's cleared of data when it comes back
+online. When the read replicas see the cleared primary cluster, they clear their copy of the data,
+which causes data loss."* Also note **Multi-AZ requires more than one node per shard**, and on
+**cluster mode enabled** automatic failover is *"Required"*, not optional. *(Verified 2026-10-05.)*
 
 One more piece of vocabulary, since it appears alongside the other two: **Valkey** is the open-source Redis fork AWS backs after Redis's licence change, and ElastiCache now offers Valkey, Redis OSS and Memcached. For the exam, treat Valkey as Redis — same feature profile, often cheaper — with the single carve-out that Auto Discovery does not apply to it either.
 
@@ -172,13 +198,14 @@ flowchart LR
 - **In-memory** → sub-millisecond latency; data lives in RAM (Memcached loses it on restart; Redis can persist/replicate).
 - **Redis threading:** single-threaded for command execution (one core per node) — scale by **cluster mode** (sharding across nodes), not by adding cores. **Memcached:** multi-threaded — scales up on **large multi-core** nodes *and* out by adding nodes.
 - **Redis HA:** a **replication group** = 1 primary + up to 5 read replicas; **Multi-AZ with automatic failover** promotes a replica if the primary dies. AWS requires a cluster **with at least one replica** for Multi-AZ, so the **minimum is 2 nodes** — a single-node cluster cannot fail over. *(Verified 2026-09-30.)* Supports **backup/snapshot & restore**. **Cluster mode enabled** shards data across multiple primaries (each with replicas) for horizontal scale.
-- **Memcached:** no replication, no failover, no persistence, no backup — if a node dies, its data is gone. Scales by partitioning keys across nodes (client-side).
+- **What ElastiCache Serverless does *not* do**, so the carve-out cuts both ways: no **Global Data Store** (cross-Region replication), no **data tiering** (that needs r6gd node-based), no **durability** (*"Supported for Valkey 9.0 and higher"* — node-based only), and it runs **cluster mode enabled only**, so clients must support it. It bills per **GB-hour + ECPU** instead of per node-hour, stores data *"redundantly across three Availability Zones"*, and carries a **99.99% availability SLA** (node-based can be *designed* up to 99.99%). *(Verified 2026-10-05.)*
+- **Memcached (node-based):** no replication, no failover, no persistence, no backup — if a node dies, its data is gone. (All four of those flip on **ElastiCache Serverless** for Memcached.) Scales by partitioning keys across nodes (client-side).
 - **Data types:** Redis has strings, lists, sets, **sorted sets** (leaderboards!), hashes, bitmaps, hyperloglog, **geospatial**, plus **pub/sub** and transactions. Memcached: simple strings/objects only.
-- **Encryption:** in-transit + at-rest supported on Redis (newer versions); Memcached in-transit on newer versions.
+- **Encryption:** on **node-based** clusters both in-transit and at-rest are an *option* you enable (Memcached in-transit from 1.6.12). On **ElastiCache Serverless**, any engine, both are *"Always enabled"* — at rest with an AWS managed or customer managed KMS key, and in transit with TLS that *"Clients must support"*. *(Verified 2026-10-05.)*
 - **Common use cases:** DB query cache, **session store** (Redis, so sessions survive failover), **leaderboards/counters** (Redis sorted sets), **rate limiting**, **pub/sub messaging**, **geospatial** lookups.
 - **Valkey:** AWS-backed open-source fork of Redis (after Redis's license change); ElastiCache now offers Valkey, Redis OSS, and Memcached. For SAA-C03 think "Redis vs Memcached"; Valkey ≈ Redis feature-wise and is often cheaper.
 - **Auto Discovery (Memcached only):** the app connects to a single node and retrieves the full node list, then connects to any of them — no hard-coded node endpoints, and the list stays correct as nodes are added or removed (every node holds metadata about all the others). It requires an **ElastiCache client library with Auto Discovery support**. AWS explicitly states Auto Discovery is **not available for Valkey or Redis OSS**, which is what makes "node discovery" a Memcached-exclusive signal on the exam.
-- Runs in your **VPC** (subnet group in private subnets, SG allowing the app tier) — same private-tier pattern as RDS.
+- Runs in your **VPC** (subnet group in private subnets, SG allowing the app tier) — same private-tier pattern as RDS, and still the default. One documented exception: an **ElastiCache Serverless** cache on **Valkey 9.0+** supports **public endpoints** — *"Connect to your cache over the internet without a VPC"* — which node-based clusters do not.
 
 ## Comparisons
 
@@ -187,10 +214,10 @@ flowchart LR
 |   | Redis (/ Valkey) | Memcached |
 |---|---|---|
 | Threading | **Single-threaded** | **Multi-threaded** |
-| Persistence | Yes — **snapshots** (AOF is not supported on ElastiCache) | **No** (RAM only) |
-| Replication / HA | **Yes** | No |
-| Multi-AZ auto-failover | **Yes** | No |
-| Backup & restore | **Yes** | No |
+| Persistence | **Snapshots** (.rdb to S3). **AOF** does exist but *"Multi-AZ and append-only file (AOF) are mutually exclusive"*, so snapshots are the practical mechanism. **Valkey 9.0+ adds true durability** — a Multi-AZ transactional log, sync or async | **No** (RAM only) for node-based; Serverless Memcached does back up |
+| Replication / HA | **Yes** | **No** on node-based; **yes on Serverless** |
+| Multi-AZ auto-failover | **Yes** (needs >1 node per shard) | **No** on node-based; **Serverless is Multi-AZ by default** |
+| Backup & restore | **Yes** | AWS: *"For serverless caches only, not applicable to node-based clusters"* |
 | Data types | Rich (sorted sets, hashes, geo…) | Simple key-value |
 | Pub/Sub, transactions | **Yes** | No |
 | Horizontal scale | Cluster mode (sharding) | Add nodes (sharding) |
@@ -237,6 +264,10 @@ flowchart LR
 - [ ] **Auto Discovery is Memcached-only** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). The discriminator was "multithreaded sub-ms session store with node discovery": I anchored on *session store → Redis* and ignored two Memcached-exclusive signals. Fix the **method**, not just the fact — scan for engine-exclusive capabilities before reading the use case.
 
 ## 🔗 Docs
+- [Resilience in ElastiCache](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/disaster-recovery-resiliency.html) — Serverless Memcached mitigating node and AZ failures with a replicated Multi-AZ architecture; node-based clusters having no replication; AWS recommending serverless; verified 2026-10-05
+- [Snapshot and restore](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/backups.html) — "supported only for caches running on Valkey, Redis OSS or Serverless Memcached"; backup counts; take-from-replica guidance; verified 2026-10-05
+- [Multi-AZ with Valkey and Redis OSS](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/AutoFailover.html) — AOF mutually exclusive with Multi-AZ, >1 node per shard, customer reboot not triggering failover, the reboot-clears-data behaviour, Valkey 9.0 durability; verified 2026-10-05
+- [Comparing Valkey, Memcached and Redis OSS](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html) — the feature matrix incl. "Durability | Valkey 9.0 and later (sync/async)" and backup "for serverless caches only"; verified 2026-10-05
 - [ElastiCache replication groups (Multi-AZ needs a cluster with replicas)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.Redis.Groups.html)
 
 - [Comparing Redis OSS / Valkey / Memcached](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html) — threading + feature table; verified 2026-07

@@ -31,7 +31,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | 05-vpc-hybrid.md | 103 claims · 20 pages · 2 STALE · 3 OVERSTATED | — | — | **UNCOMMITTED** |
 | 05-vpc.md | done by hand (index note, 313w) | — | — | **UNCOMMITTED** |
 | 07-rds-aurora.md | 190 claims · 39 pages · 3 WRONG · 5 OVERSTATED · 3 STALE · 5 UNVERIFIABLE | 16 | 10 | `pending` |
-| 08-elasticache.md | | | | |
+| 08-elasticache.md | 83 claims · 13 pages · 2 WRONG · 7 OVERSTATED · 3 STALE · 1 UNVERIFIABLE | 10 | 9 | `pending` |
 | 09-s3-intro.md | | | | |
 | 09-s3-advanced.md | | | | |
 | 09-s3-security.md | | | | |

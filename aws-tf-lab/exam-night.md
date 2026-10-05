@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 332 pointers · ~29 min read*
+*176 recall hooks · 333 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -349,6 +349,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[08-elasticache#DAX — the cache that only fronts DynamoDB|explain]]
 
 **Traps** [[08-elasticache#How it actually works|open]]
+- "Memcached can't replicate" stated without the Serverless carve-out
 - DAX and ElastiCache offered for the same workload
 - Memcached for anything needing HA/persistence/complex data
 - a question that mixes Redis-sounding use cases with Memcached-only features
