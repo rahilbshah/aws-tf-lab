@@ -152,11 +152,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 ## EC2, EBS & AMIs
 
-**EBS delete_on_termination**
+**EBS "Delete on termination"**
 
 | | |
 |---|---|
-| Extra EBS data volume — delete_on_termination default | **Console** at launch, or attached after launch: **Preserve** (false). At launch via **CLI/API**: **Delete** (true). Answer `false` on the exam; set it explicitly in practice |
+| Extra EBS data volume — *Delete on termination* default | **Console** at launch, or attached after launch: **Preserve** (false). At launch via **CLI/API**: **Delete** (true). Answer `false` on the exam; set it explicitly in practice |
 | Data volume attached at launch via CLI/API — default | Delete |
 | Data volume added via console at launch, or attached after launch | Preserve |
 | Additional EBS volume default (the exam answer) | false — survives termination, still billing, attachable in the same AZ |
@@ -168,7 +168,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | t3.micro max banked CPU credits | 288 (24h of earnings) |
 | t3.micro CPU credit earn rate | 12 CPU credits/hour |
-| T-family baseline CPU | **Varies by size** — baseline % per vCPU = (credits earned per hour ÷ vCPUs) ÷ 60. `t3.nano` **2.5%**, `t3.micro` **10%**, `t3.small`/`medium` **20%**, `t3.large` **30%**. Never quote one size's baseline for the family |
+| T-family baseline CPU | **Varies by size** — baseline % per vCPU = (credits earned per hour ÷ vCPUs) ÷ 60. `t3.nano` **5%** (6 credits/hr ÷ 2 vCPUs ÷ 60), `t3.micro` **10%**, `t3.small`/`medium` **20%**, `t3.large` **30%**, `t3.xlarge`/`2xlarge` **40%**. Never quote one size's baseline for the family. (Corrected 2026-10-05 — this row said 2.5%, which the formula beside it disproves.) |
 | T3 default credit mode | **unlimited** (T2 defaults to *standard*). The burst always succeeds and is **free while average CPU stays at or below baseline over a rolling 24 hours**; only sustained excess bills, at a flat rate per vCPU-hour |
 | Metric to alarm on for surplus billing | CPUSurplusCreditsCharged |
 | The three burstable CloudWatch metric names | CPUCreditBalance, CPUSurplusCreditBalance, CPUSurplusCreditsCharged |
@@ -235,7 +235,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Generation suffixes a and g | t3a = AMD, t4g = Graviton/ARM |
 | Instance type separator | `family.size` with a **literal period** — `t3.micro`. A hyphen (`t3-micro`) is **rejected** |
 | Instance-type change vs AMI change | Instance type: **stop-modify-start**, ~1–3 min downtime. **Kept:** instance ID, EBS volumes, Elastic IP. **Lost/changed:** an **auto-assigned public IPv4** changes and **instance-store data is destroyed**. AMI: **cannot** change in place — launch a replacement |
-| Attributes that force instance replacement | ami, subnet_id, key_name, associate_public_ip_address; in-place: instance_type, SG ids, instance profile |
 
 **AMI**
 
@@ -243,7 +242,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | AMI scope and how to move one | region-scoped — ami-… is unique per region; copy with aws ec2 copy-image |
 | What an EBS-backed AMI actually is | metadata (kernel, architecture, virtualization type) plus references to EBS snapshots |
-| Accepted ip_protocol values | tcp, udp, icmp, icmpv6, -1 — never "ssh"/"http" |
 
 **EC2 identity**
 
@@ -279,7 +277,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Putting an ALB behind an NLB | Target group target_type = "alb", protocol TCP, one ALB per target group |
 | Static IP — ALB vs NLB | ALB: DNS name only. NLB: one static IP per AZ, can attach an EIP |
 | Client source IP — ALB vs NLB | ALB terminates the connection, adds X-Forwarded-For; NLB preserves source IP natively |
-| NLB flow hash inputs | ⚠️ verify: protocol + source/destination IP + source/destination port — and whether the **TCP sequence number** is included (the notes state it both ways). GWLB uses a 5-tuple flow hash |
+| NLB flow hash inputs | Settled 2026-10-05 — AWS lists all four: *"The protocol, The source IP address and source port, The destination IP address and destination port, The TCP sequence number."* GWLB uses a 5-tuple flow hash |
 | ALB layer and routing conditions | Layer 7; routes on host, path, header, method, query-string, source-IP |
 
 **ALB listener rules & redirect**
@@ -310,8 +308,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which check decides what | Target-group health check = routing; ASG health_check_type = replacement |
 | Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, only with health_check_type ELB |
 | When a failed health check is user-visible | Only when NO targets are healthy; with ≥1 healthy the ALB routes around it silently |
-| Time to ELB-healthy with boot-time apt install | ~180s = boot ~30s + apt install nginx ~60s + health-check convergence ~90s |
-| Health-check convergence arithmetic | HealthyThresholdCount × HealthCheckIntervalSeconds. **ALB defaults: 5 × 30s = 150s** to be marked healthy; UnhealthyThresholdCount default **2** (so ~60s to be pulled). Thresholds range 2–10, interval 5–300s |
+| Time to ELB-healthy with boot-time apt install | Measure from **`InService`**, not from launch — the grace-period clock starts *"after it enters the `InService` state"*. What must fit inside it: remaining bootstrap (~60s for an apt install) **plus one health-check interval** (~30s), so ~90s. (Corrected 2026-10-05.) |
+| Health-check convergence arithmetic | **A newly registered target needs ONE passing check**: *"After your target is registered, it must pass one health check to be considered healthy."* `HealthyThresholdCount` (default **5**) is for bringing an **already-unhealthy** target back; `UnhealthyThresholdCount` (default **2**) × 30s ≈ 60s to pull a healthy one. Thresholds 2–10, interval 5–300s, timeout 2–120s. (Corrected 2026-10-05 — this row previously said 5 × 30s = 150s to *become* healthy.) |
 | Safe health_check_grace_period values | ~300s with boot-time install; ~40s time-to-healthy with a baked AMI |
 
 **Target tracking**
@@ -419,8 +417,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| max_aggregation_interval values | **600s default**, or **60s** for faster records — the two documented values |
-| Delivery lag on top of the aggregation interval | ⚠️ verify: ~5 min to CloudWatch Logs, ~10 min to S3 — AWS does not state this on the flow-log pages. Total wait = aggregation interval + lag |
+| Maximum aggregation interval | **600s (10 min) default**, or **60s** — the two documented values |
+| Delivery lag on top of the aggregation interval | Settled 2026-10-05 — AWS **does** publish it: *"typically delivers logs to CloudWatch Logs in about 5 minutes and to Amazon S3 in about 10 minutes"*, on a *"best effort basis"*. Also: on a **Nitro** instance the aggregation interval is always ≤1 minute regardless of the setting — but **T2 is current-gen and Xen**, so on a t2.micro the 600s default is real |
 | Protocol numbers in a flow log record | 6 = TCP, 17 = UDP, 1 = ICMP |
 | Traffic never logged by flow logs | Amazon DNS (custom DNS is logged), DHCP, 169.254.169.254, 169.254.169.123, Windows activation, VPC router IP |
 | Third destination, and its rename | Amazon Data Firehose — renamed from Kinesis Data Firehose; older material uses the old name |
@@ -512,7 +510,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Aurora replica lag | <10 ms typical (note also states "well under 100 ms") |
 | Global Database secondary regions | 1 primary + up to 10 read-only secondary regions, <1s replication |
 | The four endpoint types | writer/cluster, reader (LB'd reads), custom, instance |
-| Serverless v2 capacity unit and instance class | Capacity is measured in **ACUs** (minimum 0.5). ⚠️ verify: the instance class name `db.serverless` |
+| Serverless v2 capacity unit and instance class | Capacity is measured in **ACUs**, settable from **0 to 256 ACUs in increments of 0.5** (the allowed minimum depends on the Aurora version; 0 means auto-pause). Each ACU ≈ **2 GiB RAM** plus matching CPU/network. The DB instance class is **always `db.serverless`**. |
 | Backtrack engine support | Aurora MySQL only — rewinds the DB in place, no restore |
 | Throughput claim vs stock engines | ~5× MySQL / 3× PostgreSQL |
 | Engine compatibility | MySQL/PostgreSQL-compatible only |
@@ -569,7 +567,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Replication group size | 1 primary + up to 5 read replicas |
 | Minimum nodes for auto-failover / Multi-AZ | **2** — Multi-AZ with automatic failover requires a cluster **with at least one replica**, so 1 primary + 1 replica. Max **5** read replicas per shard |
-| Redis port | ⚠️ verify: 6379 (Memcached 11211) — widely known but not confirmed against AWS docs in this vault |
+| Redis port | ⚠️ verify: 6379 (Memcached 11211) — not confirmed against AWS docs. Tried the VPC, CreateCacheCluster API and serverless getting-started pages; none states a default port. Not exam-load-bearing — do not memorise it as verified. |
 
 **Caching strategies**
 
