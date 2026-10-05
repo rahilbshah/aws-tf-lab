@@ -177,3 +177,24 @@ Fix these when that note's own turn comes, not before.
 The generators cannot anchor a heading that contains an inline tag, so every note's
 `## ⚠️ Traps … #trap` section is linked bare (`[[note|note]]`) in `discriminators.md`
 and `exam-night.md` rather than deep-linked. Affects all 33 notes equally.
+
+### 09-s3-intro (2026-10-05) — held back pending the user's read of the S3 family
+
+The user said: *"not until I read both vpc and s3 if needed we will do it otherwise
+I don't want you to change anything."* Read as: fix facts, do not restructure. These
+are structural and are therefore **not applied**, only recorded:
+
+- Two orphaned tables that no generator harvests, because they sit under an H3 in
+  *How it actually works* rather than under `## Comparisons`:
+  the versioning action table (a strict subset of the harvested one in Comparisons)
+  and the minimum-storage-duration table (fully covered by the Comparisons table's
+  `Min duration` column). Deleting both loses nothing and removes two drift sites.
+- Minimum storage durations are stated **six** times in this one note (TL;DR, prose
+  table, key fact, Comparisons column, trap, weak spot). The Comparisons table is the
+  drillable copy; the rest could be pointers.
+- Object-size / multipart limits (50 TB, 48.8 TiB, 5 GB single PUT) are owned by
+  `09-s3-advanced` and restated in full here twice.
+- Static website hosting has no prose section, though the title and `09-s3.md`
+  both claim the note covers it. Currently two key-fact bullets only.
+- No `> [!tip] Production gap` callout — but `09-s3-advanced` and `09-s3-security`
+  have none either, so this is vault-consistent, not a defect in this note.

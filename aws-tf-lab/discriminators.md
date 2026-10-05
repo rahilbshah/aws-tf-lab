@@ -218,7 +218,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-intro#Worked examples|note]]
 - **"Glacier means slow retrieval"** — Glacier Instant Retrieval returns objects in milliseconds. Only Flexible Retrieval (minutes–hours) and Deep Archive (hours) need a restore job.  
   ↳ [[09-s3-intro#Worked examples|note]]
-- **durability vs availability** — Every class is 11 nines durable (won't lose data). What differs is availability (can you reach it right now): Standard 99.99%, IA 99.9%, One Zone-IA 99.5%. Questions about "surviving AZ loss" are about AZ count, not durability.  
+- **durability vs availability** — Every current class is 11 nines durable (won't lose data) — the only exception is the legacy Reduced Redundancy Storage at 99.99%, which AWS tells you not to use. What differs is availability (can you reach it right now): Standard 99.99%, IA 99.9%, One Zone-IA 99.5%.  
   ↳ [[09-s3-intro#Worked examples|note]]
 - **moving to IA/Glacier always saves money** — Minimum storage durations (IA 30 d, Glacier 90 d, Deep Archive 180 d) and a 128 KB minimum billable size mean short-lived or tiny objects can cost more in IA than Standard.  
   ↳ [[09-s3-intro#Worked examples|note]]
