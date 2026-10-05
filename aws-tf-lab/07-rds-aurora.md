@@ -12,14 +12,14 @@ tags: [topic, domain/resilient]
 The managed relational database tier. **RDS** = AWS runs standard engines for you; **Aurora** = AWS's cloud-native re-architecture of MySQL/Postgres with separated compute/storage. Built hands-on in [[06-capstone]]; this is the exam depth.
 
 > [!info] Exam TL;DR
-> - **RDS engines:** MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, + **Aurora**.
+> - **RDS engines:** MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, **Db2**, + **Aurora**.
 > - **Multi-AZ = HA/failover** (synchronous standby, NOT readable). **Read Replica = read scaling** (async, readable, cross-region-capable, manual promote). The #1 RDS trap.
 > - **Backups:** automated (daily snapshot + ~5-min transaction logs → **PITR to any second**, 1–35 day retention, deleted with the instance) vs manual snapshots (survive deletion). Restore always creates a **new instance**.
-> - **Aurora storage:** **6 copies across 3 AZs**, self-healing, shared **cluster volume** auto-scaling **10 GB → 128 TB**; compute/storage **separated**.
-> - **Aurora replicas share the storage** (no copy) → **<10 ms** lag, auto-failover, up to **15** — **same cap as RDS**, so replica *count* is not the discriminator; **shared storage** is. Endpoints: **writer/cluster**, **reader** (LB'd reads), **custom**, **instance**.
+> - **Aurora storage:** **6 copies across 3 AZs**, self-healing, shared **cluster volume** that auto-scales to **128 TiB — or 256 TiB on current engine versions**; compute/storage **separated**.
+> - **Aurora replicas share the storage** (no copy) → replica lag **usually much less than 100 ms**, auto-failover, up to **15** — **same cap as RDS**, so replica *count* is not the discriminator; **shared storage** is. Endpoints: **writer/cluster**, **reader** (LB'd reads), **custom**, **instance**.
 > - **Aurora Serverless v2** = auto-scaling capacity for variable workloads. **Aurora Global Database** = 1 primary + up to 10 read-only regions, <1s replication (DR + global reads).
 > - **Encryption at rest** = set at **creation only**. Keep DBs `publicly_accessible = false` in private subnets.
-> - **Three ways to authenticate:** native DB password · **IAM database authentication** (`rds-db:connect`, 15-minute token, nothing stored) · **Secrets Manager** (stored password + automatic rotation). "No password in the app / use the EC2 role" → **IAM DB auth**.
+> - **AWS's three authentication *methods* are password, Kerberos (Active Directory) and IAM database authentication** — and a given database user can use exactly one. **Kerberos/AD answers "log in with existing corporate credentials / SSO"** (not MariaDB). **Secrets Manager is not a fourth method**: it stores and rotates a *password*, so the engine is still doing password auth (`rds-db:connect`, 15-minute token, nothing storedion). "No password in the app / use the EC2 role" → **IAM DB auth**.
 > - **SQL Server → Aurora PostgreSQL with "minimal code changes" = TWO things:** **Babelfish** (T-SQL + SQL Server wire protocol on **port 1433**, Aurora PostgreSQL only) for the *application*, plus **SCT + DMS** for the *schema and data*. Neither alone is the answer.
 > - **Enhanced Monitoring** reads from an **agent inside the DB instance** (CloudWatch reads the **hypervisor**), goes to **CloudWatch Logs** (`RDSOSMetrics`), and is the only one showing **per-process** data. `CPUUtilization`/`FreeableMemory`/`DatabaseConnections` are plain CloudWatch, not Enhanced Monitoring.
 
@@ -64,9 +64,9 @@ They are not alternatives. A Multi-AZ primary *with* read replicas attached is a
 
 ### Why Aurora's storage layer changes everything above it
 
-Aurora stores your data as **6 copies across 3 AZs** — 2 per AZ — in one **cluster volume** that is self-healing and auto-scales to **128 TiB** without being asked (256 TiB on the newest engine versions). That volume is separate from the compute instances, and compute and storage bill and scale independently.
+Aurora stores your data as **6 copies across 3 AZs** — 2 per AZ — in one **cluster volume** that is self-healing and auto-scales without being asked, to **128 TiB** or **256 TiB on current engine versions). That volume is separate from the compute instances, and compute and storage bill and scale independently.
 
-Six copies sounds like paranoia. It buys a specific property: the cluster can lose an entire AZ *plus one more copy* and still serve reads. Losing two of six copies would be an emergency on a normal system; here it is survivable by design.
+Six copies sounds like paranoia. What AWS currently claims for it is that the cluster *"can tolerate a failure of an Availability Zone without any loss of data and only a brief interruption of service"*, because the surviving AZs already hold the data. ⚠️ verify: the older, more precise formulation — lose an entire AZ *plus one more copy* and still serve reads, lose two of six copies would be an emergency on a normal system; here it is survivable by design.
 
 But durability isn't the interesting consequence. This is: **the instances don't own the data.** The writer and every replica are attached to the same cluster volume and all read from it, instead of each keeping a copy of its own.
 
@@ -82,7 +82,7 @@ Because a cluster now has several instances doing different jobs, Aurora gives y
 
 Two more features fall out of the same separation. **Aurora Serverless v2** auto-scales capacity in ACUs, which is what you want when load is variable or unpredictable rather than steadily busy. **Aurora Global Database** runs one primary region plus up to **10 read-only secondary regions** with **sub-second** replication, for cross-region DR and local reads. Aurora MySQL also offers **Backtrack** — rewinding the database in place instead of restoring it.
 
-The trade: Aurora is **MySQL/PostgreSQL-compatible only** and costs more per hour, in exchange for roughly **5× MySQL / 3× PostgreSQL** throughput and everything above.
+The trade: Aurora is **MySQL/PostgreSQL-compatible only** and costs more per hour, in exchange for the throughput AWS currently advertises as **6× PostgreSQL and MySQL** (older AWS material said 5× MySQL / 3× PostgreSQL — recognise both, since question banks lag) and everything above.
 
 > In one line: the instances share one 6-copy volume instead of each owning a copy, and every Aurora advantage is a consequence of that.
 
@@ -112,7 +112,26 @@ Hold onto that shape, because the encryption rule is the same shape in a differe
 
 ### Logging in with an IAM role instead of a password
 
-There are three ways to authenticate to the database, and they differ in *where the credential lives*.
+Get the shape of this right, because this note used to miscount it. **AWS's own enumeration has
+three authentication *methods*** — *"Password, Kerberos, and IAM database authentication use
+different methods of authenticating to the database. Therefore, a specific user can log in to a
+database using only one authentication method."*
+
+**Secrets Manager is not one of them.** AWS discusses it *inside* the password-authentication
+section: *"Because clear text passwords are generated in this case, integrating with AWS Secrets
+Manager can enhance security."* The engine is still doing password authentication; Secrets Manager
+changes **where the password lives and who may read it**, not how the database checks it.
+
+**Kerberos is the one this note was missing, and it owns a whole exam stem.** *"Amazon RDS supports
+external authentication of database users using Kerberos and Microsoft Active Directory"*, giving
+*"the benefits of single sign-on and centralized authentication of database users"*. So "users must
+sign in with their existing Active Directory / corporate credentials" → **Kerberos + AWS Managed
+Microsoft AD**, not IAM DB auth and not Secrets Manager. Supported for SQL Server, PostgreSQL,
+MySQL, Oracle and Db2 — *"Currently, Kerberos authentication isn't supported for MariaDB DB
+instances."* On PostgreSQL the three are mutually exclusive by role: `rds_iam` for IAM, `rds_ad`
+for Kerberos, neither for password, and you must not grant both. *(Verified 2026-10-05.)*
+
+With that settled, the methods differ in *where the credential lives*.
 
 | | Native DB password | IAM database authentication | Secrets Manager |
 |---|---|---|---|
@@ -128,7 +147,7 @@ Three details, each its own exam question:
 
 **The 15 minutes is a connection-time limit, not a session limit.** The token authenticates the *establishment* of a session; once you are in, you stay in. That produces a memorably strange failure: fifteen minutes after deploy an app can't open **new** connections while every **existing** connection keeps working — because the connection pool minted one token at startup and cached it as "the password." Fix: generate the token inside the pool's connection factory, not once at boot.
 
-**The prefix is `rds-db:`, not `rds:`.** `rds-db:connect` is the only action with that prefix and it exists solely for this feature. Everything named `rds:` — `rds:CreateDBInstance`, `rds:DescribeDBInstances` — is the *management* API and has nothing to do with logging in. Granting `rds:*` so an app can "connect to the database" is a wrong answer.
+**The prefix is `rds-db:`, not `rds:`.** AWS is explicit that it exists only for this feature — *"You use the `rds-db:` prefix and the `rds-db:connect` action only for IAM database authentication"* — and warns *"Don't confuse the `rds-db:` prefix with other RDS API operation prefixes that begin with `rds:`."* Everything named `rds:` — `rds:CreateDBInstance`, `rds:DescribeDBInstances` — is the *management* API and has nothing to do with logging in. Granting `rds:*` so an app can "connect to the database" is a wrong answer.
 
 **The ARN uses the instance's resource id, not the name you gave it.** The shape is `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user-name}`, and `DbiResourceId` is the `db-ABC…` identifier AWS assigns — Region-unique, and it never changes. Aurora uses the cluster resource id; through RDS Proxy it starts `prx-`. The final segment is a **database** user that must already exist and be mapped to IAM — `AWSAuthenticationPlugin` on MySQL, `GRANT rds_iam TO <user>` on PostgreSQL.
 
@@ -214,9 +233,11 @@ Three facts here decide questions that look like they are about something else.
 
 **RDS grows its own storage.** Plain RDS — not just Aurora — has **storage autoscaling**: you set
 a **maximum storage threshold** and RDS raises allocated storage on its own. It fires when free
-space is **≤ 10% of allocated**, the condition has lasted **at least 5 minutes**, and fewer than
-**4 storage modifications** have happened in the past 24 hours; each step adds the greater of
-**10 GiB or 10% of current allocated storage**. So "the database is about to run out of space and
+space is **≤ 10% of allocated**, the condition has lasted **at least 5 minutes**, *"Storage
+optimization has completed on the instance for the previous storage modification"*, and fewer than
+**4 storage modifications** have happened in the past 24 hours. Each step adds the greater of
+**10 GiB**, **10% of current allocated storage**, or *"Predicted storage growth exceeding the
+current allocated storage size in the next 7 hours"*. So "the database is about to run out of space and
 we want no downtime and no babysitting" is **one setting**, not a migration to Aurora. (Not
 supported for additional storage volumes.)
 
@@ -269,7 +290,7 @@ interchangeable:
 | **Network reachability** | *can this host even open a socket?* | **security group** on the DB (source = the app's SG) |
 | **AWS API permissions** | *may this principal call the RDS **API** — describe, snapshot, modify?* | **IAM role/policy** (`rds:*`) |
 | **Database login** | *may this principal log in as a database user?* | **IAM database authentication** (`rds-db:connect`) — or a password in **Secrets Manager** |
-| **Data on the wire** | *is the connection encrypted in flight?* | **SSL/TLS**, forced with the **`rds.force_ssl`** parameter |
+| **Data on the wire** | *is the connection encrypted in flight?* | **SSL/TLS**, forced per engine — `rds.force_ssl` on PostgreSQL (default **1/on** from RDS for PostgreSQL 15) and SQL Server; MySQL/MariaDB use their own engine parameter |
 
 The traps are all substitutions between adjacent rows:
 
@@ -330,7 +351,11 @@ flowchart TB
 - **Encryption in transit is already on, encrypted instance or not:** *"For encrypted and unencrypted DB instances, data that is in transit between the source and the read replicas is encrypted, even when replicating across AWS Regions."* So "encrypt replication traffic" is not a thing you configure.
 - **Three instance classes cannot be encrypted at all** — `db.m1.*`, `db.m2.*`, and notably **`db.t2.micro`**. Worth knowing because t2.micro is the reflex free-tier pick.
 
-- **RDS storage autoscaling** (plain RDS, not just Aurora): set a **maximum storage threshold** and RDS grows allocated storage automatically. Triggers at **≤10% free**, sustained **5 minutes**, **<4 modifications in 24h**; each step is the greater of **10 GiB or 10%**. Not supported for additional storage volumes.
+- **RDS storage autoscaling** (plain RDS, not just Aurora): set a **maximum storage threshold** and RDS grows allocated storage automatically. Triggers at **≤10% free**, sustained **5 minutes**, **<4 modifications in 24h**; each step is the greater of **10 GiB**, **10%**, or predicted 7-hour growth. It only ever grows — *"Autoscaling can't decrease the allocated storage"* — so shrinking means a **blue/green deployment** or a new instance plus migration. The threshold must sit at least 10% above current allocation (AWS recommends 26%), autoscaling operations *"aren't logged by AWS CloudTrail"*, and it is not supported for magnetic storage or additional storage volumes.
+- **Aurora Standard vs Aurora I/O-Optimized** is a cost question with a published threshold: I/O-Optimized has *"no additional charges for read and write I/O operations"* and is *"the best choice when your I/O spending is 25% or more of your total Aurora database spending"*; Standard bills *"a standard rate per 1 million requests for I/O operations"* and wins below that. You can switch to Standard any time, but to I/O-Optimized only *"once every 30 days"*. So "our Aurora bill is dominated by I/O charges" → **I/O-Optimized**. *(Verified 2026-10-05.)*
+- **RDS Proxy cuts Aurora failover time:** it *"bypasses Domain Name System (DNS) caches to reduce failover times by up to 66% for Aurora Multi-AZ databases"* — the answer when a stem wants faster failover without writing application retry logic.
+- **Aurora has the same encryption symmetry as RDS:** *"You can't create an encrypted Aurora Replica for an unencrypted Aurora DB cluster. You can't create an unencrypted Aurora Replica for an encrypted Aurora DB cluster."*
+- **Cross-Region replicas split by engine:** Aurora MySQL can have cross-Region Aurora read replicas via binlog — *"Each cluster can have up to five read replicas created this way, each in a different Region"* — while *"Aurora PostgreSQL doesn't support cross-Region Aurora Replicas"*, so for Postgres the cross-Region answer is **Aurora Global Database** (up to 10 secondary Regions).
 - **Aurora cloning:** a new cluster sharing the source volume **copy-on-write** — ready in minutes, minimal extra storage, isolated from the source. **Up to 15** clones; the 16th is a **full copy**. Not a snapshot restore (copies bytes) and not Backtrack (rewinds the source).
 - **Stopped RDS still bills** provisioned storage (incl. PIOPS), backup storage, and a public IPv4 if publicly accessible — only **instance hours** stop. RDS **auto-starts it after 7 consecutive days**. Long parking = snapshot + delete + restore.
 - **Read-replica replication is free within the same Region**, across AZs included; **cross-Region** replication is billed as inter-Region data transfer.
@@ -348,8 +373,8 @@ flowchart TB
   - **Creation is snapshot-based:** *"Amazon RDS takes a snapshot of the source instance and creates a read-only instance from the snapshot"*, then replicates asynchronously. A replica may also use a **different storage type** from its source.
 - **Backups:** automated backups enabled by setting retention 1–35 days → **point-in-time recovery** (daily snapshot + transaction logs every ~5 min). Deleted when the instance is deleted (unless you take a final snapshot). **Manual snapshots** are kept until you delete them and survive instance deletion. **Restore = new instance / new endpoint.**
 - **Encryption at rest** (console **Enable encryption**; API `StorageEncrypted`, KMS): **only at creation**. To encrypt an existing unencrypted DB: snapshot → copy the snapshot **with encryption** → restore. Encryption in transit = SSL/TLS.
-- **Aurora storage:** **6-way replication across 3 AZs** (2 copies/AZ); tolerates losing a whole AZ + one more copy for reads; self-healing; **cluster volume auto-scales 10 GB → 128 TB**. Compute and storage bill/scale independently.
-- **Aurora Replicas:** up to **15**, share the cluster volume (**<10 ms** typical lag), **automatic failover** with priority tiers (much faster than RDS Multi-AZ). Aurora also keeps 6 storage copies regardless of instance count.
+- **Aurora storage:** **6-way replication across 3 AZs** (2 copies/AZ), and *"The amount of replication is independent of the number of DB instances in your cluster"*; self-healing; **cluster volume auto-scales up to 128 TiB, or 256 TiB on current engine versions** (Aurora PostgreSQL 15.13+/16.9+/17.5+, Aurora MySQL 3.10+) — *"an Aurora cluster volume can grow up to 256 tebibytes (TiB) for specific engine versions"*. Dropping data now shrinks the allocated space again, so storage charges fall. Compute and storage bill/scale independently.
+- **Aurora Replicas:** up to **15**, share the cluster volume (AWS: lag *"usually much less than 100 milliseconds"*, rising with write rate), **automatic failover** with priority tiers (much faster than RDS Multi-AZ). Aurora also keeps 6 storage copies regardless of instance count.
 - **Aurora extras:** **Backtrack** (rewind the DB in place without restore, Aurora MySQL); **Aurora Serverless v2** (fine-grained auto-scaling ACUs for variable load); **Aurora Global Database** (1 primary + up to **10 secondary read-only regions**, **<1s** replication, cross-region DR); **Aurora Machine Learning**, **RDS Proxy** (connection pooling for Lambda/serverless).
 - **Why Aurora over RDS MySQL/Postgres:** ~**5× MySQL / 3× Postgres** throughput, replicas that **share one volume instead of copying data**, faster failover, 6-copy durability, auto-scaling storage, serverless + global options. Trade-off: pricier per-hour, MySQL/Postgres-compatible only.
 - **RDS Free Tier (legacy, accounts activated before 2025-07-15):** `db.t2/t3/t4g.micro`, single-AZ, 750 hrs/mo, 20 GB, 12 months. Newer accounts get the **Free Plan** instead — `db.t3/t4g.micro` plus sign-up credits, with guardrails (see the backup-retention gotcha below).
@@ -381,8 +406,8 @@ flowchart TB
 |   | RDS (MySQL/Postgres) | Aurora |
 |---|---|---|
 | Storage | Single EBS volume (+ standby copy) | Distributed 6-copy/3-AZ cluster volume |
-| Storage scaling | Manual/auto up to limit | Auto 10 GB–128 TB |
-| Read replicas | Up to 15, each a **separate copy** fed by replication (lag) | Up to 15, **share one cluster volume** (<10 ms) |
+| Storage scaling | Manual/auto up to limit | Automatic, up to **128 TiB** (**256 TiB** on current engine versions) |
+| Read replicas | Up to 15, each a **separate copy** fed by replication (lag) | Up to 15, **share one cluster volume** (lag well under 100 ms) |
 | Failover | ~1–2 min (Multi-AZ) | Faster (shared storage) |
 | Serverless | RDS has no true serverless | Aurora Serverless v2 |
 | Global | Cross-region read replica | Aurora Global Database (<1s) |
@@ -491,7 +516,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > They don't. AWS documents that CloudTrail and CloudWatch **do not log** `generate-db-auth-token`. For database-level audit you need the engine's own audit plugin / `pgaudit` and Database Activity Streams — not CloudTrail.
 
 > [!warning] Trap — Multi-AZ to scale reads
-> Multi-AZ standby is **not readable** — it's for failover. Use **read replicas** to scale reads. Reversed constantly on the exam.
+> A Multi-AZ **DB instance** standby is **not readable** — it's for failover. (A Multi-AZ **DB cluster** is the exception: its two standbys *are* readable.) Use **read replicas** to scale reads. Reversed constantly on the exam.
 
 > [!warning] Trap — assuming an Aurora failover always promotes a replica
 > Aurora fails over *"in one of two ways: by promoting an existing reader DB instance to the new
@@ -500,8 +525,16 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > with **no reader** has nothing to promote, so Aurora must **create a new primary** — far
 > slower. AWS's recommendation follows directly: *"create at least one or more reader instances
 > in two or more different Availability Zones."* A stem describing a one-instance Aurora cluster
-> and asking why failover was slow is asking for a **reader**, not for Multi-AZ — which is not
-> how Aurora is configured.
+> and asking why failover was slow is asking for a **reader in another AZ**.
+>
+> One thing *not* to conclude from that: "Multi-AZ isn't an Aurora concept." AWS uses the term for
+> Aurora directly — *"You can also convert an existing Aurora DB cluster into a Multi-AZ DB cluster
+> by adding a new reader DB instance and specifying a different AZ"* — so an option worded "deploy
+> the Aurora cluster as Multi-AZ" is not a distractor. The real difference is narrower: Aurora has
+> no RDS-style **unreadable synchronous standby**; its second-AZ instance is a reader that doubles
+> as the failover target. The timings follow: with a reader, service is *"typically restored in less
+> than 60 seconds, and often less than 30 seconds"*; with none, recreating the primary *"typically
+> takes less than 10 minutes."* *(Verified 2026-10-05.)*
 
 > [!warning] Trap — Aurora replica lag is like RDS replica lag
 > No — Aurora replicas **share one storage volume** (no data copy), so lag is ~milliseconds; RDS read replicas copy data asynchronously and can lag seconds. Different mechanism.
@@ -523,7 +556,10 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 - [Encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html) — the full limitations list: no encrypted replica of an unencrypted source (and vice versa), encryption only at creation, no encrypted snapshot of an unencrypted instance, KMS key immutable, replication traffic always encrypted, and the classes that can't be encrypted incl. db.t2.micro; verified 2026-10-05
 - [Working with DB instance read replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) — no autoscaling, deleting the source promotes replicas, no circular replication, engine-dependent replica-of-a-replica, snapshot-based creation, standby can't serve reads; verified 2026-10-05
 - [Multi-AZ DB instance deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html) — the "data redundancy and minimize latency spikes during system backups" wording, standby not readable, increased write/commit latency; verified 2026-10-05
-- [Amazon RDS quotas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Limits.html) — 15 read replicas per primary (adjustable for RDS, not for Aurora), 40 DB instances, Aurora's 128 TiB cluster volume; verified 2026-10-05
+- [Database authentication with Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/kerberos-authentication.html) — password / Kerberos / IAM as the three methods, one per user, Secrets Manager sitting under password auth, Kerberos engine support and the MariaDB exclusion; verified 2026-10-05
+- [High availability for Amazon Aurora](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html) — AWS calling an Aurora cluster with a second-AZ reader a Multi-AZ DB cluster, <60s/<30s vs <10min failover, RDS Proxy's 66% reduction; verified 2026-10-05
+- [Amazon Aurora storage](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html) — 256 TiB on current engine versions, replication independent of instance count, Standard vs I/O-Optimized and the 25% rule; verified 2026-10-05
+- [Amazon RDS quotas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Limits.html) — 15 read replicas per primary (adjustable for RDS, not for Aurora), 40 DB instances, Aurora's 128/256 TiB cluster volume; verified 2026-10-05
 - [What is Amazon Neptune](https://docs.aws.amazon.com/neptune/latest/userguide/intro.html)
 - [Upgrading a DB engine version (requires downtime; blue/green minimises it)](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html) · [Invoking Lambda from Aurora MySQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.Integrating.Lambda.html)
 - [Aurora high availability and failover priority tiers](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html) · [Replicating automated backups to another Region](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReplicateBackups.html)

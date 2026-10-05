@@ -30,7 +30,7 @@ on purpose; a citation that does not resolve, or does not contain the quoted tex
 | 05-vpc-endpoints-peering.md | 94 claims · 15 pages · 1 WRONG · 1 STALE · 6 OVERSTATED · 1 UNVERIFIABLE | 14 | 10 | **UNCOMMITTED** |
 | 05-vpc-hybrid.md | 103 claims · 20 pages · 2 STALE · 3 OVERSTATED | — | — | **UNCOMMITTED** |
 | 05-vpc.md | done by hand (index note, 313w) | — | — | **UNCOMMITTED** |
-| 07-rds-aurora.md | *my pass done (3 markers resolved); agent pass pending* | | | **UNCOMMITTED** |
+| 07-rds-aurora.md | 190 claims · 39 pages · 3 WRONG · 5 OVERSTATED · 3 STALE · 5 UNVERIFIABLE | 16 | 10 | `pending` |
 | 08-elasticache.md | | | | |
 | 09-s3-intro.md | | | | |
 | 09-s3-advanced.md | | | | |

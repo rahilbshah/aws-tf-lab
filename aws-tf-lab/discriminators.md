@@ -182,7 +182,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[07-rds-aurora#Worked examples|note]]
 - **"use IAM DB auth so database logins show up in CloudTrail"** — They don't. AWS documents that CloudTrail and CloudWatch do not log generate-db-auth-token.  
   ↳ [[07-rds-aurora#Worked examples|note]]
-- **Multi-AZ to scale reads** — Multi-AZ standby is not readable — it's for failover. Use read replicas to scale reads.  
+- **Multi-AZ to scale reads** — A Multi-AZ DB instance standby is not readable — it's for failover. (A Multi-AZ DB cluster is the exception: its two standbys are readable.) Use read replicas to scale reads.  
   ↳ [[07-rds-aurora#Worked examples|note]]
 - **assuming an Aurora failover always promotes a replica** — Aurora fails over "in one of two ways: by promoting an existing reader DB instance to the new primary instance" or "by creating a new primary instance".  
   ↳ [[07-rds-aurora#Worked examples|note]]
