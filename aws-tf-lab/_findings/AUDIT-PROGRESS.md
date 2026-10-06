@@ -250,3 +250,18 @@ Agent reliability note, worth keeping: on `09-s3-advanced` the truth agent liste
 says "99.9 percent" verbatim; the S3 FAQ does not mention RTC; aws.amazon.com/s3/sla-replication
 404s. The uncited claim in an agent's prose summary is the one to distrust — its cited
 findings have all held up so far.
+
+### 09-s3 index (2026-10-06) — and one carry-forward item that was a FALSE POSITIVE
+
+51 claims, 7 pages. The index note's TL;DR had packed four absolutes, three of them broken
+by AWS's own docs — all the same errors found in `09-s3-intro`, which is a good sign the
+corrections are consistent rather than ad hoc: "every class is 11 nines" (RRS is 99.99%),
+"S3 is a flat key→object map" (directory buckets are hierarchical), "turns deletes into
+delete markers" (only a DELETE *without* a version id), "globally unique" (partition-scoped).
+
+**The carry-forward item "README.md still refers to retired cards" was wrong.** README does
+mention `cards/`, but only to say it was deleted on 2026-09-06 and why — accurate history,
+not a dangling promise. `07-rds-aurora.md:457` was a substring match inside "Wildcards".
+The only real dangling promise was `09-s3.md:12` ("each sub-note is self-contained with its
+own cards"), now fixed. Same shape as the §13.12 worked example: a plausible report that
+would have deleted correct content. Grep hits are not findings.

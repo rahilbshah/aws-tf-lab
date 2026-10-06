@@ -593,7 +593,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Glacier Flexible vs Deep Archive retrieval times | Flexible: Expedited 1–5 min (**objects under 250 MB**; bigger ones stream at up to 300 MB/s), Standard 3–5 h, Bulk 5–12 h · Deep Archive: no Expedited, Std ~12 h, Bulk ~48 h |
 | One Zone-IA vs Standard-IA | Same 11 nines; One Zone-IA = 1 AZ, 99.5% availability, re-creatable data only |
 | Glacier Instant Retrieval speed | Milliseconds — no restore job at all |
-| Durability and AZ count | **"Designed for"** 99.999999999% (11 nines) on every current class; **≥3 AZs**. One Zone classes: **1 AZ**, same 11 nines **but the data is lost if that AZ is destroyed**. Legacy exception: Reduced Redundancy Storage, **99.99%** |
+| Durability and AZ count | **"Designed for"** 99.999999999% (11 nines) on every current class; **≥3 AZs**. One Zone classes: **1 AZ**, same 11 nines **but the data is lost if that AZ is destroyed**. Legacy exception: Reduced Redundancy Storage, **99.99%**. Also outside the ≥3-AZ picture: **S3 on Outposts**, which stores on a single on-premises Outpost and is absent from AWS's durability table altogether |
 
 **S3 encryption**
 
