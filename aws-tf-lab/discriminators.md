@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 201 discriminators · ~39 min read*
+*107 comparison tables · 202 discriminators · ~40 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -319,6 +319,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **DataSync vs Storage Gateway** — Both move data between on-premises and AWS, and both need something installed locally. DataSync transfers data — a migration or a scheduled sync, after which the job is done. Storage Gateway is a permanent bridge — the on-premises system keeps using it every day as if it were local storage.  
   ↳ [[12-storage-extras#Traps|note]]
 - **Snow when the network would do** — Snow exists for data volumes where transferring over the network would take impractically long, or where connectivity is poor.  
+  ↳ [[12-storage-extras#Traps|note]]
+- **Snowcone is still the answer for the smallest, most portable job** — Not orderable any more. AWS closed the entire Snow Family to new customers, not just Snowball Edge — "AWS will no longer offer any AWS Snow Family devices for new customers to order." Learn the device-selection logic because SAA-C03 still asks it, but know that in practice the answer today is DataSync, AWS Data Transfer Terminal, a Partner solution, or Outposts.  
   ↳ [[12-storage-extras#Traps|note]]
 - **Lustre scratch vs persistent read as a speed choice** — The difference is durability, not performance. Scratch is not replicated and does not survive a file server failure; persistent is replicated with automatic server replacement. If the question mentions long-running work or data you can't re-create, it's persistent.  
   ↳ [[12-storage-extras#Traps|note]]

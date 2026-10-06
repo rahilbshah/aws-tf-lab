@@ -3,7 +3,7 @@ topic: 12-storage-extras
 domain: resilient
 status: reviewed
 services: [EFS, FSx, StorageGateway, DataSync, Snow, AWSBackup]
-related: [09-s3-intro, 02-ec2, 05-vpc-hybrid, 07-rds-aurora]
+related: [09-s3-intro, 09-s3-security, 01-iam, 01-iam-advanced, 04-alb-asg, 05-vpc-hybrid, 14-dr-resilience]
 tags: [topic, domain/resilient]
 ---
 
@@ -127,8 +127,10 @@ Two very different answers, and the discriminator is simple.
 
 **The Snow Family** moves data **physically**, on a rugged device AWS ships you. Snowball Edge comes Storage Optimized (210 TB) or Compute Optimized, encryption is enforced, and the devices can also run EC2 instances and Lambda at the edge — which is the other half of why they exist, for sites with poor connectivity.
 
-> [!warning] Currency — Snowball Edge is closing to new customers
-> AWS's own documentation now states that **Snowball Edge is no longer available to new customers**, and directs new users to **DataSync** for online transfer, **AWS Data Transfer Terminal** for physical transfer, or **AWS Outposts** for edge compute. There is now a hard end date: AWS will **discontinue support for Snowball devices in all commercial Regions on 2026-12-31**, after which the Snow Console and Snowball resources become inaccessible. SAA-C03 material still tests Snow, so learn it — but know it is being retired, not merely discouraged. (Closed to new customers **2025-11-07**; re-verified 2026-09-30.)
+> [!warning] Currency — the whole Snow Family is closed to new customers
+> AWS states it plainly: *"AWS Snowball Edge is no longer available to new customers"*, and *"with this change, AWS will no longer offer **any AWS Snow Family devices** for new customers to order."* So this covers Snowcone too, not just Snowball Edge. New users are directed to **DataSync** (online transfer), **AWS Data Transfer Terminal** (bring your own disks to an AWS facility), **AWS Partner solutions**, or **AWS Outposts** (edge compute). **SAA-C03 material still tests Snow, so learn it.**
+>
+> ⚠️ **verify the end-of-support date — AWS's own pages contradict each other, and the date this note previously asserted is on neither.** The Snowball developer guide says the change *"will not impact customers currently using AWS Snowball Edge"* and that AWS *"continues to invest in security and availability improvements"*. But the AWS General Reference lists **"AWS Snowball Edge | November 12, 2025"** under **Services in Full Shutdown**, a state it defines as *"completely removed from the AWS portfolio and… no longer available or supported in any capacity"* (same date for the 80 TB V3S and the GPU V3G; Snowblade 2024-11-12, Snowmobile 2024-03-14). Those two cannot both be true. This note used to claim a hard **2026-12-31** cutoff with the Snow Console going dark; **that date appears on neither page and has been removed.** *(Re-checked 2026-10-07.)*
 
 > In one line: DataSync goes over the wire and can repeat on a schedule; Snow goes in a truck because the wire would take too long.
 
@@ -155,17 +157,17 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - **EFS** speaks **NFSv4.1 and NFSv4.0**. Mountable from EC2, ECS, EKS, Lambda and Fargate. Capacity is elastic to petabyte scale with nothing to provision. **Using EFS with Windows EC2 instances is not supported.**
 - **EFS file system types:** *Regional* (recommended) stores data redundantly across several AZs; *One Zone* stores in a single AZ and data may be lost if that AZ is lost.
 - **EFS defaults AWS recommends:** **General Purpose** performance mode (for latency-sensitive work like web serving, CMSes, home directories) and **Elastic** throughput mode (scales automatically with the workload).
-- **EFS storage classes:** Standard, Infrequent Access, Archive. Standard and IA have One Zone variants; **Archive is Regional-only** and needs **Elastic** throughput. Lifecycle defaults: **IA at 30 days**, **Archive at 90 days** of no access. **Transition into Standard defaults to *None*** — an accessed file does **not** come back automatically (unlike Glacier, there is no restore job either; it is simply served from where it is).
+- **EFS storage classes:** Standard, Infrequent Access, Archive. Standard and IA have One Zone variants. **Archive requires Elastic throughput** — AWS states that explicitly, and that with a lifecycle policy transitioning to Archive you cannot switch to Bursting or Provisioned. ⚠️ verify "Archive is Regional-only": AWS's storage-class table implies it by omission but no page says it in words. Lifecycle defaults: **IA at 30 days**, **Archive at 90 days** of no access. **Transition into Standard defaults to *None*** — an accessed file does **not** come back automatically (unlike Glacier, there is no restore job either; it is simply served from where it is).
 - **EFS mount targets:** **only one per Availability Zone**, placed in **one subnet** of that AZ — EC2 instances in *any* subnet of that AZ then share it. Each mount target has its **own security group**, which is what decides who may reach the file system. To change the VPC you must delete the mount targets first. *(Verified 2026-09-30.)*
 - **EFS encryption:** at rest is enabled **at creation** (encrypts data *and* metadata); in transit is enabled **at mount time**. Network access via security groups + IAM; in-file-system permissions via POSIX.
 - **FSx for Windows** speaks **SMB 2.0–3.1.1**, requires **Microsoft Active Directory**, and offers **Single-AZ or Multi-AZ** (Multi-AZ provisions a standby file server in another AZ). SSD and HDD storage; storage, SSD IOPS and throughput are provisioned independently. Encrypted at rest with KMS, in transit with SMB Kerberos session keys. Reachable from on-premises over **Direct Connect or Site-to-Site VPN**, and cross-VPC/account/Region via peering or Transit Gateway.
 - **FSx for Lustre** is POSIX-compliant and **Linux-only** (needs the Lustre client). **Scratch** file systems are **not replicated** and do not survive a file server failure; **persistent** ones are replicated and failed servers are replaced. Storage classes: SSD, Intelligent-Tiering, HDD.
 - **FSx for Lustre + S3:** linking a bucket presents its objects as files; Amazon FSx imports file listings at creation and can import later additions, and data can be written back to S3.
-- **Storage Gateway** deploys as a VM on **VMware ESXi, KVM or Hyper-V**, as a hardware appliance, or as an **EC2 instance** (useful for DR and mirroring).
+- **Storage Gateway** deploys as a VM on **VMware ESXi, KVM, Microsoft Hyper-V or Nutanix AHV**, as a hardware appliance, or as an **EC2 instance** (useful for DR and mirroring).
 - **Volume Gateway is iSCSI.** *Cached*: data lives in **S3**, frequently-accessed subset retained locally. *Stored*: **all** data local, asynchronous point-in-time snapshots to S3, recoverable to your data centre **or to EC2**.
 - **DataSync** sources: on-prem **NFS, SMB, HDFS, object storage**, and other clouds (Azure Blob/Files, Google Cloud Storage, and others). Destinations: **S3, EFS, FSx for Windows / Lustre / OpenZFS / NetApp ONTAP**. Includes **automatic encryption and data integrity validation**, supports **VPC endpoints** so traffic avoids the public internet, and uses a purpose-built parallel protocol.
-- **Snowball Edge:** Storage Optimized **210 TB** or Compute Optimized; network adapters up to **100 Gbit/s**; encryption enforced at rest and in transit; devices can be **clustered (3–16)**; supports **NFSv3/v4/v4.1** and the S3 API. Can run EC2 instances and Lambda via IoT Greengrass at the edge. ⚠️ **No longer available to new customers** — AWS directs new users to DataSync, AWS Data Transfer Terminal, or Outposts (verified 2026-09-05).
-- **AWS Backup** supports EC2, EBS, S3, RDS (all engines, incl. Multi-AZ clusters), Aurora, DynamoDB, EFS, all four FSx types, Storage Gateway volumes, DocumentDB, Neptune, Redshift, Timestream, EKS, CloudFormation, SAP HANA on EC2, and VMware Cloud on AWS. Backups are **incremental for supported resource types** (others are full copies each time — a real cost consideration). **Cross-account** backup requires an **AWS Organizations** structure.
+- **Snowball Edge:** Storage Optimized **210 TB** or Compute Optimized; network adapters up to **100 Gbit/s**; encryption enforced at rest and in transit; devices can be **clustered (3–16)**; supports **NFSv3/v4/v4.1** and the S3 API. Can run EC2 instances and Lambda via IoT Greengrass at the edge. ⚠️ **No longer available to new customers** (the whole Snow Family) — see the currency callout above.
+- **AWS Backup** supports EC2, EBS, S3, RDS (all engines, incl. Multi-AZ clusters), Aurora, DynamoDB, EFS, all four FSx types, Storage Gateway volumes, DocumentDB, Neptune, Redshift, **Timestream for LiveAnalytics** (*not* Timestream for InfluxDB), EKS, CloudFormation, SAP HANA on EC2, and VMware Cloud on AWS. Backups are **incremental for supported resource types** (others are full copies each time — a real cost consideration). **Cross-account** backup requires an **AWS Organizations** structure. [[14-dr-resilience]] carries the RPO/RTO angle on all this; this note owns the AWS Backup mechanics.
 - ⚠️ Pricing for EFS, FSx, Storage Gateway, DataSync and Snow changes; check current rates rather than memorising figures. The exam tests *service choice*, not price points.
 
 ### Which Snow device — storage volume, or compute at the edge?
@@ -184,8 +186,8 @@ Both Snowball Edge options carry **104 vCPUs and 416 GB of usable memory**; the 
 **Compute Optimized** — not because it has more vCPUs, but because that is the configuration
 AWS designates for compute, and it is the one with EC2-compatible instances as the point.
 
-⚠️ Currency, already noted above: **Snowball Edge is closed to new customers** — AWS points new
-users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam still asks it.
+⚠️ Currency: the **entire Snow Family** is closed to new customers — including **Snowcone**, so every
+row below is exam material rather than something you could order today. See the callout above.
 
 ## Comparisons
 
@@ -197,7 +199,7 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 | Protocol | — (attached disk) | **NFS** | **SMB** | Lustre | HTTP API |
 | Shared by many instances | ❌ one at a time | ✅ | ✅ | ✅ | ✅ (API) |
 | OS | any | **Linux only** | Windows (and Linux SMB clients) | **Linux only** | any |
-| Capacity | provisioned | **elastic** | provisioned | provisioned | elastic |
+| Capacity | provisioned | **elastic** | provisioned | provisioned (SSD/HDD) or **elastic** (Intelligent-Tiering) | elastic |
 | Reach for it when | boot volume, single-instance disk | shared Linux file system | Windows app, AD auth, SMB | HPC/ML speed, S3-backed compute | objects, static content, backup |
 
 ### Volume Gateway: cached vs stored
@@ -221,10 +223,10 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 ## Worked examples
 
 > [!example] Worked example — a web tier that needs shared uploads
-> An application behind an ALB runs on an Auto Scaling group ([[04-alb-asg]]) and lets users upload files. Instances come and go, so anything written to an instance's EBS volume disappears with it, and two instances can't see each other's uploads. Attaching one EBS volume to all of them isn't possible — an EBS volume lives in a single AZ, and the ASG spans AZs. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it in `user_data`. Every instance now sees the same directory, new instances pick it up automatically, and there is no capacity to manage. (In production you'd more likely put uploads in **S3** and skip the file system entirely — EFS is the answer when the application insists on file paths and can't be changed.)
+> An application behind an ALB runs on an Auto Scaling group ([[04-alb-asg]]) and lets users upload files. Instances come and go, so anything written to an instance's EBS volume disappears with it, and two instances can't see each other's uploads. Attaching one EBS volume to all of them isn't possible — an EBS volume lives in a single AZ, and the ASG spans AZs. The fix is **EFS**: create the file system, create a **mount target in each AZ** the ASG spans, allow NFS from the instance security group, and mount it from the instance's **user data** script at boot. Every instance now sees the same directory, new instances pick it up automatically, and there is no capacity to manage. (In production you'd more likely put uploads in **S3** and skip the file system entirely — EFS is the answer when the application insists on file paths and can't be changed.)
 
 > [!example] Worked example — lifting a Windows application into AWS
-> A company runs a .NET application against a Windows file share, with permissions driven by Active Directory groups. They want it in AWS without rewriting it. EFS is out — it's NFS, and **AWS doesn't support EFS with Windows EC2 instances**. S3 is out — the app opens file paths, not APIs. The answer is **FSx for Windows File Server**: SMB, joined to Active Directory (either AWS Managed Microsoft AD or their own via AD Connector — see [[01-iam-advanced]]), enforcing the same Windows ACLs. Choose **Multi-AZ** so a zone failure doesn't take the share down. On-premises users can reach it over Direct Connect or Site-to-Site VPN ([[05-vpc-hybrid]]) during the migration.
+> A company runs a .NET application against a Windows file share, with permissions driven by Active Directory groups. They want it in AWS without rewriting it. EFS is out — it's NFS, and **AWS doesn't support EFS with Windows EC2 instances**. S3 is out — the app opens file paths, not APIs. The answer is **FSx for Windows File Server**: SMB, joined to Active Directory (either AWS Managed Microsoft AD or their own via AD Connector — see [[01-iam]]), enforcing the same Windows ACLs. Choose **Multi-AZ** so a zone failure doesn't take the share down. On-premises users can reach it over Direct Connect or Site-to-Site VPN ([[05-vpc-hybrid]]) during the migration.
 
 > [!failure] Failure mode — Lustre scratch for data that mattered
 > A team runs genomics processing on **FSx for Lustre**, picks the **scratch** deployment type because it's cheaper and faster, and writes results straight to it. A file server fails mid-run. Scratch file systems are **not replicated** and data does not persist through a file server failure — the results are gone, and there was no second copy. Two correct fixes: use a **persistent** file system for anything you'd be upset to lose, or keep the durable copy in **S3** and use Lustre as the fast working layer over it, writing results back. The second is the idiomatic pattern and the reason the S3 link exists.
@@ -241,7 +243,10 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 > Both move data between on-premises and AWS, and both need something installed locally. **DataSync transfers data** — a migration or a scheduled sync, after which the job is done. **Storage Gateway is a permanent bridge** — the on-premises system keeps using it every day as if it were local storage. "Migrate 50 TB to S3" → DataSync. "Our backup software must keep writing to tape" → Tape Gateway.
 
 > [!warning] Trap — Snow when the network would do
-> Snow exists for data volumes where transferring over the network would take impractically long, or where connectivity is poor. It is not the answer to "we have 5 TB to move" on a decent link — that's **DataSync**. And note the currency point: **Snowball Edge is closed to new customers**, with AWS pointing to DataSync, AWS Data Transfer Terminal, or Outposts.
+> Snow exists for data volumes where transferring over the network would take impractically long, or where connectivity is poor. It is not the answer to "we have 5 TB to move" on a decent link — that's **DataSync**. And note the currency point: the **whole Snow Family** is closed to new customers, with AWS pointing to DataSync, AWS Data Transfer Terminal, Partner solutions, or Outposts.
+
+> [!warning] Trap — Snowcone is still the answer for the smallest, most portable job
+> Not orderable any more. AWS closed the **entire Snow Family** to new customers, not just Snowball Edge — "AWS will no longer offer any AWS Snow Family devices for new customers to order." Learn the device-selection logic because SAA-C03 still asks it, but know that in practice the answer today is DataSync, AWS Data Transfer Terminal, a Partner solution, or Outposts.
 
 > [!warning] Trap — Lustre scratch vs persistent read as a speed choice
 > The difference is **durability**, not performance. Scratch is **not replicated** and does not survive a file server failure; persistent is replicated with automatic server replacement. If the question mentions long-running work or data you can't re-create, it's persistent.
@@ -251,7 +256,7 @@ users at **DataSync**, **AWS Data Transfer Terminal** or **Outposts**. The exam 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
-- [ ] **Never studied** — written 2026-09-05 without an orientation pass; nothing here has been tested against a mock yet.
+- [ ] **Written without an orientation pass** (2026-09-05) and audited against AWS docs on 2026-10-07, but the *eliminations* here are what carry exam weight — EFS/Windows, ONTAP/iSCSI, Volume Gateway cached-vs-stored — so drill those rather than re-reading.
 - [ ] **EFS is Linux-only** — the single highest-value elimination in the topic.
 - [ ] **Volume Gateway cached vs stored** — anchor on which copy is authoritative, not on the word.
 - [ ] **DataSync (a transfer) vs Storage Gateway (a permanent bridge).**

@@ -817,7 +817,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Snowball Edge current availability | **Being retired, not merely discouraged.** Closed to new customers **2025-11-07**; support for Snowball devices **ends in all commercial Regions 2026-12-31**. AWS directs new users to DataSync, AWS Data Transfer Terminal or Outposts. Still examinable |
+| Snow Family current availability | **The entire Snow Family is closed to new customers** — AWS: "AWS will no longer offer any AWS Snow Family devices for new customers to order", so Snowcone is gone too. New users → **DataSync** (online), **AWS Data Transfer Terminal** (bring your own disks), **Partner solutions**, **Outposts** (edge compute). **Still examinable.** *(Corrected 2026-10-07: this row asserted a 2026-12-31 end-of-support date that appears on no AWS page.)* |
+| Snow Family end-of-support date | ⚠️ verify — **AWS contradicts itself.** The Snowball developer guide says the change "will not impact customers currently using AWS Snowball Edge" and AWS "continues to invest" in them; the AWS General Reference lists "AWS Snowball Edge \| November 12, 2025" under **Services in Full Shutdown** ("completely removed… no longer available or supported in any capacity"). Don't memorise a date |
 | Snowball Edge cluster size | 3–16 devices |
 | Snowball Edge Storage Optimized capacity | 210 TB |
 | Snowball Edge network adapter speed | Up to 100 Gbit/s |
@@ -876,7 +877,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| FSx for NetApp ONTAP protocols | Both NFS and SMB |
+| FSx for NetApp ONTAP protocols | **NFS, SMB, iSCSI *and* NVMe** — the **only** FSx with block storage. So "iSCSI block + Multi-AZ" → ONTAP and nothing else (OpenZFS is NFS-only, Windows is SMB, Lustre is Lustre). *(Corrected 2026-10-07: this row said "Both NFS and SMB", losing the elimination that carries the exam weight.)* |
 | FSx for OpenZFS protocol / trait | NFS; cheap snapshots and clones |
 
 **Storage Gateway**

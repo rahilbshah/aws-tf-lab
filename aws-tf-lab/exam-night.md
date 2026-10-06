@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 340 pointers · ~30 min read*
+*176 recall hooks · 341 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -549,6 +549,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - cached vs stored Volume Gateway, reversed
 - DataSync vs Storage Gateway
 - Snow when the network would do
+- Snowcone is still the answer for the smallest, most portable job
 - Lustre scratch vs persistent read as a speed choice
 - "EFS One Zone is fine, it's still durable"
 

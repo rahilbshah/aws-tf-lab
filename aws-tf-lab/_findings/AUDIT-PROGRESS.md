@@ -342,3 +342,33 @@ per-note.
 **Do not attempt another unattended overnight run without checking `pmset -g batt` shows
 "AC Power" first.** caffeinate's PreventSystemSleep does not bind on battery; that is why
 the 2026-10-05 overnight run produced one note instead of twelve.
+
+### 12-storage-extras (2026-10-07) — a hard date the note invented, and AWS contradicting itself
+
+132 claims, 18 pages. Notably, this note's load-bearing *eliminations* all held up, which is
+worth recording because they are the §13.10a shapes most likely to be wrong: "EFS is not
+supported with Windows EC2 instances" is AWS's verbatim wording, and "ONTAP is the only FSx
+with iSCSI block" survived an active counter-example hunt (OpenZFS is NFS-only, Windows SMB,
+Lustre Lustre).
+
+The failure was a **dated absolute with a consequence**: "AWS will discontinue support for
+Snowball devices in all commercial Regions on 2026-12-31, after which the Snow Console and
+Snowball resources become inaccessible." That date is on **no** AWS page. I fetched the
+dedicated availability-change page and the General Reference shutdown table myself.
+
+And AWS genuinely contradicts itself, which is now recorded in the note rather than resolved:
+- Snowball developer guide: the change "will not impact customers currently using AWS
+  Snowball Edge", and AWS "continues to invest in security and availability improvements".
+- AWS General Reference, *Services in Full Shutdown* (defined as "completely removed from the
+  AWS portfolio and… no longer available or supported in any capacity"): "AWS Snowball Edge |
+  November 12, 2025".
+
+Both cannot be true. Left as `⚠️ verify` with both citations, in the note and the cheatsheet.
+
+Also: the closure is **family-wide** ("AWS will no longer offer any AWS Snow Family devices
+for new customers to order"), so the Snowcone row in the device-selection table was reading
+as a live option. Now a trap.
+
+Side benefit: the same General Reference table lists "AWS Elemental MediaStore | November 12,
+2025", which independently confirms dropping MediaStore from the CloudFront origin list in
+the previous commit was right.
