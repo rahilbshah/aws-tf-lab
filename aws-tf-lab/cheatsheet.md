@@ -1442,7 +1442,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Textract sync vs async limit | Synchronous = single-page only; multi-page documents require the asynchronous operations |
 | Textract specialised APIs | AnalyzeExpense (invoices/receipts), AnalyzeID (licences/passports), Queries, Analyze Lending |
-| Rekognition vs Textract | Rekognition = images/video scenes; Textract = documents, forms, tables, handwriting |
+| Rekognition vs Textract | Rekognition = images/video scenes **and text detection, including handwritten text**; Textract = documents — **structure**: forms, key-value pairs, tables, multipage. The axis is **structure**, not handwriting: AWS says Rekognition detects "printed and handwritten text". *(Corrected 2026-10-07.)* |
+| Does ML appear in an SAA-C03 task statement? | **Yes, once** — **Task Statement 2.2** (Domain 2, highly available / fault-tolerant, **30%** of scored content) lists "AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)". ML has no task statement *of its own*, but it is not absent from the objectives |
 | Transcribe vs Polly direction | Transcribe: audio → text. Polly: text → speech |
 | Comprehend outputs | Entities, key phrases, PII, dominant language, sentiment, targeted sentiment, syntax, topic modeling |
 | Comprehend vs Kendra | Comprehend analyses text; Kendra searches it (natural-language Q&A, semantic similarity) |

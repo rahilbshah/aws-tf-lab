@@ -3,7 +3,7 @@ topic: 23-machine-learning
 domain: performance
 status: reviewed
 services: [Rekognition, Transcribe, Polly, Translate, Comprehend, Textract, Lex, Kendra, SageMaker, Forecast, FraudDetector]
-related: [22-analytics, 19-serverless, 09-s3-advanced, 15-decoupling]
+related: [22-analytics, 19-serverless, 15-decoupling]
 tags: [topic, domain/performance]
 ---
 
@@ -12,7 +12,7 @@ tags: [topic, domain/performance]
 Eleven one-line services. The exam never asks you to train a model — it asks whether you can tell Rekognition from Textract fast enough to eliminate three wrong answers.
 
 > [!info] Exam TL;DR
-> - **ML is in scope** (11 named services) but **no task statement covers it** — it appears as distractors and one-line answers. Learn one sentence per service; go no deeper.
+> - **ML is in scope** (11 named services) and gets **no task statement of its own** — but it is not absent from the objectives either: **Task Statement 2.2** (Domain 2, *highly available / fault-tolerant architectures*, **30% of the exam**) names **Amazon Comprehend and Amazon Polly** in its Knowledge-of list. Mostly distractors and one-line answers; learn one sentence per service, and don't assume ML can never be the subject.
 > - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Train a custom model on our data"* → **SageMaker**.
 > - **Rekognition = images/video** (objects, faces, moderation). **Textract = documents** (text + **forms + tables** + handwriting). Document vs scene.
 > - **Transcribe = audio → text. Polly = text → audio.** Opposite directions.
@@ -33,9 +33,11 @@ Let me correct something I told you earlier in this repo, because it was impreci
 
 I previously said ML was "appendix-only" and effectively skippable. Checking the actual **SAA-C03 exam guide**, that's not right. There is a **Machine Learning category in the in-scope services list with eleven named services** — Comprehend, Forecast, Fraud Detector, Kendra, Lex, Polly, Rekognition, SageMaker, Textract, Transcribe, Translate. In scope means answerable.
 
-But the second half of the picture is what makes this a twenty-minute topic rather than a two-hour one: **no task statement in any of the four domains mentions machine learning.** Domain 3 has a task statement for data ingestion and analytics (3.5). There is no equivalent for ML. So ML services are in the answer pool without being the subject of any stated objective.
+But the second half of the picture is what keeps this a twenty-minute topic rather than a two-hour one: **ML gets no task statement of its own.** Domain 3 has one for data ingestion and analytics (3.5); there is no ML equivalent.
 
-The exam-bank evidence lines up exactly with that. Across 1,168 questions there is **not one question tagged with an ML topic** — yet Rekognition, Comprehend, SageMaker, Transcribe and Translate all appear inside question text in the low hundreds. They are there as **distractors and as one-line correct answers**, not as subjects.
+One correction to that, because the note used to state it as an absolute and it is not. ML does surface inside an objective: **Task Statement 2.2 — "Design highly available and/or fault-tolerant architectures"**, in Domain 2 (**30%** of the scored content) — whose Knowledge-of list reads *"AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)"*. So ML services are *mostly* in the answer pool rather than the subject, but they can legitimately be the subject in a resilience question. *(Checked against the exam guide PDF, 2026-10-07.)*
+
+The exam-bank evidence lines up with that. Across the bank (counted at 1,168 questions here, while CLAUDE.md §13.12 records 1,156 — the figure is approximate and not an AWS claim) there is **not one question tagged with an ML topic** — yet Rekognition, Comprehend, SageMaker, Transcribe and Translate all appear inside question text in the low hundreds. They are there as **distractors and as one-line correct answers**, not as subjects.
 
 That tells you precisely what to learn. You need **one sentence per service, retrievable instantly** — enough to recognise "this is the document one, not the image one" and strike two options. You do not need to know how any of them work.
 
@@ -115,7 +117,7 @@ graph LR
 
 Two details make this the right answer rather than a plausible one, and both come from things you already know:
 
-**Use the asynchronous API for anything large.** Textract processes single-page documents synchronously but multi-page documents **asynchronously**; Rekognition and Transcribe likewise have async job APIs that notify on completion. A design that calls a sync API from a Lambda with a 15-minute ceiling will fail on a 300-page PDF. Async job + **SNS** notification is the pattern ([[15-decoupling]]).
+**Use the asynchronous API for anything large.** Textract processes single-page documents synchronously but multi-page documents **asynchronously**; Rekognition and Transcribe likewise have async job APIs that notify on completion. A design that calls a sync API from a Lambda will fail on a 300-page PDF: a standard function is capped at **15 minutes (900 s)**, and even the **90-minute** ceiling Lambda Managed Instances functions get (asynchronous or event-source-mapping invocations) does not make a single-page sync API accept a 300-page document — see [[19-serverless]]. Async job + **SNS** notification is the pattern ([[15-decoupling]]).
 
 **Chaining is normal.** "Transcribe support calls, then find out whether customers were angry" is **Transcribe → Comprehend**. "Extract text from scanned forms, then redact personal data" is **Textract → Comprehend** (PII detection). If a question describes two steps, expect two services.
 
@@ -149,7 +151,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 - **⚠️ Amazon Fraud Detector** stopped accepting new customers **7 November 2025**; AWS suggests **SageMaker, AutoGluon and AWS WAF**.
 - **Amazon SageMaker was renamed Amazon SageMaker AI on 3 December 2024**, with "Amazon SageMaker" reassigned to the next-generation unified data/analytics/AI platform announced at re:Invent 2024. SageMaker AI remains available standalone.
 - **Rekognition** covers object and scene detection, facial analysis and comparison, celebrity recognition, text-in-image, and **content moderation** — the last is the one the exam reaches for in "filter inappropriate user uploads" scenarios.
-- **Bank evidence (coverage shaping only, per the trainer boundary):** across 1,168 questions, **zero** carry an ML `topics[]` tag, while ML service names appear in question text in the low hundreds — consistent with distractor use rather than subject use.
+- **Bank evidence (coverage shaping only, per the trainer boundary):** across the bank (~1,168 questions by one count, 1,156 per CLAUDE.md — not an AWS figure), **zero** carry an ML `topics[]` tag, while ML service names appear in question text in the low hundreds — consistent with distractor use rather than subject use.
 
 ## Comparisons
 
@@ -170,7 +172,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 |---|---|---|---|---|
 | Input | **images / video** | **documents** (scan, PDF) | **audio** | **text** |
 | Output | objects, faces, moderation labels | text + **forms + tables** | **text** | **speech audio** |
-| Handles handwriting | ✗ | **✓** | n/a | n/a |
+| Handles handwriting | ✓ — AWS: *"detect and recognize printed and handwritten text"* | **✓, and within document structure** | n/a | n/a |
 | Preserves structure | ✗ (scene labels) | **✓ key-value pairs, tables** | n/a | n/a |
 | Classic scenario | moderate user uploads | **process scanned invoices** | transcribe support calls | accessibility / voice output |
 
@@ -201,7 +203,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 
 > [!example] Worked example — two verbs means two services
 > *"A contact centre records customer calls and wants to flag conversations where the customer became frustrated, then route those to a supervisor."*
-> Two verbs: *transcribe* and *judge the mood*. **Transcribe** turns the audio into text; **Comprehend** runs **sentiment analysis** over that text; negative sentiment publishes to **SNS** or an **SQS** queue for supervisor review ([[15-decoupling]]). Neither service does both halves, and nothing here needs a custom model. If the question adds "and redact credit card numbers before storing", that's still Comprehend — **PII detection** — not a new service.
+> Two verbs: *transcribe* and *judge the mood*. **Transcribe** turns the audio into text; **Comprehend** runs **sentiment analysis** over that text; negative sentiment publishes to **SNS** or an **SQS** queue for supervisor review ([[15-decoupling]]). For the plain Transcribe + Comprehend pairing, neither service does both halves, and nothing here needs a custom model. ⚠️ verify before treating "neither does both" as an elimination: **Transcribe Call Analytics** is documented as producing sentiment itself, so a call-centre stem naming it may not need Comprehend at all. If the question adds "and redact credit card numbers before storing", that's still Comprehend — **PII detection** — not a new service.
 
 > [!failure] Failure mode — reaching for SageMaker because the problem sounds hard
 > A team needs to detect inappropriate images in user uploads. They scope a SageMaker project: label a training set, choose an algorithm, train, tune, deploy an endpoint, then own the retraining forever. Months of data-science effort and a permanently running inference endpoint — to rebuild **Rekognition content moderation**, which is one API call and needs no model at all. The lesson generalises: **SageMaker is the answer only when no pre-trained service covers the task**, or the question explicitly says the model must be trained on the company's own data. On the exam, "we need a custom model" is a phrase you wait for rather than infer — and in production, the standing cost of an always-on SageMaker endpoint is the thing that catches teams out.
@@ -221,7 +223,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 > Both take text and both sound like "understand our documents". **Comprehend extracts insights *about* text** — sentiment, entities, PII, topics — and returns no ranked results. **Kendra retrieves documents *from* a corpus in answer to a natural-language question.** "How do customers feel?" and "find all PII" are Comprehend; "where is the answer to this question in our knowledge base?" is Kendra.
 
 > [!warning] Trap — synchronous ML APIs on large inputs
-> Textract's synchronous operations handle **single-page** documents only; multi-page PDFs require the **asynchronous** API, and long audio in Transcribe works the same way. An architecture that calls the sync API inside a Lambda looks clean and fails on real input — either the page limit or Lambda's 15-minute ceiling. The correct shape is **async job + SNS completion notification**, which also decouples the pipeline.
+> Textract's synchronous operations handle **single-page** documents only; multi-page PDFs require the **asynchronous** API, and long audio in Transcribe works the same way. An architecture that calls the sync API inside a Lambda looks clean and fails on real input — either the page limit or Lambda's timeout — 15 minutes for a standard function, and the 90-minute Lambda Managed Instances ceiling doesn't rescue a sync, single-page API either. The correct shape is **async job + SNS completion notification**, which also decouples the pipeline.
 
 > [!warning] Trap — assuming a retired service is a wrong answer
 > **Forecast, Fraud Detector and Kendra are all closed to new customers**, but all three are still in the SAA-C03 exam guide's in-scope list. If a question describes time-series demand prediction and offers **Amazon Forecast**, that is still the intended answer — don't talk yourself out of it because you know the service is legacy. The retirement matters for real-world design, not for scoring the exam.
