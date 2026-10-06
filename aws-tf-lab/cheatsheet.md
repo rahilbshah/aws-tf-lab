@@ -758,9 +758,13 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| What skips the regional edge cache | Dynamic requests and PUT/POST go straight to the origin |
-| Free invalidation allowance | First 1,000 paths per month per AWS account; a path containing `*` counts as one path |
-| Price class coverage | PriceClass_100 = US/Canada/Europe/Israel; _200 adds most of Asia, Middle East, Africa; _All = everywhere |
+| What skips the regional edge cache | **Three** cases: proxy methods (`PUT`, `POST`, `PATCH`, `OPTIONS`, `DELETE`); **dynamic requests** as determined at request time; and an **S3 origin whose optimal regional edge cache is in the same Region as the bucket**. *(Corrected 2026-10-07 — this row listed only two.)* |
+| Origin group failover — the method restriction | Fails over **only** for `GET`, `HEAD`, `OPTIONS`. Never for `POST`/`PUT` → origin groups are the **wrong answer for a write path or API**. Also won't fire unless `OPTIONS` is a cached HTTP method |
+| Origin group failover — triggers | A status code you nominated (choose from **400, 403, 404, 416, 429, 500, 502, 503, 504**). A failed **connection** counts only if **503** is configured; a **timeout** only if **504** is |
+| Origin group failover — timing | Default up to **30 s** on the primary (3 attempts × 10 s). Connection timeout **1–10 s**, attempts **1–3**, origin response timeout **30 s** default / **1–120 s**. No stickiness — every request goes to the primary first |
+| CloudFront pricing — two models | **Flat-rate plans** $0 / $15 / $200 / $1,000 per month bundling CDN + WAF + DDoS + DNS + TLS + logging + edge compute, **no overage charges**; or **pay-as-you-go** (per-GB out + per-request). Either way, **AWS origin → CloudFront data transfer is waived** |
+| Free invalidation allowance | First **1,000 paths per month per AWS account** (across all distributions); a path containing `*` counts as **one** path, and **tag invalidations draw on the same allowance**. AWS recommends versioned filenames instead, since invalidation cannot reach a browser cache or corporate proxy |
+| Price class coverage | `_100` cheapest/fewest locations · `_200` adds more of Asia, Middle East, Africa · `_All` everywhere (default). ⚠️ verify the exact country lists — AWS retired the PriceClass docs page (301 to the pricing page) and publishes no country breakdown |
 | Two-tier TTL pattern values | index.html 60s; hashed /static/app.a1b2c3.css one year |
 
 **CloudFront OAC & origins**
@@ -787,7 +791,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Functions vs Lambda@Edge — code and memory limits | 10 KB / 2 MB vs 50 MB / 128 MB (viewer) or 10 GB (origin) |
 | Functions vs Lambda@Edge — max duration | Sub-millisecond vs up to 30 seconds |
 | Functions vs Lambda@Edge — events | Viewer request/response only vs viewer + origin request/response |
-| Functions vs Lambda@Edge — language | JavaScript (ECMAScript 5.1) vs Node.js and Python |
+| Functions vs Lambda@Edge — language | JavaScript (ECMAScript 5.1) **or JavaScript runtime 2.0** vs Node.js and Python |
+| CloudFront KeyValueStore | CloudFront **Functions** only, and only on **runtime 2.0**. Not available to Lambda@Edge |
 
 **Global Accelerator**
 

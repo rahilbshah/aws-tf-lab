@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 200 discriminators · ~39 min read*
+*107 comparison tables · 201 discriminators · ~39 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -292,6 +292,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]] · [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]] · [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
 
+- **an origin group fails over for any failing request** — Only for GET, HEAD and OPTIONS. AWS: "CloudFront does not fail over when the viewer sends a different HTTP method (for example POST, PUT, and so on)." So an origin group is the wrong answer for a write path or an API, and it also won't fire at all unless OPTIONS is among the cache behaviour's cached HTTP methods.  
+  ↳ [[11-cloudfront#Traps|note]]
 - **"put CloudFront in front of the S3 website endpoint and use OAC"** — You can't. An S3 bucket configured as a website endpoint is a custom origin, and custom origins support neither OAC nor OAI.  
   ↳ [[11-cloudfront#Traps|note]]
 - **the ACM certificate in the wrong Region** — A certificate for viewer↔CloudFront HTTPS must be in **us-east-1**, regardless of where the origin, the bucket, or you are.  

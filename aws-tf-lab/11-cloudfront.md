@@ -12,7 +12,7 @@ tags: [topic, domain/performance]
 AWS's content delivery network. Caches your content at edge locations worldwide so users fetch it from nearby instead of from your origin — and, less obviously, accelerates even *uncacheable* traffic by pulling it onto the AWS backbone at the edge.
 
 > [!info] Exam TL;DR
-> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** usually sits between the edge and your origin, checked on a miss before the origin is — **dynamic requests and PUT/POST skip it** and go straight to the origin.
+> - **Cache miss → fetch from origin → store at the edge → serve hits until the TTL expires.** A **regional edge cache** usually sits between the edge and your origin, checked on a miss before the origin is. Three things skip it and go straight to the origin: **proxy methods** (`PUT`, `POST`, `PATCH`, `OPTIONS`, `DELETE`), **dynamic requests** (as determined at request time), and an **S3 origin whose optimal regional edge cache is in the same Region as the bucket**.
 > - **Not just static content.** Dynamic, uncacheable requests still benefit, because they enter the AWS backbone at the edge instead of crossing the public internet.
 > - **OAC (Origin Access Control)** locks an S3 origin so CloudFront is the only way in — Block Public Access stays **fully on**. OAC is current; **OAI is legacy**. The bucket policy trusts `cloudfront.amazonaws.com` **with an `AWS:SourceArn` condition pinning your distribution** — the confused-deputy defence again.
 > - **An S3 *website* endpoint is a custom origin and cannot use OAC or OAI at all.** OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`).
@@ -39,7 +39,7 @@ Then there is the second, quieter benefit, and it is the one people miss. Conten
 
 Walk a real request.
 
-A viewer in Mumbai asks for an object. The nearest edge location doesn't have it — that's a **miss**. Before going all the way back to your origin, CloudFront checks a **regional edge cache**, a second cache that sits between the edges and the origin. Only if that misses too does the origin get touched. The object then travels back out, is stored at the edge, and is served.
+A viewer in Mumbai asks for an object. The nearest edge location doesn't have it — that's a **miss**. Before going all the way back to your origin, CloudFront checks a **regional edge cache**, a second cache that sits between the edges and the origin. Only if that misses too does the origin get touched. Three cases bypass it entirely: the **proxy methods** (`PUT`, `POST`, `PATCH`, `OPTIONS`, `DELETE`), requests AWS classes as **dynamic** at request time, and an **S3 origin that already sits in the same Region** as the regional edge cache that would have been used. The object then travels back out, is stored at the edge, and is served.
 
 Every later request at that edge is a **hit**, answered locally in milliseconds, until the **TTL** expires and CloudFront revalidates.
 
@@ -68,7 +68,7 @@ And it works. The site serves. Direct S3 URLs still return 403 to anonymous user
 
 That is what the `AWS:SourceArn` condition pinning your distribution's ARN is for. Note carefully what it does *not* do: it is not what makes your distribution work. It is what stops everybody else's. This is the confused-deputy defence, and its whole difficulty is that omitting it breaks nothing visible.
 
-One hard constraint sits on top of all this: OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`). An S3 bucket configured as a **website endpoint** is treated as a *custom* origin, and custom origins support **neither OAC nor OAI**. If the requirement is "private bucket," you take the REST endpoint and give up S3's website features — index documents on subfolders, S3 redirect rules — replacing them with CloudFront's `default_root_object` and custom error pages.
+One hard constraint sits on top of all this: OAC needs the **S3 REST endpoint** (`bucket.s3.region.amazonaws.com`). An S3 bucket configured as a **website endpoint** is treated as a *custom* origin, and custom origins support **neither OAC nor OAI**. If the requirement is "private bucket," you take the REST endpoint and give up S3's website features — index documents on subfolders, S3 redirect rules — replacing them with CloudFront's **Default root object** and custom error pages.
 
 > In one line: the service principal names the service, never the customer — the `SourceArn` condition is the part that names you.
 
@@ -104,7 +104,7 @@ These two look interchangeable in a question. Both "make it faster globally," bo
 
 The discriminator that actually decides exam questions is failover speed, and it comes from one detail: Global Accelerator gives you **two static anycast IPs** (four dual-stack) and **those IPs never change**. Failover normally means publishing a different DNS answer, and you are then stuck waiting for every resolver's cached copy to expire — [[10-route53]] failover is bounded by `(interval × threshold) + TTL`. With Global Accelerator there is nothing for a resolver to cache in the first place, because the address is identical before and after. The switch happens inside AWS's network. No DNS, no TTL.
 
-CloudFront has its own failover, and it is worth not confusing with either of the above: an **origin group** holds a primary and a secondary origin and switches when the primary returns configured HTTP failure codes. Per request, inside CloudFront, no DNS involved.
+CloudFront has its own failover, and it is worth not confusing with either of the above: an **origin group** holds a primary and a secondary origin and switches when the primary returns one of the HTTP status codes you nominated. Per request, inside CloudFront, no DNS involved — but only for **`GET`, `HEAD` and `OPTIONS`** viewer requests. A `POST` or `PUT` never fails over, which quietly rules origin groups out of any write-path scenario.
 
 > In one line: CloudFront caches, Global Accelerator doesn't — its trick is IPs that never change, so DNS never has to catch up.
 
@@ -126,17 +126,19 @@ flowchart LR
 
 - **Global Accelerator is not a CDN and caches nothing.** A *standard* accelerator gives you **two static anycast IPv4 addresses** (four for dual-stack) advertised from the **AWS edge network**, then carries the session **over the AWS global network** to the optimal regional endpoint by *"health, client location, and policies that you configure"*. Endpoints can be **NLB, ALB, EC2 instances or Elastic IPs**, in one Region or several. Because it accelerates the **network path** rather than caching bytes, it is the answer for **dynamic, non-cacheable** traffic — a real-time API, gaming, VoIP, IoT/MQTT, non-HTTP protocols — including an API served from a **single Region**, where a CDN has nothing to cache. *(Verified 2026-10-01.)*
 
-- **Origins:** an S3 bucket (REST endpoint), an S3 bucket configured as a **website endpoint** (treated as a *custom* origin), S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, MediaStore/MediaPackage, **ALB**, **NLB**, **EC2**, **Lambda function URLs**, **API Gateway**, and **any public HTTP(S) server, including on-premises**.
-- **VPC origins** let an **ALB, NLB or EC2 instance in a private subnet** be an origin without any public internet exposure — the modern way to keep the load balancer private while still fronting it with CloudFront.
-- **Origin groups** provide CloudFront's own failover: a primary and a secondary origin, switching when the primary returns configured HTTP failure codes. (Distinct from Route 53 failover — no DNS involved.)
+- **Origins:** an S3 bucket (REST endpoint), an S3 bucket configured as a **website endpoint** (treated as a *custom* origin), S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, **MediaPackage**, **ALB**, **NLB**, **EC2**, **Lambda function URLs**, **API Gateway**, and **any public HTTP(S) server, including on-premises**.
+- **VPC origins** let an **ALB, NLB or EC2 instance in a private subnet** ([[04-alb-asg]]) be an origin without any public internet exposure — the modern way to keep the load balancer private while still fronting it with CloudFront.
+- **Origin groups** provide CloudFront's own failover: a primary and a secondary origin, switching when the primary returns an HTTP status code you nominated for failover (pick from **400, 403, 404, 416, 429, 500, 502, 503, 504**). A **failed connection** counts only if **503** is configured; a **timeout** only if **504** is. (Distinct from Route 53 failover — no DNS involved.)
+- **The origin-group restriction that decides exam questions:** CloudFront fails over "only when the HTTP method of the viewer request is `GET`, `HEAD`, or `OPTIONS`. CloudFront does not fail over when the viewer sends a different HTTP method (for example `POST`, `PUT`, and so on)." So for a **write path or an API**, origin groups are the *wrong* answer. There is a second gotcha: failover won't happen at all if `OPTIONS` isn't among the cache behaviour's **cached HTTP methods**.
+- **Origin-group timing:** by default CloudFront spends up to **30 seconds** on the primary (3 connection attempts × 10 s) before failing over. Tunable: connection timeout **1–10 s**, connection attempts **1–3**, origin response timeout default **30 s** and settable **1–120 s**. And there is no stickiness — "CloudFront routes all incoming requests to the primary origin, even when a previous request failed over to the secondary origin."
 - **OAC vs OAI:** AWS recommends **OAC**. OAI does **not** support all Regions (including opt-in Regions launched after Dec 2022/Jan 2023), **SSE-KMS**, or dynamic `PUT`/`POST`/`DELETE`. Migration path: allow both principals in the bucket policy, switch the distribution, then remove the OAI statement.
-- **OAC requirements:** S3 **Object Ownership** must be *Bucket owner enforced* (the default for new buckets). With `signing_behavior = always`, CloudFront→S3 is **always HTTPS**. For **SSE-KMS** objects you must also add CloudFront to the **KMS key policy**, with the same `AWS:SourceArn` condition.
-- **Invalidation:** the first **1,000 invalidation paths per month per AWS account** (across all distributions) are free; a path containing `*` counts as **one path** however many files it clears. AWS explicitly recommends **versioned file names instead**, because invalidation can't reach a user's browser cache or a corporate proxy — and because versioning gives you clean rollbacks and readable access logs.
+- **OAC requirements:** S3 **Object Ownership** must be *Bucket owner enforced* (the default for new buckets). With the origin access control's signing behaviour set to **Sign requests (always)** — `SigningBehavior: always` in the API — CloudFront→S3 is **always HTTPS**. For **SSE-KMS** objects you must also add CloudFront to the **KMS key policy**, with the same `AWS:SourceArn` condition.
+- **Invalidation:** the first **1,000 invalidation paths per month per AWS account** (across all distributions) are free; a path containing `*` counts as **one path** however many files it clears, and tag-based invalidations draw on the same allowance. AWS explicitly recommends **versioned file names instead**, because invalidation can't reach a user's browser cache or a corporate proxy — and because versioning gives you clean rollbacks and readable access logs.
 - **HTTPS / certificates:** an ACM certificate used for **viewer↔CloudFront** HTTPS must be requested or imported in **`us-east-1`**. (Exception: for **CloudFront↔origin** HTTPS with an **ELB** origin, the certificate may be in any Region.) RSA 1024–4096-bit (ACM issues up to 2048) or ECDSA 256/384-bit. If no domain in the origin's certificate matches the origin domain name, viewers get **502 Bad Gateway**.
-- **Price classes:** `PriceClass_100` (US, Canada, Europe, Israel), `PriceClass_200` (adds most of Asia, Middle East, Africa), `PriceClass_All` (everywhere). Fewer edge locations = cheaper but further from some users. Observable in the `X-Amz-Cf-Pop` response header.
-- **Data transfer from your AWS origin to CloudFront is waived.** You pay for CloudFront's data transfer out to viewers and for requests.
+- **Price classes** cap how far afield your content is served from: `PriceClass_100` is the cheapest and fewest locations, `PriceClass_200` adds more of Asia, the Middle East and Africa, `PriceClass_All` is everywhere and is the default. Fewer edge locations = cheaper but further from some users; which edge actually served you shows in the `X-Amz-Cf-Pop` response header. ⚠️ verify: the exact country list per class — AWS retired the `PriceClass.html` docs page (it now 301-redirects to the pricing page) and the surviving docs give no country breakdown.
+- **Data transfer from your AWS origin to CloudFront is waived** — AWS's words: "Data transfer between CloudFront and your AWS origins is automatically waived when serving traffic through CloudFront." Beyond that there are now **two** pricing models, and the note used to describe only the second: **flat-rate monthly plans** (**$0 / $15 / $200 / $1,000**) that bundle CDN, WAF, DDoS protection, DNS, a TLS certificate, logging and edge compute with **no overage charges**; or **pay-as-you-go**, where you are "billed separately for each service based on your actual usage" — classic per-GB data transfer out plus per-request charges. *(Verified 2026-10-07.)*
 - **Response headers worth knowing:** `X-Cache: Hit from cloudfront` / `Miss from cloudfront`, `Age` (seconds cached), `X-Amz-Cf-Pop` (which edge served you), `X-Amz-Cf-Id` (log correlation).
-- **Geo restriction** allows or blocks whole countries at the edge (`whitelist` / `blacklist`). It's CloudFront-native and free — distinct from Route 53 **geolocation routing**, which chooses *where to send* rather than *whether to allow*.
+- **Geo restriction** allows or blocks whole **countries** at the edge, and it applies to the **entire distribution**, not per path (console: *Allow list* / *Block list*; the API still uses `whitelist` / `blacklist`). A blocked viewer gets **403 Forbidden**. Need finer than country granularity, or restriction on only part of the content? That is a third-party geolocation service plus signed URLs, not this feature. Distinct from Route 53 **geolocation routing**, which chooses *where to send* rather than *whether to allow*. ⚠️ verify: whether AWS states geo restriction carries no additional charge.
 - Integrates with **AWS WAF** and **Shield** (Standard is automatic and free; Advanced is paid) for DDoS and application-layer protection at the edge.
 
 ## Comparisons
@@ -145,7 +147,7 @@ flowchart LR
 
 |   | **CloudFront** | **S3 Transfer Acceleration** | **Global Accelerator** |
 |---|---|---|---|
-| What it does | caches HTTP content at edges | speeds S3 **uploads** via an edge + the AWS backbone | routes **any TCP/UDP** over the AWS backbone to the nearest healthy Region |
+| What it does | caches HTTP content at edges | speeds long-distance S3 transfers via an edge + an optimized network path — AWS's definition is bidirectional, its stated use cases are all **uploads** | routes **any TCP/UDP** over the AWS backbone to the nearest healthy Region |
 | Caches? | ✅ | ❌ | ❌ |
 | Protocols | HTTP/HTTPS | S3 API | **TCP / UDP** |
 | Static IPs | ❌ (DNS name) | ❌ | ✅ **two static anycast IPs** (four dual-stack) |
@@ -159,7 +161,7 @@ flowchart LR
 
 |   | **CloudFront Functions** | **Lambda@Edge** |
 |---|---|---|
-| Language | JavaScript (ECMAScript 5.1) | Node.js and Python |
+| Language | JavaScript (ECMAScript 5.1 compliant), or **JavaScript runtime 2.0** | Node.js and Python |
 | Events | **viewer request / viewer response only** | viewer request/response **+ origin request/response** |
 | Duration | **sub-millisecond** | up to **30 seconds** |
 | Memory | 2 MB | 128 MB (viewer) / 10 GB (origin) |
@@ -176,6 +178,7 @@ flowchart LR
 | Grants access to | **one individual file** | **multiple files** (a whole section, all HLS segments) |
 | Use when | the client can't handle cookies; you're distributing a single object | you don't want to change your existing URLs |
 | Works with | S3 **and** custom origins | S3 **and** custom origins |
+| CloudFront **KeyValueStore** | ✅ — but **runtime 2.0 only** | ❌ |
 
 Signers are configured as **trusted key groups** (recommended) or the legacy **trusted signers**. Note the contrast with **S3 presigned URLs** ([[09-s3-security]]): those carry the permissions of whoever generated them and are S3-only; CloudFront signed URLs are a CloudFront-level control that also works for custom origins.
 
@@ -188,18 +191,18 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > A deploy updates both `index.html` and the app's CSS. Cache them the same way and you must choose between slow updates or constant invalidation. The production pattern splits them: **`index.html` gets a short TTL** (60 s) because it is tiny and is the only thing that must change quickly; **`/static/app.a1b2c3.css` gets a one-year TTL** because the hash is *in the filename*, so a new build produces a new name and therefore a **new cache key**. Nothing needs invalidating, ever, and users mid-session keep working off the old asset instead of getting a half-updated page.
 
 > [!failure] Failure mode — the bucket policy that trusts every CloudFront distribution on earth
-> A team writes the OAC bucket policy but omits the `Condition` block, leaving `Principal: {"Service": "cloudfront.amazonaws.com"}` and nothing else. **Everything works perfectly** — their site serves, direct S3 URLs still 403 for anonymous users, tests pass. But `cloudfront.amazonaws.com` is the *same principal for every AWS customer*, so anyone who learns the bucket name can point **their own** distribution at it and serve the content as their own, on their own domain, billed to them but read from you. The bug is invisible because the condition isn't what makes *your* distribution work — it's what stops *everyone else's*. Same shape as the S3 event-notification and replication-role conditions in [[09-s3-security]]: the service principal identifies the *service*, never the *customer*.
+> A team writes the OAC bucket policy but omits the `Condition` block, leaving `Principal: {"Service": "cloudfront.amazonaws.com"}` and nothing else. **Everything works perfectly** — their site serves, direct S3 URLs still 403 for anonymous users, tests pass. But `cloudfront.amazonaws.com` is the *same principal for every AWS customer*, so anyone who learns the bucket name can point **their own** distribution at it and serve the content as their own, on their own domain, billed to them but read from you. The bug is invisible because the condition isn't what makes *your* distribution work — it's what stops *everyone else's*. Same shape as the S3 event-notification and replication-role conditions in [[09-s3-security]]: the service principal identifies the *service*, never the *customer* — the confused-deputy shape [[01-iam]] covers.
 
 > [!warning] Not yet applied
 > **Not applied or verified live** as of 2026-09-04 — the practical was deferred. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
-- [What is AWS Global Accelerator](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html)
-
-Provenance: Claude wrote this lab at the human's request, to keep pace toward exam practice.
 
 ## Traps
 
+> [!warning] Trap — an origin group fails over for any failing request
+> Only for `GET`, `HEAD` and `OPTIONS`. AWS: "CloudFront does not fail over when the viewer sends a different HTTP method (for example `POST`, `PUT`, and so on)." So an origin group is the wrong answer for a write path or an API, and it also won't fire at all unless `OPTIONS` is among the cache behaviour's cached HTTP methods. Connection failures and timeouts only trigger failover if you configured **503** and **504** respectively as failover codes.
+
 > [!warning] Trap — "put CloudFront in front of the S3 website endpoint and use OAC"
-> You can't. An S3 bucket configured as a **website endpoint** is a **custom origin**, and custom origins support **neither OAC nor OAI**. If a question requires a private bucket, the origin must be the **REST endpoint** — which also means you lose S3's website features (index documents on subfolders, S3 redirect rules), and use CloudFront's `default_root_object` and custom error pages instead.
+> You can't. An S3 bucket configured as a **website endpoint** is a **custom origin**, and custom origins support **neither OAC nor OAI**. If a question requires a private bucket, the origin must be the **REST endpoint** — which also means you lose S3's website features (index documents on subfolders, S3 redirect rules), and use CloudFront's **Default root object** and custom error pages instead.
 
 > [!warning] Trap — the ACM certificate in the wrong Region
 > A certificate for **viewer↔CloudFront** HTTPS must be in **`us-east-1`**, regardless of where the origin, the bucket, or you are. A perfectly valid certificate in `eu-west-1` simply won't appear in the distribution's certificate list. (The one exception: a certificate used for **CloudFront↔origin** HTTPS with an **ELB** origin may live in any Region.)

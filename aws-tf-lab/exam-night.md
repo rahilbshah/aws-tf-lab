@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 339 pointers · ~30 min read*
+*176 recall hooks · 340 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -510,6 +510,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[11-cloudfront#Why Global Accelerator fails over faster than DNS can|explain]]
 
 **Traps** [[11-cloudfront#Traps|open]]
+- an origin group fails over for any failing request
 - "put CloudFront in front of the S3 website endpoint and use OAC"
 - the ACM certificate in the wrong Region
 - CloudFront vs Global Accelerator
