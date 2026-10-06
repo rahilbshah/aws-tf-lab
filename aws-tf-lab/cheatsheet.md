@@ -1156,7 +1156,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Valid memory values when Fargate cpu = 256 | 512, 1024, 2048 MiB only; an invalid pair fails at apply with ClientException, not at plan |
 | ALB target group algorithms | round_robin, least_outstanding_requests, weighted_random — default round_robin |
 | Fargate network mode | awsvpc only — every task gets its own ENI and private IP |
-| ALB target_type for Fargate | ip — never instance; wrong value applies cleanly, registers nothing, ALB returns 503 |
+| ALB target type for Fargate | **`ip`, never `instance`** — AWS: services whose tasks use `awsvpc` "only support Application Load Balancers and Network Load Balancers… you must choose `ip` as the target type, not `instance`", because those tasks have an ENI rather than an EC2 instance. Fargate always uses `awsvpc`. *(Corrected 2026-10-07: this row asserted a silent-503 symptom no AWS page states.)* |
 | Task definition identifier format | family:revision — immutable; you register a new revision, never edit one |
 | Fargate Spot discount | Up to 70% off for interruption-tolerant tasks |
 | ECS containment hierarchy | Cluster → Service → Task → Container(s) |
@@ -1165,7 +1165,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Control plane cost, ECS vs EKS | ECS control plane free; EKS $0.10 per cluster per hour (standard support) whether or not anything runs |
+| Control plane cost, ECS vs EKS | ECS control plane free; EKS **$0.10** per cluster-hour on **standard support**, **$0.60** per cluster-hour once the Kubernetes version moves to **extended support** — either way whether or not anything runs |
+| ECS capacity options beyond EC2-vs-Fargate | **ECS Managed Instances** (AWS manages the EC2 capacity; EC2 price + a management fee, per second with a 1-minute minimum) and the **`EXTERNAL`** launch type for **ECS Anywhere** (tasks on your own on-prem servers/VMs — no ELB, no service discovery, no `awsvpc` there) |
+| Fargate billing granularity | Per **second** with a **1-minute minimum** — a 10-second task bills a full minute. ~$0.0405/vCPU-hour, ~$0.0044/GB-hour (Linux/x86, us-east-1) |
 
 **ECS IAM**
 
@@ -1173,7 +1175,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Execution role vs task role — who uses it | Execution role = the ECS/Fargate agent; task role = your application code |
 | What the execution role is actually required for | Private ECR pulls, the awslogs driver, Secrets Manager/SSM refs — NOT for a public Docker Hub pull |
-| Execution role trust principal and managed policy | Attach **`AmazonECSTaskExecutionRolePolicy`** (verified). ⚠️ verify: that the trust principal is `ecs-tasks.amazonaws.com` |
+| Execution role trust principal and managed policy | Trust policy principal is **`"Service": "ecs-tasks.amazonaws.com"`** (verified verbatim 2026-10-07), role conventionally named **`ecsTaskExecutionRole`**, with the managed policy **`AmazonECSTaskExecutionRolePolicy`** attached |
 | Are execution-role credentials visible in the container? | No — "not directly accessible by the containers in the task"; task role creds are, via task metadata endpoint |
 
 **ECR & VPC endpoints**

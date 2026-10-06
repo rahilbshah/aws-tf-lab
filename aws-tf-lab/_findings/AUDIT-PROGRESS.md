@@ -470,3 +470,35 @@ alone points at **IoT Core**, which is built on MQTT); "it runs in your VPC on a
 endpoint" (private access is a configuration, not a guarantee); and the SaaS elimination,
 which is really about *direction* — EventBridge ingests from SaaS partners, SNS delivers
 outbound to them.
+
+### 17-containers (2026-10-07) — cleared two long-standing carry-forward items
+
+123 claims, 18 pages. Large chunks verified clean: the whole deployment-circuit-breaker
+block (BOUNDED_PERCENT default 50, clamp 3–200, resetOnHealthyTask, the "no COMPLETED
+deployment" quote), the ECR-without-internet endpoint table including the
+prod-<region>-starport-layer-bucket ARN, minimumHealthyPercent 100 / maximumPercent 200,
+Fargate's 256→512/1 GB/2 GB pairs, Fargate Spot "up to a 70% discount", the ALB algorithms,
+Fargate profile selectors, and the whole Container Insights section.
+
+**Carry-forward item #1 resolved, and it was half right.** The note claimed that using an
+`instance` target group with `awsvpc` "does not error: terraform apply succeeds, no target
+registers, ALB serves 503". The *requirement* is real and now quoted verbatim from
+CreateService — "you must choose `ip` as the target type, not `instance`" — but the silent-
+failure *symptom* is stated on no AWS page, and the framing was Terraform's. Replaced the
+claim with AWS's rule and removed the symptom. Same fix in the harvested comparison table.
+
+**Carry-forward item #2 (the NAT $0.045/hr restated 3x) judged NOT a defect.** The figure is
+correct (verified) and each of the three uses is load-bearing to a different argument — the
+cost-inversion point, the worked example, and the trap. Stripping it would damage all three
+for no gain. Added a pointer to the owning notes instead so a price change has one place to
+check. Recording the judgment so it is not re-raised.
+
+Other real findings: "Portability: none" for ECS is an elimination contradicted by **ECS
+Anywhere** (`EXTERNAL` launch type runs tasks on-prem); EKS is **$0.60**/cluster-hour on
+extended support, not just $0.10; task-role credentials come from the **container
+credentials provider** on 169.254.170.2, not the task metadata endpoint; ECR does have its
+own per-second API quotas; Fargate bills per second **with a 1-minute minimum**; and the
+EC2-vs-Fargate binary now omits **ECS Managed Instances**.
+
+Also resolved the cheatsheet's `ecs-tasks.amazonaws.com` marker — confirmed verbatim in the
+task execution role trust policy. Cheatsheet markers now 6 -> 5.

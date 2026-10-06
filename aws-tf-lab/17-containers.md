@@ -3,7 +3,7 @@ topic: 17-containers
 domain: performance
 status: reviewed
 services: [ECS, Fargate, ECR, EKS]
-related: [02-ec2, 04-alb-asg, 05-vpc-core, 01-iam]
+related: [02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-endpoints-peering, 01-iam]
 tags: [topic, domain/performance]
 ---
 
@@ -12,12 +12,12 @@ Running containers without hand-managing the servers under them, and the four AW
 
 > [!info] Exam TL;DR
 > - **ECS is the orchestrator. Fargate is a launch type.** "ECS or Fargate" is a malformed question — you always use an orchestrator, and the launch type decides *who owns the servers*. EKS can use Fargate too.
-> - **EC2 launch type** = you own, patch and bin-pack the instances, and pay for them whether tasks fill them or not. **Fargate** = no instances exist for you, you pay per vCPU-second and GB-second of what the task *requested*.
+> - **EC2 launch type** = you own, patch and bin-pack the instances, and pay for them whether tasks fill them or not. **Fargate** = no instances exist for you, you pay per vCPU-second and GB-second of what the task *requested*. (Two more capacity options exist beyond that binary: **ECS Managed Instances**, where AWS manages the EC2 capacity for an instance price plus a management fee, and the **`EXTERNAL`** launch type for **ECS Anywhere** on your own hardware.)
 > - **Task definition : task :: AMI : EC2 instance.** An immutable, versioned blueprint. You never edit one — you register a new **revision**, and pointing the service at it *is* your deployment.
 > - **Hierarchy:** Cluster → Service (keeps N tasks alive, wires them to the ALB) → Task (one running unit) → Container(s). Containers share a task only if they must live, die and scale as one unit.
-> - **Fargate forces `network_mode = "awsvpc"`** — every task gets its own ENI and private IP. Therefore the ALB target group must be **`target_type = "ip"`**, never `"instance"`.
+> - **Fargate forces the `awsvpc` network mode** — every task gets its own ENI and private IP. Therefore the ALB target group's **target type must be `ip`**, never `instance` ([[04-alb-asg]] owns target groups). AWS: "you must choose `ip` as the target type, not `instance`."
 > - **Two IAM roles, different consumers.** *Execution role* = the Fargate agent (pull image, ship logs, read secrets). *Task role* = your application code (call S3, DynamoDB).
-> - **ECS control plane is free. EKS costs $0.10/cluster/hour** whether or not anything runs on it.
+> - **ECS control plane is free. EKS costs $0.10/cluster/hour** on a Kubernetes version in **standard support**, rising to **$0.60/cluster/hour** once that version moves to **extended support** — either way, whether or not anything runs on it.
 > - **ECR needs an S3 gateway endpoint**, because ECR stores image layers in S3. This is the single most-missed piece of a no-NAT private setup.
 
 ## What problem does this solve?
@@ -43,7 +43,7 @@ Fargate answers a second question: *who owns the servers underneath?* With the E
 - **Cluster** — a logical grouping, plus (for EC2 launch type) the capacity attached to it. With pure Fargate a cluster is almost empty, because there's no capacity to attach. That's why creating a Fargate-only cluster feels like it barely does anything.
 - **Task definition** — the immutable blueprint: which image, how much CPU and memory, which ports, where logs go, which IAM roles. Registered as `family:revision`.
 - **Task** — one running instantiation of a task definition. One or more containers that share a network namespace and a lifecycle.
-- **Service** — the reconciliation loop. Keeps N tasks running, replaces dead ones, registers and deregisters them with the ALB target group, and performs rolling deployments.
+- **Service** — the reconciliation loop. Keeps N tasks running, replaces dead ones, registers and deregisters them with the ALB target group ([[02-ec2]] for the instances underneath an EC2 launch type), and performs rolling deployments.
 
 > In one line: a task definition is an AMI for containers — immutable and versioned, and pointing the service at a new revision *is* the deployment.
 
@@ -87,9 +87,9 @@ graph TB
 *Verified against AWS docs 2026-09-06.*
 
 - **EKS control plane: $0.10 per cluster per hour**, standard support. ECS has no control-plane charge.
-- **Fargate (Linux/x86, us-east-1): ~$0.0404 per vCPU-hour and ~$0.0044 per GB-hour**, billed per second. **Fargate Spot: up to 70% off** for interruption-tolerant tasks.
-- **Fargate CPU/memory pairs are fixed.** With `cpu = "256"` (0.25 vCPU) the only valid memory values are **512, 1024, 2048** MiB. An invalid pair fails at apply with a `ClientException`, not at plan.
-- **Task execution role** is *"required depending on the requirements of your task"* — needed for ECR private pulls, the `awslogs` driver, and Secrets Manager/SSM references. **Not** needed to authenticate to a public Docker Hub image; that needs *network egress*, not IAM.
+- **Fargate (Linux/x86, us-east-1): ~$0.0405 per vCPU-hour ($0.000011244 per vCPU-second) and ~$0.0044 per GB-hour ($0.000001235 per GB-second)** — AWS: *"calculated per second with a 1-minute minimum"*, so a 10-second task still bills a full minute. **Fargate Spot: "up to a 70% discount"** for interruption-tolerant tasks.
+- **Fargate CPU/memory pairs are fixed.** With **256 CPU units (0.25 vCPU)** the only valid memory values are **512 MiB, 1 GB and 2 GB**. An invalid pair is rejected when the **task definition is registered**, so you find out at registration rather than when the task tries to run.
+- **Task execution role** ([[01-iam]] for the role-vs-policy mechanics) is *"required depending on the requirements of your task"* — needed for ECR private pulls, and — on **Fargate, ECS Managed Instances or an external instance** — for the `awslogs` driver and Secrets Manager/SSM references. **Not** needed to authenticate to a public Docker Hub image; that needs *network egress*, not IAM.
 - **Deployment circuit breaker threshold** (`BOUNDED_PERCENT`, default value 50): `clamp(0.5 × desiredCount, min 3, max 200)`. A small service therefore gets **3**. `resetOnHealthyTask` defaults to **true**, so only *consecutive* failures count — one healthy task resets the counter to zero.
 - **Circuit breaker rollback needs somewhere to roll back to.** AWS: *"When the deployment circuit breaker does not find a deployment that is in a COMPLETED state, the circuit breaker does not launch new tasks and the deployment is stalled."*
 - **ALB target group algorithms:** *"round_robin, least_outstanding_requests, or weighted_random"* — default `round_robin`.
@@ -105,7 +105,7 @@ For Fargate platform 1.4.0+, AWS states you *"require both Amazon ECR VPC endpoi
 | `com.amazonaws.<region>.s3` | **Gateway (free)** | ECR stores image **layers** in S3 (`prod-<region>-starport-layer-bucket`) |
 | `com.amazonaws.<region>.logs` | Interface | required if the task uses the `awslogs` driver in a VPC with no internet gateway |
 
-The endpoint's security group must allow **443 inbound from the private subnets**. And note the cost inversion: three interface endpoints billed per ENI per AZ can exceed one NAT gateway at $0.045/hr. Endpoints win on security posture, not automatically on price — count before assuming.
+The endpoint's security group must allow **443 inbound from the private subnets**. And note the cost inversion: three interface endpoints billed per ENI per AZ can exceed one NAT gateway at $0.045/hr ([[05-vpc-core]] owns NAT pricing; [[05-vpc-endpoints-peering]] owns endpoint pricing). Endpoints win on security posture, not automatically on price — count before assuming.
 
 ## Comparisons
 
@@ -113,8 +113,8 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 | | ECS | EKS |
 |---|---|---|
 | Orchestrator | AWS-proprietary | upstream-conformant Kubernetes |
-| Control plane cost | **free** | **$0.10/cluster/hr** |
-| Portability | none — it's an AWS API | your *workloads* port (manifests, Helm); EKS itself is still AWS |
+| Control plane cost | **free** | **$0.10/cluster/hr** (standard support) · **$0.60/cluster/hr** (extended support) |
+| Portability | the control plane is an AWS-only API — but tasks **can** run on your own on-prem servers or VMs via **ECS Anywhere** (`EXTERNAL` launch type), with service load balancing, service discovery and `awsvpc` all unsupported there | your *workloads* port (manifests, Helm); EKS itself is still AWS |
 | Team cost | small; learn one AWS service | high; Kubernetes is a career |
 | Exam trigger words | "simplest", "least operational overhead", "deep AWS integration" | "existing Kubernetes", "hybrid", "portable", "multi-cloud", "the team knows kubectl" |
 
@@ -132,7 +132,7 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 |---|---|---|
 | Used by | the **ECS/Fargate agent** | your **application code** in the container |
 | Typical permissions | pull from ECR, write to CloudWatch Logs, read a Secrets Manager secret | `s3:PutObject`, `dynamodb:Query`, whatever your app calls |
-| Credentials visible to the container? | **No** — AWS: *"not directly accessible by the containers in the task"* | Yes, via the task metadata endpoint |
+| Credentials visible to the container? | **No** — AWS: the execution role's credentials *"aren't directly accessible by the containers in the task"* | Yes — via the **container credentials provider** (`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` on `169.254.170.2`), which is a different interface from the **task metadata endpoint** |
 | Needed for a public image with no logs? | No | No |
 
 ### ALB target types
@@ -140,14 +140,14 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 |---|---|---|
 | Docs definition | *"targets are specified by instance ID"* | *"targets are IP addresses"* |
 | Use with | EC2 instances / ASG | **Fargate (awsvpc)**, peered VPCs, on-prem over DX/VPN |
-| Fargate outcome if wrong | apply succeeds, nothing ever registers, ALB returns 503 | works |
+| Fargate outcome if wrong | not supported — AWS requires `ip` for `awsvpc` tasks, which Fargate always uses | works |
 
 ### ECR vs Docker Hub
 | | ECR | Docker Hub |
 |---|---|---|
 | Authentication | **IAM** — the task execution role; no stored secret | username/password you must store and rotate |
 | Private networking | reachable with no internet at all, via VPC endpoints | needs NAT or a public IP |
-| Rate limits | none of Docker's | anonymous pulls are throttled |
+| Rate limits | not Docker's — but ECR has its own per-second API quotas (`BatchGetImage` 2,000/s, `GetDownloadUrlForLayer` 3,000/s, `GetAuthorizationToken` 500/s), adjustable via Service Quotas | anonymous pulls are throttled |
 | Extras | image scanning, lifecycle policies to expire old images, pull-through cache | — |
 
 ## Worked examples
@@ -170,7 +170,7 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too. If a question offers "ECS" and "Fargate" as alternatives, it is really asking **who manages the servers**, not which orchestrator.
 
 > [!warning] Trap — target_type on a Fargate service
-> With `awsvpc` each task has its own ENI, so there is no instance ID to register. Leaving `target_type` at the default `"instance"` does not error: `terraform apply` succeeds, the service creates, no target ever registers, and the ALB serves 503 against a plan that looked clean.
+> With `awsvpc` each task gets its own elastic network interface, so there is no EC2 instance ID to register. AWS states the rule directly: services whose tasks use `awsvpc` "only support Application Load Balancers and Network Load Balancers… Also, when you create any target groups for these services, **you must choose `ip` as the target type, not `instance`**. This is because tasks that use the `awsvpc` network mode are associated with an elastic network interface, not an Amazon EC2 instance." Fargate always uses `awsvpc`, so **Fargate behind an ALB is always an `ip` target group**. *(Corrected 2026-10-07: this used to assert a specific silent-failure symptom — targets never registering and a 503 — which no AWS page states.)*
 
 > [!warning] Trap — a green apply is not a green deployment
 > A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock. Two systems, two definitions of "done", and only one of them shows up in your pipeline output.
@@ -179,7 +179,7 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > Nothing in AWS authenticates you to Docker Hub; a public image needs *network egress*, not IAM. The execution role is required for **private ECR pulls, the `awslogs` driver, and secrets**. Answer "internet" for the public-image pull and "execution role" for the logs.
 
 > [!warning] Trap — rollback needs somewhere to roll back to
-> The circuit breaker rolls back to the most recent `COMPLETED` deployment. If the **first ever** deployment of a new service is broken, there is no such deployment: the breaker trips and the service stalls with zero tasks. Rollback protects against bad changes, not against a bad start.
+> The circuit breaker rolls back to the most recent `COMPLETED` deployment. If the **first ever** deployment of a new service is broken, there is no such deployment to roll back to — so no new tasks are launched and the deployment simply **stalls** with zero tasks. (It does not "trip and roll back"; there is nothing to roll back to.) Rollback protects against bad changes, not against a bad start.
 
 > [!warning] Trap — endpoints are not automatically cheaper than NAT
 > Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr. Choose endpoints for the security posture and for per-GB data cost at volume — then do the arithmetic rather than assuming.

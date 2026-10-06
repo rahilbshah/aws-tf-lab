@@ -416,13 +416,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
-- **target_type on a Fargate service** — With awsvpc each task has its own ENI, so there is no instance ID to register. Leaving target_type at the default "instance" does not error: terraform apply succeeds, the service creates, no target ever registers, and the ALB serves 503 against a plan that looked clean.  
+- **target_type on a Fargate service** — With awsvpc each task gets its own elastic network interface, so there is no EC2 instance ID to register.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **a green apply is not a green deployment** — A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **the execution role is not for the pull** — Nothing in AWS authenticates you to Docker Hub; a public image needs network egress, not IAM.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
-- **rollback needs somewhere to roll back to** — The circuit breaker rolls back to the most recent COMPLETED deployment. If the first ever deployment of a new service is broken, there is no such deployment: the breaker trips and the service stalls with zero tasks.  
+- **rollback needs somewhere to roll back to** — The circuit breaker rolls back to the most recent COMPLETED deployment. If the first ever deployment of a new service is broken, there is no such deployment to roll back to — so no new tasks are launched and the deployment simply stalls with zero tasks.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **endpoints are not automatically cheaper than NAT** — Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
