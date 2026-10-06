@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 197 discriminators · ~38 min read*
+*107 comparison tables · 198 discriminators · ~38 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -258,7 +258,9 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-security#Worked examples|note]]
 - **Object Lock stops the object being deleted** — It stops that version being deleted. A simple DELETE still returns 200 OK and adds a delete marker, hiding the object.  
   ↳ [[09-s3-security#Worked examples|note]]
-- **MFA Delete can be set up like any other bucket setting** — Only the root account with an MFA device can enable it, and only via the CLI — not an IAM user, and not the console.  
+- **one public statement only breaks the public part of a policy** — It breaks the whole policy. Publicness is judged on the entire bucket policy, so a single "Principal": "*" statement makes the policy public and RestrictPublicBuckets then strips out the named cross-account grants too.  
+  ↳ [[09-s3-security#Worked examples|note]]
+- **MFA Delete can be set up like any other bucket setting** — Only the root account that owns the bucket, holding an MFA device, can enable MFA Delete, and never from the console — the CLI or the API is required, so don't reject an option just because it says SDK or PutBucketVersioning.  
   ↳ [[09-s3-security#Worked examples|note]]
 
 

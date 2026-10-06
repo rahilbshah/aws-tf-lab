@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 336 pointers · ~30 min read*
+*176 recall hooks · 337 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -445,6 +445,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - enabling default encryption encrypts what's already there
 - a presigned URL uses the recipient's permissions
 - Object Lock stops the object being deleted
+- one public statement only breaks the public part of a policy
 - MFA Delete can be set up like any other bucket setting
 
 **Failure modes**

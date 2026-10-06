@@ -230,3 +230,23 @@ Two independent failures, recorded so neither is mis-diagnosed later:
    attempted again, check `pmset -g batt` for "AC Power" first; do not rely on having asked.
 2. **The truth agent stalled while the machine was awake**, so power was not its cause. See
    the 09-s3-advanced entry above for the mitigation.
+
+### 09-s3-security (2026-10-06) — 16 truth findings, 2 of them internal contradictions
+
+140 claims, 18 AWS pages (hard cap hit). 12 of 16 findings were absolutes, negatives or
+eliminations; only one was a plain number and it was right. Two were places where the
+Key-facts line contradicted the note's own teaching prose four screens earlier — and the
+Key-facts line is the one that gets memorised.
+
+Structural items held back (S3 notes, pending the user's read):
+- The orphaned comparison tables under `## Comparisons` H3s are fine, but the per-service
+  encryption menus sit under a heading whose title the generators do harvest — verified
+  present in discriminators.md, so no action needed.
+- `09-s3-security:265-272` duplicating EBS encryption with `12-storage-extras` is still on
+  the carry-forward list; not touched this pass.
+
+Agent reliability note, worth keeping: on `09-s3-advanced` the truth agent listed
+"RTC = 99.99% in 15 min" among facts it had VERIFIED, with no URL. The RTC user-guide page
+says "99.9 percent" verbatim; the S3 FAQ does not mention RTC; aws.amazon.com/s3/sla-replication
+404s. The uncited claim in an agent's prose summary is the one to distrust — its cited
+findings have all held up so far.

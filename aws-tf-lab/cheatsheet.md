@@ -599,9 +599,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| SSE-C availability change | ⚠️ Disabled by default on all new general-purpose buckets since April 2026; must be re-enabled deliberately |
+| SSE-C availability change | Disabled by default since **April 2026** on all new general-purpose buckets **and** on existing buckets in accounts that held **no** SSE-C objects. Re-enable deliberately via `PutBucketEncryption` (the `BlockedEncryptionTypes` field — distinct from the default-algorithm setting). Existing SSE-C objects still read fine with the key |
 | DSSE-KMS | Two independent AES-256 layers |
-| Which options can be bucket default encryption | SSE-S3, SSE-KMS, DSSE-KMS — never SSE-C |
+| Which options can be bucket default encryption | SSE-S3, SSE-KMS, DSSE-KMS — never SSE-C (the key arrives with the request, so there is nothing to hold). Separate setting, same API: whether the bucket **accepts** SSE-C writes at all |
+| Client-side encryption — current naming | **Amazon S3 Encryption Client** + a **wrapping key** (a KMS key you own, or an AES/RSA key you hold). Older names still in question banks: *CSE-KMS* and *CSE with a client-side master key*. The Encryption Client ignores **S3 Bucket Keys** even with a KMS wrapping key |
 | Re-encrypt objects already in the bucket | S3 Batch Operations → Copy (changing the default only affects new writes) |
 | Encryption automatic since when | SSE-S3 on every object since 5 January 2023 |
 | Header value: SSE-S3 vs SSE-KMS | AES256 = SSE-S3; aws:kms = SSE-KMS |
@@ -614,10 +615,13 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Object Lock delete asymmetry | DELETE with a version id → 403 AccessDenied; DELETE without → 200 OK + delete marker |
 | GOVERNANCE mode bypass requirements | s3:BypassGovernanceRetention + header x-amz-bypass-governance-retention:true |
-| Retention vs legal hold | Retention = a fixed *Retain Until Date*; **extend always, shorten only in GOVERNANCE mode with `s3:BypassGovernanceRetention`** — in COMPLIANCE mode nobody, not even root, can shorten it. Legal hold = no expiry, removed by an explicit call |
+| Retention vs legal hold | Retention = a *Retain Until Date*, **fixed** (date up front) or **variable** (event hold + duration; S3 fixes the date at release + duration, and lowering the duration never pulls it earlier); **extend always, shorten only in GOVERNANCE mode with `s3:BypassGovernanceRetention`** — in COMPLIANCE mode nobody, not even root, can shorten it. Legal hold = no expiry, placed/removed freely by anyone with `s3:PutObjectLegalHold` |
+| What Object Lock does NOT stop | New **versions** being written, and **delete markers** being added on top — it protects the specific version it was applied to. An object's own retention also **overrides** the bucket default |
+| COMPLIANCE mode escape hatch | AWS: "The only way to delete an object under the compliance mode before its retention date expires is to **delete the associated AWS account**" |
+| GOVERNANCE bypass in the console | The S3 console sends `x-amz-bypass-governance-retention:true` **by default**, so a user holding `s3:BypassGovernanceRetention` just succeeds there |
 | COMPLIANCE mode escape hatch | None — not even root; AWS's documented way out before expiry is closing the AWS account |
 | When Object Lock can be enabled / disabled | At bucket creation or on an existing versioned bucket; can never be turned off, versioning can't be suspended |
-| MFA Delete — who can configure it | **Root** account with an MFA device, via the **CLI only** — not an IAM user, not the console |
+| MFA Delete — who can configure it | **Root** account (the bucket owner) with an MFA device, via the **CLI *or* the API/SDKs** — **never the console**, never an IAM user. *(Corrected 2026-10-06: this row said "CLI only"; AWS says "the AWS CLI or the API".)* Also **cannot be combined with lifecycle configurations**, and the MFA state lives in the same versioning subresource, so one `PutBucketVersioning` sets both |
 
 **S3 replication**
 
@@ -638,10 +642,12 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Block Public Access — the four setting names | BlockPublicAcls · IgnorePublicAcls · BlockPublicPolicy · RestrictPublicBuckets (new vs existing × ACL vs policy) |
+| Block Public Access — the four setting names | BlockPublicAcls · IgnorePublicAcls · BlockPublicPolicy · RestrictPublicBuckets. The axis is **ACL vs policy × reject-the-write vs ignore-at-request-time** — **NOT new vs existing**. *(Corrected 2026-10-06: `IgnorePublicAcls` ignores ALL public ACLs, and AWS says it "doesn't prevent new public ACLs from being set".)* |
+| Block Public Access — levels and how they combine | Four levels: **access point, bucket, account, organization** (AWS Organizations). S3 applies the **most restrictive combination** — not "account wins". Org level is all-four-or-none and overrides account settings; an access point's BPA is **fixed at creation** |
+| When BPA calls an IP-scoped policy "public" | An `aws:SourceIp` range broader than **/8** (IPv4) or **/32** (IPv6), excluding RFC1918 — so an IP-scoped policy can still be rejected as public |
 | Bucket policy max size | 20 KB |
 | BPA vs a public bucket policy | BPA overrides the policy; settable per-bucket and account-wide, most restrictive combination wins |
-| Setting that disables ACLs | BucketOwnerEnforced — the default for buckets created since April 2023 |
+| Setting that disables ACLs | BucketOwnerEnforced — AWS states it is "the default setting for all newly created buckets", with ACLs disabled. ⚠️ verify: the "since April 2023" date is not on the Object Ownership page |
 | Cross-account access requires | Both the bucket policy AND the caller's IAM policy to allow it |
 
 **Presigned URLs**
