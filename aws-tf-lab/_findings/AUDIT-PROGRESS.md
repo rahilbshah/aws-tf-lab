@@ -291,3 +291,54 @@ walkthrough sets Associate with Health Check = No.
 Terraform leftovers found and removed here too: `set_identifier`, `weighted_routing_policy`.
 That is the fourth note in a row carrying them, so the earlier Terraform-removal pass was
 not as complete as its commit implied — expect more in the remaining notes.
+
+---
+
+## RESUME POINT — stopped 2026-10-06 (user went to work)
+
+**Done: 18 of 30 exam notes.** Last commit `f981d3d` (10-route53). Working tree clean,
+nothing half-applied. The `11-cloudfront` audit was launched and then **stopped mid-run**
+(task `wiqge6zl1`, run `wf_dc293044-f43`) — it produced no usable result, so just relaunch
+it from scratch.
+
+**Completed:** 01-iam, 01-iam-advanced, 02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-security,
+05-vpc, 05-vpc-endpoints-peering, 05-vpc-hybrid, 07-rds-aurora, 08-elasticache, 09-s3,
+09-s3-intro, 09-s3-advanced, 09-s3-security, 10-route53. Plus cheatsheet.md kept in sync
+per-note.
+
+**Remaining queue, in order:** 11-cloudfront, 12-storage-extras, 13-cost-optimization,
+14-dr-resilience, 15-decoupling, 16-kinesis, 17-containers, 19-serverless, 20-monitoring,
+21-security, 22-analytics, 23-machine-learning, 24-other-services, 25-well-architected.
+(03-ami-bake, 06-capstone, 18-containers-capstone are `exam: false` and excluded.)
+
+**How to restart, exactly:**
+1. `Workflow({scriptPath: "<scratchpad>/note-audit.js", args: {notes:["11-cloudfront.md"]}})`
+   — the script is at the session scratchpad path; if the session is new, recreate it from
+   the copy in the transcript or re-author it (prompts are in the git history of this file's
+   commits). The truth lens is capped at **18 pages** and must stay capped: uncapped it ran
+   2h 6m on 09-s3-advanced and returned nothing.
+2. Wait for the workflow to COMPLETE, take over its results, then launch the next note's
+   audit, then edit the current note. One workflow in flight at a time — the user was
+   explicit about this.
+3. Verify every citation first-hand before editing (§13.10c). Two concrete reasons from this
+   run: an agent claimed RTC was "verified" at 99.99% with no URL when the page says 99.9%,
+   and separately I introduced two unearned absolutes myself that the next lens caught.
+4. Grep every note for Terraform leftovers explicitly — four consecutive notes had them
+   despite an earlier pass claiming they were all removed.
+5. Sync `cheatsheet.md` in the SAME commit as each note, not at the end.
+
+**Still open, carried forward:**
+- Terraform leftover at `17-containers.md:173`; truncated-quote trap at `19-serverless.md:132`.
+- ALB `$0.0225/hr` restated in `19-serverless` (x2) and `18-containers-capstone`; NAT
+  `$0.045/hr` in `17-containers` (x3), `18-containers-capstone`, `13-cost-optimization`.
+- `13-cost-optimization:120` still carries the pre-correction public-IPv4 rule.
+- `09-s3-security:265-272` duplicates EBS encryption with `12-storage-extras`.
+- `15-decoupling:146` duplicates the SQS backlog formula.
+- `06-capstone` contradictions on replica caps and backup retention (non-exam, low priority).
+- 2 honest `⚠️ verify` markers in cheatsheet.md (ElastiCache default ports — no AWS page
+  states them; ECS task trust principal — `17-containers` will cover it).
+- Structural changes to the VPC and S3 notes are still HELD pending the user reading them.
+
+**Do not attempt another unattended overnight run without checking `pmset -g batt` shows
+"AC Power" first.** caffeinate's PreventSystemSleep does not bind on battery; that is why
+the 2026-10-05 overnight run produced one note instead of twelve.
