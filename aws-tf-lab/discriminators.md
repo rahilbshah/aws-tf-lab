@@ -516,15 +516,15 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **Athena vs Redshift** — Both run SQL over big data, so scenarios are written to make you pick on familiarity. The axis is infrastructure and frequency, not capability. Ad-hoc, intermittent, "no infrastructure to manage", "pay only for what you query" → Athena. Sustained load, many concurrent BI users, complex multi-table joins, a dedicated warehouse → Redshift. If the scenario mentions loading/ETL into the engine first, that's Redshift; if the data stays in S3, that's Athena.  
   ↳ [[22-analytics#Traps|note]]
-- **reducing Athena cost by resizing something** — Athena has nothing to resize — it's serverless and billed on bytes scanned. Any option offering a bigger instance, more nodes, or provisioned capacity is wrong by construction.  
+- **reducing Athena cost by resizing something** — Athena has nothing to resize — it's serverless and billed on bytes scanned. Any option offering a bigger instance or more nodes is wrong by construction.  
   ↳ [[22-analytics#Traps|note]]
-- **Redshift Spectrum as a standalone service** — Spectrum is a feature of Redshift, not an alternative to it. It requires a running cluster, and the cluster must be in the same Region as the S3 data.  
+- **Redshift Spectrum as a standalone service** — Spectrum is a feature of Redshift, not an alternative to it — it runs on Redshift compute, which today means a provisioned cluster or Redshift Serverless.  
   ↳ [[22-analytics#Traps|note]]
 - **OpenSearch vs Athena for "analyse our logs"** — Both can touch log data and the wording is deliberately close. OpenSearch is for full-text search, relevance ranking, and live operational dashboards over recent logs — near-real-time, always-on cluster. Athena is for SQL aggregates over historical logs already in S3 — nothing running between queries.  
   ↳ [[22-analytics#Traps|note]]
 - **EMR core nodes on Spot** — Task nodes are the Spot answer because they store no HDFS data — losing one costs compute only.  
   ↳ [[22-analytics#Traps|note]]
-- **AWS Data Pipeline as a live answer** — It still appears in the SAA-C03 exam guide's in-scope list and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, with console access removed in April 2023.  
+- **AWS Data Pipeline as a live answer** — It still appears in the SAA-C03 exam guide's in-scope list and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, On the exam, treat it as answerable if a question explicitly offers it for legacy orchestration — but in any "which service should we use" scenario the modern answers are Glue (ETL), Step Functions (orchestration) or MWAA (Airflow).  
   ↳ [[22-analytics#Traps|note]]
 - **building a second catalog per engine** — Athena, EMR and Redshift Spectrum all read the same AWS Glue Data Catalog. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did.  
   ↳ [[22-analytics#Traps|note]]

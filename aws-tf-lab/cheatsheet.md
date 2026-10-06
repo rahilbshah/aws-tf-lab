@@ -1369,9 +1369,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Redshift Spectrum Region constraint | Cluster and the S3 data must be in the same AWS Region |
+| Redshift Spectrum Region constraint | **Scoped, not universal.** AWS: "For **RA3 and DC2 provisioned clusters** using Redshift Spectrum, the cluster and the Amazon S3 bucket must be in the same AWS Region. **Provisioned RG clusters and Amazon Redshift Serverless** … support querying Amazon S3 data **across AWS Regions**." Same-Region is still the expected exam answer. *(Corrected 2026-10-07.)* |
 | Spectrum fact vs dimension table placement | Large fact tables in S3, smaller dimension tables in the cluster |
-| Does Spectrum work without a cluster? | No — Spectrum is a Redshift feature and requires a running cluster |
+| Does Spectrum work without a cluster? | It needs **Redshift compute** — but that can be **Redshift Serverless**, which provisions no cluster. "Requires a running cluster" is out of date; "it is a Redshift feature, not a standalone service" is the durable point. If the stem wants S3 queried with **no Redshift at all**, that is **Athena** |
 | Redshift's three speed mechanisms | Massively parallel processing (MPP) + columnar storage + compression encoding |
 | Redshift vs RDS/Aurora, one word each | Redshift = OLAP; RDS/Aurora = OLTP |
 
@@ -1405,6 +1405,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Which engines read the Glue Data Catalog | Athena, EMR and Redshift Spectrum — one catalog, three engines |
+| Athena Provisioned Capacity | **It exists** — Capacity Reservations at **$0.30 per DPU-hour**, dedicated capacity for predictable workloads, and it removes the 10 MB per-query minimum on federated queries. Don't reject an option just for naming it; it is simply not the fix for "this query scans too much data" (that's Parquet/ORC, compression, partitioning) |
+| Analytics services with a Serverless flavour | **Redshift Serverless, EMR Serverless, OpenSearch Serverless** — so "Redshift/EMR/OpenSearch" no longer implies a cluster to manage. Read whether the stem names the serverless variant before applying the "least operational overhead ⇒ serverless" heuristic |
 | Lake Formation — what it actually is | An authorization layer over the Glue Data Catalog; stores no data itself |
 | Glue visual editor vs no-code data prep | Glue Studio = visual job editor; Glue DataBrew = no-code data prep |
 
