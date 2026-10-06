@@ -458,7 +458,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ACM auto-renews, so no monitoring is needed"** — True and irrelevant. Auto-renewal can still fail — DNS validation records removed, a CAA record blocking issuance, an email-validated certificate nobody clicked.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
-- **Patch Manager offered for "install this tool", Run Command for "apply this patch"** — Two stems that look identical and have opposite answers. "Install a third-party tool on 500 instances, quickly, and repeatedly from now on" → Run Command: it runs an arbitrary command or installer across a fleet, and it keeps working as instances are added.  
+- **Patch Manager offered for "install this tool", Run Command for "apply this patch"** — Two stems that look identical and have opposite answers. "Install a third-party tool on 500 instances, quickly, right now" → Run Command, which AWS describes as performing "one-time configuration changes at scale": it runs an arbitrary command or installer across a fleet, and it keeps working as instances are added.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **a bastion host offered for private-instance access** — Any stem asking to reach an instance in a private subnet lists a bastion/jump host, an inbound SSH rule from the corporate CIDR, or a key-pair distribution scheme.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]

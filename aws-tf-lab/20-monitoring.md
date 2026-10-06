@@ -3,7 +3,7 @@ topic: 20-monitoring
 domain: resilient
 status: reviewed
 services: [CloudWatch, CloudTrail, Config, EventBridge, XRay, SystemsManager]
-related: [04-alb-asg, 19-serverless, 13-cost-optimization, 01-iam-advanced]
+related: [02-ec2, 05-vpc-endpoints-peering, 21-security, 25-well-architected]
 tags: [topic, domain/resilient]
 ---
 
@@ -19,7 +19,7 @@ Four services that answer four different questions, and an exam that mostly test
 > - **An alarm invokes actions only when it CHANGES state.** Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
 > - **Composite alarms exist to reduce alarm noise** — and they cannot perform EC2 or Auto Scaling actions.
 > - **EventBridge = CloudWatch Events, renamed.** Same service; a question naming either means the same thing.
-> - **Systems Manager is not just Session Manager.** **Run Command** = push an arbitrary command/installer once; **Patch Manager** = patch existing software against a baseline; **State Manager** = hold a desired state over time; **Maintenance Windows** = the *schedule* only, never the doer. "Install a tool" and "apply a patch" are different answers.
+> - **Systems Manager is not just Session Manager.** **Run Command** = push an arbitrary command/installer **once**, against the targets resolved at that moment; **Patch Manager** = patch operating systems *and applications* against a baseline; **State Manager** = hold a desired state over time, re-applying to new nodes as they appear; **Maintenance Windows** = the *schedule* only, never the doer. "Install a tool" and "apply a patch" are different answers.
 > - **Alarm actions on EC2: `reboot` fixes an *Instance* status check, `recover` fixes a *System* one** (bad host → move to new hardware). `recover` works **only** with `StatusCheckFailed_System`. Recovery keeps the **instance ID and every IP including public IPv4**; it **loses RAM**. **Terminated instances can never be recovered.**
 > - **"Notify 30 days before a certificate expires"** → ACM's **`DaysToExpiry`** CloudWatch metric (published **twice daily**) and/or an **EventBridge** rule on **AWS Health** ACM events → **SNS**. Auto-renewal does not remove the need to watch it.
 
@@ -54,7 +54,7 @@ Retention is automatic and tiered — data is aggregated up as it ages:
 
 Metrics can't be deleted; they expire after 15 months with no new data.
 
-**The most-tested gap:** the hypervisor can see CPU, network and disk *I/O*, so those are free EC2 metrics. It cannot see inside the guest OS — so **memory utilisation and disk space used are not there**. The CloudWatch agent collects *"internal system-level metrics... in-guest metrics, in addition to the metrics for Amazon EC2 instances"*, and they are *"billed as custom metrics"*.
+**The most-tested gap:** the hypervisor can see CPU, network and disk *I/O*, so those are free EC2 metrics (⚠️ verify the disk scope: `AWS/EC2` disk metrics cover **instance store** volumes, while EBS volume I/O is reported separately under `AWS/EBS`). It cannot see inside the guest OS — so **memory utilisation and disk space used are not there**. The CloudWatch agent collects *"internal system-level metrics... in-guest metrics, in addition to the metrics for Amazon EC2 instances"*, and they are *"billed as custom metrics"*.
 
 > In one line: if the metric requires looking inside the operating system, it needs the agent.
 
@@ -109,7 +109,8 @@ A CloudWatch alarm on a **per-instance** EC2 metric can carry an *action* that o
 instance itself: **stop**, **terminate**, **reboot** or **recover**. Stop and terminate exist to
 save money on instances that have finished their work. Reboot and recover exist to restore an
 instance automatically, and the exam tests the difference between those two because it maps onto
-the two **status checks**.
+the **system** and **instance** status checks ([[02-ec2]] owns the instance lifecycle). (EC2 actually runs **four** kinds now — system, instance,
+**attached EBS** and **application** — but reboot-vs-recover turns on the first two.)
 
 - **Instance** status check fails → something inside the guest is broken (bad kernel, exhausted
   memory, corrupt filesystem). A **reboot** is the fix: same physical host, OS restart.
@@ -141,7 +142,10 @@ supported instance types, and both must be in place *before* the check fails.
 ACM auto-renews the certificates it issued, as long as validation still resolves — see
 [[21-security#ACM — where the certificate has to live]]. Auto-renewal is not the same as knowing
 it happened, so "notify the security team 30 days before expiry" is a monitoring question with
-**two** valid answers, which is why it shows up as Select TWO:
+more than one valid answer, which is why it shows up as Select TWO. ACM also emits its own
+EventBridge event, **`ACM Certificate Approaching Expiration`** (source `aws.acm`), **daily**
+from **45 days** before expiry for private and imported certificates and **30 days** for public
+ones — often the most direct answer of the lot. The two the note built on:
 
 - **The metric.** ACM publishes **`DaysToExpiry`** in the **`AWS/CertificateManager`** namespace,
   dimensioned by **`CertificateArn`**, **twice per day** for every certificate, stopping once the
@@ -195,7 +199,7 @@ graph TB
 - **Default trail contents:** *"By default, trails and event data stores log management events, but not data or Insights events."*
 - **CloudTrail Insights** detects *"unusual API call rate or error rate activity... by analyzing CloudTrail management activity"* — measured against your own account's normal.
 - **The CloudWatch agent** collects in-guest metrics and logs, publishes to the `CWAgent` namespace by default, and its metrics are **billed as custom metrics**.
-- ⚠️ verify: the exact list of valid `retention_in_days` values for a log group (1 day → 10 years, plus "never expire" as the default) — confirm against the Logs docs before relying on a specific number.
+- **Log group retention** is an explicit setting, and the default is **Never expire** — which is the cost trap, since logs accumulate forever until you set one. ⚠️ verify the exact enumerated day values AWS allows (roughly 1 day to 10 years) before relying on a specific number.
 
 - **EC2 alarm actions:** **stop, terminate, reboot, recover**. `recover` works **only** with `StatusCheckFailed_System`, never `StatusCheckFailed_Instance`. Recovery **preserves** instance ID, private/public/Elastic IPs, metadata, placement group, attached EBS volumes and AZ; it **loses** RAM contents and instance-store data, and **uptime resets to zero**. **Terminated instances cannot be recovered.** **Simplified automatic recovery is enabled by default** on supported instances; CloudWatch action based recovery is configured manually. Reboot/stop/terminate actions use the service-linked role **`AWSServiceRoleForCloudWatchEvents`**. Configure these alarms to treat missing data as **`missing`**, since EC2 metrics can briefly go `INSUFFICIENT_DATA` on a healthy instance.
 - **ACM expiry:** metric **`DaysToExpiry`**, namespace **`AWS/CertificateManager`**, dimension **`CertificateArn`**, published **twice per day** until the certificate expires. Separately, **AWS Health** events (`aws.health` / *AWS Health Event*) carry **`AWS_ACM_RENEWAL_STATE_CHANGE`**, **`CAA_CHECK_FAILURE`**, **`AWS_ACM_RENEWAL_FAILURE`** for **EventBridge → SNS**.
@@ -208,8 +212,8 @@ graph TB
 | Tool | Its actual job | The stem that means it |
 |---|---|---|
 | **Run Command** | run a command or script across a fleet **once, now**, without logging in | "**install** a third-party tool", "make a **one-time** configuration change", "without SSH/RDP" |
-| **Patch Manager** | automate **OS patching** — security and other updates — against a **patch baseline**, with compliance reporting. Its *application*-patching support is narrow | "**patch** a security exposure", "keep the OS up to date", "patch **compliance**" |
-| **Maintenance Windows** | **only a schedule** — a window in which disruptive work may run | "during a defined window", "outside business hours" — never the thing that *does* the work |
+| **Patch Manager** | automate patching of **operating systems *and* applications** — security and other updates — against a **patch baseline**, with compliance reporting (on Windows Server, application support is limited to applications Microsoft itself releases). Its broader third-party *application*-patching support is narrow | "**patch** a security exposure", "keep the OS up to date", "patch **compliance**" |
+| **Maintenance Windows** | the **schedule**, plus registered **targets** and registered **tasks** — the work itself is carried out by the Run Command, Automation, Lambda or Step Functions task it invokes | "during a defined window", "outside business hours" — wrong when the stem asks *what* installs or patches, right when it asks *when* |
 | **State Manager** | hold nodes at a **desired state**, continuously, re-applying drift | "**ensure** agents stay installed", "keep configuration consistent over time" |
 | **Automation** | **runbooks** for multi-step operational tasks, incl. AWS-provided documents | "automate the whole sequence", a named `AWS-*`/`AWSEC2-*` runbook |
 | **Session Manager** | interactive **shell** to one node | "connect to", "get a shell", "no bastion / no open port / no key" |
@@ -240,7 +244,7 @@ graph TB
 | Cause | something broken **inside the guest** | the **underlying host** — power, network, hardware |
 | Physical host | **stays the same** | instance **moves to new hardware** |
 | Allowed on `StatusCheckFailed_Instance` | Yes | **No** |
-| Allowed on `StatusCheckFailed_System` | Yes | **Yes — the only metric it works with** |
+| Allowed on `StatusCheckFailed_System` | Yes | **Yes** — AWS gives two different scopes for recover across its own pages (*"any per-instance metric except `StatusCheckFailed_Instance`"* vs *"only with `StatusCheckFailed_System`"*). Carry the practical rule: recover is for **`StatusCheckFailed_System`**, never for `StatusCheckFailed_Instance` |
 | Keeps instance ID / IPs / EBS / AZ | Yes | **Yes** (incl. public IPv4 and Elastic IP) |
 | Keeps RAM contents | No | **No** |
 | Recommended evaluation periods | 3 × 1 min | 2 × 1 min |
@@ -276,7 +280,7 @@ graph TB
 > [!example] Worked example — "alert us when the application starts erroring"
 > The application writes to CloudWatch Logs via the agent. You cannot create an alarm on a log group directly — alarms watch **metrics**.
 >
-> So: a **metric filter** on the log group with a pattern like `ERROR`, whose `metric_transformation` publishes `1` to a custom metric each time a line matches. Then a **metric alarm** on that metric — say, ≥ 5 in 5 minutes — with an `alarm_action` pointing at an SNS topic.
+> So: a **metric filter** on the log group with a pattern like `ERROR`, whose **metric transformation** publishes `1` to a custom metric each time a line matches. Then a **metric alarm** on that metric — say, ≥ 5 in 5 minutes — with an **alarm action** pointing at an SNS topic.
 >
 > The chain is log line → metric filter → metric → alarm → SNS. When a stem says "notify the team when a specific string appears in the logs", the missing middle step is what it is testing.
 
@@ -314,14 +318,14 @@ graph TB
 > renew certificates that you import.**"* So for **imported third-party certificates**, the Config
 > managed rule plus SNS is the least-effort 30-day warning and is the **correct** answer. Eliminate
 > a Config option only when it is described as a **custom** rule you must write yourself.
-> Still eliminate: **Trusted Advisor** as an alarm source (it has an ACM check, but you do
+> Trusted Advisor is a **weaker** answer here, not an impossible one ([[25-well-architected]] covers its check categories and support-plan tiers) — and this note used to say it was impossible. Trusted Advisor publishes check results to CloudWatch under the **`AWS/TrustedAdvisor`** namespace (metrics `RedResources`, `YellowResources`, `ServiceLimitUsage`; dimension `CheckName`), and AWS has a page titled *"Creating Amazon CloudWatch alarms to monitor AWS Trusted Advisor metrics"* walking through exactly the alarm→SNS shape. Eliminate it when the stem wants **per-certificate, 30-day precision**, because the check is coarse and refresh-driven — not on the grounds that the metric does not exist. (Note the metrics live in **us-east-1**.) *(Corrected 2026-10-07.)* The older wording follows: it has an ACM check, but you do
 > not build a CloudWatch alarm on a Trusted Advisor *metric*), and **ACM Private CA** — switching
 > your public certificates to a paid private CA to get an alert is the most expensive wrong answer
 > on the page.
 
 > [!warning] Trap — Patch Manager offered for "install this tool", Run Command for "apply this patch"
 > Two stems that look identical and have **opposite** answers. *"Install a third-party tool on 500
-> instances, quickly, and repeatedly from now on"* → **Run Command**: it runs an arbitrary command
+> instances, quickly, right now"* → **Run Command**, which AWS describes as performing *"one-time configuration changes at scale"*: it runs an arbitrary command
 > or installer across a fleet, and it keeps working as instances are added. *"Patch thousands of
 > instances to remediate a security exposure"* → **Patch Manager**: patching existing software
 > against a baseline is the one thing it is for. Swapping them is the intended error. In both
@@ -336,7 +340,6 @@ graph TB
 > key — and satisfies the audit requirement too, because sessions log to S3 or CloudWatch
 > Logs. If the stem adds *"no internet access at all"*, the answer gains **interface VPC
 > endpoints** for Systems Manager; it does not revert to a bastion.
-
 
 > [!warning] Trap — CloudTrail for "what did this resource look like"
 > CloudTrail records **the API call**, not the resulting state. "Was this bucket public at any point last quarter?" or "produce evidence that all volumes have been encrypted since January" is **AWS Config** — it stores configuration items over time and evaluates rules against them. CloudTrail can tell you `PutBucketAcl` was called; only Config tells you what the ACL then *was*.
