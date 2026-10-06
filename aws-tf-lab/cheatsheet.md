@@ -590,7 +590,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Minimum billable object size | 128 KB for Standard-IA, One Zone-IA, Glacier Instant; none for Standard / Intelligent-Tiering |
 | Availability (designed for) per class | Standard 99.99 · Std-IA / Int-Tiering / Glacier Instant 99.9 · One Zone-IA 99.5 · Flexible & Deep 99.99 post-restore |
 | Intelligent-Tiering auto-move thresholds | Frequent → Infrequent at 30 d no access → Archive Instant Access at 90 d; objects <128 KB not monitored |
-| Glacier Flexible vs Deep Archive retrieval times | Flexible: Expedited 1–5 min, Standard 3–5 h, Bulk 5–12 h · Deep Archive: no Expedited, Std ~12 h, Bulk ~48 h |
+| Glacier Flexible vs Deep Archive retrieval times | Flexible: Expedited 1–5 min (**objects under 250 MB**; bigger ones stream at up to 300 MB/s), Standard 3–5 h, Bulk 5–12 h · Deep Archive: no Expedited, Std ~12 h, Bulk ~48 h |
 | One Zone-IA vs Standard-IA | Same 11 nines; One Zone-IA = 1 AZ, 99.5% availability, re-creatable data only |
 | Glacier Instant Retrieval speed | Milliseconds — no restore job at all |
 | Durability and AZ count | **"Designed for"** 99.999999999% (11 nines) on every current class; **≥3 AZs**. One Zone classes: **1 AZ**, same 11 nines **but the data is lost if that AZ is destroyed**. Legacy exception: Reduced Redundancy Storage, **99.99%** |
@@ -623,11 +623,15 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Batch Replication — the four cases it covers | Pre-existing objects, FAILED replications, newly-added destination, replicas-of-replicas |
+| Batch Replication — the four cases it covers | Pre-existing objects, FAILED replications, newly-added destination, replicas-of-replicas (+ objects tagged *after* upload under a tag-based rule) |
+| Batch Replication — what it CANNOT do | Objects in Glacier Flexible / Deep Archive / Intelligent-Tiering archive tiers (restore + copy to another class first); objects deleted from the destination **by version ID** (use **Batch Copy** in place) |
+| What replication copies that people assume it doesn't | **SSE-C** objects (plus SSE-S3/SSE-KMS/DSSE-KMS), object tags, ACL updates, and **Object Lock retention — which overrides the destination's default retention** |
+| What it never copies | Lifecycle-created delete markers, anything a lifecycle action did, bucket-level subresources (lifecycle/notification config), objects in archive tiers |
+| Tag-based replication rule trap | The object must carry the matching tag **in the `PutObject` call**; tagged afterwards it is never replicated by the live rule |
 | What a live replication rule copies | Only objects created or updated AFTER the rule existed |
 | S3 RTC guarantee | **99.9%** of objects replicated within 15 minutes ("most … in seconds"), SLA-backed + CloudWatch replication metrics. *(Corrected 2026-10-05 — this row said 99.99%, which row "S3 Replication Time Control SLA" already contradicted.)* |
 | Is replication chained / transitive? | No — A→B and B→C does not get A's objects to C |
-| Delete replication behaviour | Delete markers not replicated unless opted in; deleting a specific version is NEVER replicated |
+| Delete replication behaviour | Modern rule (has a `Filter`): delete markers **not** replicated unless you opt in, and that opt-in exists only on **non-tag-based** rules. Legacy **V1** (no `Filter`): user-created delete markers ARE replicated by default. **Cross-account:** not replicated by default. Deleting a specific **version** is NEVER replicated |
 | Replication prerequisites | Versioning on BOTH buckets + an IAM role S3 assumes; replication is asynchronous |
 
 **S3 access control**
@@ -676,6 +680,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | S3 Select currency warning | ⚠️ No longer available to new customers — use Athena. (Event notification triggers include `s3:ObjectCreated:*`, `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, replication events **and more** — not a closed list; filterable by prefix and suffix) |
+| Who needs a policy for S3 event notifications | **SNS and SQS**: a resource policy allowing `s3.amazonaws.com`, scoped with `aws:SourceArn` **+** `aws:SourceAccount` (and a KMS key-policy grant if the queue/topic uses a CMK). **Lambda**: the S3 console wires it for you; by API you grant it. **EventBridge: no destination policy at all** — enable/disable per bucket, all events go |
+| S3 event delivery semantics | **At-least-once**, duplicates possible on retry, and **no ordering guarantee** → consumers must be idempotent and order-independent |
+| Why a missing SNS/SQS policy fails loudly | S3 publishes a **test notification** when you enable the rule, so the policy must exist first — it fails at setup, not silently at runtime |
 
 ↳ [[09-s3-advanced]] · [[09-s3-intro]] · [[09-s3-security]]
 
@@ -974,7 +981,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Aurora Global Database replication latency | typically under 1 second cross-Region; well under 100 ms within a Region |
 | RDS (non-Aurora) read replica promotion | a few minutes, and includes a reboot |
 | S3 Replication Time Control SLA | 99.9% of objects within 15 minutes |
-| S3 CRR and delete markers | not replicated by default |
+| S3 CRR and delete markers | not replicated by default on a modern (`Filter`-based) rule — opt in, non-tag-based rules only |
 | DynamoDB Global Tables conflict handling | multi-active read/write everywhere; last writer wins |
 | Elastic Disaster Recovery (DRS) RTO/RPO | RTO of minutes, RPO of seconds; implements pilot light; does not cover RDS |
 | CloudFront origin failover granularity | per request — later requests still try the primary first |

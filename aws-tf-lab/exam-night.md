@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 334 pointers · ~29 min read*
+*176 recall hooks · 336 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -400,7 +400,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[09-s3-advanced#Replication starts from now, not from the beginning|explain]]
 - Parts upload in parallel and retry individually — and the ones you never finish keep billing invisibly.  
   ↳ [[09-s3-advanced#Why a big upload is many small ones|explain]]
-- Nearest edge, then AWS's private backbone — the bucket stays exactly where it was.  
+- Nearest edge, then an optimized network path to the bucket's region — the bucket stays exactly where it was.  
   ↳ [[09-s3-advanced#Transfer Acceleration moves the path, not the bucket|explain]]
 - The destination must grant S3 permission, and the output must never land where the trigger is watching.  
   ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
@@ -409,6 +409,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - replication copies existing objects
 - replication is transitive
 - Transfer Acceleration moves your data closer to users
+- SSE-C objects can't be replicated
+- Batch Replication can backfill anything
 - "use S3 Select" on a new account
 
 **Failure modes**

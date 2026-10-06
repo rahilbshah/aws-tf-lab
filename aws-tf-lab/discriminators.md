@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 195 discriminators · ~38 min read*
+*107 comparison tables · 197 discriminators · ~38 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -232,7 +232,11 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **replication is transitive** — No. A→B and B→C does not deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.  
   ↳ [[09-s3-advanced#Worked examples|note]]
-- **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket and it caches nothing — it changes the path: enter AWS at the nearest edge location, then travel the private backbone to the bucket's region.  
+- **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket — it changes the path: enter AWS at the nearest edge location, then an optimized network path to the bucket's region.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
+- **SSE-C objects can't be replicated** — They can. AWS lists objects encrypted with customer-provided keys (SSE-C) alongside SSE-S3, SSE-KMS and DSSE-KMS under what replication does copy.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
+- **Batch Replication can backfill anything** — It can't. Objects sitting in Glacier Flexible Retrieval, Glacier Deep Archive, or the Intelligent-Tiering archive tiers must be restored and copied to another storage class first.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **"use S3 Select" on a new account** — S3 Select is no longer available to new customers. The modern answer for SQL over S3 is Athena (and it queries many objects, not one).  
   ↳ [[09-s3-advanced#Worked examples|note]]
