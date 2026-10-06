@@ -633,7 +633,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | What it never copies | Lifecycle-created delete markers, anything a lifecycle action did, bucket-level subresources (lifecycle/notification config), objects in archive tiers |
 | Tag-based replication rule trap | The object must carry the matching tag **in the `PutObject` call**; tagged afterwards it is never replicated by the live rule |
 | What a live replication rule copies | Only objects created or updated AFTER the rule existed |
-| S3 RTC guarantee | **99.9%** of objects replicated within 15 minutes ("most … in seconds"), SLA-backed + CloudWatch replication metrics. *(Corrected 2026-10-05 — this row said 99.99%, which row "S3 Replication Time Control SLA" already contradicted.)* |
+| S3 RTC guarantee | Replication within **15 minutes**, SLA-backed + CloudWatch replication metrics. **Do not memorise the percentage** — AWS publishes both: 99.9% on `replication-time-control.html` *and* in `replication.html`'s own table, but 99.99% twice in `replication.html`'s prose. One AWS page contradicts itself. *(Re-checked 2026-10-07.)* |
 | Is replication chained / transitive? | No — A→B and B→C does not get A's objects to C |
 | Delete replication behaviour | Modern rule (has a `Filter`): delete markers **not** replicated unless you opt in, and that opt-in exists only on **non-tag-based** rules. Legacy **V1** (no `Filter`): user-created delete markers ARE replicated by default. **Cross-account:** not replicated by default. Deleting a specific **version** is NEVER replicated |
 | Replication prerequisites | Versioning on BOTH buckets + an IAM role S3 assumes; replication is asynchronous |
@@ -1000,9 +1000,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Aurora Global Database promotion time | less than one minute, even during a full regional outage |
 | Aurora Global Database replication latency | typically under 1 second cross-Region; well under 100 ms within a Region |
 | RDS (non-Aurora) read replica promotion | a few minutes, and includes a reboot |
-| S3 Replication Time Control SLA | 99.9% of objects within 15 minutes |
+| S3 Replication Time Control SLA | Within **15 minutes**, SLA-backed. AWS states the percentage as both 99.9% and 99.99% across (and within) pages — carry the 15 minutes |
 | S3 CRR and delete markers | not replicated by default on a modern (`Filter`-based) rule — opt in, non-tag-based rules only |
-| DynamoDB Global Tables conflict handling | multi-active read/write everywhere; last writer wins |
+| DynamoDB Global Tables conflict handling | multi-active read/write everywhere; **last-writer-wins** in the default **MREC** mode |
+| DynamoDB Global Tables consistency modes | **MREC** (multi-Region eventual consistency, the default) or **MRSC** (multi-Region strong consistency, aimed at a **zero RPO**, **same-account only**). Chosen at creation and **cannot be changed afterwards**; a table cannot mix modes. ⚠️ verify which features MRSC excludes |
+| DynamoDB Global Tables account models | **Same-account** (all replicas in one account) or **multi-account** (replicas across accounts in one replication group). Both support multi-Region writes, async replication and last-writer-wins |
 | Elastic Disaster Recovery (DRS) RTO/RPO | RTO of minutes, RPO of seconds; implements pilot light; does not cover RDS |
 | CloudFront origin failover granularity | per request — later requests still try the primary first |
 

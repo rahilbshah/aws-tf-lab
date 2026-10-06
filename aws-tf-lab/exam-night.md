@@ -602,11 +602,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[14-dr-resilience#Two numbers decide everything: RTO and RPO|explain]]
 - The four strategies differ only in how much is already running in the recovery Region, and cost and recovery speed rise together.  
   ↳ [[14-dr-resilience#The four strategies, and what's actually running|explain]]
-- Pilot light needs switching on before it can serve anything; warm standby is already serving, just small.  
+- Pilot light needs switching on before it can serve anything; warm standby is already running and can take traffic immediately, just at reduced capacity.  
   ↳ [[14-dr-resilience#Pilot light vs warm standby — the distinction that gets tested|explain]]
 - Prefer data-plane operations for failover, because control planes are likelier to be degraded exactly when you need them.  
   ↳ [[14-dr-resilience#Data plane vs control plane — why some failovers are more reliable|explain]]
-- Your RPO target picks the replication mechanism, and Aurora Global Database is the strongest answer whenever the question pairs cross-Region with a tight recovery window.  
+- Your RPO target picks the replication mechanism — for a relational store, Aurora Global Database is the strongest answer when the question pairs cross-Region with a tight recovery window; if the data store is DynamoDB, global tables are already multi-active and can reach a zero RPO.  
   ↳ [[14-dr-resilience#Which service buys you which RPO|explain]]
 - Detection time is spent out of your RTO budget, and the only recovery path that works is one you run often enough to trust.  
   ↳ [[14-dr-resilience#Detection and testing — the two halves everyone skips|explain]]

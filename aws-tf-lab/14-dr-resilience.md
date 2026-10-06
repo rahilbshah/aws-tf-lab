@@ -3,7 +3,7 @@ topic: 14-dr-resilience
 domain: resilient
 status: reviewed
 services: [Route53, GlobalAccelerator, Aurora, DynamoDB, S3, AWSBackup, CloudFormation]
-related: [07-rds-aurora, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced]
+related: [07-rds-aurora, 08-elasticache, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced]
 tags: [topic, domain/resilient]
 ---
 
@@ -18,15 +18,15 @@ The cross-cutting note. Almost no new services — this is how the pieces you al
 > - **Pilot light vs warm standby:** pilot light **cannot serve a request without action first**; warm standby **can serve immediately, at reduced capacity**. It's about whether compute is *running*.
 > - **Backup & restore needs infrastructure as code** — you must rebuild infra, config and code, not just data. Back up and copy **AMIs** too.
 > - **Prefer data-plane operations for failover.** Route 53 health checks and ARC are data plane; changing Route 53 weights, Global Accelerator traffic dials and **Auto Scaling** are control plane.
-> - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling.
+> - **Static stability / hot standby** = provision full capacity so recovery doesn't depend on Auto Scaling ([[04-alb-asg]]) — AWS: "because Auto Scaling is a control plane activity, taking a dependency on it will lower the resiliency of your overall recovery strategy."
 > - **Replication is not backup** — it faithfully copies corruption and deletions. Always keep point-in-time backups too.
 > - **RPO by mechanism:** Aurora Global Database ~1s (promote **<1 min**, up to **10** secondary Regions) · DynamoDB Global Tables seconds, **multi-active, last-writer-wins** · S3 CRR seconds–minutes · RDS cross-Region read replica (promotion takes **minutes + a reboot**) · AWS Backup cross-Region copy hours.
-> - **S3 does not replicate delete markers by default** — deliberately, so a source-Region deletion can't destroy the DR copy.
+> - **S3 does not replicate delete markers by default** on a modern (`Filter`-based) rule — deliberately, so a source-Region deletion can't destroy the DR copy. ([[09-s3-advanced]] owns the exceptions: the opt-in exists only on non-tag-based rules, and a legacy V1 config behaves the opposite way.)
 > - **Multi-site write strategies:** write global (Aurora Global) · write local (DynamoDB Global Tables) · write partitioned (bidirectional S3 replication).
 > - **Detection time is spent out of your RTO.** Detect → notify → escalate → evaluate → declare → recover, all inside the budget. Aggressive RTO ⇒ **deep health checks**, not heartbeats.
 > - **Only the recovery path you test frequently works.** Keep recovery paths few; manage **DR-Region configuration drift** (stale AMIs, unraised **service quotas**) with **AWS Config** + **SSM Automation** + **CloudFormation drift detection**.
 > - **All four strategies can be built across AZs instead of Regions** — the answer when **data residency** pins you to a single Region.
-> - **Backup & restore is the corruption answer**, not just the cheap one — it's the only copy the disaster didn't reach.
+> - **Backup & restore is the corruption answer**, not just the cheap one — it is the strategy whose whole design *is* an untouched point-in-time copy. Not the *only* such copy, though: AWS attaches point-in-time backups and versioning to every strategy, warning that "continuous data replication protects you against some types of disaster, but it may not protect you against data corruption or destruction unless your strategy also includes versioning of stored data or options for point-in-time recovery."
 
 > [!warning] Build tier — **conceptual-only**
 > A real multi-Region DR setup means paying for a second environment. This one is learned, not built — and the exam tests the *strategy choice*, not the HCL.
@@ -37,7 +37,7 @@ Every other note in this vault teaches a service. The exam mostly doesn't ask ab
 
 It asks things like: *"a three-tier application must survive the loss of an entire Region, with at most 5 minutes of data loss, at the lowest possible cost."*
 
-Answering that needs Aurora Global Database, Route 53 failover, S3 replication and AWS Backup — four things you already know, assembled. Knowing each part individually isn't enough, and that gap is where a lot of "I knew all of this" marks go.
+Answering that needs Aurora Global Database ([[07-rds-aurora]]), Route 53 failover ([[10-route53]]), S3 replication ([[09-s3-advanced]]) and AWS Backup ([[12-storage-extras]]) — four things you already know, assembled. Knowing each part individually isn't enough, and that gap is where a lot of "I knew all of this" marks go.
 
 This note is the assembly instructions.
 
@@ -102,7 +102,7 @@ So the test is a single question: **could it serve a request right now, without 
 
 Both replicate data continuously. Both have infrastructure in the DR Region. The difference is entirely whether the compute is *running*.
 
-> In one line: pilot light needs switching on before it can serve anything; warm standby is already serving, just small.
+> In one line: pilot light needs switching on before it can serve anything; warm standby is already running and can take traffic immediately, just at reduced capacity.
 
 ### Data plane vs control plane — why some failovers are more reliable
 
@@ -133,10 +133,10 @@ Your RPO target picks the replication mechanism, and this is where everything yo
 | Mechanism | RPO | Notes |
 |---|---|---|
 | **Aurora Global Database** | **~1 second** | typical cross-Region latency under a second; promote a secondary in **under a minute**; up to **10** secondary Regions |
-| **DynamoDB Global Tables** | seconds | **multi-active** — read *and* write in every Region; conflicts resolved **last-writer-wins** |
-| **S3 Cross-Region Replication** | seconds–minutes | S3 RTC gives a **15-minute SLA** |
+| **DynamoDB Global Tables** | seconds in the default **MREC** mode | **multi-active** — read *and* write in every Region, conflicts resolved **last-writer-wins**. AWS now offers two consistency modes, chosen at creation and **not changeable afterwards**: **multi-Region eventual consistency (MREC)**, the default, and **multi-Region strong consistency (MRSC)**, aimed at a **zero RPO** (MRSC is same-account only). ⚠️ verify which features MRSC excludes |
+| **S3 Cross-Region Replication** | seconds–minutes | S3 RTC commits to **15 minutes**, SLA-backed (AWS states the percentage inconsistently — carry the 15 minutes) |
 | **RDS cross-Region read replica** | seconds–minutes | promotion takes **a few minutes and includes a reboot** |
-| **ElastiCache Global Datastore** | seconds | cross-Region Redis replication |
+| **ElastiCache Global Datastore** | ⚠️ verify the figure | cross-Region replication for **Valkey or Redis OSS**, **node-based clusters only** — one active primary takes writes, secondaries are read-only until promoted ([[08-elasticache]]) |
 | **AWS Backup cross-Region copy** | hours | as often as the backup plan runs |
 | **Snapshots copied manually** | hours–days | backup & restore territory |
 
@@ -146,9 +146,9 @@ Two details worth carrying:
 
 **S3 does not replicate delete markers by default**, and that's a feature: a malicious or accidental delete in the source Region doesn't destroy the DR copy.
 
-For routing traffic to whichever Region is live: **Route 53 failover** with health checks (remember the TTL floor from [[10-route53]]), **Global Accelerator** when you need static IPs and failover that doesn't wait for DNS caches, or **CloudFront origin failover**, which switches **per request** rather than switching the whole site.
+For routing traffic to whichever Region is live: **Route 53 failover** with health checks (failover time is roughly (interval × threshold) + TTL — a *floor*, and not an AWS-published formula; see [[10-route53]]), **Global Accelerator** when you need static IPs and failover that doesn't wait for DNS caches, or **CloudFront origin failover**, which switches **per request** rather than switching the whole site.
 
-> In one line: your RPO target picks the replication mechanism, and Aurora Global Database is the strongest answer whenever the question pairs cross-Region with a tight recovery window.
+> In one line: your RPO target picks the replication mechanism — for a **relational** store, Aurora Global Database is the strongest answer when the question pairs cross-Region with a tight recovery window; if the data store is DynamoDB, global tables are already multi-active and can reach a zero RPO.
 
 ### Detection and testing — the two halves everyone skips
 
@@ -174,14 +174,14 @@ Two consequences that read like exam answers:
 - **Four DR strategies:** backup & restore, pilot light, warm standby, multi-site active/active. **Hot standby** is a variant of multi-site that is active/**passive** — full capacity deployed, but only one Region takes traffic.
 - **Pilot light vs warm standby (AWS's own wording):** pilot light *"cannot process requests without additional action taken first"*; warm standby *"can handle traffic (at reduced capacity levels) immediately"*. Pilot light requires switching servers on and scaling up; warm standby requires only scaling up.
 - **For a disaster confined to one data centre**, a well-architected highly available workload may only need **backup & restore**. Pilot light, warm standby and multi-site are for **Region-level** disasters or regulatory requirements.
-- **Use data-plane operations during failover.** Data planes have higher availability design goals than control planes. Route 53 health checks and **Amazon Application Recovery Controller** (health checks used as manual on/off switches) are data plane; Route 53 weight changes, Global Accelerator traffic dials, and Auto Scaling are control plane.
+- **Use data-plane operations during failover.** Data planes *typically* have higher availability design goals than control planes — AWS's own wording keeps the hedge. Route 53 health checks and **Amazon Application Recovery Controller** (health checks used as manual on/off switches) are data plane; Route 53 weight changes, Global Accelerator traffic dials, and Auto Scaling are control plane.
 - **Auto Scaling is a control-plane dependency.** Provisioning full capacity instead — **static stability** — removes it, at the cost of paying for idle capacity.
 - **Automatic failover carries false-alarm risk.** AWS advises caution; a common pattern is fully scripted but **manually triggered** failover.
 - **Continuous cross-Region replication is available from:** S3 Replication, RDS read replicas, **Aurora Global Databases**, **DynamoDB Global Tables**, DocumentDB global clusters, and **ElastiCache Global Datastore**.
 - **Aurora Global Database:** typical cross-Region replication latency **under one second** (and well under 100 ms within a Region); a secondary can be promoted to read/write in **less than one minute**, even during a full regional outage; up to **10** secondary Regions; supports **write forwarding** from secondaries to the primary; can monitor RPO lag against a target.
 - **RDS (non-Aurora) read replica promotion takes a few minutes and involves a reboot** — materially worse than Aurora Global Database for DR.
 - **DynamoDB Global Tables** allow reads *and* writes in every Region, reconciling concurrent updates with **last writer wins**.
-- **S3 Cross-Region Replication does not replicate delete markers by default**, protecting the DR Region from deletions in the source. **S3 Replication Time Control (RTC)** replicates **99.9% of objects within 15 minutes**, backed by an SLA — the only way to put a contractual number on your S3 RPO. **Versioning** protects against human error.
+- **S3 Cross-Region Replication does not replicate delete markers by default** on a `Filter`-based rule, protecting the DR Region from deletions in the source — see [[09-s3-advanced]] for the V1 and tag-based-rule exceptions. **S3 Replication Time Control (RTC)** replicates within **15 minutes**, backed by an SLA — the way to put a contractual number on S3 replication time. Carry the 15 minutes, not the percentage: AWS publishes both 99.9% and 99.99% across (and within) its own pages — [[09-s3-advanced]] owns the detail. The SLA is void while you exceed S3's request-rate guidelines or the default 1 Gbps replication transfer quota. **Versioning** protects against human error.
 - **AWS Backup supports cross-Region and cross-account copy**; cross-account protects against insider threat or account compromise. It also has **restore testing**: a schedule that periodically restores from your recovery points and reports whether the restore actually worked, so "we have backups" and "we can recover" stop being the same claim.
 - **AWS Backup's extra EC2 metadata** (instance type, VPC, security group, IAM role, monitoring config, tags) is **only used when restoring to the same Region**.
 - **AWS Elastic Disaster Recovery (DRS)** continuously replicates whole servers at block level from on-premises, another cloud, or EC2 — and implements a **pilot light** strategy with switched-off resources in a staging VPC. AWS states recovery instances launch with an **RTO of minutes and an RPO of seconds**. It does not cover RDS.
@@ -209,7 +209,7 @@ Two consequences that read like exam answers:
 | Servers running | ❌ | ❌ **switched off** | ✅ **running, small** | ✅ running, full |
 | Can serve a request now | no | **no** | **yes, at low capacity** | yes |
 | Recovery work needed | redeploy + restore | **switch on + scale up** | **scale up only** | none — already live |
-| RTO | hours | tens of minutes | minutes | near zero |
+| RTO | hours | tens of minutes | minutes | near zero | <!-- ⚠️ verify: only multi-site's "near zero" appears in the whitepaper prose; the other three come from Figure 6's graphic -->
 | Cost | lowest | low | medium | highest |
 
 ### HA vs DR
@@ -220,7 +220,7 @@ Two consequences that read like exam answers:
 | Typical tools | Multi-AZ, ASG across AZs, ALB, EFS Regional | cross-Region replication, Route 53/GA failover, backups |
 | Failover | automatic, seconds | strategy-dependent, seconds to hours |
 | Always paying for it | yes, and it's cheap | yes, and it's the whole cost question |
-| Measured by | `MTBF / (MTBF + MTTR)`, or successful ÷ valid requests | RTO and RPO |
+| Measured by | availability = available-for-use time ÷ total time, or successful ÷ valid requests (`MTBF / (MTBF + MTTR)` only to *estimate* a dependency that publishes no figure) | RTO and RPO |
 
 ### Picking a cross-Region database
 

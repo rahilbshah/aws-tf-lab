@@ -404,3 +404,37 @@ verbatim, including the tie between request type and interruption behaviour (Sto
 persistent-only; Terminate one-time-only and the default, so a persistent request left on
 the default errors). The "cancelling a request doesn't terminate the instance" half is still
 unsourced and stays marked.
+
+### 14-dr-resilience (2026-10-07) — and a self-correction on the S3 RTC percentage
+
+129 claims, 16 pages. Another strong note: the pilot-light/warm-standby wording, the whole
+data-plane vs control-plane assignment, hot standby as active/passive, the Aurora figures
+(10 secondaries, <1 min promotion, sub-second lag) and the detection/testing sections all
+matched the DR whitepaper almost word for word. The note was even *ahead* of the whitepaper
+on bidirectional S3 replication ("two or more buckets" per the current S3 User Guide, vs the
+whitepaper's "between two Regions").
+
+**Self-correction that matters.** On 09-s3-advanced I changed RTC from 99.99% to 99.9%, and
+told the user it was "settled" because the agent's 99.99% claim carried no URL and I could
+not reproduce it. This note's audit pointed at `replication.html`, and it is right:
+
+- `replication-time-control.html`: "99.9 percent of those objects within 15 minutes"
+- `replication.html` prose, twice: "S3 RTC replicates 99.99 percent of new objects…"
+- `replication.html`'s OWN TABLE on the same page: "replicate 99.9 percent of objects…"
+
+AWS contradicts itself within a single page. The earlier agent was not hallucinating; I was
+over-confident in dismissing it. All three places (09-s3-advanced, cheatsheet x2,
+14-dr-resilience x2) now carry the 15-minute threshold and explicitly refuse the percentage.
+
+Lesson recorded: "I fetched a page and it said X" does not settle a fact when another page
+may say Y. For a number the user will memorise, check whether AWS states it in more than one
+place before declaring it resolved.
+
+Other fixes: DynamoDB global tables now have two consistency modes (MREC default, MRSC for a
+zero RPO, chosen at creation and immutable, MRSC same-account only) — the note taught
+"seconds / last-writer-wins" as a flat property; "backup & restore is the ONLY copy the
+disaster didn't reach" is an unearned absolute AWS's own whitepaper contradicts; warm standby
+was described as "already serving" in two places and "not taking traffic" in two others;
+ElastiCache Global Datastore is Valkey *or* Redis OSS and node-based only; availability is
+"available-for-use time / total time", with MTBF/(MTBF+MTTR) only an estimate for
+dependencies that publish no figure.
