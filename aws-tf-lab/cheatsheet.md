@@ -928,7 +928,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Does a Savings Plan reserve capacity? | No — billing discount only, never reserves capacity |
 | EC2 Instance Savings Plan max discount | up to 72% — locked to one instance family in one Region |
 | Compute Savings Plan max discount | up to 66% — flexible on family, size, Region, OS, tenancy |
-| Which purchases actually reserve capacity | only zonal Reserved Instances and Capacity Reservations |
+| Which purchases actually reserve capacity | **Zonal** Reserved Instances · **On-Demand Capacity Reservations** · **Capacity Blocks** (a cluster of GPU instances) · **Dedicated Hosts** (a physical host dedicated to you). **Savings Plans and *regional* RIs reserve nothing** — they are discounts. *(Corrected 2026-10-07: this row said "only zonal RIs and Capacity Reservations", missing two.)* |
+| Spot request type — one-time vs persistent | *One-time*: if interrupted, "the request is **not** resubmitted". *Persistent*: "the request **is** resubmitted to replenish the interrupted Spot Instance". **Default = one-time.** Interruption behaviour is tied to type: `Stop`/`Hibernate` **persistent only**, `Terminate` **one-time only** (and `Terminate` is the default, so a persistent request left on the default errors). "Valid to" expiry is persistent-only. Maintaining a **target capacity** is EC2 Fleet / Spot Fleet, not a persistent request |
+| Who gives Savings Plans / reservation purchase recommendations | **Cost Explorer** *and* **Cost Optimization Hub** (AWS steers you to the Hub first). **Compute Optimizer never does** — it only rightsizes and finds idle resources |
+| Reserved Instances vs Savings Plans — status | AWS: "We recommend Savings Plans over Reserved Instances." But RIs are **not legacy** — they remain the only route to **zonal capacity**, the **RI Marketplace**, and RDS/Redshift/ElastiCache reservations |
 | Non-EC2 services Compute Savings Plans cover | AWS Fargate and AWS Lambda |
 | What a Savings Plan commits to | a spend rate in USD/hour, for 1 or 3 years |
 

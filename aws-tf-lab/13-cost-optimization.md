@@ -2,8 +2,8 @@
 topic: 13-cost-optimization
 domain: cost
 status: reviewed
-services: [EC2, SavingsPlans, CostExplorer, Budgets, ComputeOptimizer, TrustedAdvisor]
-related: [02-ec2, 09-s3-intro, 05-vpc-endpoints-peering, 01-iam-advanced, 07-rds-aurora]
+services: [EC2, SavingsPlans, CostExplorer, Budgets, ComputeOptimizer, CostOptimizationHub]
+related: [02-ec2, 04-alb-asg, 08-elasticache, 09-s3-intro, 05-vpc-endpoints-peering, 01-iam-advanced, 07-rds-aurora]
 tags: [topic, domain/cost]
 ---
 
@@ -24,7 +24,7 @@ The fourth exam domain, worth **20%**. Not a service — a way of reading questi
 
 ## What problem does this solve?
 
-On-Demand pricing is the rate you pay for saying nothing in advance. You start an instance, you're charged by the second, you stop it, the charge stops. Nothing is committed and nothing is promised.
+On-Demand pricing is the rate you pay for saying nothing in advance. You start an instance, you're charged **by the second with a 60-second minimum**, you stop it, the charge stops ([[02-ec2]] owns the billing detail and the OS exceptions). Nothing is committed and nothing is promised.
 
 That flexibility has a price, and it's the highest one AWS offers.
 
@@ -56,7 +56,7 @@ AWS's own guidance is almost a decision tree, and it is worth reading twice:
 
 The one people miss: **a Savings Plan does not reserve capacity.** It is purely a billing discount. If you need to be certain an instance will be available in a particular AZ — for a DR standby, say — you need a **Capacity Reservation** or a **zonal Reserved Instance**, and that's a separate thing from the discount.
 
-> In one line: On-Demand commits to nothing, Savings Plans commit to spend, Reserved Instances commit to a configuration, Spot commits to nothing but accepts eviction — and only Capacity Reservations and zonal RIs actually hold capacity for you.
+> In one line: On-Demand commits to nothing, Savings Plans commit to spend, Reserved Instances commit to a configuration, Spot commits to nothing but accepts eviction — and capacity itself is held by zonal RIs, Capacity Reservations, Capacity Blocks and Dedicated Hosts — never by a Savings Plan or a regional RI.
 
 ### Savings Plans vs Reserved Instances — and why *more* flexible costs *more*
 
@@ -115,13 +115,13 @@ Plenty of exam cost questions never mention an instance. These are the levers, a
 
 **NAT Gateway** bills **per hour and per gigabyte processed**. A **gateway endpoint** for S3 or DynamoDB is **free** and keeps that traffic off the NAT entirely — one of the highest-value swaps in AWS, and it's in [[05-vpc-endpoints-peering]].
 
-**Data transfer**: inbound is generally free, **outbound to the internet costs money**, and **cross-AZ traffic is charged** — with one exception the exam likes: **RDS read-replica replication is free within the same Region, across AZs included** (see [[07-rds-aurora#Replication traffic: what you actually pay for]]). That's why an NLB with cross-zone load balancing enabled costs more than an ALB, where it's free — see [[04-alb-asg]].
+**Data transfer**: inbound is generally free, **outbound to the internet costs money**, and **cross-AZ traffic is charged** — with one exception the exam likes: **replication traffic between AZs for an RDS Multi-AZ deployment is free** — AWS's pricing page lists it explicitly as Free (see [[07-rds-aurora]]). ⚠️ verify whether same-Region **read-replica** traffic is free on the same terms; AWS states the Multi-AZ case and the note previously generalised it. That's why enabling cross-zone load balancing on an **NLB** costs extra: AWS states plainly that "when enabling cross-zone load balancing for a Network Load Balancer, EC2 data transfer charges apply." ⚠️ verify the ALB half — AWS's ALB cross-zone page says neither way, so "free on an ALB" is the common claim rather than a sourced one. See [[04-alb-asg]].
 
 **Elastic IPs** — and every public IPv4 address — bill **hourly whether attached or not**; an unattached one is the classic forgotten-resource bill, charging for nothing in return.
 
 **S3 storage classes** differ enormously, and **lifecycle rules** move data down the tiers automatically ([[09-s3-intro]]). Watch the minimum billable object size on the IA classes — many tiny files in IA can cost more than Standard.
 
-**EBS**: `gp3` decouples IOPS from capacity, so you stop over-provisioning size just to buy performance ([[02-ec2]]). And **snapshots keep charging after the volume is deleted** — the silent leak in [[03-ami-bake]].
+**EBS**: `gp3` decouples IOPS from capacity, so you stop over-provisioning size just to buy performance ([[02-ec2]]). And **snapshots keep charging after the volume is deleted** — delete the volume and the snapshot bill carries on, which is the classic silent leak.
 
 **Aurora Serverless v2** scales capacity to the workload, which beats a provisioned instance sized for a peak that happens twice a day ([[07-rds-aurora]]).
 
@@ -131,11 +131,12 @@ Plenty of exam cost questions never mention an instance. These are the levers, a
 
 ### The tools that tell you where the money went
 
-Five, and the exam mostly wants you to pick the right one for a described job.
+Six, and the exam mostly wants you to pick the right one for a described job.
 
 - **AWS Cost Explorer** — the analysis console. Visualise cost and usage, filter and group, **forecast** future spend, and get **Savings Plans purchase recommendations**. This is where you go to *understand* the bill.
 - **AWS Budgets** — set a budget on **cost or usage** and get **alerted** when you cross a threshold. This is where you go to *be told* before it's too late.
-- **Cost Anomaly Detection** — automated alerts when AWS detects unusual spend, without you defining a threshold.
+- **Cost Optimization Hub** — one ranked list of *what to change*: unused resources to delete, rightsizing, Savings Plans and reservations, with the estimated saving attached. AWS now points here first when the question is "where is the money going spare?"
+- **Cost Anomaly Detection** — AWS's own ML spots unusual spend and alerts you, rather than you naming the dollar figure up front as you do with **Budgets**. That contrast is the exam point. ⚠️ verify: whether an anomaly subscription still takes an *impact* threshold controlling when it notifies.
 - **Cost allocation tags** and **cost categories** — how you slice the bill by team, application or environment. Tags are the mechanism; without them the bill is one undifferentiated number.
 - **AWS Compute Optimizer** — analyses **CloudWatch metrics over the last 14 days** and recommends **rightsizing**, plus flags **idle resources**. Covers EC2, Auto Scaling groups, EBS volumes, Lambda, ECS on Fargate, RDS/Aurora, NAT Gateway, DynamoDB, ElastiCache and more. You must **opt in**.
 
@@ -147,9 +148,9 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 - ⚠️ verify: that programmatic, **paginated** retrieval of cost, usage and forecast data requires the **Cost Explorer API** (`ce:GetCostAndUsage`, `ce:GetCostForecast`) rather than the console's CSV export or a CUR file in S3. The direction is right — the API is the documented programmatic interface and CUR is a bulk file drop, not a query API — but I could not confirm the pagination wording first-party.
 
-- ⚠️ verify: that a **Spot request** is either **one-time** or **persistent** (a persistent request re-opens after an interruption, and after a manual stop only once you start the instance again), and that **cancelling an active Spot request does not terminate** the instance it already launched. The distinction is real and commonly tested; AWS's current Spot pages steer toward **EC2 Fleet / Spot Fleet** — which *is* the construct that maintains a **target capacity** by launching replacements — and I could not confirm the one-time-vs-persistent wording first-party.
+- **Spot request type — one-time vs persistent**, now verified verbatim. *One-time*: "Amazon EC2 places a one-time request for your Spot Instance. If your Spot Instance is interrupted, **the request is not resubmitted**." *Persistent*: "If your Spot Instance is interrupted, **the request is resubmitted** to replenish the interrupted Spot Instance." **The default is one-time.** Two consequences the exam likes: the **interruption behaviour** options are tied to the request type — `Stop` and `Hibernate` are valid **only for persistent** requests, `Terminate` **only for one-time** (and `Terminate` is the default, so a persistent request that keeps the default *errors*) — and an expiry date (**Valid to**) applies only to persistent requests. For maintaining a **target capacity** across instance types, that is **EC2 Fleet / Spot Fleet**, not a persistent request. ⚠️ verify separately: that **cancelling an active Spot request does not terminate** an already-running instance — widely stated, but not on the Spot-requests page. *(Verified 2026-10-07.)*
 
-- **Two different rightsizing tools, and the exam separates them.** **Cost Explorer** has its own **rightsizing recommendations**: *"identify cost-saving opportunities by downsizing or terminating instances in Amazon EC2"*, showing **underutilised instances across member accounts in a single view** — a *spend* view, netting out what you already own. **AWS Compute Optimizer** is the one that recommends the **instance type and size** from CloudWatch metrics. Neither recommends **purchasing options** — Savings Plans and RI recommendations are a Cost Explorer feature, and Compute Optimizer never does them. *(Verified 2026-10-01.)*
+- **Two different rightsizing tools, and the exam separates them.** **Cost Explorer** has its own **rightsizing recommendations**: *"identify cost-saving opportunities by downsizing or terminating instances in Amazon EC2"*, showing **underutilised instances across member accounts in a single view** — a *spend* view, netting out what you already own. **AWS Compute Optimizer** is the one that recommends the **instance type and size** from CloudWatch metrics. Neither *rightsizing* tool recommends **purchasing options**. Savings Plans and reservation purchase recommendations come from **Cost Explorer** *and* from **Cost Optimization Hub** — which AWS now steers you to first, the Cost Explorer rightsizing page itself saying "We recommend that you use Cost Optimization Hub to identify cost optimization opportunities." **Compute Optimizer** only ever does rightsizing and idle-resource detection. *(Verified 2026-10-07.)*
 
 - **Seven purchasing options:** On-Demand, Savings Plans, Reserved Instances, Spot, Dedicated Hosts, Dedicated Instances, Capacity Reservations. (Capacity Blocks additionally reserve clusters of GPU instances.)
 - **Savings Plans commit to a spend rate in USD/hour** for **1 or 3 years**. Payment: **All Upfront**, **Partial Upfront**, or **No Upfront**. **Terms cannot be changed after purchase** — as usage grows you buy an additional plan.
@@ -160,7 +161,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - **Reserved Instances are a billing discount, not a physical instance.** Priced on four attributes: **instance type, Region, tenancy, platform (OS)**. Terms of **1 or 3 years**; the 3-year term discounts more.
 - **Standard RIs** give the largest RI discount and can be **modified but never exchanged**. **Convertible RIs** discount less but **can be exchanged** for another Convertible RI with different attributes. **Purchases cannot be cancelled**, though Standard RIs can be **sold on the Reserved Instance Marketplace**.
 - **RIs do not auto-renew.** On expiry the instance keeps running and silently reverts to On-Demand rates.
-- **Only zonal Reserved Instances and Capacity Reservations reserve capacity.** Savings Plans and regional RIs are discounts only.
+- **Savings Plans and *regional* RIs are discounts only — neither holds capacity.** What actually holds capacity for you: **zonal Reserved Instances**, **On-Demand Capacity Reservations**, **Capacity Blocks** (AWS: "Capacity Blocks can be used to reserve a cluster of GPU instances"), and **Dedicated Hosts** ("a physical host that is fully dedicated to running your instances"). *(Corrected 2026-10-07 — this bullet said "only zonal RIs and Capacity Reservations", which the note's own purchasing-options line already contradicted.)*
 - **Spot interruption notice = 2 minutes**, emitted as an **EventBridge event** (`EC2 Spot Instance Interruption Warning`) and as instance metadata at **`/latest/meta-data/spot/instance-action`** (which gives the action and time; HTTP 404 when not marked). AWS recommends polling **every 5 seconds**; notices are **best-effort**.
 - **Interruption behaviours:** terminate, stop, or **hibernate** — and hibernate gets a notice **without** the two-minute lead time, because hibernation starts immediately.
 - **Spot interruption causes:** EC2 needing the capacity back (most common), the Spot price exceeding a maximum price you set, or a constraint (launch group / AZ group) no longer being satisfiable. **Setting a maximum price increases interruption frequency.**
@@ -179,10 +180,10 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 | Commit to | **$/hour of spend** | **an instance configuration** |
 | Term | 1 or 3 years | 1 or 3 years |
 | Payment | All / Partial / No Upfront | All / Partial / No Upfront |
-| Reserves capacity | ❌ **never** | only **zonal** RIs |
+| Reserves capacity | ❌ **never** | only **zonal** RIs (capacity also comes from Capacity Reservations, Capacity Blocks and Dedicated Hosts) |
 | Can be sold | ❌ | ✅ Standard RIs, on the **RI Marketplace** |
 | Applies to | EC2, **Fargate, Lambda** (Compute SP) | EC2 (and separately RDS, Redshift, ElastiCache…) |
-| AWS's recommendation | ✅ **preferred** | legacy |
+| AWS's recommendation | ✅ **"We recommend Savings Plans over Reserved Instances"** | still fully supported — and still the only answer for **zonal capacity**, the **RI Marketplace**, and RDS/Redshift/ElastiCache reservations |
 
 ### When each purchasing option is the answer
 
@@ -213,7 +214,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 > A company runs roughly $12/hour of EC2 around the clock, but the mix changes — they migrate services between instance families as they tune, and they're moving some workloads to Fargate. A **Reserved Instance** would lock them to a family and be wasted the moment they migrate. An **EC2 Instance Savings Plan** would give the bigger 72% discount but only within one family in one Region — the same problem. The fit is a **Compute Savings Plan** at roughly their steady baseline: it follows them across families, sizes, Regions, operating systems and tenancies, **and covers the Fargate and Lambda usage too**. Commit to the *baseline*, not the peak — usage above the commitment simply bills On-Demand, whereas commitment you don't use is money gone.
 
 > [!example] Worked example — cutting a bill with no instance changes at all
-> A team's largest line items are a NAT Gateway and data transfer. Their private-subnet application reads heavily from S3, and every byte is going out through the NAT — charged per hour *and* per gigabyte. Adding an **S3 gateway endpoint** is free, routes that traffic inside the VPC, and removes it from the NAT bill entirely ([[05-vpc-endpoints-peering]]). While they're there: an **unattached Elastic IP** left from a decommissioned host is billing for nothing, old **EBS snapshots** from a Packer pipeline are charging indefinitely ([[03-ami-bake]]), and an **S3 lifecycle rule** moves logs older than 90 days to Glacier ([[09-s3-intro]]). Not one instance was resized. This is the shape of a lot of real cost work, and of the exam questions that don't mention compute.
+> A team's largest line items are a NAT Gateway and data transfer. Their private-subnet application reads heavily from S3, and every byte is going out through the NAT — charged per hour *and* per gigabyte. Adding an **S3 gateway endpoint** is free, routes that traffic inside the VPC, and removes it from the NAT bill entirely ([[05-vpc-endpoints-peering]]). While they're there: an **unattached Elastic IP** left from a decommissioned host is billing for nothing, old **EBS snapshots** from an image-build pipeline are charging indefinitely, and an **S3 lifecycle rule** moves logs older than 90 days to Glacier ([[09-s3-intro]]). Not one instance was resized. This is the shape of a lot of real cost work, and of the exam questions that don't mention compute.
 
 > [!failure] Failure mode — Spot for the wrong tier
 > A team puts their entire ASG on Spot to cut costs, including the instances holding user sessions in memory. AWS reclaims capacity, the **two-minute notice** fires, instances go away, and every user on them is logged out. The instances came back — the sessions didn't. Spot's contract is explicit: you get spare capacity and two minutes' warning, and anything that can't survive that isn't a Spot workload. The correct shapes are a **mixed-instances policy** (an On-Demand baseline with Spot on top for elasticity), moving session state out to **ElastiCache** ([[08-elasticache]]) so the instances are genuinely stateless, or handling the interruption notice to drain gracefully.

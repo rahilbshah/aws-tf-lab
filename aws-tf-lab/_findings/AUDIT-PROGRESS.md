@@ -372,3 +372,35 @@ as a live option. Now a trap.
 Side benefit: the same General Reference table lists "AWS Elemental MediaStore | November 12,
 2025", which independently confirms dropping MediaStore from the CloudFront origin list in
 the previous commit was right.
+
+### 13-cost-optimization (2026-10-07) — healthiest note so far; 0 confirmed-wrong facts
+
+124 claims, 19 pages, and **no confirmed-wrong fact**. The things most likely to be invented
+all checked out verbatim: the 66/72/35/64% Savings Plans discounts and their flexibility
+axes, the existence and full service list of **Database** Savings Plans, Compute Optimizer's
+14-day / 93-day-with-paid-metrics windows and its surprising resource list (NAT Gateway,
+DynamoDB, MemoryDB, WorkSpaces...), the Spot two-minute notice and its 404-when-not-marked
+behaviour, and Domain 4 = 20% from the exam guide PDF.
+
+Three overstatements, all the predicted shapes:
+1. "**Only** zonal RIs and Capacity Reservations reserve capacity" — false twice over
+   (Capacity Blocks reserve GPU clusters, a Dedicated Host is a host held for you), and the
+   note contradicted itself: its own purchasing-options line already said so.
+2. Savings Plans / reservation purchase recommendations are **not** Cost Explorer's alone —
+   **Cost Optimization Hub** produces them and AWS steers you there first.
+3. RIs labelled "legacy". AWS recommends SPs *over* RIs but RIs remain the only route to
+   zonal capacity, the RI Marketplace and RDS/Redshift/ElastiCache reservations.
+
+**Second false positive in my own carry-forward list.** The entry claiming
+`13-cost-optimization:120` carried a pre-correction public-IPv4 rule was wrong: the note says
+public IPv4 bills "whether attached or not", and AWS charges $0.005/hr for **both in-use and
+idle** addresses — so the note was right and my note about it was not. Combined with the
+README/cards false positive, the carry-forward list is now measurably less reliable than the
+agents' cited findings. Verify carry-forward items before acting on them, same as agent
+findings.
+
+Resolved a pre-existing verify marker with a fetch: Spot one-time vs persistent is confirmed
+verbatim, including the tie between request type and interruption behaviour (Stop/Hibernate
+persistent-only; Terminate one-time-only and the default, so a persistent request left on
+the default errors). The "cancelling a request doesn't terminate the instance" half is still
+unsourced and stays marked.

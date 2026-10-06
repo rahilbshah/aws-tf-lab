@@ -566,7 +566,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 - You pay the most for committing to nothing, and the exam's cost questions are asking which commitment the scenario can afford to make.  
   ↳ [[13-cost-optimization#What problem does this solve?|explain]]
-- On-Demand commits to nothing, Savings Plans commit to spend, Reserved Instances commit to a configuration, Spot commits to nothing but accepts eviction — and only Capacity Reservations and zonal RIs actually hold capacity for you.  
+- On-Demand commits to nothing, Savings Plans commit to spend, Reserved Instances commit to a configuration, Spot commits to nothing but accepts eviction — and capacity itself is held by zonal RIs, Capacity Reservations, Capacity Blocks and Dedicated Hosts — never by a Savings Plan or a regional RI.  
   ↳ [[13-cost-optimization#The ways to pay for a server|explain]]
 - Reserved Instances commit to a configuration, Savings Plans commit to a spend — and in both, giving up flexibility buys a bigger discount, which is the opposite of what most people guess.  
   ↳ [[13-cost-optimization#Savings Plans vs Reserved Instances — and why *more* flexible costs *more*|explain]]
