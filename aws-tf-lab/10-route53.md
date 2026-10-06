@@ -235,7 +235,7 @@ flowchart TB
 
 The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.2` in a `10.0.0.0/16` VPC) and answers for VPC names, private hosted zones, and public names. **Resolver rules** are per-domain conditional forwarders, and can be **shared across accounts with RAM**. Pairs with [[05-vpc-hybrid]] — the traffic itself rides Direct Connect or Site-to-Site VPN.
 
-> [!note] Naming churn
+> [!info] Naming churn
 > AWS has renamed **Route 53 Resolver** to **Route 53 VPC Resolver** (following the introduction of Route 53 Global Resolver). Course material and the exam will almost certainly still say "Route 53 Resolver" — treat them as the same thing.
 
 ## Worked examples

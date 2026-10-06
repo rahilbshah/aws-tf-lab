@@ -3,7 +3,7 @@ topic: 01-iam-advanced
 domain: secure
 status: reviewed
 services: [IAM, Organizations, ControlTower, IdentityCenter]
-related: [01-iam, 21-security, 09-s3-security, 05-vpc-endpoints-peering]
+related: [01-iam, 05-vpc-endpoints-peering, 09-s3-security, 13-cost-optimization, 21-security]
 tags: [topic, domain/secure]
 ---
 

@@ -541,3 +541,64 @@ Process note on that sweep: my first two attempts silently produced almost no ou
 `-w %{size_download}`), and I had already said "zero dead URLs" on the strength of a run that
 only probed 2 of 322. Checked the line count, caught it, corrected it. Worth remembering that
 an empty result from a shell pipeline looks identical to a clean pass.
+
+---
+
+## AUDIT COMPLETE — all 30 exam notes (2026-10-07)
+
+Every exam note in the vault has now been through the three-lens audit (truth / consistency /
+clarity), with every citation re-checked first-hand before any edit, and `cheatsheet.md`
+synced in the same commit as each note.
+
+**Scope:** 30 exam notes. `03-ami-bake`, `06-capstone` and `18-containers-capstone` are
+`exam: false` and excluded by `_lib.notes()`, so they were not audited.
+
+**Final vault state, verified mechanically after the last commit:**
+- 0 Terraform leftovers (no `terraform`, no `aws_*` resource names, no HCL argument names)
+- 0 invalid callout kinds
+- 0 broken wiki-links; 0 `related:` mismatches
+- 0 ragged tables; 0 multi-blank-line runs
+- 322 `docs.aws.amazon.com` citations probed; **0 undocumented dead links** (the single dead
+  URL is already labelled as dead in `24-other-services`, with a Wayback citation)
+- 31 `⚠️ verify` markers across the notes + 5 in `cheatsheet.md` — all deliberate, each
+  recording something AWS does not state rather than something unchecked
+
+**The empirical result, which is the most useful thing to carry forward.** Across roughly
+3,000 enumerated claims in 30 notes, the error profile was overwhelmingly §13.10a shapes:
+absolutes, negatives, eliminations and equations. Plain numeric facts were almost always
+right. The handful of genuinely wrong numbers were *rate* figures AWS had quietly restated or
+withdrawn — S3 RTC's percentage (which AWS itself gives two ways), and Step Functions'
+"2,000/sec" and "4,000 state transitions/sec", which appear nowhere in current quotas.
+
+**Error classes seen, in rough order of how often they cost a mark:**
+1. **Eliminations that reject a correct answer** — Trusted Advisor as an alarm source, SNS
+   FIFO replay/ordering, Athena Provisioned Capacity, "FIPS 140-3 Level 3 means CloudHSM",
+   ECS Anywhere, origin groups for POST, Snowcone.
+2. **Absolutes AWS has since scoped** — Lambda's 15 minutes (4 notes), Redshift Spectrum's
+   same-Region rule, "only zonal RIs reserve capacity", weight 0 "never returned".
+3. **Seams** (§13.10b) — Amazon MQ's deployment modes being ActiveMQ's, written as generic.
+4. **Mental models that were simply the wrong axis** — BPA's "new vs existing" grid.
+5. **Evidence failures** — a dead citation behind four claims, a quote no longer findable,
+   one invented example, one invented date (Snowball's 2026-12-31).
+
+**Two things I got wrong myself and had caught**, recorded because they calibrate how much to
+trust this process: I introduced two unearned absolutes into `05-vpc-security` that the next
+lens caught, and I over-confidently declared the S3 RTC percentage "settled" at 99.9% after
+fetching one page, when AWS publishes both figures and one page contradicts itself. Fetching
+*a* page does not settle a fact.
+
+**Three of my own carry-forward items turned out to be false positives** (README/cards, the
+public-IPv4 rule in `13-cost-optimization`, and the NAT-cost "duplication" in `17-containers`,
+which was correct and load-bearing in all three places). That list was less reliable than the
+agents' cited findings and should be verified the same way.
+
+**Process notes for any future run:**
+- Cap the truth lens at 18 pages. Uncapped it ran 2h 6m on one note and returned nothing.
+- One workflow in flight at a time, launched the moment the previous one lands, overlapping
+  with editing. That was the user's instruction and it roughly halved wall-clock per note.
+- Use the guarded `rep()` that asserts an exact match count before writing. It prevented a
+  partial edit four separate times tonight.
+- An empty result from a shell pipeline looks exactly like a clean pass. Check line counts.
+- For unattended runs: confirm `pmset -g batt` says "AC Power" first. `caffeinate`'s
+  `PreventSystemSleep` does not bind on battery, which is why the 2026-10-05 overnight run
+  produced one note instead of twelve.

@@ -3,7 +3,7 @@ topic: 01-iam
 domain: secure
 status: reviewed
 services: [IAM]
-related: [01-iam-advanced, 02-ec2, 07-rds-aurora, 09-s3-security]
+related: [01-iam-advanced, 02-ec2, 07-rds-aurora, 09-s3-security, 24-other-services]
 tags: [topic, domain/secure]
 ---
 
@@ -16,7 +16,7 @@ The global, free AWS service that authenticates and authorizes every AWS API cal
 > - **Four core objects:** User, Group, Role, Policy. Groups can't log in; only Users can.
 > - **Explicit Deny wins — with two documented exceptions.** Evaluation: implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything, and order, count and specificity never matter. The exceptions are both about **SCPs**: they *"don't affect users or roles in the management account"*, and *"SCPs **do not** affect any service-linked role"*. So a Deny written in an SCP does **not** stop a principal in the management account, which is exactly why you do not run workloads there.
 > - **Users have long-lived credentials** (password, access key). **Roles have none** — on assume, AWS STS issues temporary credentials (default 1h, max 12h). Prefer Roles + federation for both humans and services.
-> - **Roles use two distinct policies:** *trust policy* (`assume_role_policy` — WHO can assume) + *permissions policy* (attached separately — WHAT can be done once assumed). Either half missing = role doesn't work.
+> - **Roles use two distinct policies:** *trust policy* (the role's **Trust relationships**, `AssumeRolePolicyDocument` in the API — WHO can assume) + *permissions policy* (attached separately — WHAT can be done once assumed). Either half missing = role doesn't work.
 > - **Roles reach past AWS APIs.** With **IAM database authentication** an EC2/Lambda role can log in to RDS with a 15-minute token instead of a password — the IAM action is `rds-db:connect` (note: *not* the `rds:` management prefix). See [[07-rds-aurora]].
 > - **Existing corporate users?** Don't create IAM users — federate. **AD groups map to IAM roles** via IAM Identity Center (or SAML 2.0), backed by AWS Managed Microsoft AD or AD Connector.
 > - **EC2 doesn't attach to a role directly** — it attaches to an *Instance Profile*, a thin wrapper around a role (see [[02-ec2]]). The console hides the wrapper entirely. (Lambda, ECS, etc. take roles directly.)
@@ -75,7 +75,7 @@ Because a role belongs to nobody, one object has to answer two completely differ
 | | **Trust policy** | **Permissions policy** |
 |---|---|---|
 | The question | *Who is allowed to wear this hat?* | *What can the wearer do?* |
-| Where it lives | On the role itself — the `assume_role_policy` argument | Attached separately, like any other policy |
+| Where it lives | On the role itself — its **Trust relationships** (`AssumeRolePolicyDocument`) | Attached separately, like any other policy |
 | If it's missing | Nobody can assume the role at all | The role assumes fine and can still act **only where a resource's own policy names it** |
 
 Both halves are required, and the failure modes look nothing alike, which is what makes the distinction stick. Forget the trust policy and the door won't open. Forget the permissions policy and the door opens onto an empty room.
