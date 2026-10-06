@@ -3,7 +3,7 @@ topic: 25-well-architected
 domain: secure
 status: reviewed
 services: [WellArchitectedTool, TrustedAdvisor]
-related: [14-dr-resilience, 13-cost-optimization, 21-security, 20-monitoring, 24-other-services]
+related: [01-iam, 02-ec2, 08-elasticache, 13-cost-optimization, 14-dr-resilience, 20-monitoring, 21-security]
 tags: [topic, domain/secure]
 ---
 
@@ -17,7 +17,7 @@ The course calls this section "WhitePapers and Architectures". It isn't new serv
 > - **Reliability ≠ Performance Efficiency.** Reliability = survives and recovers from failure. Performance = right resource, used efficiently.
 > - **Well-Architected Tool** = **free**, console-based, question-driven review of a **workload**; extensible with **lenses** (AWS-provided or **custom**); integrates with Trusted Advisor.
 > - **Trusted Advisor** = inspects **deployed resources**. **Six categories:** cost optimization, performance, security, fault tolerance, **service limits**, operational excellence.
-> - **Basic/Developer Support** → all **Service Limits** checks plus a fixed handful of Security/Fault Tolerance checks (incl. **MFA on root account**, **S3 Bucket Permissions**, public EBS/RDS snapshots). **All checks require a paid support plan.**
+> - **Basic/Developer Support** → all **Service Limits** checks plus a fixed handful of Security/Fault Tolerance checks (incl. **MFA on root account**, **S3 Bucket Permissions**, public EBS/RDS snapshots). The **full** check set needs **Business Support+, Enterprise Support or Unified Operations** — note that **Developer Support is paid and still does *not* get it**, so "paid plan" is the wrong axis; the line is Business Support+ and above.
 > - **WA Tool = review the design. Trusted Advisor = inspect the resources. AWS Config = continuously evaluate and remediate.**
 > - **Whitepapers** are the source of the exam's "best practice" answers — and they age; verify their numbers.
 
@@ -80,7 +80,7 @@ One caution learned the hard way on the DR whitepaper: **whitepapers age.** That
 
 ### AWS Well-Architected Tool — the free self-assessment
 
-The **AWS Well-Architected Tool** is a console service that walks you through the framework's questions for a given **workload** and reports where you're at risk. **It is available at no charge in the AWS Management Console.**
+The **AWS Well-Architected Tool** is a console service that walks you through the framework's questions for a given **workload** and reports where you're at risk. There is **no additional charge** for it — AWS's pricing page: *"There is no additional charge for the AWS Well-Architected Tool. You pay only for your underlying AWS resources."* (The sentence this note used to quote here is no longer findable in the docs after the 2026-10-01 restructure.)
 
 What it does: documents the decisions you've made, produces recommendations against best practices, and tracks improvement over time.
 
@@ -97,7 +97,7 @@ Two terms to recognise. A **lens** applies a specialised set of questions — th
 | Category | Example of what it flags |
 |---|---|
 | **Cost optimization** | idle load balancers, underutilised instances |
-| **Performance** | over-utilised instances, unrestricted CloudFront settings |
+| **Performance** | high-CPU-utilisation EC2 instances, CloudFront cache-hit-ratio and content-delivery optimisation. (**Not** "unrestricted" anything — that word belongs to the *Security* check "Security Groups – Specific Ports Unrestricted".) |
 | **Security** | **MFA on root account**, public S3 buckets, open security group ports |
 | **Fault tolerance** | no Multi-AZ, missing backups |
 | **Service limits** | quota usage approaching the limit |
@@ -127,7 +127,7 @@ These three get offered together and are genuinely different jobs:
 ## Key facts, limits & pricing
 
 - **The AWS Well-Architected Framework has six pillars:** operational excellence, security, reliability, performance efficiency, cost optimization, and sustainability.
-- **AWS Well-Architected Tool** provides *"a consistent process for measuring your architecture using AWS best practices"* — documenting decisions, recommending improvements, and guiding workloads to be more reliable, secure, efficient and cost-effective. It supports **custom lenses** encoding your own best practices, and **integrates with AWS Trusted Advisor and AWS Service Catalog AppRegistry** to help answer review questions. **Available at no charge in the AWS Management Console.**
+- **AWS Well-Architected Tool** provides *"a consistent process for measuring your architecture using AWS best practices"* — documenting decisions, recommending improvements, and guiding workloads to be more reliable, secure, efficient and cost-effective. It supports **custom lenses** encoding your own best practices, and **integrates with AWS Trusted Advisor and AWS Service Catalog AppRegistry** to help answer review questions. **No additional charge** — AWS pricing page: *"There is no additional charge for the AWS Well-Architected Tool. You pay only for your underlying AWS resources."*
 - **AWS Trusted Advisor** *"inspects your AWS environment, and then makes recommendations when opportunities exist to save money, improve system availability and performance, or help close security gaps."*
 - **Trusted Advisor check categories (6):** Cost optimization · Performance · Security · Fault tolerance · Service limits · Operational Excellence.
 - **Trusted Advisor by support plan:** Basic and Developer Support get **all checks in the Service limits category**, plus exactly these — *Amazon EBS Public Snapshots, Amazon RDS Public Snapshots, Amazon S3 Bucket Permissions, MFA on root account, Security Groups – Specific Ports Unrestricted,* and *AWS STS global endpoint usage*. Automatic check updates are **not** available on Basic; Security-category checks must be refreshed manually. Full access (plus the **Trusted Advisor API** and **EventBridge** monitoring) requires a paid plan.
@@ -194,7 +194,7 @@ These three get offered together and are genuinely different jobs:
 ## 🔗 Docs
 
 - [The pillars of the framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html) — the six pillars named and ordered; verified 2026-09-26
-- [What is AWS Well-Architected Tool?](https://docs.aws.amazon.com/wellarchitected/latest/userguide/intro.html) — purpose, custom lenses, Trusted Advisor and Service Catalog AppRegistry integration; verified 2026-09-26
+- [What is AWS Well-Architected Tool?](https://docs.aws.amazon.com/wellarchitected/latest/userguide/tool.html) — purpose, custom lenses, Trusted Advisor and Service Catalog AppRegistry integration; **re-verified 2026-10-07**. (The old `userguide/intro.html` URL is dead — it returns the 2,459-byte not-found shell. AWS restructured the Well-Architected user guide on 2026-10-01, and Well-Architected is now two things: the **WA Tool** and a new **AWS Well-Architected Agent**.)
 - [AWS Trusted Advisor](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html) · [Trusted Advisor check reference](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor-check-reference.html) — the six categories, the Basic/Developer check list, and the 2027 support-plan changes; verified 2026-09-26
 - [Disaster Recovery of Workloads on AWS](https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html) — the worked example of a whitepaper as a source, and of one that has aged; see [[14-dr-resilience]]
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — domain weightings 30/26/24/20 and the 14 task statements; verified 2026-09-26

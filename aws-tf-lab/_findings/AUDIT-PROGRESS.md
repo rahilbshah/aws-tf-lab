@@ -502,3 +502,42 @@ EC2-vs-Fargate binary now omits **ECS Managed Instances**.
 
 Also resolved the cheatsheet's `ecs-tasks.amazonaws.com` marker — confirmed verbatim in the
 task execution role trust policy. Cheatsheet markers now 6 -> 5.
+
+### 25-well-architected (2026-10-07) — FINAL NOTE. Plus a vault-wide citation sweep.
+
+79 claims, 20 retrievals (12 parsed, ~8 of them one-second curl size-probes used to tell live
+docs from the not-found shell). No confirmed error in the exam-testable core: six pillars,
+the 30/26/24/20 domain weights, exactly 14 task statements counted in the exam guide PDF, the
+six Trusted Advisor categories, the Basic/Developer free-check list verbatim, and Aurora's
+10 secondary Regions all held.
+
+Four real problems, three of them about *evidence* rather than facts:
+1. **A dead citation.** `wellarchitected/latest/userguide/intro.html` returns the 2,459-byte
+   not-found shell; I confirmed with curl myself (a known-live page returns 13,060). It was
+   the sole citation behind four claims. Content moved to `userguide/tool.html`. AWS
+   restructured the guide on 2026-10-01 and Well-Architected is now two things — the WA Tool
+   and a new **Well-Architected Agent**.
+2. **A quote that is no longer findable.** "Available at no charge in the AWS Management
+   Console" was presented in bold as if quoted from that dead page. The *fact* is right; the
+   live source is the pricing page ("There is no additional charge for the AWS
+   Well-Architected Tool"). Fixed in both places it appeared.
+3. **A fabricated check example.** "Unrestricted CloudFront settings" is not a Trusted Advisor
+   Performance check. "Unrestricted" belongs to the *Security* check "Security Groups –
+   Specific Ports Unrestricted". On a which-category question the note primed the wrong answer.
+4. **"All checks require a paid support plan"** — wrong axis, and self-contradictory, since the
+   same TL;DR line lists what Basic/Developer get. **Developer Support is paid and still does
+   not get the full set**; the line is Business Support+, Enterprise or Unified Operations.
+
+**Vault-wide dead-citation sweep (new, worth repeating).** Extracted all **322** unique
+`docs.aws.amazon.com` URLs across every note and probed each for the not-found shell (a
+Python thread pool; the docs SPA returns 200 with a ~2.3–2.5 KB shell for removed paths).
+Result: **1 under 3,000 bytes, and it was already documented as dead** —
+`dms/.../CHAP_LargeDBs.Process.html`, which `24-other-services` already labels "chapter
+removed from the AWS DMS user guide — no live citation exists" and cites via Wayback instead.
+So: **zero undocumented dead citations in the vault.**
+
+Process note on that sweep: my first two attempts silently produced almost no output (an
+`xargs` cut off by the command timeout, then a `-I%` replace-string colliding with curl's
+`-w %{size_download}`), and I had already said "zero dead URLs" on the strength of a run that
+only probed 2 of 322. Checked the line count, caught it, corrected it. Worth remembering that
+an empty result from a shell pipeline looks identical to a clean pass.
