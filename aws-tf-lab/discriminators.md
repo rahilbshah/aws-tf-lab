@@ -432,7 +432,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]] · [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]] · [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]] · [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]] · [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]] · [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
 
-- **"add a security group rule to let API Gateway in"** — API Gateway is a managed service outside your VPC, so it has no security group and no subnet.  
+- **"add a security group rule to let API Gateway in"** — A public API Gateway endpoint (edge-optimized or Regional) is a managed service outside your VPC with no security group and no subnet, so securing it with a security group or a NACL is wrong — you restrict callers with a resource policy, IAM, an authorizer or WAF.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **the certificate Region for a custom domain** — It depends on the endpoint type, not on the service. AWS: to use an ACM certificate with a Regional custom domain name you must have it "in the same Region as your API"; with an edge-optimized custom domain name you must have it *"in the US East (N.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
@@ -444,7 +444,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **API keys are not authentication** — Usage plans and API keys "track and limit usage". They identify a caller for metering and throttling; they prove nothing about identity.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
-- **"ECS-style" two roles on Lambda** — ECS splits an execution role (the agent: pull the image, ship logs) from a task role (your code's AWS permissions).  
+- **"ECS-style" two roles on Lambda** — ECS splits an execution role (the agent: pull the image, ship logs) from a task role (your code's AWS permissions) — see [[17-containers]].  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **more memory is always more expensive** — Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]

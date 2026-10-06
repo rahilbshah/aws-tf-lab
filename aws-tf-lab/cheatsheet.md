@@ -1203,7 +1203,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Memory at which a function gets one vCPU | 1,769 MB |
 | Memory range | 128 MB – 10,240 MB |
-| Timeout ceiling | 900 seconds (15 minutes) |
+| Timeout ceiling | **900 seconds (15 minutes)** for a standard function — the exam answer. Not "hard" any more: **5,400 s (90 min)** for **Lambda Managed Instances** functions invoked **asynchronously or via an event source mapping**, except Amazon MQ and DocumentDB. *(Updated 2026-10-07.)* |
+| DynamoDB change-data-capture — two paths | **DynamoDB Streams** (24 h, trigger a Lambda on every change) **or** streaming item-level changes to **Kinesis Data Streams** (longer retention, enhanced fan-out, analytics pipelines). "Streams is the only thing that sees every change" is wrong |
+| API Gateway private integration targets | **NLB: REST + HTTP · ALB: REST + HTTP · AWS Cloud Map: HTTP only.** The REST-vs-HTTP discriminator is **Cloud Map**, not the LB type — "REST private integrations are NLB-only" is out of date *(verified 2026-10-07)* |
+| API Gateway and security groups | A **public** endpoint has none — restrict callers with a resource policy, IAM, an authorizer or WAF. But a **private REST API** is fronted by an **interface VPC endpoint**, which *does* have a security group, so "security group" isn't automatically wrong once the stem says private |
+| AWS-service integrations by API type | **REST**: non-proxy `AWS` integration, you map request/response. **HTTP**: first-class integrations using `AWS_PROXY` with a subtype (e.g. `SQS-SendMessage`). "Non-proxy only" is a REST rule, not an API Gateway rule |
 | Retries: synchronous vs asynchronous | Synchronous = no Lambda retries at all; asynchronous = retries twice (3 attempts) then DLQ/destination |
 | Event source mapping retry owner | The source's rules — for SQS, visibility timeout + maxReceiveCount → its DLQ, not Lambda's two retries |
 | Which services are event source mappings, not async | SQS, Kinesis, DynamoDB Streams (Lambda polls). S3, SNS, EventBridge are asynchronous |
@@ -1236,7 +1240,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Default throttle limits | 10,000 requests/second per account per Region, burst bucket 5,000 |
+| Default throttle limits | **10,000 RPS with a 5,000 burst bucket, per account per Region — *shared across* HTTP, REST and WebSocket APIs**, not per API. A few newer/smaller Regions default lower; adjustable via Service Quotas. AWS flags the mismatch itself: API Gateway defaults to 10,000 RPS while Lambda defaults to **1,000** concurrent executions |
 | Features that force REST over HTTP API | Caching, API keys/usage plans, WAF, private VPC-only endpoint, edge-optimized, request validation, canary, X-Ray |
 | Feature HTTP API has and REST does not | Native JWT authorizer (REST needs a Lambda authorizer) |
 | The three authorizer types | IAM (AWS principal), Cognito (logged-in end user), Lambda authorizer (your own scheme) |
