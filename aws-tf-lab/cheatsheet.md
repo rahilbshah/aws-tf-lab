@@ -1345,7 +1345,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| CloudHSM exam trigger phrase | single-tenant dedicated HSM, "we must control the keys", FIPS 140-3 Level 3 |
+| CloudHSM exam trigger phrase | **single-tenant / dedicated** HSM, "we must control the keys", "AWS must have no access to the key material". **Drop "FIPS 140-3 Level 3" as a trigger** — AWS: "FIPS 140-3 Security Level 3 validated HSMs are deployed in all AWS Regions where AWS KMS is offered", so that phrase no longer points away from KMS. *(Corrected 2026-10-07.)* |
+| ACM public certificate cost | **Non-exportable** (what you attach to an ALB/CloudFront/API Gateway): **no cost**. **Exportable** (since June 2025): **$7.00 per FQDN**, **$79.00 per wildcard**, charged at issuance *and* at each renewal |
+| Can an ACM public certificate be exported? | **Yes, now** — `aws acm export-certificate` / `ExportCertificate` returns the cert, chain and a passphrase-encrypted **private key**. Two conditions keep the classic answer mostly alive: it must have been issued as **exportable**, and "ACM public certificates created prior to **June 17, 2025** cannot be exported" |
+| Shield Advanced WAF coverage | Included on protected resources **up to 50 billion WAF requests/month** — covered, not uncapped |
+| KMS automatic rotation — what is excluded | Asymmetric keys, HMAC keys, custom key stores, **and imported key material (`EXTERNAL` origin)**. AWS: automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)" |
 
 ↳ [[20-monitoring]] · [[21-security]]
 

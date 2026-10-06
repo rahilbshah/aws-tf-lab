@@ -3,7 +3,7 @@ topic: 21-security
 domain: secure
 status: reviewed
 services: [KMS, CloudHSM, SecretsManager, ParameterStore, ACM, GuardDuty, Inspector, Macie, SecurityHub, Shield, WAF, FirewallManager, Detective]
-related: [01-iam, 01-iam-advanced, 09-s3-security, 11-cloudfront, 18-containers-capstone]
+related: [01-iam, 01-iam-advanced, 09-s3-security, 11-cloudfront, 20-monitoring]
 tags: [topic, domain/secure]
 ---
 
@@ -18,7 +18,7 @@ Keys, secrets, and a shelf of detection services whose only exam question is "wh
 > - **Secrets Manager rotates; Parameter Store does not.** Parameter Store Standard is **free, 4 KB, 10,000 params**; Advanced is **paid, 8 KB, 100,000, supports policies** — and you can upgrade but **never downgrade**.
 > - **Detection services, one line each:** GuardDuty = threats from **logs**; Inspector = **vulnerabilities** in EC2/ECR/Lambda; Macie = **sensitive data in S3**; Security Hub = **aggregates** everyone's findings; Detective = **investigate** a finding's root cause.
 > - **Shield Standard is free and automatic (L3/L4). Shield Advanced is $3,000/month with a 1-year commitment.**
-> - **WAF attaches to ALB, API Gateway REST, AppSync, Cognito user pool, App Runner, Amplify, Verified Access — and CloudFront. Never to an NLB or an EC2 instance.**
+> - **WAF attaches to ALB, API Gateway REST, AppSync, Cognito user pool, App Runner, Amplify, Verified Access — and CloudFront ([[11-cloudfront]]). Never to an NLB or an EC2 instance.**
 
 ## What problem does this solve?
 
@@ -34,7 +34,7 @@ The genuinely important idea in the first half is **envelope encryption**, becau
 
 ## How it actually works
 
-**KMS key types.** *Customer managed* — you create it, you own the key policy, you choose rotation, it costs ~$1/month. *AWS managed* (`aws/s3`, `aws/rds`) — created for you, free, rotated yearly, and **you cannot change its policy**. *AWS owned* — entirely inside the service, invisible to you.
+**KMS key types.** *Customer managed* — you create it, you own the key policy (a resource-based policy, evaluated alongside IAM exactly as [[01-iam]] describes), you choose rotation, and it carries a monthly fee plus per-request charges (~$1/month per key — check current pricing). *AWS managed* (`aws/s3`, `aws/rds`) — created for you, free, rotated yearly, and **you cannot change its policy**. *AWS owned* — entirely inside the service, invisible to you.
 
 **AWS managed keys are legacy.** This is the sentence that settles a whole family of
 questions: *"AWS managed keys are a legacy key type that is **no longer being created for new
@@ -107,7 +107,14 @@ graph TB
 
 - **An AWS CloudHSM key store** (the custom key store) is *"a custom key store backed by an AWS CloudHSM cluster"*: KMS *"generates and stores **non-extractable** key material for the KMS key in an AWS CloudHSM cluster **that you own and manage**"*, and cryptographic operations run **in the HSMs in that cluster**. That one design gives all three things a stem usually asks for together — KMS's integrations, **full control** of the cluster, and an **independent audit trail** via the CloudHSM client (*"view, audit, and manage the key material"*). Also: **while the key store is disconnected, KMS cannot access it** and the keys cannot be used — the "make key material unavailable immediately" answer. The cluster needs **at least two active HSMs in different AZs**.
 - **Shield Advanced's $3,000/month is charged once per consolidated-billing family:** *"When you subscribe multiple accounts that are in the same AWS Organizations consolidated billing account family, one subscription price covers all subscribed accounts in the family. The organization must own all of the AWS accounts and all of their resources."* So a surprisingly large Shield Advanced bill across many accounts points at **accounts outside the consolidated bill**, each paying its own $3,000 — not at the protection. *(Verified 2026-10-01.)*
-- ⚠️ verify: that a third-party CA certificate can be imported into ACM, that the legacy **IAM certificate store** (CLI-only) is the fallback where ACM is unavailable, and that a certificate uploaded for CloudFront cannot be exported for reuse on an ELB or EC2.
+- **Export: the old "an ACM public certificate can never leave AWS" rule is gone.** ACM has an
+  `ExportCertificate` API (`aws acm export-certificate`) returning the certificate, the chain and a
+  **passphrase-encrypted private key**, so a public certificate *can* now be reused on an
+  on-premises server or an EC2 host. Two conditions keep the classic exam answer mostly intact:
+  the certificate must have been issued as **exportable** (the paid option above), and *"ACM public
+  certificates created prior to June 17, 2025 cannot be exported."* A certificate you attached to
+  CloudFront or an ALB in the ordinary way is still the free, **non-exportable** kind. *(Verified 2026-10-07.)*
+- ⚠️ verify: that a third-party CA certificate can be imported into ACM, and that the legacy **IAM certificate store** (CLI-only) is the fallback where ACM is unavailable.
 
 - **WAF geo match rule statement:** manages requests by **country and region of origin**, matching **ISO 3166-1 alpha-2** country codes (`HK`, `DE`…). WAF derives the country from the **request's IP address**, and can be told to read an alternate header such as **`X-Forwarded-For`** via forwarded-IP configuration. It also **adds country/region labels** to every request, match or not, which a later label-match rule can use. *(Verified 2026-10-01.)*
 *Verified against AWS docs 2026-09-25.*
@@ -117,14 +124,14 @@ graph TB
 - **KMS allow is two-sided:** *"Without permission from the key policy, IAM policies that allow permissions have no effect."* A **deny** from IAM needs no key-policy permission. The **default key policy enables IAM policies**, so only a hand-tightened key policy exposes the rule. **Key policies are Regional; IAM policies are global.** For a Lambda principal, name the **execution role ARN**. *(Verified 2026-09-30.)*
 - **Rotation period:** *"If you do not specify a value for `RotationPeriodInDays`... the default value is 365 days."* **On-demand rotation: maximum 25 per key, and this quota is not adjustable.**
 - **AWS managed keys:** *"AWS KMS automatically rotates AWS managed keys every year"* — and *"In May 2022, AWS KMS changed the rotation schedule for AWS managed keys from every three years (approximately 1,095 days) to every year."*
-- **Cannot auto-rotate:** asymmetric KMS keys, HMAC KMS keys, keys in custom key stores — these are rotated **manually**.
+- **Cannot auto-rotate:** asymmetric KMS keys, HMAC KMS keys, keys in custom key stores, and keys with **imported key material** (`EXTERNAL` origin) — AWS: *"Automatic key rotation is supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)."* These are rotated **manually**.
 - **KMS quotas:** 100,000 customer managed keys per Region, **50 aliases per key**, **50,000 grants per key**, 10 custom key stores.
 - **Parameter Store tiers:** Standard — **10,000** parameters, **4 KB**, no policies, no cross-account sharing, **no charge**. Advanced — **100,000**, **8 KB**, policies **supported**, shareable, **charges apply**. *"You can change a standard parameter to an advanced parameter, but you can't change an advanced parameter to a standard parameter."*
 - **GuardDuty foundational data sources:** **CloudTrail management events, VPC Flow Logs, Route 53 Resolver DNS query logs** — consumed as independent duplicate streams, so *"You don't need to enable anything else"* and your own flow-log config is unaffected. 30-day free trial.
-- **Inspector** scans **EC2 instances, container images in ECR, and Lambda functions**, *"continually"* and automatically — *"you don't need to manually schedule or configure assessment scans"* — rescanning when a package changes or a new CVE is published.
+- **Inspector** scans **EC2 instances, container images in ECR, and Lambda functions** — and AWS now says activation enrols you in *all* scan types, so treat that list as the exam's core rather than a closed set. Scanning is *"continually"* and automatically — *"you don't need to manually schedule or configure assessment scans"* — rescanning when a package changes or a new CVE is published.
 - **Macie** analyses **Amazon S3** — bucket inventory, public-access posture, and sensitive-data discovery using **managed** and **custom data identifiers**. 30-day free trial.
-- **Shield Standard:** protection *"for all AWS customers... at no additional charge"* (network/transport layer). **Shield Advanced: $3,000/month, 1-year commitment**, and it covers standard WAF costs on protected resources.
-- **WAF web ACL targets:** regional — **API Gateway REST API, Application Load Balancer, AppSync GraphQL API, Cognito user pool, App Runner, Verified Access, Amplify**; global — **CloudFront**, whose web ACL *"will have a hard-coded Region of US East (N. Virginia)"*. One web ACL per resource; a CloudFront web ACL cannot also be attached to a regional resource.
+- **Shield Standard:** protection *"for all AWS customers... at no additional charge"* (network/transport layer). **Shield Advanced: $3,000/month, 1-year commitment**, and it includes *"certain AWS WAF usage for Shield protected resources at no additional cost for up to **50 billion AWS WAF requests per month**"* — covered, but not uncapped.
+- **WAF web ACL targets:** regional — **API Gateway REST API, Application Load Balancer, AppSync GraphQL API, Cognito user pool, App Runner, Bedrock AgentCore Gateway, Verified Access, Amplify**; global — **CloudFront**, whose web ACL *"will have a hard-coded Region of US East (N. Virginia)"*. One web ACL per resource; a CloudFront web ACL cannot also be attached to a regional resource.
 
 ## Comparisons
 
@@ -143,8 +150,7 @@ Three consequences, and the exam tests the first two:
 
 - **Allow is two-sided.** A principal needs `kms:Decrypt` in its IAM policy **and** the key
   policy must permit it. Granting `kms:Decrypt` in IAM alone does nothing.
-- **Deny is one-sided.** You *can* deny a KMS permission from an IAM policy with no help from the
-  key policy — denies never need the key policy's cooperation.
+- **Deny is one-sided.** An explicit deny in an IAM policy blocks the call whatever the key policy says, because denies follow normal IAM evaluation. ⚠️ verify: AWS states the *allow* direction verbatim ("Without permission from the key policy, IAM policies that allow permissions have no effect"); this deny direction is the reasonable inverse rather than a quoted rule. The old wording follows — denies never need the key policy's cooperation.
 - **The default key policy already enables IAM policies**, via a statement granting the account
   root access. So a key created with defaults behaves "normally" and the exception only bites on
   a key whose policy was hand-written and omitted that statement. This is why the rule surprises
@@ -195,7 +201,7 @@ the answer, and a Lambda *resource* policy only controls who may **invoke** it i
 | "unusual API calls", "crypto-mining", "compromised instance calling a known bad IP" | **GuardDuty** | CloudTrail + VPC Flow Logs + DNS logs |
 | "unpatched software", "CVE", "vulnerability scan of our EC2/containers" | **Inspector** | the software on EC2, ECR images, Lambda |
 | "PII", "credit card numbers", "is there sensitive data in our buckets" | **Macie** | **S3 objects only** |
-| "single pane of glass", "aggregate findings", "CIS benchmark compliance" | **Security Hub** | other services' findings |
+| "single pane of glass", "aggregate findings", "CIS benchmark compliance" | **Security Hub** — AWS now names the aggregator **Security Hub CSPM** in current service docs, so either wording may appear | other services' findings |
 | "investigate the root cause of this finding", "visualise the relationships" | **Detective** | the same logs, as a behaviour graph |
 | "central firewall rules across all accounts in the org" | **Firewall Manager** | WAF/Shield/SG policies, org-wide |
 
@@ -204,17 +210,17 @@ the answer, and a Lambda *resource* policy only controls who may **invoke** it i
 |---|---|---|---|
 | Protects against | L3/L4 DDoS | L3/L4/L7 DDoS | **L7 application** attacks (SQLi, XSS, bots) |
 | Cost | **free, automatic** | **$3,000/mo, 1-year commitment** | per web ACL + per rule + per request |
-| Extras | — | 24×7 SRT access, **DDoS cost protection**, covers WAF cost on protected resources | rate-based rules, managed rule groups, CAPTCHA |
+| Extras | — | 24×7 SRT access, **DDoS cost protection**, WAF included on protected resources **up to 50 bn requests/month** | rate-based rules, managed rule groups, CAPTCHA |
 | You configure rules | no | no | **yes** |
 
 ### CloudHSM vs KMS
 | | KMS | CloudHSM |
 |---|---|---|
 | Tenancy | multi-tenant, AWS-managed | **dedicated single-tenant HSM** |
-| Who holds the keys | AWS (FIPS 140-3 validated) | **you** — AWS cannot access them |
+| Who holds the keys | AWS, in **FIPS 140-3 Security Level 3** validated HSMs (AWS: *"deployed in all AWS Regions where AWS KMS is offered"*; China Regions use OSCCA-certified HSMs instead) | **you** — AWS cannot access them |
 | Key control | key policies, IAM | you manage users and keys in the HSM |
 | Supports | symmetric, asymmetric, HMAC | full suite incl. **SSL offload, custom crypto** |
-| Exam trigger | almost everything | "**we must control the keys**", "FIPS 140-3 **Level 3**", regulatory requirement for dedicated hardware |
+| Exam trigger | almost everything — **including "FIPS 140-3 Level 3"**, since KMS's own HSMs are Level 3 validated in every KMS Region | "**we must control the keys**", **single-tenant / dedicated** hardware, "AWS must have no access to the key material", a regulator naming the HSM itself |
 
 ### ACM — where the certificate has to live
 
@@ -232,9 +238,12 @@ zone is in Route 53, ACM can write it for you) or **email validation**. DNS vali
 one to pick, because it is what lets ACM **renew automatically** and forever; email validation
 needs a human every time.
 
-Public certificates from ACM are **free**; **ACM Private CA** is a separate, paid service for
-issuing internal certificates, and it is the answer only when the scenario says *internal* or
-*private PKI*.
+**Non-exportable** public certificates from ACM — the kind you attach to an ALB, CloudFront or
+API Gateway — are **free** ("Public certificate (non-exportable): No cost"). Since June 2025 ACM
+also issues **exportable** public certificates, and those are **paid**: **$7.00 per standard
+FQDN** and **$79.00 per wildcard**, charged at issuance and again at each renewal. **ACM Private
+CA** remains a separate, paid service for issuing internal certificates, and it is the answer
+only when the scenario says *internal* or *private PKI*. *(Verified 2026-10-07.)*
 
 > [!warning] Trap — a regional certificate offered for CloudFront
 > CloudFront is global and takes its certificate **only from us-east-1**, no matter where the
@@ -285,8 +294,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > "Block a source making N requests per second" is a **WAF rate-based rule**, every time.
 > Shield Advanced is the answer to *"we want DDoS cost protection and 24/7 response support"*,
 > not to a configurable rate threshold. Note also that GuardDuty notifications come from an
-> **EventBridge rule → SNS** — GuardDuty emits **findings as events**, so there is no
-> CloudWatch *metric* to alarm on.
+> **EventBridge rule → SNS** — GuardDuty emits **findings as events**, so the notification path is an EventBridge rule rather than a metric alarm. ⚠️ verify the stronger negative (that GuardDuty publishes no CloudWatch *metric* at all) before relying on it as an elimination.
 
 > [!warning] Trap — "disable GuardDuty" chosen when the findings must survive
 > They are opposites. **Suspend** stops monitoring and billing but **keeps** existing findings
@@ -350,7 +358,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > Shield is **DDoS**. SQL injection, XSS and bad bots are **WAF**. Shield Advanced adds layer-7 DDoS mitigation and *covers* your standard WAF costs on protected resources, but it is not where you write "block requests containing `' OR 1=1`". Rules are a WAF concept.
 
 > [!warning] Trap — GuardDuty needs you to turn on flow logs
-> It does not. GuardDuty consumes *"an independent and duplicated stream"* of CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — *"You don't need to enable anything else"*, and enabling or disabling your own flow logs changes nothing about GuardDuty. Options telling you to configure the data sources first are the distractor.
+> It does not — for CloudTrail and flow logs. GuardDuty consumes *"an independent and duplicated stream"* of CloudTrail management events and VPC Flow Logs, with nothing to enable. The **DNS** source carries a condition worth knowing: GuardDuty reads Route 53 Resolver query logs only if your instances use the **AWS DNS resolvers** (the default); point them at a third-party resolver and GuardDuty loses that signal. So the sources are CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — *"You don't need to enable anything else"*, and enabling or disabling your own flow logs changes nothing about GuardDuty. Options telling you to configure the data sources first are the distractor.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 

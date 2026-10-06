@@ -506,7 +506,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **Shield Advanced to block SQL injection** — Shield is DDoS. SQL injection, XSS and bad bots are WAF. Shield Advanced adds layer-7 DDoS mitigation and covers your standard WAF costs on protected resources, but it is not where you write "block requests containing ' OR 1=1".  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
-- **GuardDuty needs you to turn on flow logs** — It does not. GuardDuty consumes "an independent and duplicated stream" of CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — "You don't need to enable anything else", and enabling or disabling your own flow logs changes nothing about GuardDuty.  
+- **GuardDuty needs you to turn on flow logs** — It does not — for CloudTrail and flow logs. GuardDuty consumes "an independent and duplicated stream" of CloudTrail management events and VPC Flow Logs, with nothing to enable.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 
 
