@@ -13,12 +13,12 @@ Moving data around and reacting to it: replication for DR/latency, multipart & b
 
 > [!info] Exam TL;DR
 > - **Replication:** **CRR** = different region (DR, latency, compliance), **SRR** = same region (log aggregation, prod↔test). Requires **versioning on BOTH buckets** + an **IAM role**. It is **asynchronous**.
-> - Live replication only copies **new/updated** objects. Pre-existing objects (or previously failed ones) need **S3 Batch Replication** — an on-demand job.
+> - A **live** replication rule — the ordinary always-on rule you switch on, which copies each write as it happens — only copies **new/updated** objects. Pre-existing objects (or previously failed ones) need **S3 Batch Replication**, a one-off job you run on demand.
 > - **Replication is not chained**: A→B and B→C does *not* get A's objects to C.
-> - **S3 RTC** = SLA-backed **99.99% replicated within 15 minutes** (the "predictable replication time / compliance" answer).
-> - **Multipart upload:** recommended ≥ **100 MB**, **required > 5 GB** (single-PUT max). Parallel parts, retry only the failed part. **Incomplete parts keep billing** → lifecycle `AbortIncompleteMultipartUpload`.
-> - **Byte-range fetch** = the download mirror: fetch only part of an object (headers, or parallel chunks).
-> - **Transfer Acceleration:** upload to the nearest **CloudFront edge**, then over AWS's **private backbone** to the bucket's region. Same bucket, faster path — for long-distance/large uploads.
+> - **S3 RTC** = SLA-backed **99.9% replicated within 15 minutes** (the "predictable replication time / compliance" answer).
+> - **Multipart upload:** recommended ≥ **100 MB**, **required > 5 GB** (single-PUT max). Parallel parts, retry only the failed part. **Incomplete parts keep billing** → add the lifecycle action that **deletes incomplete multipart uploads**.
+> - **Byte-range fetch** = ask S3 for only a range of an object's bytes — the first few KB of a file, say, or several ranges pulled in parallel. The download mirror of multipart upload.
+> - **Transfer Acceleration:** enter AWS at the nearest **CloudFront edge**, then travel AWS's **private backbone** to the bucket's region. Same bucket, faster path, **caches nothing**. AWS's wording is "transfers … between your client and an S3 general purpose bucket" — so **both directions**, though every use case AWS lists is an upload. For long-distance transfers of large objects.
 > - **Event notifications:** on object created/removed/restored → **SNS, SQS, Lambda, EventBridge**. Destination needs a **resource policy** allowing S3.
 > - **Glacier retrieval tiers** (Flexible): Expedited **1–5 min**, Standard **3–5 h**, Bulk **5–12 h**. Deep Archive: **no Expedited**, Standard **~12 h**, Bulk **~48 h**.
 > - ⚠️ **S3 Select is no longer available to new customers** — learn the concept; use **Athena** in practice.
@@ -53,15 +53,15 @@ The fix has a name, and the name is the exam answer: **S3 Batch Replication** �
 | Object that existed before the rule | ❌ | ✅ |
 | Object whose replication **FAILED** | ❌ | ✅ |
 | Object already replicated, new destination added | ❌ | ✅ |
-| A replica you want re-replicated | ❌ | ✅ |
+| A replica you want re-replicated — B's copy of A's object, passed on to C | ❌ | ✅ |
 
-That last row is the other counter-intuitive one: **replication is not chained.** If A replicates to B and B replicates to C, objects from A do **not** reach C. B's copies are *replicas*, and a live rule won't re-replicate a replica. Only Batch Replication will.
+The last row is the other counter-intuitive one: **replication is not chained.** If A replicates to B and B replicates to C, objects from A do **not** reach C. B's copies are *replicas*, and a live rule won't re-replicate a replica. Only Batch Replication will.
 
 Two prerequisites, and they are non-negotiable: **versioning on both buckets**, and an **IAM role** S3 assumes to read the source versions and write the destination.
 
-Deletes then behave in two different ways, and both are worth memorising as stated. Delete an object and the **delete marker is not replicated** unless you explicitly opt in (`delete_marker_replication`). Delete a *specific version* and that is **never** replicated, opt-in or not — that one protects the copy. Replication is a copy, not a backup.
+Deletes then behave in two different ways, and both are worth memorising as stated. First, the mechanic they depend on: in a versioned bucket a delete does not erase anything — S3 lays a **delete marker** on top of the key, which hides it while every older version stays stored ([[09-s3-intro]] owns this). Now: delete an object and that **delete marker is not replicated** unless you switch on the replication rule's **Delete marker replication** option. Delete a *specific version* and that is **never** replicated, opt-in or not — that one protects the copy. Replication is a copy, not a backup; the things that actually stop a deletion are versioning and **Object Lock** ([[09-s3-security]]).
 
-It is also **asynchronous** — the write succeeds immediately and the copy catches up afterwards. If a scenario demands a *predictable* catch-up, that is **S3 RTC**: 99.99% of new objects replicated within **15 minutes**, backed by an SLA and CloudWatch replication metrics.
+It is also **asynchronous** — the write succeeds immediately and the copy catches up afterwards. If a scenario demands a *predictable* catch-up, that is **S3 RTC**: AWS "replicates most objects that you upload to Amazon S3 in seconds, and **99.9 percent** of those objects within **15 minutes**", backed by an SLA and CloudWatch replication metrics. Note the SLA has holes: it does not apply while you are exceeding the per-prefix request-rate guidelines, nor while your replication data transfer exceeds the default **1 Gbps** quota.
 
 > In one line: replication only copies what happens next; everything else — pre-existing, failed, or a replica — needs Batch Replication.
 
@@ -73,7 +73,7 @@ The reason to switch early isn't the size limit. It's the failure math. One 4 GB
 
 Now the part that costs real money. A multipart upload is a conversation with three stages: start it, send the parts, complete it. If the client dies before that last step, the parts that made it are **stored and billed** — but the object doesn't exist yet, so it does **not** appear in a normal listing or the bucket's object count. You are paying for data you cannot see.
 
-A nightly job that crashes occasionally accumulates these quietly for months. You find them with `aws s3api list-multipart-uploads`. You prevent them with a lifecycle rule containing **`AbortIncompleteMultipartUpload`** — hygiene that costs nothing to add, and the reason that clause is in our lifecycle rule.
+A nightly job that crashes occasionally accumulates these quietly for months. You find them with `aws s3api list-multipart-uploads`. You prevent them with a lifecycle rule whose action is **delete incomplete multipart uploads** (`AbortIncompleteMultipartUpload` in the lifecycle XML and API) after N days from when the upload started — hygiene that costs nothing to add, and the reason that action belongs in every lifecycle rule you write.
 
 **Byte-range fetch** is the mirror image on the way down: ask for only a range of bytes. Read just a header or metadata block without pulling the whole object, resume a broken download from where it stopped, or split one big download into ranges fetched in parallel.
 
@@ -97,11 +97,11 @@ An event notification is a rule on the bucket: when *this* kind of thing happens
 
 The triggers are `s3:ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, and more. The destinations are **SNS**, **SQS**, **Lambda** and **EventBridge** — EventBridge being the one that buys richer filtering, archive/replay, and 20+ further targets.
 
-**First failure: nobody told the destination.** S3 publishing into your queue is S3 calling *your* resource, so the permission has to live on that resource. Each destination needs a **resource policy** allowing `s3.amazonaws.com`, scoped with an `aws:SourceArn` condition to the one bucket. Miss it and you don't get a quiet runtime error later — the setup itself **fails validation**. The policy must therefore exist **before** the notification is configured.
+**First failure: nobody told the destination.** S3 publishing into your queue is S3 calling *your* resource, so the permission has to live on that resource. The policy goes on the **destination** — the SQS queue, SNS topic or Lambda function, not the bucket — and says in effect "allow the S3 service to publish here, but only on behalf of this one bucket". That scoping is the `aws:SourceArn` condition, and it matters because without it any bucket in any account could aim its notifications at your queue ([[01-iam]] covers the confused-deputy problem this prevents). Miss it and you don't get a quiet runtime error later — the setup itself **fails validation**. The policy must therefore exist **before** the notification is configured.
 
 **Second failure: the rule feeds itself.** A Lambda triggered by uploads to `uploads/` writes a thumbnail. If it writes that thumbnail back into `uploads/`, the write is a new `ObjectCreated` event, which fires the same Lambda, which writes another object. Infinite recursion, billed every turn. The output must go to a **different prefix or bucket**.
 
-One more shape worth holding: delivery is typically seconds but **not guaranteed instant**, so design consumers to be **idempotent**.
+One more shape worth holding: delivery is typically seconds but **not guaranteed instant**, so design consumers to be **idempotent** — handling the same event twice produces the same result as handling it once, so a duplicate or late delivery does no harm.
 
 > In one line: the destination must grant S3 permission, and the output must never land where the trigger is watching.
 
@@ -128,18 +128,18 @@ flowchart LR
 - **Requirements:** versioning **enabled on source *and* destination**, plus an **IAM role** S3 assumes (read source versions, write destination).
 - **Only new/updated objects** are replicated after you enable a rule. For anything else use **S3 Batch Replication** (on-demand): existing objects, objects whose replication **FAILED**, objects already replicated (e.g. to a newly added destination), and replicas-of-replicas.
 - **Not transitive/chained** — replicas created by a rule can only be re-replicated via Batch Replication.
-- **Delete markers** are **not** replicated unless you opt in (`delete_marker_replication`). Deleting a *specific version* is never replicated (protects the copy).
+- **Delete markers** are **not** replicated unless you switch on the rule's **Delete marker replication** option. Deleting a *specific version* is never replicated (protects the copy).
 - Replicas can land in a **different (cheaper) storage class**, and ownership can be overridden to the destination account.
-- **S3 RTC (Replication Time Control):** replicates **99.99% of new objects within 15 minutes**, backed by an SLA + CloudWatch replication metrics. Doesn't apply to Batch Replication.
+- **S3 RTC (Replication Time Control):** replicates **99.9% of objects within 15 minutes** (most "in seconds"), backed by an SLA + CloudWatch replication metrics, plus `OperationMissedThreshold` / `OperationReplicatedAfterThreshold` events. The SLA is void while you exceed the per-prefix request guidelines or the default **1 Gbps** replication transfer quota. Doesn't apply to Batch Replication. *(Corrected 2026-10-06 — this note said 99.99% in three places.)*
 - **CRR use cases:** compliance/geographic distance, lower latency for users in another region, cross-region DR. **SRR use cases:** aggregate logs into one bucket, replicate prod→test accounts, data-sovereignty copies within a region.
 
 ### Big objects
 - **Multipart upload:** AWS **recommends ≥ 100 MB**; **required above 5 GB** (max single-PUT). Up to **10,000 parts** (numbers 1–10,000); max object **50 TB** (raised from 5 TB in Dec 2025 — older practice banks still say 5 TB). Parts upload in **parallel** and a failed part is retried alone.
-- **Incomplete multipart uploads keep billing you** for the stored parts until you complete or abort them — and they're invisible in a normal listing. Always add **`AbortIncompleteMultipartUpload`** to a lifecycle rule.
+- **Incomplete multipart uploads keep billing you** for the stored parts until you complete or abort them — and they're invisible in a normal listing. Always add the **delete incomplete multipart uploads** action (`AbortIncompleteMultipartUpload`) to a lifecycle rule.
 - **Byte-range fetch:** request only a byte range of an object — used to read just a header/metadata, resume a broken download, or parallelize a big download into ranges.
 
 ### Speed & query
-- **Transfer Acceleration:** client uploads to the **nearest CloudFront edge location**, which forwards over **AWS's private backbone** to the bucket's region. The bucket does **not** move. Best for long-distance transfers of large objects; costs extra per GB. (Not a CDN for reads — that's CloudFront itself.)
+- **Transfer Acceleration:** the client enters AWS at the **nearest CloudFront edge location**, which forwards over **AWS's private backbone** to the bucket's region. The bucket does **not** move and **nothing is cached**. AWS describes it as transfers "between your client and an S3 general purpose bucket" — bidirectional wording, and the accelerate endpoint serves `GET`s as well as `PUT`s — but all three of AWS's own "why use it" reasons are uploads, so expect upload-flavoured stems without eliminating it on a download stem. Best for long-distance transfers of large objects; costs extra per GB. Requires a **bucket name with no periods**, virtual-hosted-style requests, the `s3-accelerate.amazonaws.com` endpoint, and up to **20 minutes** after enabling before speeds improve. (Not a CDN for repeated reads — that's CloudFront itself.)
 - **S3 Select:** SQL over a **single object** (CSV/JSON/Parquet), returning only matching rows/columns so less data crosses the wire. ⚠️ **AWS: "Amazon S3 Select is no longer available to new customers."** Existing users keep it; new work should use **Athena** (multi-object SQL over S3). Know the concept for the exam.
 
 ### Events & automation
@@ -148,7 +148,9 @@ flowchart LR
 - Each destination needs a **resource policy** allowing `s3.amazonaws.com` (with an `aws:SourceArn` condition) — otherwise S3 can't publish and setup fails validation.
 - Delivery is typically seconds but **not guaranteed instant**; design consumers to be idempotent.
 
-### Glacier retrieval tiers (verified)
+### Glacier retrieval tiers
+
+An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it sits: you issue a **restore**, which makes a temporary readable copy, and you choose how fast — faster costs more. Glacier **Instant** Retrieval and the other classes need no restore at all. Storage classes themselves are [[09-s3-intro]].
 
 | Storage class | Expedited | Standard | Bulk |
 |---|---|---|---|
@@ -158,7 +160,7 @@ flowchart LR
 *(Glacier **Instant** Retrieval needs no restore at all — millisecond GET.)*
 
 ### Other advanced bits
-- **S3 Batch Operations:** run one action (copy, tag, restore, invoke Lambda, ACL change) across **millions of objects** from a manifest, with retries and a completion report. Powers Batch Replication.
+- **S3 Batch Operations:** run one action (copy, tag, restore, invoke Lambda, ACL change) across **millions of objects** listed in a **manifest** (a file naming the objects to act on — an S3 Inventory report or a CSV you supply), with retries and a completion report. Powers Batch Replication.
 - **Storage Lens:** org-wide storage analytics dashboard (usage, activity, cost-optimization recommendations); free metrics tier + paid advanced.
 - **Storage Class Analysis:** watches access patterns and recommends when to transition to IA.
 - **Requester Pays:** the *requester*, not the bucket owner, pays for requests + transfer — for sharing large datasets.
@@ -173,6 +175,17 @@ flowchart LR
 | Typical use | DR, compliance distance, low latency for far users, cross-region analytics | Log aggregation, prod↔test sync, in-region data-sovereignty copies |
 | Cross-account | Yes | Yes |
 
+### CloudFront vs Transfer Acceleration
+
+*Both use CloudFront edge locations, which is why they get confused. The axis is **caching vs path**.*
+
+|   | CloudFront | S3 Transfer Acceleration |
+|---|---|---|
+| What the edge does | **Caches** the object at the edge | **Caches nothing** — every request still reaches S3 |
+| What it optimises | Repeat reads of the *same* objects by many users | A *single* long-distance transfer over AWS's private backbone |
+| Direction | Reads (downloads) out to viewers | AWS's wording covers **both**; all its stated use cases are uploads |
+| Pick it when | Same content, many viewers, repeatedly | One large object, one long distance, caching would not help |
+
 ### Multipart vs byte-range
 
 |   | Multipart upload | Byte-range fetch |
@@ -184,13 +197,13 @@ flowchart LR
 ## Worked examples
 
 > [!example] Worked example — the event-driven thumbnail pipeline
-> Users upload photos to `uploads/`. An **`s3:ObjectCreated:*` notification** (prefix-filtered) fires a **Lambda**, which reads the object, generates a thumbnail and writes it to `thumbs/`. No polling, no server, and it scales with upload volume. Two production details: the destination needs a **resource policy** letting S3 invoke it, and the thumbnail must be written to a **different prefix or bucket** — writing back into `uploads/` would re-trigger the same rule and **recurse infinitely** (a real and expensive mistake). In this build we pointed events at **SQS** instead of Lambda so the raw event JSON is readable with one CLI call — that JSON is exactly what a Lambda would receive.
+> Users upload photos to `uploads/`. An **`s3:ObjectCreated:*` notification** (prefix-filtered) fires a **Lambda**, which reads the object, generates a thumbnail and writes it to `thumbs/`. No polling, no server, and it scales with upload volume. Two production details: the destination needs a **resource policy** letting S3 invoke it, and the thumbnail must be written to a **different prefix or bucket** — writing back into `uploads/` would re-trigger the same rule and **recurse infinitely** (a real and expensive mistake). A useful way to see the shape: point the notification at **SQS** instead of Lambda and read the raw event JSON off the queue — that JSON is exactly what a Lambda would have received.
 
 > [!failure] Failure mode — "replication is on, so we're backed up"
 > A team enables CRR for DR and assumes the destination now mirrors the bucket. It doesn't: live replication copies only objects written **after** the rule existed, so years of existing data are missing — discovered during an actual regional failover. Worse, if they'd enabled **delete-marker replication**, an accidental delete would propagate to the "backup" too. Fixes: run **S3 Batch Replication** to backfill existing objects, keep delete-marker replication **off** for DR copies, and monitor with **replication metrics / S3 RTC**. Replication is a *copy*, not a *backup* — versioning + Object Lock are what protect against deletion.
 
 > [!failure] Failure mode — the invisible multipart bill
-> A nightly job uploads multi-GB files and sometimes crashes mid-upload. Each crash leaves an **incomplete multipart upload**: the uploaded parts are stored and **billed**, but they don't appear in `s3 ls` or the bucket's object count. Months later, storage cost far exceeds the visible data. Diagnose with `aws s3api list-multipart-uploads`; fix permanently with a lifecycle rule containing **`abort_incomplete_multipart_upload { days_after_initiation = 7 }`**. This is why that clause is in our lifecycle rule.
+> A nightly job uploads multi-GB files and sometimes crashes mid-upload. Each crash leaves an **incomplete multipart upload**: the uploaded parts are stored and **billed**, but they don't appear in `s3 ls` or the bucket's object count. Months later, storage cost far exceeds the visible data. Diagnose with `aws s3api list-multipart-uploads`; fix permanently with a lifecycle rule whose action **deletes incomplete multipart uploads 7 days after they were initiated**. That action costs nothing and there is no good reason to omit it.
 
 > [!warning] Trap — replication copies existing objects
 > It does **not**. Live CRR/SRR only handles objects created/updated **after** the rule. Existing data needs **S3 Batch Replication**.
@@ -199,7 +212,7 @@ flowchart LR
 > No. A→B and B→C does **not** deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.
 
 > [!warning] Trap — Transfer Acceleration moves your data closer to users
-> It doesn't move the bucket. It changes the **path**: enter AWS at the nearest **edge location**, then travel the **private backbone** to the bucket's region. For serving *reads* globally you want **CloudFront**.
+> It doesn't move the bucket and it caches nothing — it changes the **path**: enter AWS at the nearest **edge location**, then travel the **private backbone** to the bucket's region. The axis being tested is **acceleration vs caching**, not upload vs download: for the same objects read repeatedly by many people you want **CloudFront**, and for one large object moved a long way (either direction) you want Transfer Acceleration.
 
 > [!warning] Trap — "use S3 Select" on a new account
 > S3 Select is **no longer available to new customers**. The modern answer for SQL over S3 is **Athena** (and it queries many objects, not one).
@@ -215,11 +228,11 @@ flowchart LR
 - [ ] **Incomplete multipart uploads bill invisibly** — lifecycle abort rule is mandatory hygiene.
 
 ## 🔗 Docs
-- [S3 performance — request rates per prefix](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)
-- [S3 Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
-
+- [S3 performance — request rates per prefix](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) — 3,500/5,500 per partitioned prefix, gradual scaling, 503 Slow Down; **verified 2026-10-05**
+- [S3 Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html) — "between your client and an S3 general purpose bucket", edge + backbone, no periods in the bucket name, 20-min activation; **verified 2026-10-06**
+- [S3 Replication Time Control](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html) — **99.9%** within 15 minutes, and the SLA's request-rate / 1 Gbps carve-outs; **verified 2026-10-06**
 - [Replicating objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html) — CRR/SRR, Batch Replication, RTC 15-min SLA; **verified 2026-08**
 - [Multipart upload overview](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) — 100 MB recommendation, 10,000 parts, incomplete-upload billing; **verified 2026-08**
 - [Archive retrieval options](https://docs.aws.amazon.com/AmazonS3/latest/userguide/restoring-objects-retrieval-options.html) — Expedited/Standard/Bulk times; **verified 2026-08**
 - [S3 Select](https://docs.aws.amazon.com/AmazonS3/latest/userguide/selecting-content-from-objects.html) — *"no longer available to new customers"*; **verified 2026-08**
-- [Event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) / [Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html)
+- [Event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html)

@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*106 comparison tables · 195 discriminators · ~38 min read*
+*107 comparison tables · 195 discriminators · ~38 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -226,13 +226,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
 
-**Compare:** [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
+**Compare:** [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 - **replication copies existing objects** — It does not. Live CRR/SRR only handles objects created/updated after the rule. Existing data needs S3 Batch Replication.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **replication is transitive** — No. A→B and B→C does not deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.  
   ↳ [[09-s3-advanced#Worked examples|note]]
-- **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket. It changes the path: enter AWS at the nearest edge location, then travel the private backbone to the bucket's region.  
+- **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket and it caches nothing — it changes the path: enter AWS at the nearest edge location, then travel the private backbone to the bucket's region.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **"use S3 Select" on a new account** — S3 Select is no longer available to new customers. The modern answer for SQL over S3 is Athena (and it queries many objects, not one).  
   ↳ [[09-s3-advanced#Worked examples|note]]

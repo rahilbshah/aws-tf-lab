@@ -198,3 +198,35 @@ are structural and are therefore **not applied**, only recorded:
   both claim the note covers it. Currently two key-fact bullets only.
 - No `> [!tip] Production gap` callout — but `09-s3-advanced` and `09-s3-security`
   have none either, so this is vault-consistent, not a defect in this note.
+
+### 09-s3-advanced (2026-10-06) — partial pass, truth lens pending
+
+**The truth lens failed on this note.** Run `wf_5e47515c-444` ran 2h 6m and stalled on all
+six retries, returning nothing. Cause is unconfirmed but the note is large and the agent was
+fetching without a budget; the audit script now caps the truth lens at **18 pages** and
+no longer forces `effort: 'high'`. Re-run is `wf_f90cb933-4da` (truth only).
+
+Applied in this commit are the consistency and clarity findings plus two corrections I
+verified first-hand. Structural items held back (S3 notes, pending the user's read):
+
+- The **Glacier retrieval tiers** table (H3 under `## Key facts`) and the **live rule vs
+  Batch Replication** table (H3 under `## How it actually works`) are both orphaned from the
+  generators, which only harvest H3s under `## Comparisons` or H2s containing "vs". The
+  Batch Replication one is the exam answer to the single most-missed trap in the topic and
+  currently reaches no generated view.
+- Ownership overlaps with `09-s3-intro`, now that both notes have been edited: per-prefix
+  request rates (intro carries the gradual-scaling/503 qualifier, this note does not),
+  max object size 50 TB (intro has the 48.8 TiB detail, this note does not), incomplete
+  multipart billing, and Glacier retrieval speed. Each is stated in full in both places.
+
+### Why the overnight run produced one note instead of twelve (2026-10-06)
+
+Two independent failures, recorded so neither is mis-diagnosed later:
+
+1. **The machine slept at 00:53 despite `caffeinate -dimsu`.** `pmset -g log` shows
+   "Entering Sleep state due to 'Sleep Service Back to Sleep' … **Using Batt (Charge:69%)**".
+   caffeinate held `PreventSystemSleep` for 8h42m — the assertion was live the whole time —
+   but it only binds **on AC power**. Unplugged, macOS overrides it. If an unattended run is
+   attempted again, check `pmset -g batt` for "AC Power" first; do not rely on having asked.
+2. **The truth agent stalled while the machine was awake**, so power was not its cause. See
+   the 09-s3-advanced entry above for the mitigation.

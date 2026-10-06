@@ -625,7 +625,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Batch Replication — the four cases it covers | Pre-existing objects, FAILED replications, newly-added destination, replicas-of-replicas |
 | What a live replication rule copies | Only objects created or updated AFTER the rule existed |
-| S3 RTC guarantee | 99.99% of new objects replicated within 15 minutes, SLA-backed + CloudWatch replication metrics |
+| S3 RTC guarantee | **99.9%** of objects replicated within 15 minutes ("most … in seconds"), SLA-backed + CloudWatch replication metrics. *(Corrected 2026-10-05 — this row said 99.99%, which row "S3 Replication Time Control SLA" already contradicted.)* |
 | Is replication chained / transitive? | No — A→B and B→C does not get A's objects to C |
 | Delete replication behaviour | Delete markers not replicated unless opted in; deleting a specific version is NEVER replicated |
 | Replication prerequisites | Versioning on BOTH buckets + an IAM role S3 assumes; replication is asynchronous |

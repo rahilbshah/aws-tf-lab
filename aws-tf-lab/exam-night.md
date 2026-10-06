@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 333 pointers · ~29 min read*
+*176 recall hooks · 334 pointers · ~29 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -417,6 +417,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
+- [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]]
 - [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 
