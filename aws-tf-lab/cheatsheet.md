@@ -1453,7 +1453,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Express workflow maximum duration | 5 minutes (Standard: 1 year) |
-| Standard vs Express execution semantics | Standard = exactly-once; Express = at-least-once |
+| Standard vs Express execution semantics | Standard = **exactly-once**. Express splits: **Asynchronous = at-least-once** (a step may run more than once), **Synchronous = at-most-once** (it may run fewer). Neither Express flavour is exactly-once. *(Corrected 2026-10-07 — this row gave only the async half.)* |
+| Step Functions throughput quotas | `StateTransition`: Standard **5,000/sec** in N. Virginia / Oregon / Ireland, **800/sec** elsewhere; Express **unlimited**. `StartExecution`: Standard refills **300/sec** / **150/sec** on the same Region split; Express **6,000/sec**. Synchronous Express calls don't count against account capacity. **"2,000/sec" and "100,000/sec" are legacy figures AWS no longer publishes** |
+| Services in full shutdown you may still meet on the exam | **QLDB** (end of support 31 Jul 2025) · **Elastic Transcoder** (13 Nov 2025 → MediaConvert) · **DMS Fleet Advisor** (20 May 2026) · **Snowball Edge** (12 Nov 2025, and the whole Snow Family is closed to new customers) · **MediaStore** (12 Nov 2025). Learn the concepts; none can be deployed |
 | Execution rate limits | Standard 2,000/sec (4,000 state transitions/sec); Express 100,000/sec |
 | Pricing basis, Standard vs Express | Standard priced per state transition; Express by execution count + duration |
 | Which pattern does human-in-the-loop approval | Wait for Callback (.waitForTaskToken) — Standard only; Express is Request Response only |

@@ -560,11 +560,11 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[24-other-services#Traps|note]]
 - **DMS alone for a heterogeneous migration** — DMS moves data. It does not translate a schema between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs AWS SCT / DMS Schema Conversion first, then DMS.  
   ↳ [[24-other-services#Traps|note]]
-- **Standard vs Express workflows** — Decide on duration and volume, not sophistication. Express caps at five minutes and is at-least-once — so anything long-running, anything needing exactly-once, and anything waiting on a human approval (.waitForTaskToken, which Express doesn't support) must be Standard.  
+- **Standard vs Express workflows** — Decide on duration and volume, not sophistication. Express caps at five minutes, and its guarantee depends on the flavour — Asynchronous Express is at-least-once, Synchronous Express is at-most-once; neither is exactly-once. So anything long-running, anything needing exactly-once, and anything waiting on a human approval (.waitForTaskToken, which Express doesn't support) must be Standard.  
   ↳ [[24-other-services#Traps|note]]
 - **AD Connector or Simple AD where RDS for SQL Server is involved** — Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server. AD Connector and Simple AD are both explicitly incompatible.  
   ↳ [[24-other-services#Traps|note]]
-- **Lambda for a job that outgrows 15 minutes** — Lambda's 15-minute maximum is a hard ceiling, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it.  
+- **Lambda for a job that outgrows 15 minutes** — Lambda's 15-minute maximum is the figure the exam uses, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it.  
   ↳ [[24-other-services#Traps|note]]
 - **Transfer Family confused with DataSync** — Both move files into AWS and both appear together as options. Transfer Family is a standing endpoint speaking SFTP/FTPS/FTP/AS2, for external parties using their own clients. DataSync is a transfer job you run to move a dataset between storage systems.  
   ↳ [[24-other-services#Traps|note]]

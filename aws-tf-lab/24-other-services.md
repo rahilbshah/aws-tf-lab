@@ -3,7 +3,7 @@ topic: 24-other-services
 domain: performance
 status: reviewed
 services: [DMS, StepFunctions, AppSync, Batch, ElasticBeanstalk, TransferFamily, DirectoryService, Cognito, CloudFormation, ServiceCatalog]
-related: [19-serverless, 15-decoupling, 07-rds-aurora, 01-iam-advanced, 12-storage-extras]
+related: [12-storage-extras, 13-cost-optimization, 14-dr-resilience, 15-decoupling, 19-serverless, 20-monitoring]
 tags: [topic, domain/performance]
 ---
 
@@ -16,14 +16,14 @@ The catch-all. Seven services that are individually too small for their own note
 > - **DMS targets are not just databases:** **Redshift**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, Kafka, Neptune, DocumentDB — and **S3 can be a source**. "Continuously replicate RDS into a warehouse" = **DMS → Redshift**, not Glue or EMR.
 > - **DMS Serverless** auto-provisions and scales capacity (a **replication configuration**, no instance to size) — the answer for **spiky volume + least operational overhead**.
 > - **Too big for the bandwidth?** The **retired but still-examined** answer: **SCT + a local DMS Agent** extract onto a **Snowball Edge**, AWS unloads to **S3**, a **remote DMS task** loads the target — DMS itself does *not* extract. Current answer is **DataSync**.
-> - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** at-least-once, **5 minutes**, 100,000/sec, priced by count+duration, **Request Response only**.
+> - **Step Functions Standard:** exactly-once, up to **1 year**, priced per **state transition**, supports **.sync** and **.waitForTaskToken** (human approval). **Express:** **5 minutes**, priced by count+duration, **Request Response only**.
 > - **AppSync = managed GraphQL** with real-time **WebSocket subscriptions**; API Gateway = REST/HTTP/WebSocket. Amplify is built on AppSync.
 > - **AWS Batch** runs **containerised** jobs on ECS/EKS across EC2/Fargate/**Spot**, with **no time limit** — the answer when Lambda's **15 minutes** isn't enough.
 > - **Elastic Beanstalk** provisions EC2 + ELB + ASG + health monitoring from uploaded code. **No charge for Beanstalk itself — only the underlying resources.** You still control the resources.
 > - **Transfer Family** = managed **SFTP / FTPS / FTP / AS2** into **S3 or EFS**, when partners' clients can't change. **AS2 = B2B/EDI.** Not the same as DataSync.
 > - **Directory Service:** **Managed Microsoft AD** = real AD, trusts, MFA, schema extensions, **works with RDS SQL Server**. **AD Connector** = proxy to on-premises AD, stores nothing. **Simple AD** = Samba 4, basic, **no MFA/trusts/schema extensions**. Neither AD Connector nor Simple AD supports RDS SQL Server.
 > - For a **SaaS app's own users**, the answer is **Cognito**, not Directory Service.
-> - **QLDB** = immutable verifiable ledger. **AppFlow** = SaaS↔AWS data transfer. **Wavelength** = 5G edge. **License Manager** = BYOL tracking.
+> - **QLDB** = immutable verifiable ledger — ⚠️ **shut down**: the AWS General Reference lists Amazon QLDB under *Services in Full Shutdown* with an end-of-support date of **July 31, 2025**. Still exam-answerable if a question offers it; not buildable. **AppFlow** = SaaS↔AWS data transfer. **Wavelength** = 5G edge. **License Manager** = BYOL tracking.
 
 > [!warning] Build tier — **conceptual-only**
 > Nothing here is free-tier friendly (DMS replication instances, Beanstalk environments and Directory Service directories all bill hourly). Read, drill, move on.
@@ -64,7 +64,7 @@ Two facts carry most of the exam weight.
 
 The exam question is almost always some form of: *"migrate a 5 TB on-premises Oracle database to Aurora PostgreSQL with minimal downtime."* Answer: **SCT to convert the schema, then DMS with ongoing replication to move the data and keep it current until cutover.**
 
-Also worth a line each: **DMS Fleet Advisor** inventories your on-premises database estate to help plan a migration, data at rest is encrypted with **KMS** and in flight with **SSL**, and DMS provides **automatic failover** to a backup replication server.
+Also worth a line each: **DMS Fleet Advisor** inventories your on-premises database estate to help plan a migration — ⚠️ though the AWS General Reference lists it under *Services in Full Shutdown* with an end-of-support date of **May 20, 2026** — data at rest is encrypted with **KMS** and in flight with **SSL**, and DMS provides **automatic failover** to a backup replication server.
 
 **It is not only database-to-database.** This is the part most people carry wrongly: DMS reads
 from and writes to things that are not relational databases at all, which is why it turns up as
@@ -118,9 +118,10 @@ The exam-testable part is the workflow type split:
 
 | | **Standard** | **Express** |
 |---|---|---|
-| Execution semantics | **exactly-once** | **at-least-once** |
+| Execution semantics | **exactly-once** | **Asynchronous: at-least-once** (a step may run more than once) · **Synchronous: at-most-once** (it may run fewer) |
 | Max duration | **1 year** | **5 minutes** |
-| Execution rate | 2,000/sec | **100,000/sec** |
+| Execution start rate (`StartExecution`, soft quota) | **300/sec** refill in N. Virginia / Oregon / Ireland, **150/sec** elsewhere | **6,000/sec**; Synchronous Express calls don't count against account capacity |
+| State transition rate | **5,000/sec** in N. Virginia / Oregon / Ireland, **800/sec** elsewhere | **no limit** |
 | Priced by | **state transition** | number **and duration** of executions |
 | Execution history | in Step Functions | sent to **CloudWatch Logs** |
 | Integration patterns | Request Response, **Run a Job (.sync)**, **Wait for Callback** | **Request Response only** |
@@ -260,7 +261,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 | Service | One line |
 |---|---|
-| **Amazon QLDB** | immutable, cryptographically verifiable **ledger** database — an append-only journal with history you can prove |
+| **Amazon QLDB** | immutable, cryptographically verifiable **ledger** database — an append-only journal with history you can prove. ⚠️ **Full shutdown, end of support July 31, 2025** (AWS General Reference). Learn the concept for the exam; it cannot be deployed |
 | **Amazon AppFlow** | no-code data transfer between **SaaS apps** (Salesforce, Slack, Zendesk) and AWS |
 | **AWS Application Migration Service (MGN)** | lift-and-shift **server** migration by block-level replication (the DR cousin — see [[14-dr-resilience]]) |
 | **AWS Application Discovery Service** | inventories on-premises servers to plan a migration |
@@ -270,7 +271,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 | **AWS Proton** | templated infrastructure delivery for platform teams |
 | **Amazon Pinpoint** | targeted customer **marketing/transactional messaging** at scale |
 | **Amazon Managed Grafana / Managed Service for Prometheus** | managed observability dashboards and metrics ([[20-monitoring]]) |
-| **Amazon Elastic Transcoder / Kinesis Video Streams** | media transcoding / ingesting video streams |
+| **Amazon Elastic Transcoder / Kinesis Video Streams** | media transcoding / ingesting video streams. ⚠️ **Elastic Transcoder is in full shutdown, end of support November 13, 2025** (AWS General Reference) — AWS points to **AWS Elemental MediaConvert**. Kinesis Video Streams is unaffected |
 | **ECS Anywhere / EKS Anywhere** | run ECS or EKS on **your own** on-premises hardware |
 | **AWS Cost and Usage Report** | the most granular billing data export ([[13-cost-optimization]]) |
 | **AWS Serverless Application Repository / Device Farm** | share serverless apps / test on real mobile devices |
@@ -287,9 +288,9 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - **DynamoDB auto scaling is on by default only from the console:** *"If you use the AWS Management Console to create a table or a global secondary index, DynamoDB auto scaling is enabled by default."* A table created by **CLI, API, SDK or IaC** does **not** get it, so a stem where the table was created programmatically needs it **explicitly enabled** — and AWS recommends applying it to the table's **GSIs** too, or writes throttle. *(Verified 2026-10-01.)*
 
 - **AWS DMS** migrates relational databases, data warehouses, NoSQL databases and other data stores, into AWS or between cloud and on-premises. It is *"a server in the AWS Cloud that runs replication software"* — the **replication instance**. It **creates target tables and primary keys if they don't exist**, supports **one-time migration or ongoing replication to keep source and target in sync**, provides **automatic failover to a backup replication server**, and encrypts data at rest with **KMS** and in flight with **SSL**. It supports **fully heterogeneous** migrations between supported engines.
-- **AWS SCT / DMS Schema Conversion** converts source schemas and code objects (tables, indexes, views, triggers) to the target engine. **DMS Fleet Advisor** inventories on-premises database and analytics servers to identify migration candidates.
-- **Step Functions Standard workflows:** exactly-once, up to **one year**, **2,000 executions/sec**, **4,000 state transitions/sec**, priced **by state transition**, execution history retained in Step Functions.
-- **Step Functions Express workflows:** at-least-once, up to **five minutes**, **100,000 executions/sec**, near-unlimited state transitions, priced by **number and duration** of executions, history sent to **CloudWatch**.
+- **AWS SCT / DMS Schema Conversion** converts source schemas and code objects (tables, indexes, views, triggers) to the target engine. **DMS Fleet Advisor** (⚠️ end of support **May 20, 2026**) inventories on-premises database and analytics servers to identify migration candidates.
+- **Step Functions Standard workflows:** **exactly-once**, up to **one year**, priced **by state transition**, execution history retained in Step Functions for **90 days** (reducible to 30 on request). Throughput is **region-dependent and soft**, not the single number this note used to carry: `StateTransition` **5,000/sec** in N. Virginia, Oregon and Ireland but **800/sec** everywhere else; `StartExecution` refills at **300/sec** / **150/sec** on the same split. *(Corrected 2026-10-07 — "2,000 executions/sec" and "4,000 state transitions/sec" appear nowhere in AWS's quotas.)*
+- **Step Functions Express workflows:** up to **five minutes**, **no state-transition limit**, `StartExecution` at **6,000/sec**, priced by **number and duration** of executions, history sent to **CloudWatch**. The execution guarantee depends which Express you mean: **Asynchronous is at-least-once**, **Synchronous is at-most-once** — opposite failure modes, and the note used to give only the first.
 - **Step Functions integration patterns:** Request Response (default), **Run a Job (`.sync`)**, **Wait for Callback (`.waitForTaskToken`)**. **Express supports Request Response only.** States include Task, Choice, Parallel, Map, with Retry/Catch error handling.
 - **AWS AppSync** delivers serverless **GraphQL and Pub/Sub** APIs over one endpoint spanning multiple data sources, with **serverless WebSocket subscriptions**, server-side caching, and authorization via **API keys, IAM, Cognito, OIDC or Lambda**. Priced per million requests and real-time updates; **auth/authn failures are not charged**.
 - **AWS Batch** runs batch workloads on **Amazon ECS and Amazon EKS**, scaling on **EC2 instances, Fargate and Spot/On-Demand**. Fully managed — no batch software to install. It also queues **SageMaker Training** jobs.
@@ -310,9 +311,10 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 |   | **Standard** | **Express** |
 |---|---|---|
-| Execution semantics | **exactly-once** | **at-least-once** |
+| Execution semantics | **exactly-once** | **Asynchronous: at-least-once** (a step may run more than once) · **Synchronous: at-most-once** (it may run fewer) |
 | Maximum duration | **1 year** | **5 minutes** |
-| Execution rate | 2,000/sec | **100,000/sec** |
+| Execution start rate (`StartExecution`, soft quota) | **300/sec** refill in N. Virginia / Oregon / Ireland, **150/sec** elsewhere | **6,000/sec**; Synchronous Express calls don't count against account capacity |
+| State transition rate | **5,000/sec** in N. Virginia / Oregon / Ireland, **800/sec** elsewhere | **no limit** |
 | Pricing basis | **per state transition** | per execution **count + duration** |
 | History | in Step Functions | **CloudWatch Logs** |
 | `.sync` / `.waitForTaskToken` | **✓** | **✗ (Request Response only)** |
@@ -356,7 +358,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Two problems, two tools. The engines differ, so the **schema** won't transfer as-is — stored procedures, triggers, data types all need translating. That's **AWS SCT** (or DMS Schema Conversion). Then the **data**: create a **DMS replication instance**, point a task at the Oracle source and the Aurora target, and run a **full load plus ongoing replication (CDC)**. The bulk copy happens while Oracle stays live and serving; CDC streams the changes made during that copy; when the lag reaches near zero you stop the application, let the last changes drain, and repoint it at Aurora. Downtime is the cutover, not the copy — which is the whole point, and the reason "export a dump and restore it" is the wrong answer at 5 TB.
 
 > [!example] Worked example — picking the workflow type
-> Two orchestration scenarios, deliberately close. **(a)** *"An insurance claim workflow calls three services, then waits for a human adjuster to approve before paying out. Approval can take days, and every step must be auditable."* → **Standard**: it runs up to a year, gives exactly-once execution, keeps the execution history, and — decisively — supports **`.waitForTaskToken`**, which is how you pause for a human. **(b)** *"Process 50,000 IoT telemetry events per second, each through a short three-step transformation."* → **Express**: 100,000/sec, five-minute cap is ample, priced by duration rather than per transition (which at that volume is the difference between viable and absurd). The at-least-once semantics are acceptable because the transformation is idempotent. Pick on **duration and volume**, not on which sounds more robust.
+> Two orchestration scenarios, deliberately close. **(a)** *"An insurance claim workflow calls three services, then waits for a human adjuster to approve before paying out. Approval can take days, and every step must be auditable."* → **Standard**: it runs up to a year, gives exactly-once execution, keeps the execution history, and — decisively — supports **`.waitForTaskToken`**, which is how you pause for a human. **(b)** *"Process 50,000 IoT telemetry events per second, each through a short three-step transformation."* → **Express**: Express has **no state-transition limit** and a far higher start rate (`StartExecution` 6,000/sec, with Synchronous Express calls not counting against account capacity at all), the five-minute cap is ample, and it is priced by duration rather than per transition — which at that volume is the difference between viable and absurd. The at-least-once semantics are acceptable because the transformation is idempotent. Pick on **duration and volume**, not on which sounds more robust.
 
 > [!failure] Failure mode — the SFTP server nobody wanted to run
 > A company keeps an EC2 instance running `sshd` so partners can drop files by SFTP. It works, until it doesn't: the instance is a single point of failure in one AZ, patching it is someone's unglamorous job, the host keys are backed up nowhere, disk fills silently, and files sit on an EBS volume that no analytics tool can read without a copy step. **Transfer Family** removes every one of those: a managed endpoint across up to three AZs on an auto-scaling fleet, files landing **directly in S3** where Athena, Glue and lifecycle policies already work, and partners noticing nothing because their clients, credentials and firewall rules are unchanged. The tell that you're in this failure mode: **the thing keeping your file transfer alive is a person remembering to patch a box.**
@@ -385,13 +387,13 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > DMS moves **data**. It does not translate a **schema** between different engines. Any Oracle→PostgreSQL or SQL Server→MySQL scenario needs **AWS SCT / DMS Schema Conversion** first, then DMS. An option offering "use DMS to migrate the database" with no schema-conversion step is incomplete for heterogeneous migrations — and is the correct answer only when the source and target run the **same** engine.
 
 > [!warning] Trap — Standard vs Express workflows
-> Decide on **duration and volume**, not sophistication. **Express caps at five minutes** and is **at-least-once** — so anything long-running, anything needing exactly-once, and anything waiting on a **human approval** (`.waitForTaskToken`, which Express doesn't support) must be **Standard**. Conversely, at tens of thousands of events per second, Standard's per-state-transition pricing is the wrong cost model. "Human approval" in a question is effectively a Standard flag.
+> Decide on **duration and volume**, not sophistication. **Express caps at five minutes**, and its guarantee depends on the flavour — **Asynchronous Express is at-least-once**, **Synchronous Express is at-most-once**; neither is exactly-once. So anything long-running, anything needing exactly-once, and anything waiting on a **human approval** (`.waitForTaskToken`, which Express doesn't support) must be **Standard**. Conversely, at tens of thousands of events per second, Standard's per-state-transition pricing is the wrong cost model. "Human approval" in a question is effectively a Standard flag.
 
 > [!warning] Trap — AD Connector or Simple AD where RDS for SQL Server is involved
 > **Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server.** AD Connector and Simple AD are both explicitly incompatible. Directory questions frequently bury an RDS SQL Server requirement in the scenario precisely because it collapses three options to one. Same logic for **trusts, schema extensions, LDAPS and MFA** — Simple AD supports none of them.
 
 > [!warning] Trap — Lambda for a job that outgrows 15 minutes
-> Lambda's **15-minute** maximum is a hard ceiling, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it. The answer is **AWS Batch** (containerised, no time limit, Spot-friendly) or ECS/Fargate tasks. Watch for the inverse too: a short, event-driven, spiky workload put on Batch is over-engineering — Batch has queue and provisioning latency that Lambda doesn't.
+> Lambda's **15-minute** maximum is the figure the exam uses, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it. Currency: it is no longer an absolute — AWS allows up to **90 minutes** for **Lambda Managed Instances** functions invoked asynchronously or through an event source mapping ([[19-serverless]]). Answer 15 minutes on the exam; don't carry "hard ceiling" as a fact. The answer is **AWS Batch** (containerised, no time limit, Spot-friendly) or ECS/Fargate tasks. Watch for the inverse too: a short, event-driven, spiky workload put on Batch is over-engineering — Batch has queue and provisioning latency that Lambda doesn't.
 
 > [!warning] Trap — Transfer Family confused with DataSync
 > Both move files into AWS and both appear together as options. **Transfer Family is a standing endpoint speaking SFTP/FTPS/FTP/AS2, for external parties using their own clients.** **DataSync is a transfer job you run** to move a dataset between storage systems. "Partners upload to us and can't change their software" → Transfer Family. "Migrate 50 TB from an on-premises NAS" → DataSync. If the question names a **protocol**, it's Transfer Family.
