@@ -402,9 +402,9 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[16-kinesis#Traps|note]]
 - **a low-cardinality partition key** — Adding shards does nothing if the partition key only produces a handful of hash values. A key like region or event_type concentrates traffic on a few shards while the rest idle, and the stream throttles far below its nominal capacity.  
   ↳ [[16-kinesis#Traps|note]]
-- **Firehose expected to store or replay** — Firehose has no retention period and no concept of re-reading. It buffers briefly and delivers.  
+- **Firehose expected to store or replay** — Firehose has no readable retention and no concept of re-reading — you cannot get data back out of it, which is the part that matters.  
   ↳ [[16-kinesis#Traps|note]]
-- **Firehose treated as real-time** — Firehose buffers by size or interval before delivering, so it is near real-time — seconds to minutes, not milliseconds.  
+- **Firehose treated as real-time** — Firehose buffers by size or interval before delivering, so it is near real-time. The defaults sit at the slow end (S3: 5 MB / 300 s), but the buffering interval can be set as low as 0 seconds — AWS calls this "zero buffering" and says data is then delivered "within a few seconds".  
   ↳ [[16-kinesis#Traps|note]]
 - **forgetting that read throughput is shared** — A shard's 2 MB/sec read is split across all consumers using the default shared fan-out.  
   ↳ [[16-kinesis#Traps|note]]

@@ -3,7 +3,7 @@ topic: 16-kinesis
 domain: performance
 status: reviewed
 services: [Kinesis, Firehose]
-related: [15-decoupling, 09-s3-advanced, 12-storage-extras, 22-analytics]
+related: [09-s3-intro, 15-decoupling, 22-analytics]
 tags: [topic, domain/performance]
 ---
 
@@ -17,9 +17,9 @@ Streaming data: a continuous, ordered log that several consumers read independen
 > - **Per shard: 1 MB/sec _or_ 1,000 records/sec in; 2 MB/sec out** (max 5 `GetRecords`/sec). Read throughput is **shared across all consumers** unless you use enhanced fan-out.
 > - **Partition key → MD5 hash → shard.** **Ordering is guaranteed within a shard, not across the stream** — the same idea as `MessageGroupId` in FIFO SQS. Low-cardinality keys create a **hot shard**.
 > - **Capacity modes:** *provisioned* (you set shard count, billed per shard-hour) or *on-demand* (AWS manages shards, billed per GB). You may switch **twice per 24 hours**.
-> - **Data Streams = a store you build consumers for. Firehose = a delivery pipe with nothing to manage.** Firehose has **no shards and no retention**, buffers by **size or interval**, and can run a **Lambda transform**.
+> - **Data Streams = a store you build consumers for. Firehose = a delivery pipe with nothing to manage.** Firehose has **no shards and no readable retention** (it does hold undelivered data for up to **24 hours** while retrying), buffers by **size or interval**, and can run a **Lambda transform**.
 > - **Firehose destinations:** S3, Redshift (via S3 then `COPY`), OpenSearch, Splunk, Iceberg, HTTP endpoints, partners. **Firehose can read from a Data Stream** — the two are usually combined.
-> - **Enhanced fan-out** = each registered consumer gets its own 2 MB/sec per shard, pushed; up to **20** consumers.
+> - **Enhanced fan-out** = each registered consumer gets its own 2 MB/sec per shard, pushed via `SubscribeToShard` over HTTP/2 (~70 ms vs ~200 ms polling); up to **20** consumers on Provisioned and On-demand Standard, **50** on **On-demand Advantage**.
 > - The **KCL tracks progress in DynamoDB** (three tables per application).
 > - **SQS vs Kinesis:** one consumer per message and delete-when-done → SQS. Several independent consumers, ordering, or replay → Kinesis.
 
@@ -54,7 +54,7 @@ Per shard, verified:
 | Direction | Limit |
 |---|---|
 | **Write** | **1 MB/sec** _or_ **1,000 records/sec** |
-| **Read** | **2 MB/sec**, and at most **5 `GetRecords` calls/sec** |
+| **Read** | **2 MB/sec** *or* **2,000 records/sec**, and at most **5 `GetRecords` calls/sec** |
 
 Note the **or** on the write side. It's whichever ceiling you hit first — a thousand tiny records per second maxes out a shard long before you approach 1 MB. Sizing a stream by data volume alone is how people under-provision.
 
@@ -66,7 +66,7 @@ That read limit matters more than it looks: **2 MB/sec is shared across every co
 
 ### The partition key decides both placement and ordering
 
-Every record you write carries a **partition key** — a string up to 256 characters. Kinesis runs it through an **MD5 hash** and maps the result onto the shards' hash-key ranges. Same key, same shard, always.
+Every record you write carries a **partition key** — a string up to 256 characters. Kinesis runs it through an **MD5 hash** and maps the result onto the shards' hash-key ranges. Same key, same shard — with two caveats worth holding. A **reshard** re-routes keys to child shards, and per-key order only survives if you finish reading the parent shard before the children. And a stream can be set to an **`AUTO`** record-distribution strategy, where Kinesis "distributes records evenly across shards using service-managed algorithms, and **ignores any partition key**" — which removes per-key affinity entirely.
 
 Now the consequence that gets tested:
 
@@ -89,9 +89,9 @@ This is the pair that causes the most trouble, and one sentence resolves it:
 
 > **Kinesis Data Streams is a place data is kept. Amazon Data Firehose is a way data is moved.**
 
-**Data Streams** is the log described above. It has shards you size, a retention period, sequence numbers, and **no consumers of its own** — you write and operate them. In exchange you get real-time reads, several independent consumers, and the ability to replay history.
+**Data Streams** is the log described above. It has shards you size, a retention period and sequence numbers, and the usual shape is that **you write and operate the consumers**. (One exception worth knowing: Data Streams now also offers a built-in **data delivery** capability that lands stream data in an analytics or storage destination with "no infrastructure to manage" — so "Data Streams has *no* consumers of its own" is no longer strictly true.) In exchange you get real-time reads, several independent consumers, and the ability to replay history.
 
-**Firehose** has none of that. No shards. No retention. No consumers to write. You point it at a **destination** and it delivers there, **buffering** first — by size (MB) or by interval (seconds), whichever threshold trips first. AWS's framing: *"you don't need to write applications or manage resources."*
+**Firehose** has none of that. No shards. No readable retention — nothing you can re-read, though it does hold undelivered data for up to 24 hours while retrying a failing destination. No consumers to write. You point it at a **destination** — most often an S3 bucket ([[09-s3-intro]]) — and it delivers there, **buffering** first: by size (MB) or by interval (seconds), whichever threshold trips first. AWS's framing: *"you don't need to write applications or manage resources."*
 
 Destinations include **S3, Redshift, OpenSearch Service and Serverless, Splunk, Apache Iceberg tables**, any custom **HTTP endpoint**, and partners like Datadog, New Relic and MongoDB. It can also run a **Lambda transform** on records before delivering, and optionally back the raw source up to a second S3 bucket.
 
@@ -125,10 +125,10 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 - **Kinesis Client Library** stores consumption metadata in **DynamoDB** — three tables per application — and guarantees one record processor per shard.
 - **Server-side encryption** uses KMS; producers and consumers both need permission on the key.
 - **Firehose:** fully managed, **no shards and no retention**. Buffers by **size (MB)** or **interval (seconds)**, delivering when either threshold is reached. A record may be up to **1,000 KB**. Can invoke a **Lambda** to transform records before delivery, and optionally back up the untransformed source to a second S3 bucket.
-- **Firehose destinations:** Amazon S3, Amazon Redshift (delivered to S3 first, then loaded with a `COPY`), OpenSearch Service and OpenSearch Serverless, Splunk, Apache Iceberg tables, custom HTTP endpoints, and partners including Datadog, Dynatrace, LogicMonitor, MongoDB, New Relic, Coralogix and Elastic.
+- **Firehose destinations:** Amazon S3, Amazon Redshift (delivered to S3 first, then loaded with a `COPY`), OpenSearch Service and OpenSearch Serverless, Splunk ([[22-analytics]] covers the OpenSearch and Redshift ends), Apache Iceberg tables, **Snowflake** (buffered internally for one second, inserted via Snowflake streaming APIs), custom HTTP endpoints, and partners including Datadog, Dynatrace, LogicMonitor, MongoDB, New Relic, Coralogix and Elastic.
 - **Firehose can read directly from a Kinesis data stream** as its source.
 - **Pricing:** Kinesis Data Streams has **no free tier**. Provisioned is **$0.015 per shard-hour** (~$10.80/month for one shard) plus PUT payload units; on-demand is **$0.040/hour per stream** plus $0.08/GB in and $0.040/GB out. Firehose bills per GB ingested. ⚠️ check current pricing.
-- ⚠️ **Record size — AWS's own pages disagree.** The concepts page says a data blob may be **up to 1 MB**; the quotas page says the payload may be **up to 10 MiB**, handled with burst capacity for intermittent large records. **1 MB is the classic exam answer**; know the 10 MiB burst allowance exists.
+- **Record size:** the data blob default is **1 MB** — still the classic exam answer. The two numbers are no longer a documentation contradiction: the per-stream maximum is **configurable** via `UpdateMaxRecordSize`, anywhere from **1,024 to 10,240 KiB (1–10 MiB)**. So 1 MB is the default and the exam answer; know the 10 MiB burst allowance exists.
 
 ## Comparisons
 
@@ -139,8 +139,8 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 | Model | queue | pub/sub | **append-only log** |
 | After a consumer reads | **deleted** | delivered, gone | **stays until retention expires** |
 | Consumers per message | **one** | every subscriber, once | **many, independently, repeatedly** |
-| Replay history | ❌ | ❌ | ✅ up to 365 days |
-| Ordering | FIFO queues only | ❌ | **within a shard** |
+| Replay history | ❌ | **FIFO topics only** — archive up to 365 days, subscriber-initiated replay | ✅ up to 365 days |
+| Ordering | FIFO queues only | **FIFO topics only** — strict order per message group | **within a shard** |
 | Scaling unit | none — automatic | none | **shards** |
 | Reach for it when | work to be done once | notify several things now | analytics, real-time processing, replay |
 
@@ -150,7 +150,7 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 |---|---|---|
 | Nature | a durable **store** | a **delivery pipeline** |
 | You manage | shards, consumers | **nothing** |
-| Retention / replay | 24 h – 365 days | **none** |
+| Retention / replay | 24 h – 365 days, re-readable | **nothing re-readable** (undelivered data held ≤ 24 h while retrying) |
 | Latency | real time | **near** real time (buffered) |
 | Consumers | you write them | you pick a destination |
 | Transform | in your consumer | built-in **Lambda transform** |
@@ -162,7 +162,7 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 > Clickstream events must feed a real-time fraud detector *and* an hourly batch analytics job, and a third team will later reprocess last week's data against a new model. **SQS is wrong**: a message consumed by fraud detection is deleted and analytics never sees it. SNS fan-out into two queues fixes the sharing but not the replay — nothing can re-read last Tuesday. **Kinesis Data Streams** is the fit: both consumers read the same shards independently at their own position, and with retention set beyond a week the third team can start from an older point in the stream. Partition by `user_id` so one user's events stay ordered while users spread across shards. If the batch job simply needs the raw events in S3 rather than custom processing, attach a **Firehose** to the same stream and let it archive — no consumer code at all.
 
 > [!failure] Failure mode — the hot shard
-> A team streams IoT telemetry and picks `device_type` as the partition key. There are four device types and eight shards. Every record hashes to one of four shards; the other four sit idle, and one popular device type saturates its shard's 1 MB/sec while the stream as a whole is at a quarter of capacity. `ProvisionedThroughputExceededException` appears under a load the stream should handle easily, and adding shards **doesn't help** because the key still only produces four hash values. The fix is a **high-cardinality** partition key — `device_id` — which spreads records evenly while still keeping each individual device's events in order.
+> A team streams IoT telemetry and picks `device_type` as the partition key. There are four device types and eight shards. Four distinct keys produce four hash values, so records land on **at most four shards** — possibly fewer, since two keys can fall inside the same shard's hash-key range; the rest sit idle, and one popular device type saturates its shard's 1 MB/sec while the stream as a whole is at a quarter of capacity. `ProvisionedThroughputExceededException` appears under a load the stream should handle easily, and adding shards **doesn't help** because the key still only produces four hash values. The fix is a **high-cardinality** partition key — `device_id` — which spreads records evenly while still keeping each individual device's events in order.
 
 > [!example] Worked example — sizing by the right ceiling
 > An application produces 800 records per second, each about 500 bytes — 400 KB/sec in total. By data volume, one shard (1 MB/sec) looks like plenty. But the other ceiling is **1,000 records/sec**, and at 800 the stream is already at 80% of it. A modest traffic increase starts throttling writes despite the stream carrying less than half its byte capacity. Always size against **both** limits and provision for whichever binds first.
@@ -170,7 +170,7 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 ## Traps
 
 > [!warning] Trap — SQS chosen where replay or multiple consumers are needed
-> The single most-tested distinction here. SQS **deletes** a message once processed, so a second consumer can never see it and nothing can be re-read. Any scenario with "several teams need the same data", "reprocess historical events", or "replay the last N days" is **Kinesis**, not SQS — and SNS fan-out only solves the sharing half, never the replay.
+> The single most-tested distinction here. SQS **deletes** a message once processed, so a second consumer can never see it and nothing can be re-read. Any scenario with "several teams need the same data", "reprocess historical events", or "replay the last N days" is **Kinesis**, not SQS. But be careful with the SNS half: a **standard** topic fans out and forgets, while an **SNS FIFO topic with an archive policy retains messages for up to 365 days and a subscriber can initiate a replay** over a chosen time window. So the word "replay" does not by itself eliminate SNS. What eliminates SNS is needing **many independent consumers reading a shared log, each at its own position** — that is Kinesis. *(Corrected 2026-10-07: this trap used to say SNS could never do replay.)*
 
 > [!warning] Trap — assuming ordering across the whole stream
 > Kinesis guarantees order **within a shard**, not across the stream. Two records with different partition keys may be processed in any relative order. Guaranteeing order for a logical entity means giving all its records the **same partition key** — exactly like `MessageGroupId` in FIFO SQS ([[15-decoupling]]).
@@ -179,10 +179,10 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 > Adding shards does nothing if the partition key only produces a handful of hash values. A key like `region` or `event_type` concentrates traffic on a few shards while the rest idle, and the stream throttles far below its nominal capacity. High cardinality is the requirement.
 
 > [!warning] Trap — Firehose expected to store or replay
-> Firehose has **no retention period** and no concept of re-reading. It buffers briefly and delivers. If a question needs data kept, re-read, or consumed by several independent applications, that is **Data Streams** — Firehose is only the pipe that gets it to a destination.
+> Firehose has **no readable retention** and no concept of re-reading — you cannot get data back out of it, which is the part that matters. Be precise about the reason, though: AWS states "the maximum data storage time of Amazon Data Firehose is **24 hours**", because it holds undelivered data while retrying a failing destination (and with a Data Streams or MSK source, retries continue up to the *stream's* retention). So it is not "no retention" — it is retention you cannot read from. If a question needs data kept, re-read, or consumed by several independent applications, that is **Data Streams** — Firehose is only the pipe that gets it to a destination.
 
 > [!warning] Trap — Firehose treated as real-time
-> Firehose buffers by size *or* interval before delivering, so it is **near** real-time — seconds to minutes, not milliseconds. A requirement for sub-second reaction rules it out on its own; that's Data Streams with a consumer, or enhanced fan-out if latency really matters.
+> Firehose buffers by size *or* interval before delivering, so it is **near** real-time. The defaults sit at the slow end (S3: 5 MB / 300 s), but the buffering interval can be set as low as **0 seconds** — AWS calls this "zero buffering" and says data is then delivered "within a few seconds". So treat Firehose as near-real-time rather than batch, and do not eliminate it on latency alone without reading the stem. A requirement for genuinely sub-second, per-record reaction rules it out on its own; that's Data Streams with a consumer, or enhanced fan-out if latency really matters.
 
 > [!warning] Trap — forgetting that read throughput is shared
 > A shard's **2 MB/sec read is split across all consumers** using the default shared fan-out. Add a third consumer and each gets roughly 700 KB/sec, and they'll start hitting `ProvisionedThroughputExceeded` on reads. "Multiple consumers each needing full throughput" points at **enhanced fan-out**, not more shards.

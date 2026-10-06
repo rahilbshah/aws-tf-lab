@@ -1089,7 +1089,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Record size — AWS pages disagree | concepts page says up to 1 MB, quotas page says 10 MiB burst; 1 MB is the classic exam answer |
+| Kinesis record size | Default **1 MB** data blob — still the classic exam answer. Not a doc contradiction any more: the per-stream maximum is **configurable** via `UpdateMaxRecordSize` from **1,024 to 10,240 KiB (1–10 MiB)**. *(Corrected 2026-10-07 — this row called it a disagreement between AWS pages.)* |
 | Single GetRecords call max return | 10 MB or 10,000 records; if it returns 10 MB, calls in the next 5 seconds throw |
 | Capacity mode switches allowed | twice in 24 hours |
 | On-demand starting throughput | 4 MB/sec write, 8 MB/sec read for a new stream |
@@ -1097,7 +1097,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Partition key — length and hash | Unicode string up to 256 characters, mapped to a shard by MD5 hash; required on every write |
 | Retention — default / min / max | default and minimum 24 hours; maximum 8,760 hours (365 days); above 24 h costs extra |
 | Per-shard write limit | 1 MB/sec OR 1,000 records/sec — whichever binds first |
-| Per-shard read limit | **2 MB/sec out** per shard, max **5 `GetRecords`/sec** — **shared across all consumers only under the default shared fan-out**. With **enhanced fan-out** each registered consumer gets its own 2 MB/sec per shard (`SubscribeToShard`, pushed). "Several consumers each needing full throughput" → enhanced fan-out |
+| Per-shard read limit | **2 MB/sec *or* 2,000 records/sec out** per shard, max **5 `GetRecords`/sec** — **shared across all consumers only under the default shared fan-out**. With **enhanced fan-out** each registered consumer gets its own 2 MB/sec per shard (`SubscribeToShard`, pushed). "Several consumers each needing full throughput" → enhanced fan-out |
 | Free tier | none — Kinesis Data Streams has no free tier |
 
 **Kinesis consumers**
@@ -1116,7 +1116,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Firehose buffering trigger | size (MB) or interval (seconds) — whichever threshold trips first |
 | Firehose Redshift delivery path | delivered to S3 first, then loaded with a COPY |
 | Firehose destinations | S3, Redshift, OpenSearch Service/Serverless, Splunk, Apache Iceberg, custom HTTP endpoints, partners |
-| Firehose shards and retention | none of either — no replay |
+| Firehose shards and retention | No shards, and **nothing re-readable** — so no replay. Precisely: AWS says "the maximum data storage time of Amazon Data Firehose is **24 hours**", holding undelivered data while it retries (with a Data Streams/MSK source, retries run up to the *stream's* retention). "No retention" is the wrong reason for the right conclusion |
+| Firehose latency floor | Defaults are the slow end (S3: 5 MB / 300 s), but the buffering interval can be **0 seconds** ("zero buffering") and AWS then delivers "within a few seconds" — so don't eliminate Firehose on latency without reading the stem |
+| SNS replay and ordering | **FIFO topics only**: archive up to **365 days**, and a *subscriber* initiates replay over a chosen window (`ReplayPolicy`); strict ordering per message group. A **standard** topic does neither. *(Added 2026-10-07 — several notes marked SNS as having no replay and no ordering at all.)* |
+| What actually eliminates SNS for a replay stem | Not the word "replay" — SNS FIFO can replay. It's needing **many independent consumers reading a shared log, each at its own position** → Kinesis Data Streams |
 
 **Messaging discriminators**
 
