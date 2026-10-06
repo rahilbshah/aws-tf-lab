@@ -3,7 +3,7 @@ topic: 15-decoupling
 domain: resilient
 status: reviewed
 services: [SQS, SNS, AmazonMQ]
-related: [04-alb-asg, 14-dr-resilience, 09-s3-advanced, 08-elasticache]
+related: [04-alb-asg, 16-kinesis, 19-serverless]
 tags: [topic, domain/resilient]
 ---
 
@@ -23,10 +23,10 @@ Getting a message from one component to another without the two having to be up 
 > - A queue **rejects SNS by default**: its resource policy must allow `sns.amazonaws.com`, pinned with **`aws:SourceArn`**.
 > - **Standard** = unlimited throughput, best-effort order, at-least-once. **FIFO** = strict order, exactly-once, **300 TPS** (**3,000/sec** batched) unless high-throughput mode. **`MessageGroupId`** required; different groups run in parallel. **`MessageDeduplicationId`** = **5-minute** window.
 > - **Max message size is 1 MiB** — most course material still says 256 KB. Larger payloads go in S3 via the Extended Client Library (up to 2 GB).
-> - **Amazon MQ** = managed ActiveMQ/RabbitMQ, for **migrating an existing app without rewriting its messaging code**. Single-instance or active/standby across two AZs.
+> - **Amazon MQ** = managed ActiveMQ/RabbitMQ, for **migrating an existing app without rewriting its messaging code**. HA shape differs by engine: **ActiveMQ** = single-instance or **active/standby** across two AZs on EFS; **RabbitMQ** = single-instance or a **three-node cluster** across AZs, each node on its own EBS, behind an NLB. There is no active/standby for RabbitMQ.
 
-> [!note] Build tier — **built (free)**
-> SQS and SNS are comfortably inside the always-free tier at lab volumes. Built hands-on in `../15-decoupling/`, and the observations below are from that lab, not from the docs.
+> [!info] Build tier — **built (free)**
+> SQS and SNS are comfortably inside the always-free tier at lab volumes. Built hands-on, and the observations flagged below come from that lab rather than from the docs.
 
 ## What problem does this solve?
 
@@ -96,7 +96,7 @@ One detail that catches people out. For a **standard** queue, a message keeps it
 
 The pattern that matters is **fan-out**: publish once to a topic, and have several **SQS queues** subscribed to it.
 
-Why put a queue between SNS and each service, rather than letting SNS deliver straight to them? Because **SNS delivers, it doesn't hold**. If a service is down, a direct HTTP or Lambda delivery has nowhere to land. A queue in front of each consumer gives every one of them its own buffer, its own retry behaviour, and its own backlog — so one slow consumer can't affect the others.
+Why put a queue between SNS and each service, rather than letting SNS deliver straight to them? Because **SNS delivers, it doesn't hold**. If a service is down, a direct HTTP or Lambda delivery has nowhere to land. A queue in front of each consumer gives every one of them its own buffer, its own retry behaviour, and its own backlog — so one slow consumer can't affect the others. (Lambda consuming a queue is an **event source mapping**, not an async invoke — [[19-serverless]].) And if what you actually need is to *replay* the same stream to several consumers rather than hand each message to one, that is **Kinesis**, not SQS — [[16-kinesis]].
 
 One thing you only notice by looking at real data: the queue does **not** receive your raw message. It receives a JSON envelope with the payload nested inside `.Message`, alongside `TopicArn`, `MessageId`, a signature and an unsubscribe URL. Every consumer has to unwrap that — which is what the **raw message delivery** subscription setting turns off.
 
@@ -123,7 +123,12 @@ SQS and SNS are excellent and they are also **AWS-proprietary APIs**. If you hav
 
 **Amazon MQ** is AWS running **Apache ActiveMQ Classic** or **RabbitMQ** for you. AWS's own positioning is the exam trigger: *migrate existing message brokers "without rewriting messaging code."*
 
-The trade-off is that it's a **broker**, not a serverless service. You choose a deployment: a **single-instance broker** (one broker, one AZ, EBS or EFS storage) or an **active/standby pair** (two brokers in two AZs on EFS, only one active, failover in seconds). It runs in your VPC on a private endpoint, and it does not scale the way SQS does.
+The trade-off is that it's a **broker**, not a serverless service. You choose a deployment, and **the options depend on the engine** — blurring them is the single easiest way to get an Amazon MQ question wrong:
+
+- **ActiveMQ** — a **single-instance broker** (one broker, one AZ, EBS or EFS storage), or an **active/standby pair** (two brokers in two AZs on **EFS**, only one active, two endpoints per wire protocol with `-1`/`-2` suffixes, failover in a few seconds).
+- **RabbitMQ** — a **single-instance broker** (one broker, one AZ, on **EBS**, behind a Network Load Balancer), or a **cluster deployment**: "a logical grouping of **three** RabbitMQ broker nodes behind a Network Load Balancer, each sharing users, queues, and a distributed state across multiple Availability Zones", each node on **its own EBS volume**, with classic mirroring applied automatically (`ha-mode: all`, `ha-sync-mode: automatic`). **No active/standby, and no EFS.** During maintenance AWS takes one node at a time and keeps at least two running; if an AZ fails it relocates nodes to hold the cluster at three.
+
+It runs inside your VPC and access **can be restricted** to a private endpoint — public accessibility is a choice at broker creation, so "private" is a configuration rather than a guarantee. And it does not scale the way SQS does.
 
 So: **a new application on AWS → SQS/SNS. An existing application you don't want to rewrite → Amazon MQ.**
 
@@ -131,8 +136,8 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 
 ## Key facts, limits & pricing
 
-- **SQS has no message priority — not in Standard, not in FIFO.** There is no priority attribute and no way to make one message jump the queue. The pattern is **a queue per tier** — say `premium` and `free` — with consumers **polling the premium queue first** and falling back to the other. Any option offering a "priority" setting on a single queue is describing a feature that does not exist, which makes it an easy eliminate once you know.
-- **EventBridge is the only one of the three with SaaS integration.** It supports **partner event sources** and **custom event buses**, so a third-party SaaS application can deliver events into your account natively. **SQS and SNS have no SaaS event-source concept** — they are AWS-side messaging primitives. A stem about decoupling from a **SaaS provider's events** is EventBridge, even though SNS fan-out is the right answer to most other "one event, several consumers" questions in this note.
+- **SQS has no *user-settable* message priority — not in Standard, not in FIFO.** There is no priority attribute and you cannot mark one message urgent. (Standard queues do have **fair queues**, which SQS applies itself to stop one noisy tenant's in-flight backlog starving others — that is AWS mitigating a noisy neighbour, not a priority dial you control.) The pattern is **a queue per tier** — say `premium` and `free` — with consumers **polling the premium queue first** and falling back to the other. Any option offering a "priority" setting on a single queue is describing a feature that does not exist, which makes it an easy eliminate once you know.
+- **EventBridge is the only one of the three with SaaS integration.** It supports **partner event sources** and **custom event buses**, so a third-party SaaS application can deliver events into your account natively. **Only EventBridge *ingests* SaaS events natively.** SNS can *deliver outbound* to third-party providers (AWS lists Datadog, MongoDB, Splunk as subscriber endpoints), so the distinction is direction: EventBridge takes events *in* from a SaaS partner; SNS pushes notifications *out* to one. A stem about decoupling from a **SaaS provider's events** is EventBridge, even though SNS fan-out is the right answer to most other "one event, several consumers" questions in this note.
 
 - **Retention:** default **4 days** (345,600s); minimum **60 seconds**; maximum **1,209,600 seconds (14 days)**.
 - **Visibility timeout:** default **30 seconds**; minimum 0; maximum **12 hours**.
@@ -143,16 +148,16 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Standard queues:** nearly unlimited throughput per API action; **at-least-once** delivery; **best-effort ordering**.
 - **FIFO queues:** **300 TPS** per API action per partition; **3,000 messages/second** with batching. **High throughput FIFO** (opt-in) raises this per Region — up to **70,000 TPS** non-batched in N. Virginia / Oregon / Ireland, **19,000** in Ohio and Frankfurt, **9,000** in Mumbai / Singapore / Sydney / Tokyo / Spain, **4,500** in London and São Paulo, **2,400** elsewhere; batching multiplies by 10.
 - **`MessageGroupId`** is required on FIFO queues; the send fails without it. On **standard** queues it enables **fair queues**.
-- **Scaling consumers:** drive it from the **queue**, not consumer CPU. **Backlog per consumer** (`ApproximateNumberOfMessages` ÷ running consumers) for throughput; **`ApproximateAgeOfOldestMessage`** — *"the age of the oldest unprocessed message"*, in seconds — for a latency SLA. On a **standard** queue a message received 3+ times moves to the back, so the age metric then reports the *next* message and can understate. *(Verified 2026-10-01.)*
+- **Scaling consumers:** drive it from the **queue**, not consumer CPU. **Backlog per consumer** (`ApproximateNumberOfMessagesVisible` ÷ running consumers) for throughput; **`ApproximateAgeOfOldestMessage`** — *"the age of the oldest unprocessed message"*, in seconds — for a latency SLA. On a **standard** queue a message received 3+ times moves to the back, so the age metric then reports the *next* message and can understate. *(Verified 2026-10-01.)*
 - **Deduplication:** FIFO rejects a duplicate `MessageDeduplicationId` sent within a **5-minute** interval. **Content-based deduplication** hashes the message **body** with SHA-256 — *not* the attributes.
 - **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and must be the **same queue type** — a FIFO queue's DLQ must be FIFO, a standard queue's DLQ must be standard. Separately, AWS advises against a DLQ on a FIFO queue at all if exact ordering matters. A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
 - **DLQ retention clock:** **standard** queues keep the **original enqueue timestamp** when a message moves to the DLQ, so set the DLQ's retention **longer** than the source's. **FIFO** queues **reset** the timestamp on the move.
 - **SNS subscribers:** Amazon SQS, Lambda, HTTP(S), email, SMS, mobile push, **Amazon Data Firehose**, and service providers such as Datadog, MongoDB and Splunk. Supports **A2A** and **A2P** messaging.
 - **SNS FIFO topics deliver only over the SQS protocol** — no email, HTTP or Lambda subscribers — and can fan out to **both FIFO and standard** queues.
 - **Subscription filter policies** let a subscriber receive only the messages it cares about, evaluated against message attributes or (with `FilterPolicyScope: MessageBody`) the body itself.
-- **Amazon MQ deployment modes:** *single-instance* — one broker, one AZ, **EBS or EFS** storage; *active/standby* — two brokers in two AZs on **EFS**, only one active, with two endpoints per wire protocol (`-1`/`-2` suffixes) and failover in seconds on reboot. RabbitMQ offers **quorum queues** (leader + followers across AZs, good for poison messages); ActiveMQ offers **cross-Region data replication** with API-triggered failover.
-- **Amazon MQ wire protocols** — this is the whole point of the service, and why a migration question picks it over SQS. *ActiveMQ*: **AMQP, MQTT, OpenWire, STOMP** (plus MQTT and STOMP over WebSocket). *RabbitMQ*: **AMQP 0-9-1**. If a scenario names a protocol, the answer is Amazon MQ — SQS and SNS speak only the AWS API.
-- **Pricing:** SQS and SNS both have an always-free tier that covers lab use comfortably. **Amazon MQ bills per broker-hour** — it is a running server, not serverless.
+- **Amazon MQ deployment modes — engine-specific, do not blur them.** *ActiveMQ*: **single-instance** (one broker, one AZ, **EBS or EFS**) or **active/standby** (two brokers, two AZs, **EFS**, one active, two endpoints per wire protocol with `-1`/`-2` suffixes, failover in a few seconds). *RabbitMQ*: **single-instance** (one broker, one AZ, **EBS**, behind an NLB) or a **three-node cluster** behind an NLB across AZs, each node on its own **EBS** volume, classic mirroring automatic. **RabbitMQ has no active/standby mode and no EFS option** — a "three brokers / cluster / NLB" stem is RabbitMQ, and an "active/standby pair on EFS" stem is ActiveMQ. *(Corrected 2026-10-07: these modes were written as generic "Amazon MQ" modes but are ActiveMQ's.)* RabbitMQ also offers **quorum queues** (leader + followers across AZs, good for poison messages); ActiveMQ offers **cross-Region data replication** with API-triggered failover.
+- **Amazon MQ wire protocols** — this is the whole point of the service, and why a migration question picks it over SQS. *ActiveMQ*: **AMQP, MQTT, OpenWire, STOMP** (plus MQTT and STOMP over WebSocket). *RabbitMQ*: **AMQP 0-9-1**. If a scenario names a **broker/JMS** protocol — **OpenWire, STOMP, AMQP** — beside an existing broker-based application, the answer is Amazon MQ, because SQS and SNS speak only the AWS API. **MQTT alone is not that signal**: constrained devices publishing MQTT telemetry points at **AWS IoT Core**, which is built on MQTT. ⚠️ verify the ActiveMQ protocol list and the AMQP version against the Amazon MQ developer guide; the RabbitMQ half (**AMQP 0-9-1** only) is confirmed.
+- **Pricing:** SQS and SNS both have an always-free tier that covers lab use comfortably. **Amazon MQ bills per broker instance-hour plus storage and data transfer** — it is a running server, not serverless, so it costs money while idle. (Check current pricing.)
 
 ### Scaling the consumers on the queue itself
 
@@ -164,7 +169,7 @@ Two metrics, two different questions:
 
 | Question in the stem | Metric | Why |
 |---|---|---|
-| "keep up with the backlog", "scale the fleet to demand" | **backlog per instance** — `ApproximateNumberOfMessages` ÷ running consumers | raw depth doesn't move with fleet size, so it can't drive target tracking; the ratio does |
+| "keep up with the backlog", "scale the fleet to demand" | **backlog per instance** — `ApproximateNumberOfMessagesVisible` ÷ running consumers | raw depth doesn't move with fleet size, so it can't drive target tracking; the ratio does |
 | "process within N seconds", a stated **latency SLA** | **`ApproximateAgeOfOldestMessage`** | it measures *waiting time*, which is what the SLA is about |
 | "how big is the backlog right now" | `ApproximateNumberOfMessagesVisible` | *"the number of messages currently available for retrieval and processing"* — good for an alarm, wrong for target tracking |
 
@@ -221,6 +226,9 @@ backlog-per-instance formula and worked example.
 > A consumer takes about 90 seconds to process a job, and the queue is left on the default 30-second visibility timeout. Thirty seconds in, the message becomes visible again and a second consumer starts the same job. Both finish; the customer is charged twice. Nothing errored, and the logs look normal. Two fixes: set the visibility timeout comfortably above the real processing time, or have long-running consumers call `ChangeMessageVisibility` periodically to extend their lease. And regardless — make the consumer **idempotent**, because at-least-once delivery means this can happen anyway.
 
 ## Traps
+
+> [!warning] Trap — Amazon MQ high availability means an active/standby pair
+> Only for **ActiveMQ**. **RabbitMQ** on Amazon MQ has no active/standby mode and no EFS option — its HA shape is a **cluster of three broker nodes** behind a Network Load Balancer across Availability Zones, each node on its own EBS volume, with classic mirroring applied automatically. So "three brokers / cluster / NLB" is a RabbitMQ stem, and "two brokers, one active, shared EFS" is an ActiveMQ stem. Reading the ActiveMQ modes as generic Amazon MQ modes leaves a RabbitMQ question with no correct answer visible.
 
 > [!warning] Trap — "receiving a message removes it"
 > It does not. A received message is **hidden** for the visibility timeout and **comes back** unless the consumer explicitly calls `DeleteMessage`. Every "why was this processed twice?" scenario traces to this: a consumer that crashed, or took longer than the timeout. And deletion needs the **receipt handle**, which is issued per *receive*, not the message ID.

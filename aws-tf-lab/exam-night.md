@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 341 pointers · ~30 min read*
+*176 recall hooks · 342 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -651,6 +651,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[15-decoupling#Scaling the consumers on the queue itself|explain]]
 
 **Traps** [[15-decoupling#Traps|open]]
+- Amazon MQ high availability means an active/standby pair
 - "receiving a message removes it"
 - a queue with no dead-letter queue
 - DLQ retention set equal to the source queue's

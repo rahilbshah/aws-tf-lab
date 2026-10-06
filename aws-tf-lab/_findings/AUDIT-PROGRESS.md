@@ -438,3 +438,35 @@ was described as "already serving" in two places and "not taking traffic" in two
 ElastiCache Global Datastore is Valkey *or* Redis OSS and node-based only; availability is
 "available-for-use time / total time", with MTBF/(MTBF+MTTR) only an estimate for
 dependencies that publish no figure.
+
+### 15-decoupling (2026-10-07) — an engine-blurring error that leaves a stem unanswerable
+
+102 claims, 16 pages. Every SQS *number* was exactly right against the live quotas page —
+1 MiB / 2 GB extended, retention 60s–14d, visibility 0–12h, 15-min delay, batch of 10, 300
+TPS per API action per partition, and the whole high-throughput FIFO region ladder
+(70,000/19,000/9,000/4,500/2,400) verbatim including the groupings. Short vs long polling,
+the 5-minute dedup interval, the DLQ same-account-and-Region rule, redrive allow policy
+values and both quoted CloudWatch metric descriptions also matched word for word.
+
+The failure was a **seam** (§13.10b): the note's "Amazon MQ deployment modes" are
+**ActiveMQ's**, written as if generic. RabbitMQ on Amazon MQ has **no active/standby and no
+EFS** — HA is a **three-node cluster** behind an NLB across AZs, each node on its own EBS
+volume, classic mirroring automatic. A RabbitMQ HA stem ("three brokers", "cluster", "NLB")
+therefore had **no correct answer visible** to the reader. Wrong in three places (TL;DR,
+prose, key facts); all fixed, plus a trap so the engine split is drillable.
+
+Second: `ApproximateNumberOfMessages` is not a CloudWatch metric — the metric is
+`ApproximateNumberOfMessagesVisible`. The note used the wrong name twice while using the
+right one in a third place, so it contradicted itself. `04-alb-asg` (already committed) had
+the bare wrong name once too, now fixed — though note that `04-alb-asg:203` already handled
+this *correctly and with nuance*, pointing out that AWS's own Auto Scaling docs write the
+quantity as `ApproximateNumberOfMessages` while the metric is `...Visible`. That nuance was
+worth keeping and was kept.
+
+Also softened: "no way to make one message jump the queue" (standard queues have **fair
+queues**, which AWS applies itself against noisy neighbours — not a user-settable priority,
+but not "no way" either); "if a scenario names a protocol, the answer is Amazon MQ" (MQTT
+alone points at **IoT Core**, which is built on MQTT); "it runs in your VPC on a private
+endpoint" (private access is a configuration, not a guarantee); and the SaaS elimination,
+which is really about *direction* — EventBridge ingests from SaaS partners, SNS delivers
+outbound to them.

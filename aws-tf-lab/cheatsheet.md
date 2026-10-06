@@ -1079,9 +1079,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | ActiveMQ wire protocols | AMQP, MQTT, OpenWire, STOMP (plus MQTT and STOMP over WebSocket) |
 | RabbitMQ wire protocol | AMQP 0-9-1 |
-| Storage per deployment mode | single-instance: EBS or EFS, one AZ; active/standby: EFS only, two AZs, one active |
+| Deployment modes — **ActiveMQ** | single-instance: EBS **or** EFS, one AZ · **active/standby**: **EFS only**, two AZs, one active, two endpoints per wire protocol (`-1`/`-2`), failover in a few seconds |
+| Deployment modes — **RabbitMQ** | single-instance: **EBS**, one AZ, behind an **NLB** · **cluster**: **three** nodes behind an NLB across AZs, **each with its own EBS volume**, classic mirroring automatic (`ha-mode: all`). **No active/standby. No EFS.** *(Corrected 2026-10-07 — the cheatsheet listed only ActiveMQ's modes as if generic.)* |
+| Which engine a stem is describing | "three brokers / cluster / NLB" → **RabbitMQ**. "two brokers, one active, shared EFS" → **ActiveMQ** |
 | Supported engines | Apache ActiveMQ Classic or RabbitMQ |
-| Billing unit | per broker-hour — a running server, not serverless |
+| Billing unit | per broker **instance-hour plus storage and data transfer** — a running server, not serverless, so it bills while idle |
 
 **Kinesis Data Streams**
 
@@ -1126,7 +1128,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Standard vs FIFO delivery guarantee | Standard: **at-least-once**, best-effort order. FIFO: **exactly-once**, strict order **per `MessageGroupId`** — *not* across the queue. Different groups have no defined order relative to each other and process in parallel |
 | SQS vs SNS delivery direction | SQS: consumer pulls, one consumer. SNS: pushes to every subscriber |
 | A2A vs A2P support | SNS: A2A and A2P. SQS: A2A only |
-| Amazon MQ vs SQS/SNS trigger | existing app on a standard broker protocol, no rewrite → MQ; anything new → SQS/SNS |
+| Amazon MQ vs SQS/SNS trigger | existing app on a **broker/JMS** protocol (OpenWire, STOMP, AMQP), no rewrite → MQ; anything new → SQS/SNS. **MQTT alone is not the MQ signal** — constrained devices publishing MQTT → **AWS IoT Core** |
 
 ↳ [[15-decoupling]] · [[16-kinesis]]
 

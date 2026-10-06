@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 202 discriminators · ~40 min read*
+*107 comparison tables · 203 discriminators · ~40 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -374,6 +374,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[15-decoupling#SQS vs SNS|SQS vs SNS]] · [[15-decoupling#Standard vs FIFO queues|Standard vs FIFO queues]] · [[15-decoupling#SQS vs SNS vs Amazon MQ|SQS vs SNS vs Amazon MQ]]
 
+- **Amazon MQ high availability means an active/standby pair** — Only for ActiveMQ. RabbitMQ on Amazon MQ has no active/standby mode and no EFS option — its HA shape is a cluster of three broker nodes behind a Network Load Balancer across Availability Zones, each node on its own EBS volume, with classic mirroring applied automatically.  
+  ↳ [[15-decoupling#Traps|note]]
 - **"receiving a message removes it"** — It does not. A received message is hidden for the visibility timeout and comes back unless the consumer explicitly calls DeleteMessage.  
   ↳ [[15-decoupling#Traps|note]]
 - **a queue with no dead-letter queue** — Without a DLQ there is no upper bound on retries. A message that always fails is redelivered until retention expires — up to 14 days of consumers repeatedly choking on the same thing.  
