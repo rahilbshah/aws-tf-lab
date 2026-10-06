@@ -65,7 +65,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Managed policy versions retained | Up to 5 versions, can roll back; inline policies have no versioning |
 | AWS-managed policy ARN namespace | arn:aws:iam::aws:policy/… (customer-managed live in your account namespace) |
 | Inline vs managed policy lifecycle | Inline dies with the principal, one principal only; managed is standalone and reusable |
-| ListBucket scoping | `s3:ListBucket` is a **bucket-level** action — it takes the bare bucket ARN, **no `/*`**; object actions need `/*`. Getting it wrong fails silently. ⚠️ verify: that restricting a listing to a folder is done with a condition on `s3:prefix` |
+| ListBucket scoping | `s3:ListBucket` is a **bucket-level** action — it takes the bare bucket ARN (`arn:aws:s3:::bucket`), **no `/*`**; object actions (`s3:GetObject`/`PutObject`) need `/*`. Getting it wrong fails silently. Restricting a listing to one folder is a **condition on `s3:prefix`** (`StringLike: {"s3:prefix": ["Development/*"]}`), optionally with `s3:delimiter` = `/` to force folder-style listing — verified 2026-10-06. Browsing in the **console** additionally needs `s3:ListAllMyBuckets` and `s3:GetBucketLocation`, and a root-level view needs `s3:prefix` = `""`. |
 
 **IAM groups**
 
