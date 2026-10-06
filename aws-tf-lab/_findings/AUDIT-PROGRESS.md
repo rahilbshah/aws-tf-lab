@@ -265,3 +265,29 @@ not a dangling promise. `07-rds-aurora.md:457` was a substring match inside "Wil
 The only real dangling promise was `09-s3.md:12` ("each sub-note is self-contained with its
 own cards"), now fixed. Same shape as the §13.12 worked example: a plausible report that
 would have deleted correct content. Grep hits are not findings.
+
+### 10-route53 (2026-10-06) — the weight-0 absolute, and a "famous fact" AWS retired
+
+138 claims, 17 pages. First non-S3 note of this run, and the error profile was the same:
+absolutes and negatives, no wrong plain numbers.
+
+Two findings I verified first-hand and would call the most valuable of the whole audit so far:
+
+1. **"weight 0 means never return this"** — false, and AWS contradicts it on two pages with a
+   truth table. A zero-weight record is the last-resort fallback: if every nonzero-weight
+   record is unhealthy, Route 53 returns the zero-weighted ones. It was stated twice, once
+   inside a worked example. Both fixed, plus a trap so it is drillable.
+2. **"Route 53 carries a 100% availability SLA"** — the single most-repeated Route 53 trivia
+   line in every course, and AWS has restructured the page. The commitment is now
+   "commercially reasonable efforts … with the Monthly Uptime Percentages set forth in the
+   table", with no 100% figure stated. The credit bands are 10/25/100, and coverage is
+   hosted zones only — not the API or console. The note's second clause (credits begin below
+   100%) survived, which is why this is a rewrite rather than a deletion.
+
+Also: a failover **alias** to an AWS resource must use Evaluate Target Health, not a health
+check on the record — AWS says "don't create health checks for those resources" and its own
+walkthrough sets Associate with Health Check = No.
+
+Terraform leftovers found and removed here too: `set_identifier`, `weighted_routing_policy`.
+That is the fourth note in a row carrying them, so the earlier Terraform-removal pass was
+not as complete as its commit implied — expect more in the remaining notes.

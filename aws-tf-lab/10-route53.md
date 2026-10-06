@@ -3,7 +3,7 @@ topic: 10-route53
 domain: resilient
 status: reviewed
 services: [Route53]
-related: [04-alb-asg, 05-vpc-hybrid, 09-s3-intro, 06-capstone]
+related: [04-alb-asg, 05-vpc-hybrid, 09-s3-intro, 07-rds-aurora]
 tags: [topic, domain/resilient]
 ---
 
@@ -12,12 +12,12 @@ tags: [topic, domain/resilient]
 AWS's managed DNS. It answers "what IP is behind this name?" — but the exam cares about the *policy* in that answer: which of several IPs, chosen how, and what happens when one dies. Named after port 53.
 
 > [!info] Exam TL;DR
-> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — **it never checks whether you own the name**. Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
+> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — creating a hosted zone does **not** require you to own or have registered the name (⚠️ verify the exact wording in the `CreateHostedZone` API reference before treating "never validates ownership" as an absolute). Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
 > - **Alias vs CNAME** is the #1 Route 53 question. **CNAME cannot exist at the zone apex** (DNS protocol rule). **Alias can**, is Route 53-only, points **only at AWS resources**, and **query costs are free**. You **cannot set a TTL on an alias** to an AWS resource — it uses the target's.
 > - **Eight routing policies:** simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based.
-> - **Simple ≠ load balancing.** Multiple values are returned **all at once, in random order**, and the **client** picks — with **no health checking**. The health-checked version is **multivalue answer** (up to **8 healthy** records).
+> - **Simple ≠ load balancing.** Multiple values are returned **all at once, in random order**, and the **client** picks — with **no health checking**. The health-checked version is **multivalue answer** (up to **8 healthy** records) — though its health checks are **optional**, and a multivalue record without one counts as healthy.
 > - **Geolocation** routes on where the **user** is (country/continent/state). **Geoproximity** routes on where your **resources** are, with a **bias** dial. Easy to swap.
-> - **Failover speed = (health check interval × failure threshold) + TTL.** Default-ish: (30s × 3) + TTL. Lower the TTL on failover-critical records — a 3600s TTL means an hour of stale answers no matter how fast Route 53 reacts.
+> - **Failover speed ≈ (health check interval × failure threshold) + TTL** — a mental model, not a formula AWS publishes. Typical shape: (30s × 3) + TTL. Treat it as a *floor*: it assumes the status change propagates instantly, and it doesn't describe an alias using Evaluate Target Health, where the resource's own health signal drives it. Lower the TTL on failover-critical records — a 3600s TTL means an hour of stale answers no matter how fast Route 53 reacts.
 > - **Private hosted zone** = resolvable only from **associated VPCs**. Same name can exist public *and* private → **split-view DNS**.
 > - **Route 53 Resolver:** **inbound** endpoint = on-prem resolves **into** AWS. **outbound** endpoint = AWS resolves **out to** on-prem. Remember the direction.
 
@@ -75,7 +75,9 @@ There are eight routing policies. Two pairs cause nearly all the wrong answers.
 
 **Simple vs multivalue answer.** The trap is that simple *looks* like load balancing. Give it three IPs and it returns **all three, in random order** — and then it is finished. The **client** picks one. Route 53 is **not health checking** any of them, so a dead server keeps being handed out until you remove it by hand.
 
-**Multivalue answer** is the same shape with the missing half added: up to **8 healthy** records, randomly ordered, unhealthy ones simply not returned. That is the entire difference between the two, and it is the whole reason multivalue exists.
+**Multivalue answer** adds the missing half. Structurally it is different too: you create **one record per value**, each with its own set identifier, rather than one record holding several values — and you **optionally** attach a health check to each. Route 53 then answers with up to **8 healthy** records, randomly ordered.
+
+Two edges worth holding, because they soften the "multivalue is the health-checked one" shorthand. A multivalue record with **no** health check attached is *always* considered healthy — so you can build a multivalue set that health-checks nothing at all. And when **every** record is unhealthy, Route 53 responds with all of them rather than nothing, on the reasoning that a broken answer beats no answer.
 
 If the scenario wants controlled proportions, that's **weighted**. If it wants real load balancing rather than answer-shuffling, that's an **ALB**, not DNS at all.
 
@@ -88,9 +90,11 @@ If the scenario wants controlled proportions, that's **weighted**. If it wants r
 
 "German users must get the German site" is geolocation — a localization/compliance sentence. "Shift more traffic toward the bigger data centre" is geoproximity bias — a capacity sentence.
 
-Geolocation also carries a nasty failure mode of its own. Define records for `US`, `GB` and `DE`, test from those three countries, and everything looks perfect — while users in **every other country get no answer at all**. Not a slow answer or a wrong region: silence, because nothing matched and there is nothing to fall back on. The fix is a record with country `*` as the **default**. Test an unmatched location deliberately, every time.
+Geolocation also carries a nasty failure mode of its own. Define records for `US`, `GB` and `DE`, test from those three countries, and everything looks perfect — while users in **every other country get no answer at all** — AWS's words are a *"no answer" response*, meaning the name resolves but comes back empty, not NXDOMAIN. The fix is a record with country `*` as the **default**, which also catches queries from IP addresses Route 53 can't geolocate. Test an unmatched location deliberately, every time.
 
-One mechanical detail sits under all of these: the moment several records share a name and type, each needs a **`set_identifier`** to tell them apart. Plain DNS never needs that, so it is easy to forget. And a weight of **0** means "never return this" — which is how you drain a stack cleanly.
+One mechanical detail sits under all of these: the moment several records share a name and type, each needs its own **set identifier** (`SetIdentifier` in the API, "Record ID" in the console) to tell them apart. Plain DNS never needs that, so it is easy to forget.
+
+And a weight of **0** means "stop sending traffic here" — the clean way to drain a stack. **It does not mean "never return this."** AWS is explicit: "Route 53 initially considers only the nonzero weighted records… If all the records that have a weight greater than 0 are unhealthy, then Route 53 considers the zero-weighted records." So a zero-weight record is Route 53's **last-resort fallback**. That is simultaneously a feature — it is the documented way to build active/passive out of weighted records — and a trap, which AWS itself warns about: "All the records with nonzero weights must be unhealthy before Route 53 starts to respond to DNS queries using records that have weights of zero. This can make your web application or website unreliable if the last healthy resource… can't handle all the traffic." Drain a stack and you have quietly built a failover target that will take **everything** at the worst possible moment. *(Corrected 2026-10-06.)*
 
 > In one line: simple hands out everything blind, multivalue hands out only what's alive; geolocation reads the user, geoproximity reads your resources.
 
@@ -111,7 +115,7 @@ The interval is **30s**, or **10s** if you pay for fast. The threshold is how ma
 - Many checkers vote independently, so the aggregate rule is **more than 18% reporting healthy ⇒ healthy**. A brand-new check counts as **healthy** until it has enough data.
 - **HTTPS health checks do not validate certificates.** An expired cert passes happily. Certificate expiry belongs to ACM + CloudWatch/EventBridge, not here.
 
-And when a single endpoint isn't the unit you care about, a **calculated** check lets one parent watch up to **255** children with AND / OR / "at least N".
+And when a single endpoint isn't the unit you care about, a **calculated** check lets one parent watch its children with AND / OR / "at least N". Two things to hold: AWS's own pages disagree on the ceiling — one says a parent can monitor up to **255** children, another says you can add up to **256** — so don't memorise it as an exact number; and a calculated check **cannot monitor another calculated check**, so you cannot build trees of them.
 
 > In one line: Route 53 notices the failure in (interval × threshold) seconds; the TTL decides when anybody else does.
 
@@ -123,7 +127,9 @@ Two details are worth holding on to. Its four nameservers are **reserved names t
 
 That fall-through is also the feature. Run the *same* name as both a public and a private zone and you get **split-view DNS** — the internal answer inside the VPC, the public answer outside. This is the usual shape of `internal.example.com` setups.
 
-Then hybrid. The VPC's built-in resolver sits at the **VPC base + 2** address (`10.0.0.2` in a `10.0.0.0/16`) and answers for VPC names, private hosted zones and public names. To bridge on-premises you add a **Resolver endpoint**, and its direction is the thing candidates reverse constantly:
+Then hybrid. The VPC's built-in resolver — "Amazon DNS server", "AmazonProvidedDNS", and now officially **Route 53 VPC Resolver** — answers on **three** addresses, not one: the link-local **169.254.169.253** (IPv4) and **fd00:ec2::253** (IPv6), *and* the **VPC base + 2** (`10.0.0.2` in a `10.0.0.0/16`). Instances normally use the link-local address, which is why DNS still works in an **IPv6-only subnet** as long as AmazonProvidedDNS is the name server in the DHCP option set. It answers for VPC names, private hosted zones and public names, and it is **recursive-only**.
+
+Three constraints that cause real incidents. You **cannot filter traffic to or from it with security groups or network ACLs** — so "lock down DNS with an SG" is not a thing. Link-local traffic is capped at **1,024 packets per second per instance**, and that budget is *shared* with IMDS, the Amazon time service and Windows licensing — which is the usual cause of mysterious DNS throttling on a busy instance. And a private hosted zone is **not transitive outside the VPC**: AWS states you "cannot access your resources using their custom private DNS names from the other side of a VPN connection" without a Resolver endpoint. To bridge on-premises you add a **Resolver endpoint**, and its direction is the thing candidates reverse constantly:
 
 | | **Inbound endpoint** | **Outbound endpoint** |
 |---|---|---|
@@ -168,17 +174,17 @@ flowchart TB
 
 - **Route 53 is global**, not regional — hosted zones don't live in a Region, and the console has no Region selector for them.
 - **Hosted zones:** **$0.50/month** each for the first 25, **$0.10/month** after. **A zone deleted within 12 hours of creation is not charged** — but *queries against a public zone are still billed* even then.
-- **Queries:** **$0.40 per million** (first 1B/month), $0.20/million above. **Alias queries to AWS resources are free.** A **CNAME pointing at another Route 53 record bills as two queries**.
-- **Health checks:** **50 free** for **AWS endpoints** (a resource running in AWS in the *same account*). Then **$0.50/month** (AWS) / **$0.75/month** (non-AWS). **Optional features cost $1.00 each (AWS) / $2.00 (non-AWS) per month** — HTTPS, string matching, the fast 10-second interval, and latency measurement all count. Keep lab checks basic.
+- **Queries:** **$0.40 per million** for *standard* queries (first 1B/month), $0.20/million above — but the clever policies cost more per million: **latency $0.60**, **geolocation / geoproximity $0.70**, **IP-based $0.80**. So "use latency-based routing" is not a free change. **Alias queries to AWS resources are free.** A **CNAME pointing at another Route 53 record bills as two queries**.
+- **Health checks:** **50 free** for **AWS endpoints** (⚠️ verify: whether AWS's definition of "AWS endpoint" requires the resource to be in the *same account* — the pricing page confirms the 50 and the rates but not that condition). Then **$0.50/month** (AWS) / **$0.75/month** (non-AWS). **Optional features cost $1.00 each (AWS) / $2.00 (non-AWS) per month** — HTTPS, string matching, the fast 10-second interval, and latency measurement all count. Keep lab checks basic.
 - **Health check mechanics:** interval is **30s or 10s** (10s = "fast", costs extra); the **failure threshold** is the number of *consecutive* checks that must fail (or pass) to flip the status. Route 53 aggregates many global checkers: **more than 18% reporting healthy ⇒ healthy**. A **new** health check counts as **healthy** until it has enough data (inverted if you enable "invert").
 - **Health check timing detail:** HTTP/HTTPS must establish TCP within **4 seconds** and return **2xx/3xx within 2 more seconds**. TCP checks must connect within **10 seconds**. **HTTPS health checks do not validate certificates** — an expired cert will not fail the check. String matching must find the string within the first **5,120 bytes**.
-- **Three health check types:** **endpoint** (IP or domain name), **calculated** (a parent watching up to **255** children, with AND / OR / "at least N"), and **CloudWatch alarm** (watches the alarm's *data stream*, not its state — so `SetAlarmState` can't fake it; same account only, no metric math, no M-of-N).
+- **Three health check types:** **endpoint** (IP or domain name), **calculated** (a parent watching its children with AND / OR / "at least N" — AWS says 255 on one page and 256 on another, and a calculated check can't monitor another calculated check), and **CloudWatch alarm** (watches the alarm's *data stream*, not its state — so `SetAlarmState` can't fake it; same account only, no metric math, no M-of-N).
 - **Health checks cannot target private, nonroutable, or multicast IPs.** For EC2, attach an **Elastic IP** and check that, so the target never moves.
 - **Alias:** no TTL of your own (uses the target's); resolves as an **A/AAAA** record in `dig` (the alias-ness is only visible in the console/API); auto-follows the target's IP changes; targets include **ALB/NLB/CLB, CloudFront, S3 static website, API Gateway, VPC interface endpoints, Global Accelerator, Elastic Beanstalk, App Runner, OpenSearch, AppSync, and another record in the same hosted zone**. **An EC2 instance is not a valid alias target** — use a plain A record to its Elastic IP.
 - **CNAME restriction beyond the apex:** if a name has a CNAME, it can have **no other records at all** at that name. That's why the apex — which must carry SOA and NS — can never be a CNAME.
 - **Private hosted zones** need a **VPC association**, and the VPC needs DNS support + DNS hostnames. Queried from outside an associated VPC, the name simply **resolves recursively on the public internet** instead of erroring. They're assigned four *reserved* nameservers (`ns-0.awsdns-00.com` and friends) that are **never actually contacted** — they exist only because DNS requires an NS record set.
 - **Record types supported:** A, AAAA, CAA, CNAME, DS, HTTPS, MX, NAPTR, NS, PTR, SOA, SPF, SRV, SSHFP, SVCB, TLSA, TXT. **SPF as a record type is deprecated** — put SPF data in a **TXT** record. **MX priority: lower number wins.** TXT strings are ≤255 chars each, ≤4,000 total.
-- **Route 53 carries a 100% availability SLA** for hosted zones — service credits begin the moment monthly uptime drops below 100%. It covers **authoritative DNS only**, not Resolver or the other Route 53 features.
+- **SLA:** the famous "Route 53 has a **100% SLA**" line is no longer AWS's wording. The page now reads: *"AWS will use commercially reasonable efforts to make each Amazon Route 53 Hosted Zone available with the Monthly Uptime Percentages set forth in the table below"* — and no 100% commitment is stated anywhere. What survives, and is the useful half, is that **service credits still begin the moment uptime is below 100%**: **10%** credit under 100%, **25%** under 99.99%, **100%** under 99.95% (GovCloud bands start at 99.995%). It covers **authoritative DNS hosted zones only** — explicitly not the Route 53 API, the console, or the other Route 53 features. *(Verified 2026-10-06; this page gets revised, so re-check before trusting the bands.)*
 
 ## Comparisons
 
@@ -192,7 +198,7 @@ flowchart TB
 | **Failover** | primary's health | primary, else secondary | ✅ (that's the point) |
 | **Geolocation** | where the **user** is (continent / country / US state) | one | ✅ |
 | **Geoproximity** | where your **resources** are + a **bias** you set (**+1…+99** expand, **−1…−99** shrink) | one | ✅ |
-| **Multivalue answer** | nothing | up to **8 healthy**, random | ✅ **yes** |
+| **Multivalue answer** | nothing | up to **8 healthy**, random (**all** of them if none are healthy) | ✅ **per record, and optional** — a record with no health check counts as healthy |
 | **IP-based** | CIDR blocks **you** supply | one | ✅ |
 
 *The pairs that get confused: **simple vs multivalue** (health checking is the whole difference) and **geolocation vs geoproximity** (users vs resources).*
@@ -235,18 +241,24 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 ## Worked examples
 
 > [!example] Worked example — blue/green release with weighted routing
-> You want 10% of live traffic on a new stack before committing. Create **two records with the same name** `app.example.com`, each with a `set_identifier` (`blue`, `green`) and a `weighted_routing_policy` of 90 and 10. Route 53 returns **one** address per query, chosen in proportion. Shift by editing weights — no load balancer change, no deploy. Two cautions that make this a real-world skill rather than a trick: **TTL bounds how fast a shift takes effect** (clients keep the old answer until it expires, so use ~60s), and **weight 0 means "never return this"**, which is how you drain a stack cleanly. Attach health checks to both so a broken green is removed rather than served to 10% of users.
+> You want 10% of live traffic on a new stack before committing. Create **two records with the same name** `app.example.com`, each with its own **set identifier** (`blue`, `green`) and a **weighted** routing policy of 90 and 10. Route 53 returns **one** address per query, chosen in proportion. Shift by editing weights — no load balancer change, no deploy. Two cautions that make this a real-world skill rather than a trick: **TTL bounds how fast a shift takes effect** (clients keep the old answer until it expires, so use ~60s), and **weight 0 means "stop sending traffic here"** — the clean way to drain a stack, but *not* "never return this": if every nonzero-weight record in the group goes unhealthy, Route 53 falls back to the zero-weighted ones. Attach health checks to both so a broken green is removed rather than served to 10% of users — and remember that a drained stack left at weight 0 is now your involuntary failover target.
 
 > [!example] Worked example — multi-region active/passive DR
-> Primary in `us-east-1`, warm standby in `eu-west-1`. Create a **failover** pair on `www.example.com`: the PRIMARY record carries a **health check** on the primary endpoint, the SECONDARY doesn't need one. Route 53 serves primary while healthy and switches automatically when the check fails. Budget the switch honestly: **(30s interval × 3 failures) + TTL** ≈ 90s plus however long clients cache. Set the TTL to **60**, not 3600. If the record is an **alias** to an ALB you can't set a TTL at all — Route 53 uses the ALB's, which is already low, so this is fine. This is the canonical exam answer for "automatic cross-region failover with minimal RTO" — pair it with [[07-rds-aurora]] Global Database for the data tier.
+> Primary in `us-east-1`, warm standby in `eu-west-1`. Create a **failover** pair on `www.example.com`: the PRIMARY record has to be health-aware and the SECONDARY needs nothing extra. **How** the primary becomes health-aware depends on what it points at, and this is the part people get wrong: for a raw IP or a non-AWS endpoint you attach a **health check** to the record; for an **alias to an AWS resource** ([[04-alb-asg]] for the load balancers, [[09-s3-intro]] for an S3 website endpoint as the standby) AWS says *don't* — "If you're routing traffic to any AWS resources that you can create alias records for, **don't create health checks for those resources**. When you create the alias records, you set **Evaluate Target Health** to **Yes** instead." In AWS's own failover-alias walkthrough both records are set to *Evaluate Target Health = Yes* and *Associate with Health Check = **No***. Route 53 serves primary while healthy and switches automatically when the check fails. Budget the switch honestly: **(30s interval × 3 failures) + TTL** ≈ 90s plus however long clients cache. Set the TTL to **60**, not 3600. If the record is an **alias** to an ALB you can't set a TTL at all — Route 53 uses the ALB's, which is already low, so this is fine. This is the canonical exam answer for "automatic cross-region failover with minimal RTO" — pair it with [[07-rds-aurora]] Global Database for the data tier.
 
 > [!failure] Failure mode — the geolocation record with no default
-> A team adds geolocation records for `US`, `GB` and `DE`, tests from those three countries, and ships. Users in **every other country get no answer at all** — not a slow answer, not a wrong region, **NXDOMAIN-shaped silence** — because no record matches their location and Route 53 has nothing to fall back on. The fix is a record with country `*` as the **default**, which catches every unmatched location. The same trap is why `dig +subnet=` testing from a *single* location gives false confidence: you only ever exercise one branch. Always test an unmatched location deliberately.
+> A team adds geolocation records for `US`, `GB` and `DE`, tests from those three countries, and ships. Users in **every other country get no answer at all** — not a slow answer, not a wrong region, a **"no answer" response** — which is NOERROR with an empty answer section, *not* NXDOMAIN: the name exists, Route 53 simply has nothing for that location. The fix is a record with country `*` as the **default**, which catches both unmatched locations *and* queries from IP addresses Route 53 cannot map to any location at all. The same trap is why `dig +subnet=` testing from a *single* location gives false confidence: you only ever exercise one branch. Always test an unmatched location deliberately.
 
 ## Traps
 
 > [!warning] Trap — "use simple routing to distribute traffic across three servers"
 > Simple routing returns **all** the values in random order and the **client** chooses; Route 53 is not balancing anything and is **not health checking**. A dead server keeps being handed out. If the question wants distribution *with* health awareness, it's **multivalue answer**; if it wants controlled proportions, it's **weighted**; if it wants real load balancing, it's an **ALB**, not DNS.
+
+> [!warning] Trap — a weighted record with weight 0 is never returned
+> It is returned — as a last resort. AWS: "If all the records that have a weight greater than 0 are unhealthy, then Route 53 considers the zero-weighted records." So weight 0 means *stop sending traffic here*, not *never*, and a stack you drained to 0 is now the failover target that absorbs everything if every other record fails. This is also the documented way to build active/passive out of weighted records.
+
+> [!warning] Trap — for a failover alias to an ALB, attach a health check to the record
+> Don't. AWS: "If you're routing traffic to any AWS resources that you can create alias records for, don't create health checks for those resources. When you create the alias records, you set Evaluate Target Health to Yes instead." Its own failover walkthrough sets Evaluate Target Health = Yes and Associate with Health Check = No on both records. Attach your own health check only for raw IPs and non-AWS endpoints.
 
 > [!warning] Trap — CNAME at the apex
 > `example.com` must carry SOA and NS records, and DNS forbids a CNAME coexisting with any other record at the same name. So a CNAME at the apex is **invalid DNS**, not an AWS limitation. Pointing `example.com` at an ALB or CloudFront is exactly what **alias** records exist for.

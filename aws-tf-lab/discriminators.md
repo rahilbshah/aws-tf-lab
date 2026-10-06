@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 198 discriminators · ~38 min read*
+*107 comparison tables · 200 discriminators · ~39 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -269,6 +269,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[10-route53#The eight routing policies|The eight routing policies]] · [[10-route53#Alias vs CNAME|Alias vs CNAME]] · [[10-route53#Public vs private hosted zone|Public vs private hosted zone]] · [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
 
 - **"use simple routing to distribute traffic across three servers"** — Simple routing returns all the values in random order and the client chooses; Route 53 is not balancing anything and is not health checking.  
+  ↳ [[10-route53#Traps|note]]
+- **a weighted record with weight 0 is never returned** — It is returned — as a last resort. AWS: "If all the records that have a weight greater than 0 are unhealthy, then Route 53 considers the zero-weighted records." So weight 0 means stop sending traffic here, not never, and a stack you drained to 0 is now the failover target that absorbs everything if every other record fails.  
+  ↳ [[10-route53#Traps|note]]
+- **for a failover alias to an ALB, attach a health check to the record** — Don't. AWS: "If you're routing traffic to any AWS resources that you can create alias records for, don't create health checks for those resources.  
   ↳ [[10-route53#Traps|note]]
 - **CNAME at the apex** — example.com must carry SOA and NS records, and DNS forbids a CNAME coexisting with any other record at the same name.  
   ↳ [[10-route53#Traps|note]]

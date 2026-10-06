@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 337 pointers · ~30 min read*
+*176 recall hooks · 339 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -475,6 +475,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[10-route53#Traps|open]]
 - "use simple routing to distribute traffic across three servers"
+- a weighted record with weight 0 is never returned
+- for a failover alias to an ALB, attach a health check to the record
 - CNAME at the apex
 - geolocation vs geoproximity
 - "we set up failover but users were down for an hour"

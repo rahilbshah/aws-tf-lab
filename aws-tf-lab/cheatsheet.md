@@ -716,8 +716,13 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | The eight routing policies | simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based |
-| Multivalue answer — how many records returned | Up to 8 healthy records, randomly ordered |
-| Meaning of weight 0 | Never return this record |
+| Multivalue answer — how many records returned | Up to **8 healthy** records, randomly ordered — and **all** of them if none are healthy. Health checks are **optional and per record**; a multivalue record with no health check counts as **healthy** |
+| Meaning of weight 0 | **"Stop sending traffic here", NOT "never return this."** AWS: if **all** nonzero-weight records are unhealthy, Route 53 falls back to the zero-weighted ones — so weight 0 is a last-resort fallback, and the documented way to build active/passive from weighted records. *(Corrected 2026-10-06: this row said "never return this record".)* |
+| Route 53 SLA — the "100%" line | AWS **no longer states a 100% commitment**: "commercially reasonable efforts … with the Monthly Uptime Percentages set forth in the table". Credits still start **below 100%**: 10% under 100%, 25% under 99.99%, 100% under 99.95% (GovCloud bands start 99.995%). Covers **authoritative DNS hosted zones only** — not the API or console |
+| Failover to an ALB/NLB/CloudFront alias | **Do NOT attach a health check to the record.** Set **Evaluate Target Health = Yes** on the alias and Associate with Health Check = **No**. Attach your own health check only for raw IPs and non-AWS endpoints |
+| Query price by routing policy | Standard **$0.40**/million · latency **$0.60** · geolocation & geoproximity **$0.70** · IP-based **$0.80** (first 1B/mo). Alias queries to AWS resources are **free**; a CNAME to another R53 record bills **twice** |
+| Route 53 VPC Resolver addresses | **169.254.169.253** (IPv4 link-local), **fd00:ec2::253** (IPv6), **and** VPC base **+2**. Link-local still works in an IPv6-only subnet. **Cannot** be filtered by security groups or NACLs. Link-local traffic capped at **1,024 pps per instance**, shared with IMDS/NTP/Windows licensing — the usual cause of DNS throttling |
+| Private hosted zone over VPN | **Not transitive** — you cannot resolve its private names from the far side of a VPN/DX without a Resolver **inbound** endpoint |
 | Geolocation catch-all for unmatched locations | A record with country `*` as the default |
 | Simple routing — health checks? | None; returns all values in random order, client picks |
 | Geolocation vs geoproximity | Geolocation = where the **USER** is (continent/country/US state) — localization, licensing, compliance. Geoproximity = where your **RESOURCES** are plus a **bias** (**+1…+99** expand, **−1…−99** shrink) — a capacity sentence. The policy does **not** need Traffic Flow; only the console's bias maps do |
