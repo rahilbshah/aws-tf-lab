@@ -3,7 +3,7 @@ topic: 15-decoupling
 domain: resilient
 status: reviewed
 services: [SQS, SNS, AmazonMQ]
-related: [04-alb-asg, 16-kinesis, 19-serverless]
+related: [04-alb-asg, 09-s3-advanced, 16-kinesis, 19-serverless]
 tags: [topic, domain/resilient]
 ---
 
@@ -153,6 +153,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and must be the **same queue type** — a FIFO queue's DLQ must be FIFO, a standard queue's DLQ must be standard. Separately, AWS advises against a DLQ on a FIFO queue at all if exact ordering matters. A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
 - **DLQ retention clock:** **standard** queues keep the **original enqueue timestamp** when a message moves to the DLQ, so set the DLQ's retention **longer** than the source's. **FIFO** queues **reset** the timestamp on the move.
 - **SNS subscribers:** Amazon SQS, Lambda, HTTP(S), email, SMS, mobile push, **Amazon Data Firehose**, and service providers such as Datadog, MongoDB and Splunk. Supports **A2A** and **A2P** messaging.
+- **Neither a FIFO queue nor a FIFO topic can be an S3 event-notification destination.** AWS: *"Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination. To send a notification for an Amazon S3 event to an Amazon SQS FIFO queue, you can use Amazon EventBridge"*, and *"Standard SNS is only allowed as an S3 event notification destination, whereas SNS FIFO is not allowed."* So S3 → FIFO needs **EventBridge** in the middle. ([[09-s3-advanced]] owns S3 events.) *(Verified 2026-10-09 — an earlier pass of this note left this claim out for want of a source.)*
 - **SNS FIFO topics deliver only over the SQS protocol** — no email, HTTP or Lambda subscribers — and can fan out to **both FIFO and standard** queues.
 - **Subscription filter policies** let a subscriber receive only the messages it cares about, evaluated against message attributes or (with `FilterPolicyScope: MessageBody`) the body itself.
 - **Amazon MQ deployment modes — engine-specific, do not blur them.** *ActiveMQ*: **single-instance** (one broker, one AZ, **EBS or EFS**) or **active/standby** (two brokers, two AZs, **EFS**, one active, two endpoints per wire protocol with `-1`/`-2` suffixes, failover in a few seconds). *RabbitMQ*: **single-instance** (one broker, one AZ, **EBS**, behind an NLB) or a **three-node cluster** behind an NLB across AZs, each node on its own **EBS** volume, classic mirroring automatic. **RabbitMQ has no active/standby mode and no EFS option** — a "three brokers / cluster / NLB" stem is RabbitMQ, and an "active/standby pair on EFS" stem is ActiveMQ. *(Corrected 2026-10-07: these modes were written as generic "Amazon MQ" modes but are ActiveMQ's.)* RabbitMQ also offers **quorum queues** (leader + followers across AZs, good for poison messages); ActiveMQ offers **cross-Region data replication** with API-triggered failover.

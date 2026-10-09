@@ -3,7 +3,7 @@ topic: 17-containers
 domain: performance
 status: reviewed
 services: [ECS, Fargate, ECR, EKS]
-related: [02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-endpoints-peering, 01-iam]
+related: [01-iam, 02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-endpoints-peering, 14-dr-resilience]
 tags: [topic, domain/performance]
 ---
 
@@ -107,6 +107,42 @@ For Fargate platform 1.4.0+, AWS states you *"require both Amazon ECR VPC endpoi
 
 The endpoint's security group must allow **443 inbound from the private subnets**. And note the cost inversion: three interface endpoints billed per ENI per AZ can exceed one NAT gateway at $0.045/hr ([[05-vpc-core]] owns NAT pricing; [[05-vpc-endpoints-peering]] owns endpoint pricing). Endpoints win on security posture, not automatically on price — count before assuming.
 
+### Scaling EKS: two different layers, and a question usually needs both
+
+This is the gap a mock exposed, so it is worth stating precisely. "Make the infrastructure
+scale automatically" on EKS is **two** jobs, and an answer that does only one of them is
+incomplete:
+
+- **Pod level — the Horizontal Pod Autoscaler (HPA).** It *"automatically scales the number of
+  Pods in a deployment, replication controller, or replica set based on that resource's CPU
+  utilization"*. It is a standard Kubernetes API resource, so there is nothing to install for
+  the HPA itself — but it *"simply requires that a metrics source (such as the Kubernetes
+  metrics server) is installed on your Amazon EKS cluster to work"*. That is why
+  "install the **Metrics Server**, then enable HPA" is one answer and not two.
+- **Node / compute level — Karpenter or the Cluster Autoscaler.** More pods than the existing
+  nodes can hold is a *capacity* problem, and the HPA cannot fix it. **Karpenter** *"launches
+  right-sized compute resources (for example, Amazon EC2 instances) in response to changing
+  application load in under a minute"*, provisioning just-in-time capacity that matches the
+  workload's requirements. The **Cluster Autoscaler** *"automatically adjusts the number of
+  nodes in your cluster when pods fail or are rescheduled onto other nodes"* and does it
+  **through Auto Scaling groups**. **EKS Auto Mode** is the managed option — it scales cluster
+  compute itself, consolidates workloads and deletes nodes, and is *"built upon Karpenter"*.
+
+So a holiday-traffic stem on EKS wants **HPA (+ Metrics Server) for the pods and Karpenter,
+Cluster Autoscaler or Auto Mode for the nodes** — a Select-TWO shape. Two more things worth
+holding: Karpenter is **open-source software you install and manage**, with **no AWS SLA**,
+while the Cluster Autoscaler works **through ASGs** (so it inherits ASG behaviour, including
+the control-plane dependency [[14-dr-resilience]] warns about during a recovery).
+*(Added 2026-10-09 after a mock; verified against the EKS autoscaling and HPA docs.)*
+
+> [!warning] Trap — "enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge
+> It is half. The HPA adds **pods**; it cannot add **nodes**, so once the existing nodes are
+> full the extra pods simply stay `Pending`. The node half is **Karpenter**, the **Cluster
+> Autoscaler** or **EKS Auto Mode**. Equally, "add nodes" alone leaves the deployment at its
+> old replica count. On EKS these questions usually want one answer from each layer — and the
+> HPA half silently needs the **Metrics Server** installed, since the HPA needs a metrics
+> source to read.
+
 ## Comparisons
 
 ### ECS vs EKS
@@ -185,6 +221,10 @@ The endpoint's security group must allow **443 inbound from the private subnets*
 > Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr. Choose endpoints for the security posture and for per-GB data cost at volume — then do the arithmetic rather than assuming.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **EKS scaling is two layers** (trainer-sourced, mock-02, 2026-10-09): missed a Select-TWO
+  that needed **HPA + Metrics Server** for pods *and* **Karpenter** for nodes. Anchor on
+  "pods vs nodes", not on "autoscaling".
 - Believed the S3 **gateway** endpoint was unusable for ECR because it "only supports S3 and DynamoDB" — it is in fact **mandatory**, precisely because ECR keeps image layers in S3. The inversion is the thing to remember.
 - Gave "you don't need an IAM role for a public image" as a complete answer. Right about the pull, wrong about the conclusion: `awslogs` still requires the execution role.
 - Knew `least_outstanding_requests` exists but not *when* to choose it: variable or expensive request cost, or targets of differing capacity.

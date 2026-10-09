@@ -602,3 +602,50 @@ agents' cited findings and should be verified the same way.
 - For unattended runs: confirm `pmset -g batt` says "AC Power" first. `caffeinate`'s
   `PreventSystemSleep` does not bind on battery, which is why the 2026-10-05 overnight run
   produced one note instead of twelve.
+
+---
+
+## Coverage check against mock-02 (2026-10-09)
+
+The user took a 65-question timed mock (`mock-02`, 47/65 = 72.3%, 18 missed) and asked whether
+the vault contains the material for **every** question, not just the missed ones.
+
+**Method.** Pulled the 65 qids from `state/attempts.jsonl`, joined to `bank/questions.json`
+(read-only) for each question's `classification.discriminator` — the concept the question turns
+on — then checked each discriminator against the vault. Read all 18 missed questions in full.
+Per §13.12 the bank shaped *what to check*, never what is true: every fact written below was
+verified against AWS docs first-hand before being added.
+
+**Result: 3 real gaps out of 65.** All three were concepts with no home anywhere in the vault:
+
+1. **EKS autoscaling is two layers** (`2025-7-T5-Q65`, missed). Nothing on Horizontal Pod
+   Autoscaler, Metrics Server, Karpenter or Cluster Autoscaler existed. Added to
+   `17-containers` with a trap, since the question is a Select-TWO needing one answer per
+   layer. Sourced from the EKS autoscaling and HPA pages.
+2. **IAM Roles Anywhere** (`2025-8-T1-Q49`, missed). Completely absent — grep for "anywhere"
+   returned only "Deny anywhere". Added to `01-iam-advanced` with the trust-anchor/profile
+   mechanism and the discrimination against Identity Center and AD Connector.
+3. **FIFO is not a valid S3 event-notification destination** (`2025-4-T5-Q18`, missed). The
+   note listed the four destinations without the constraint. Added to `09-s3-advanced` with a
+   trap, cross-linked from `15-decoupling`. **This closes a claim I had declined to assert
+   during the 15-decoupling audit for want of a source** — now verified verbatim, and it turns
+   out to bar FIFO *both* ways (SQS and SNS).
+
+Picked up free alongside it, from the same page: the destination must be in the **same Region**
+as the bucket, **one destination type per notification**, the **64 KB** message ceiling with the
+`MaximumMessageSize` rejection, and that **`ObjectRemoved` does not fire for lifecycle
+deletions** (there are separate `LifecycleExpiration` / `LifecycleTransition` event types).
+
+**The other 15 missed questions were all covered already** — Aurora reader endpoint, Memcached
+multi-threading, FSx ONTAP multi-protocol, Batch on Spot, EMR→Redshift, Compute Optimizer,
+Service Catalog portfolios, Macie for PII, Identity Center permission sets, Glacier retrieval
+tiers, Route 53 active-active weighted, Kinesis ordering, API Gateway throttling and caching.
+Those were misses from recall or discrimination, not from missing material — which is what
+the weak-spot entries are for.
+
+**Caveat on the method, stated because it bounds the confidence.** Keyword/term matching is
+noisy in both directions: it ranked "S3 event notifications" against `21-security` and "Amazon
+RDS" against `19-serverless`, and it falsely flagged Compute Optimizer and all five "Amazon S3"
+questions as unowned (the latter because my tokenizer dropped the 2-character token `s3`). The
+verdict above rests on reading the 18 missed questions and concept-level greps, not on the
+score. A question whose material is present but *thin* would not necessarily show up.

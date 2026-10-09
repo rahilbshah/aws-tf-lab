@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 342 pointers · ~30 min read*
+*176 recall hooks · 344 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -409,6 +409,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - replication copies existing objects
 - replication is transitive
 - Transfer Acceleration moves your data closer to users
+- point an S3 event notification straight at a FIFO queue to keep the order
 - SSE-C objects can't be replicated
 - Batch Replication can backfill anything
 - "use S3 Select" on a new account
@@ -710,6 +711,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[17-containers#How it actually works|explain]]
 
 **Traps** [[17-containers#⚠️ Traps — why the wrong answer looks right|open]]
+- "enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge
 - "ECS or Fargate?"
 - target_type on a Fargate service
 - a green apply is not a green deployment

@@ -195,6 +195,40 @@ mechanisms are real and the stem's verb picks between them:
 - **`aws:MultiFactorAuthPresent` is absent for long-term access keys** — absent, not `false`. AWS *recommends* `BoolIfExists` rather than requiring it, and warns the stricter form *"can break any code or scripts that use access keys"*. Which way a plain `Bool` misfires depends on the effect: see the trap below.
 - **Control Tower is free itself**; you pay for what it provisions (CloudTrail, Config, S3 logging).
 
+### IAM Roles Anywhere — IAM roles for machines that are not in AWS
+
+A gap a mock exposed. Everything above assumes the caller is an AWS principal. **IAM Roles
+Anywhere** is the answer when it is not: it exists *"to obtain temporary security credentials
+in IAM for workloads such as servers, containers, and applications that run **outside of
+AWS**"*, so that *"you don't need to manage long-term AWS credentials for workloads running
+outside of AWS."* That is the trigger phrase — an on-premises server or VM needing AWS access
+without a baked-in access key.
+
+How it hangs together, which is what the exam actually tests:
+
+- The workload authenticates with an **X.509 certificate** issued by **your own CA** (or by
+  **AWS Private CA**). No AWS access key exists anywhere.
+- You register that CA with Roles Anywhere as a **trust anchor** — *"a reference to either AWS
+  Private CA or an external CA certificate"* — which establishes trust between your PKI and
+  AWS.
+- The IAM role must **trust the IAM Roles Anywhere service principal**, and the trust anchor
+  is tied to the role through an **`aws:SourceArn`** condition carrying the trust anchor's ARN.
+  Same confused-deputy shape as every other service-principal grant in this vault.
+- A **profile** says which roles Roles Anywhere may assume and can carry **session policies**
+  to narrow the resulting permissions. A profile can reference many roles but only one session
+  policy.
+- Trust is **account-scoped**: a certificate from any trust anchor in the account can assume
+  any target role in that same account unless the role's trust policy says otherwise, and there
+  is **no automatic integration with organization-wide controls**. All its resources are
+  **regional** and must be in the same account and Region to work together.
+
+**Discriminate it from the neighbours.** *Roles Anywhere* = a **machine** outside AWS needs
+temporary credentials. **IAM Identity Center** = a **human** signing in, with permission sets.
+**AD Connector / Managed Microsoft AD** = joining AWS to an existing directory. An IAM **user**
+with a long-lived access key is the thing Roles Anywhere exists to replace, so it is the wrong
+answer whenever Roles Anywhere is on the menu.
+*(Added 2026-10-09 after a mock; verified against the IAM Roles Anywhere user guide.)*
+
 ## Comparisons
 
 ### Which multi-account requirement does this solve?
@@ -323,6 +357,10 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 > The key is simply **absent** for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic. Use `aws:VpcSourceIp`, or scope on `aws:SourceVpce` / `aws:SourceVpc` instead.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **IAM Roles Anywhere** (trainer-sourced, mock-02, 2026-10-09): missed it entirely — the
+  concept was not in this vault until now. Trigger: *on-premises / outside AWS* workload needing
+  **temporary** credentials. Mechanism: X.509 cert → **trust anchor** → role → **profile**.
 
 - [ ] **Never studied — the Udemy "IAM Advanced" section was skipped entirely** (realised 2026-08-30). This note was written to cover it; nothing here has been tested yet.
 - [ ] **SCPs grant nothing** — the instinct to read a policy document as "granting" is strong and wrong.

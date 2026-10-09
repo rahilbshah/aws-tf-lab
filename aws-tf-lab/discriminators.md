@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 203 discriminators · ~40 min read*
+*107 comparison tables · 205 discriminators · ~41 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -234,6 +234,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket — it changes the path: enter AWS at the nearest edge location, then an optimized network path to the bucket's region.  
   ↳ [[09-s3-advanced#Worked examples|note]]
+- **point an S3 event notification straight at a FIFO queue to keep the order** — You can't. AWS: "Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
 - **SSE-C objects can't be replicated** — They can. AWS lists objects encrypted with customer-provided keys (SSE-C) alongside SSE-S3, SSE-KMS and DSSE-KMS under what replication does copy.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **Batch Replication can backfill anything** — It can't. Objects sitting in Glacier Flexible Retrieval, Glacier Deep Archive, or the Intelligent-Tiering archive tiers must be restored and copied to another storage class first.  
@@ -414,6 +416,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[17-containers#ECS vs EKS|ECS vs EKS]] · [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]] · [[17-containers#Task execution role vs task role|Task execution role vs task role]] · [[17-containers#ALB target types|ALB target types]] · [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
 
+- **"enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge** — It is half. The HPA adds pods; it cannot add nodes, so once the existing nodes are full the extra pods simply stay Pending.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **target_type on a Fargate service** — With awsvpc each task gets its own elastic network interface, so there is no EC2 instance ID to register.  

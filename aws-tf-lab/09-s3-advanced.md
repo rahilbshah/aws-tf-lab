@@ -157,7 +157,10 @@ flowchart LR
 
 ### Events & automation
 - **Triggers:** `s3:ObjectCreated:*` (Put/Post/Copy/CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, replication events, and more. Can filter by **prefix** and **suffix**.
-- **Destinations:** **SNS**, **SQS**, **Lambda**, **EventBridge**. EventBridge adds rich content-based filtering, archiving/replay, and routing on to many further AWS and HTTP targets (AWS publishes no fixed count on the S3 page — don't memorise one).
+- **Destinations:** **SNS**, **SQS**, **Lambda**, **EventBridge** — and **only one destination type per notification**. EventBridge adds rich content-based filtering, archiving/replay, and routing on to many further AWS and HTTP targets (AWS publishes no fixed count on the S3 page — don't memorise one).
+- **FIFO is not a valid destination, for either queue or topic.** AWS: *"Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination. To send a notification for an Amazon S3 event to an Amazon SQS FIFO queue, you can use Amazon EventBridge."* And for topics: *"Currently, Standard SNS is only allowed as an S3 event notification destination, whereas SNS FIFO is not allowed."* So **Standard SQS / Standard SNS only — route through EventBridge if you need FIFO.** *(Added 2026-10-09 after a mock; verified.)*
+- **Same Region, and watch the message size.** The SNS topic or SQS queue *"must be in the same AWS Region as your Amazon S3 bucket"*, and so must a Lambda destination. Event messages can be **up to 64 KB**: AWS recommends setting the queue's `MaximumMessageSize` to at least 64 KB, because *"if an event notification exceeds the queue's configured `MaximumMessageSize`, Amazon SQS rejects the notification and doesn't deliver the event."*
+- **`ObjectRemoved` events do not fire for lifecycle deletions** — *"these event notifications don't alert you for automatic deletes from lifecycle configurations or from failed operations."* There are separate `s3:LifecycleExpiration:*` and `s3:LifecycleTransition` event types for that.
 - **SNS** and **SQS** destinations each need a **resource policy** allowing `s3.amazonaws.com`, scoped with `aws:SourceArn` **and** `aws:SourceAccount` — otherwise S3 can't publish, and the test notification S3 sends on enable fails immediately. A customer-managed KMS key on the queue/topic needs a matching key-policy grant. **Lambda**: the S3 console sets the invoke permission up for you; by API you grant it. **EventBridge: no destination policy at all** — you enable or disable it per bucket, and all events go.
 - Delivery is **at-least-once**, **duplicates are possible** on retry, and events are **not guaranteed to arrive in the order they occurred**. Consumers must be **idempotent** and must not depend on ordering.
 
@@ -227,6 +230,9 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 > [!warning] Trap — Transfer Acceleration moves your data closer to users
 > It doesn't move the bucket — it changes the **path**: enter AWS at the nearest **edge location**, then an **optimized network path** to the bucket's region. The axis being tested is **caching vs path**: for the same objects read repeatedly by many people you want **CloudFront**, which caches at the edge; for one large object crossing a long distance you want Transfer Acceleration, for which AWS documents no cache.
 
+> [!warning] Trap — point an S3 event notification straight at a FIFO queue to keep the order
+> You can't. AWS: "Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination. To send a notification for an Amazon S3 event to an Amazon SQS FIFO queue, you can use Amazon EventBridge." The same bar applies to topics — only **Standard** SNS is allowed, "whereas SNS FIFO is not allowed". So the shape is **S3 → EventBridge → FIFO queue**. And note S3 events are at-least-once and unordered anyway, so a FIFO queue downstream does not make the *delivery* ordered.
+
 > [!warning] Trap — SSE-C objects can't be replicated
 > They can. AWS lists objects encrypted with **customer-provided keys (SSE-C)** alongside SSE-S3, SSE-KMS and DSSE-KMS under what replication *does* copy. Older courses and question banks say the opposite, because SSE-C support was added later — so this is a case where the dated material and the current docs disagree, and the docs win.
 
@@ -237,6 +243,10 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 > S3 Select is **no longer available to new customers**. The modern answer for SQL over S3 is **Athena** (and it queries many objects, not one).
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+
+- [ ] **S3 event destinations exclude FIFO** (trainer-sourced, mock-02, 2026-10-09): Standard
+  SQS and Standard SNS only; FIFO needs **EventBridge** in the path. Also same-Region, one
+  destination type per notification, 64 KB message ceiling.
 
 - [ ] **S3 Batch Replication** — the name for replicating pre-existing/failed objects (blanked on it in orient).
 - [ ] **Transfer Acceleration mechanism** — thought it fetched from a nearer bucket; it's edge entry + AWS backbone to the *same* bucket.
