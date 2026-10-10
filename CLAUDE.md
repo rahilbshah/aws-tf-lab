@@ -602,16 +602,20 @@ answers*, so it is useless for this (see the counting caution above).
 1. Identify the session and report the score plainly before analysing anything.
 2. **Read every missed question in full** — stem, correct answer, discriminator. This is the
    part that actually finds gaps; do not skip it in favour of a script.
-3. For each of the *other* questions, check the discriminator's distinctive terms against the
+3. **Check the `correct` + `confidence: "guess"` set explicitly.** This is where thin or
+   absent coverage hides: the human picked right without the material to back it. On
+   2026-10-10 it was the *only* gap on the run (ECS Service Auto Scaling, answered correctly,
+   marked a guess, content entirely absent). Treat a lucky guess as seriously as a miss.
+4. For each of the *other* questions, check the discriminator's distinctive terms against the
    notes and the cheatsheet. Treat this as triage only.
-4. For anything that looks absent, grep the vault for the concept **in the note's own likely
+5. For anything that looks absent, grep the vault for the concept **in the note's own likely
    wording**, not the bank's. A concept can be well covered under different words.
-5. For each confirmed gap: **fetch the AWS page and verify before writing a single sentence.**
+6. For each confirmed gap: **fetch the AWS page and verify before writing a single sentence.**
    §13.10c applies in full. The bank told you *where to look*; it is never the source.
-6. Write the fact into the note that owns the topic; add a **trap** if it is drillable, since
+7. Write the fact into the note that owns the topic; add a **trap** if it is drillable, since
    that is what reaches `discriminators.md`; add a cheatsheet row; and append a dated,
    trainer-sourced line to that note's `## 🔴 My weak spots`.
-7. Record the run in `_findings/AUDIT-PROGRESS.md`: session, score, gaps found, and what was
+8. Record the run in `_findings/AUDIT-PROGRESS.md`: session, score, gaps found, and what was
    checked but already covered.
 
 **Report the misses that were *not* gaps, separately and explicitly.** Most missed questions
@@ -624,9 +628,11 @@ noisy in both directions. On the 2026-10-09 run it ranked "S3 event notification
 `21-security`, ranked "Amazon RDS" against `19-serverless`, and falsely flagged Compute
 Optimizer plus all five "Amazon S3" questions as uncovered (a tokenizer that dropped the
 two-character token `s3`). The verdict must rest on reading the missed questions and on
-concept-level greps. And the check can only prove a question was *answerable*; it cannot prove
-the material was findable **under time pressure**. If the human recalls which correct answers
-felt like guesses, that set is the real remaining risk — ask for it.
+concept-level greps. The one limitation I originally stated here was wrong and is worth keeping
+as a correction: I wrote that the check cannot prove the material was findable **under
+pressure**, and that only the human could identify the lucky guesses. The trainer records
+`confidence` per question, so that set is queryable — see step 3. What genuinely remains
+unprovable is whether a *correct and confident* answer came from the notes or from elsewhere.
 
 **Result of the first run, as a calibration baseline.** `mock-02`, 2026-10-09, 47/65 (72.3%),
 18 missed → **3 genuine gaps**: EKS pod-vs-node autoscaling, IAM Roles Anywhere, and FIFO
