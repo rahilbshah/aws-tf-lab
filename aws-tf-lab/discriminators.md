@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*111 comparison tables · 214 discriminators · ~43 min read*
+*113 comparison tables · 214 discriminators · ~43 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -226,7 +226,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
 
-**Compare:** [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]] · [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
+**Compare:** [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]] · [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]] · [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 - **"a Requester Pays bucket can never be a replication destination"** — The bar is real but conditional, and the condition is the trap.  
   ↳ [[09-s3-advanced#Worked examples|note]]
@@ -248,7 +248,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
 
-**Compare:** [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
+**Compare:** [[09-s3-security#Block Public Access — the four settings|Block Public Access — the four settings]] · [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
 - **an encryption option borrowed from another service** — The distractors are real options in the wrong place. "Client-side with S3-managed keys" does not exist.  
   ↳ [[09-s3-security#Comparisons|note]]

@@ -764,3 +764,45 @@ Analytics' native sentiment**, which turns a bad elimination into a real discrim
 
 Nine new comparison tables / traps, so these reach `discriminators.md` rather than sitting in
 prose (§13.7). Generators re-run: **111 comparison tables, 214 discriminators, 176 hooks.**
+
+### Structural changes to the VPC and S3 notes, 2026-10-10
+
+Held back during the audit so they wouldn't be mixed with fact changes. Applied after checking
+them — and **two of the three categories I had claimed did not survive the check**, which is
+worth recording because the pattern repeats: my own carry-forward structural claims are less
+reliable than cited findings (same lesson as the three false positives in the audit).
+
+**Claims that were wrong:**
+- "`05-vpc-core` repeats the stateful/stateless flip 5×." It mentions it **twice, both about the
+  NAT gateway being stateful** — a different fact. The SG/NACL flip appears 17× in
+  `05-vpc-security`, which owns it. No duplication at all.
+- "Minimum storage durations stated 6× in `09-s3-intro`." Five hits, of which only **two state
+  the same fact** (a table row and a Key-facts bullet); the rest are a lifecycle explanation and
+  two worked-example scenarios. That is the note template working as designed.
+- "Orphaned tables include gateway-vs-interface and versioning-delete." **Both are harvested.**
+
+**What was real, and fixed:**
+1. **A duplicated table that had already drifted.** `09-s3-security` tabulated the S3 encryption
+   options **twice** — once under `## Key facts`, once under `## Comparisons` — and the copies had
+   diverged: only the Key-facts one carried "SSE-C disabled by default since April 2026". Exactly
+   the mechanism that killed the flashcards. Deleted the Key-facts **table**, kept its operational
+   bullets (mutual exclusivity, default can't be SSE-C, no re-encryption on change, Bucket Keys,
+   TLS enforcement) as prose, and carried the April-2026 line plus the SSE-S3 "free but no audit
+   trail" contrast into the surviving harvested table. One home, no facts lost.
+2. **Two drillable tables invisible to the generators**, both parked under `## Key facts`:
+   **Glacier retrieval tiers** (`09-s3-advanced`) and **Block Public Access — the four settings**
+   (`09-s3-security`). Moved under `## Comparisons`; both now reach `discriminators.md`.
+3. **One real seam** (§13.10b): per-prefix request rates were stated **in full, with their own
+   citation, in both** `09-s3-intro` and `09-s3-advanced`, and the two copies had split the fact —
+   only the intro had the 503 Slow Down / gradual-scaling qualifiers, only advanced had the
+   10-prefix/55,000 example and the "more buckets isn't the answer" eliminations. Consolidated:
+   `09-s3-advanced` **owns** performance and absorbed the 503 qualifiers; `09-s3-intro` keeps the
+   orientation ("randomisation is obsolete") and links out for the figures.
+
+**Deliberately left alone:** the other 13 tables flagged as unharvested all sit under
+`## How it actually works`. That is the comprehension layer, and they are **teaching** tables, not
+discriminators. Moving them would break the explanatory prose and pollute `discriminators.md`
+with content that doesn't discriminate. Not a defect — leave them.
+
+Generators re-run: **113 comparison tables** (111 → 113), 214 discriminators, 176 hooks.
+Validation: 0 ragged tables, 0 broken wiki-links, 0 broken anchors, 0 invalid callouts.

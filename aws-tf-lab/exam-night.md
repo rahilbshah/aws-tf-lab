@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 357 pointers · ~31 min read*
+*176 recall hooks · 359 pointers · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -420,6 +420,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - the invisible multipart bill  ↳ [[09-s3-advanced#Worked examples|open]]
 
 **Comparisons**
+- [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]]
 - [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]]
 - [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
 - [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]]
@@ -456,6 +457,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Object Lock in COMPLIANCE mode on a test bucket  ↳ [[09-s3-security#Worked examples|open]]
 
 **Comparisons**
+- [[09-s3-security#Block Public Access — the four settings|Block Public Access — the four settings]]
 - [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]]
 - [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]]
 - [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]

@@ -175,24 +175,9 @@ flowchart TB
 - **Evaluation** follows the [[01-iam]] rule: explicit **Deny** > explicit **Allow** > implicit deny. For **cross-account**, the request must be allowed by **both** the caller's IAM policy *and* the bucket policy.
 - **Access Points** — named endpoints on a shared bucket, each with its own policy and optional VPC restriction. Simplifies "one bucket, many teams" without one giant bucket policy.
 
-### Block Public Access — the four settings
-| Setting (API name) | What it does |
-|---|---|
-| `BlockPublicAcls` | **Rejects** `PutBucketAcl`/`PutObjectAcl`/`PutObject` calls that carry a public ACL |
-| `IgnorePublicAcls` | **Ignores** all public ACLs on the bucket and its objects — existing *and* newly set ones |
-| `BlockPublicPolicy` | **Rejects** a `PutBucketPolicy` that allows public access |
-| `RestrictPublicBuckets` | Limits a bucket whose policy is **public** to AWS service principals and the owner account — which cuts off *every* cross-account grant inside that policy |
+### Encryption at rest — how it behaves (verified 2026-08)
 
-Two ways to become public (ACL, policy) × two enforcement styles (reject the write, ignore at request time) — **not** new vs existing. All four on = the bucket cannot be made public even by a valid policy. Settable at **access point**, **bucket**, **account** and **organization** level; S3 applies the **most restrictive combination**, so either level blocking is enough.
-
-### Encryption at rest (verified 2026-08)
-| Option | Who holds/manages the key | Notes |
-|---|---|---|
-| **SSE-S3** (`AES256`) | AWS | **The automatic base level for every bucket since 5 Jan 2023.** Free, no audit trail of key use. |
-| **SSE-KMS** (`aws:kms`) | You, in KMS | Key policy, rotation, and **every use logged in CloudTrail**. KMS request costs → use **S3 Bucket Keys**. |
-| **DSSE-KMS** | You, in KMS | **Two independent AES-256 layers** (KMS data key + separate S3-managed key) for multi-layer compliance mandates. |
-| **SSE-C** | **You** — supplied on every request | S3 encrypts/decrypts but never stores your key. ⚠️ **Disabled by default on all new general-purpose buckets since April 2026** — must be deliberately re-enabled via `PutBucketEncryption`. |
-| **Client-side** | You, before upload | S3 never sees plaintext or the key. Maximum control, all key management is yours. |
+*The options themselves are tabulated once, under [[#Which encryption options actually exist — per service|Comparisons]]. What follows is the operational behaviour that the menu doesn't capture.*
 
 - The four server-side options are **mutually exclusive** per object.
 - **Default encryption may be SSE-S3, SSE-KMS or DSSE-KMS — not SSE-C.**
@@ -222,6 +207,16 @@ Two ways to become public (ACL, policy) × two enforcement styles (reject the wr
 - Protects permanent version deletion and disabling versioning. Rare in practice; exam-relevant precisely because of the root-only constraint.
 
 ## Comparisons
+
+### Block Public Access — the four settings
+| Setting (API name) | What it does |
+|---|---|
+| `BlockPublicAcls` | **Rejects** `PutBucketAcl`/`PutObjectAcl`/`PutObject` calls that carry a public ACL |
+| `IgnorePublicAcls` | **Ignores** all public ACLs on the bucket and its objects — existing *and* newly set ones |
+| `BlockPublicPolicy` | **Rejects** a `PutBucketPolicy` that allows public access |
+| `RestrictPublicBuckets` | Limits a bucket whose policy is **public** to AWS service principals and the owner account — which cuts off *every* cross-account grant inside that policy |
+
+Two ways to become public (ACL, policy) × two enforcement styles (reject the write, ignore at request time) — **not** new vs existing. All four on = the bucket cannot be made public even by a valid policy. Settable at **access point**, **bucket**, **account** and **organization** level; S3 applies the **most restrictive combination**, so either level blocking is enough.
 
 ### SCP vs RCP for S3 access points
 
@@ -261,10 +256,10 @@ another. Learn the menus, and most of the distractors disappear.
 
 | Option | Key held by | Reach for it when |
 |---|---|---|
-| **SSE-S3** (`AES256`) | AWS, invisible | default since Jan 2023; "just encrypt it" |
+| **SSE-S3** (`AES256`) | AWS, invisible | the automatic base level for every bucket since **5 Jan 2023**; free, but **no audit trail of key use** — "just encrypt it" |
 | **SSE-KMS** (`aws:kms`) | your KMS key | you need an **audit trail of key use** and a **key policy** — the compliance answer |
 | **DSSE-KMS** | your KMS key, twice | two independent layers, for the strictest mandates |
-| **SSE-C** | **you send the key on every request** | you must hold the key material yourself and accept managing it |
+| **SSE-C** | **you send the key on every request** | you must hold the key material yourself and accept managing it. ⚠️ **Disabled by default on all new general-purpose buckets since April 2026** — must be deliberately re-enabled via `PutBucketEncryption` |
 
 **S3 — client-side (S3 never sees plaintext, and never sees the key):** you encrypt before upload with the **Amazon S3 Encryption Client**, which wraps each object's unique data key under a **wrapping key** you choose.
 
