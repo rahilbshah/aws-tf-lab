@@ -133,12 +133,18 @@ Your RPO target picks the replication mechanism, and this is where everything yo
 | Mechanism | RPO | Notes |
 |---|---|---|
 | **Aurora Global Database** | **~1 second** | typical cross-Region latency under a second; promote a secondary in **under a minute**; up to **10** secondary Regions |
-| **DynamoDB Global Tables** | seconds in the default **MREC** mode | **multi-active** — read *and* write in every Region, conflicts resolved **last-writer-wins**. AWS now offers two consistency modes, chosen at creation and **not changeable afterwards**: **multi-Region eventual consistency (MREC)**, the default, and **multi-Region strong consistency (MRSC)**, aimed at a **zero RPO** (MRSC is same-account only). ⚠️ verify which features MRSC excludes |
+| **DynamoDB Global Tables** | seconds in the default **MREC** mode | **multi-active** — read *and* write in every Region, conflicts resolved **last-writer-wins**. AWS now offers two consistency modes, chosen at creation and **not changeable afterwards**: **multi-Region eventual consistency (MREC)**, the default, and **multi-Region strong consistency (MRSC)**, aimed at a **zero RPO** (MRSC is same-account only). MRSC gives that up elsewhere — see the exclusions below the table |
 | **S3 Cross-Region Replication** | seconds–minutes | S3 RTC commits to **15 minutes**, SLA-backed (AWS states the percentage inconsistently — carry the 15 minutes) |
 | **RDS cross-Region read replica** | seconds–minutes | promotion takes **a few minutes and includes a reboot** |
-| **ElastiCache Global Datastore** | ⚠️ verify the figure | cross-Region replication for **Valkey or Redis OSS**, **node-based clusters only** — one active primary takes writes, secondaries are read-only until promoted ([[08-elasticache]]) |
+| **ElastiCache Global Datastore** | **typically under 1 second** (a typical figure, not a bound — replication is asynchronous) | cross-Region replication for **Valkey or Redis OSS**, **node-based clusters only** — one active primary takes writes, secondaries are read-only until promoted ([[08-elasticache]]) |
 | **AWS Backup cross-Region copy** | hours | as often as the backup plan runs |
 | **Snapshots copied manually** | hours–days | backup & restore territory |
+
+**What MRSC costs you.** Buying a zero RPO in DynamoDB means giving up features, and the list is the testable part. AWS documents MRSC as **not supporting**: **TTL** deletion, **local secondary indexes (LSIs)**, and **transaction operations** (`TransactWriteItems` / `TransactGetItems` *"will return an error if those operations are invoked on an MRSC replica"*). It also publishes **no `ReplicationLatency` metric** (MREC does), and Contributor Insights is *"only reported for the Region in which an operation occurred"*. The shape is constrained too: an MRSC table *"must be deployed in **exactly three** Regions"* — three replicas, or **two replicas plus a witness**, where a witness holds the data, cannot be read or written, and sits in a third Region. It must be created from a table containing **no data**, you **cannot add** replicas afterwards, and you cannot delete just one replica. Concurrent cross-Region writes to the same item fail with `ReplicatedWriteConflictException` (retryable).
+
+> **Streams are the trap here, not an exclusion.** MRSC does not *use* Streams for replication, so Streams are **not enabled by default** on MRSC replicas — but *"You can enable Streams on an MRSC replica"*, and those records are **identical across every replica, including ordering**. MREC enables Streams by default (it replicates *through* them) and cannot disable them, at the cost of records differing slightly between replicas. So "MRSC doesn't support Streams" is wrong; "MRSC doesn't default to Streams, and doesn't need them" is right.
+
+Worth carrying from the same page: global tables of either mode come with a **99.999%** availability SLA, against **99.99%** for a single-Region table.
 
 Two details worth carrying:
 
@@ -209,7 +215,7 @@ Two consequences that read like exam answers:
 | Servers running | ❌ | ❌ **switched off** | ✅ **running, small** | ✅ running, full |
 | Can serve a request now | no | **no** | **yes, at low capacity** | yes |
 | Recovery work needed | redeploy + restore | **switch on + scale up** | **scale up only** | none — already live |
-| RTO | hours | tens of minutes | minutes | near zero | <!-- ⚠️ verify: only multi-site's "near zero" appears in the whitepaper prose; the other three come from Figure 6's graphic -->
+| RTO | hours | tens of minutes | minutes | near zero | <!-- ⚠️ verify — WILL NOT RESOLVE: only multi-site's "near zero" appears in the whitepaper prose; the other three exist solely inside Figure 6's graphic, which is an image. Nothing to fetch. Treat these three as indicative ordering, not quotable figures. -->
 | Cost | lowest | low | medium | highest |
 
 ### HA vs DR
@@ -283,6 +289,8 @@ Two consequences that read like exam answers:
 - [ ] **Aurora Global Database vs RDS cross-Region read replica** — sub-second/under-a-minute vs minutes-plus-a-reboot. Aurora also regressed to **44%** in the 2026-09-01 mock.
 
 ## 🔗 Docs
+- [How DynamoDB global tables work](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html) — MREC vs MRSC, the TTL/LSI/transaction exclusions, Streams enableable on MRSC, exactly-three-Regions and the witness, 99.999% vs 99.99% SLA; **verified 2026-10-10**
+- [ElastiCache Global Datastore](https://aws.amazon.com/elasticache/features/global-datastore/) — *"typical cross-region replication latency of under 1 second"*, promotion *"in less than 1 minute"* (feature page; the Developer Guide publishes no figure); **verified 2026-10-10**
 
 - [Disaster recovery options in the cloud](https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html) — the four strategies, the explicit pilot-light-vs-warm-standby distinction, data plane vs control plane, static stability, Aurora Global Database timings, continuous replication services, delete-marker behaviour, Elastic Disaster Recovery, and multi-site write strategies; verified 2026-09-06
 - [Disaster recovery options in the cloud (RTO/RPO, the four strategies)](https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html) — re-verified 2026-09-30 (the `disaster-recovery-objectives` page was removed)

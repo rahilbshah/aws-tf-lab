@@ -277,10 +277,25 @@ the control-plane dependency [[14-dr-resilience]] warns about during a recovery)
 > [!tip] Production gap
 > This lab is HTTP-only with no certificate, one NAT gateway, no autoscaling, no deployment alarm, and it pulls a public image anonymously. Production adds: **ACM + HTTPS** (or CloudFront in front), **one NAT gateway per AZ**, **Application Auto Scaling** target-tracking on the service, **EventBridge on `SERVICE_DEPLOYMENT_FAILED`**, **ECR** with lifecycle policies and scanning instead of Docker Hub, and **Secrets Manager** for anything sensitive via the task definition's `secrets` block. All of that is the `18-containers-capstone` build.
 
-## ⚠️ Open question — verify before relying on this
-- ⚠️ verify: with the circuit breaker enabled (`enable = true, rollback = true`) and a threshold of 3, a deployment failing with **`CannotPullContainerError`** was observed on 2026-09-06 to reach **12 failed tasks while still `IN_PROGRESS`**, never transitioning to `FAILED`. The documented behaviour is that tasks failing to reach `RUNNING` increment the counter and trip at the threshold. Hypothesis, **not confirmed**: an image that cannot be resolved produces *"unable to place a task"*, which may be accounted differently from a task that starts and then fails a health check. Re-test by breaking the **container health check** rather than the image before trusting the circuit breaker to catch pull failures.
+## The circuit breaker's threshold is computed, not a fixed 3
+
+Worth getting right, because "it trips after 3 failures" is the common claim and **3 is only the floor**. The threshold comes from `thresholdConfiguration`:
+
+- **`BOUNDED_PERCENT`** — the default, with a default `value` of **50**. ECS multiplies `value` by the **latest service desired count** and clamps the result to a **minimum of 3 and a maximum of 200**, rounding up. So desired 1 → **3**, desired 25 → **13**, desired 400 or 800 → **200**. A small service gets 3 because of the clamp, not because 3 is the rule.
+- **`UNBOUNDED_PERCENT`** — the same multiplication with **no** clamp (desired 800 at 50 → 400). For large services that want a proportional threshold without the 200 cap.
+- **`COUNT`** — `value` used literally, fixed regardless of desired count.
+
+`resetOnHealthyTask` controls the *counting*: **`true`** (default) resets the count to 0 whenever a task reaches a healthy state, so only **consecutive** failures count; **`false`** accumulates every failure for the whole deployment. And failures are counted in two stages — stage 1 counts tasks that never reach `RUNNING`; stage 2 begins once at least one task is `RUNNING` and counts **health-check** failures (ELB, Cloud Map, container health checks).
+
+> [!warning] Trap — "the circuit breaker trips after 3 failed tasks"
+> Only for a service with a **desired count of 6 or fewer**, and then only because of the clamp. The default is **50% of the latest desired count**, floored at 3 and capped at 200 — a service of 25 tolerates **13** failures before rolling back, not 3. A stem that gives you a desired count is giving you the input to a calculation. Two further defaults worth holding: the count **resets on every healthy task** unless you set `resetOnHealthyTask = false`, and the circuit breaker works **only** with the rolling-update (`ECS`) deployment controller — not with CodeDeploy blue/green or an external controller.
+
+### My 2026-09-06 observation, still unexplained
+
+With `enable = true, rollback = true` and no custom threshold, a deployment failing with **`CannotPullContainerError`** reached **12 failed tasks while still `IN_PROGRESS`** and never went `FAILED`. The documented mechanics above do not account for that: a task that cannot pull its image never reaches `RUNNING`, so it should increment the stage-1 counter consecutively and trip at the computed threshold. Unconfirmed hypothesis, unchanged: an unresolvable image may produce *"unable to place a task"*, accounted differently from a task that starts and then fails a health check. **Not exam-relevant** — the exam tests that the circuit breaker rolls back and that EventBridge `SERVICE_DEPLOYMENT_FAILED` is the hook. Re-test by breaking the **container health check** rather than the image.
 
 ## 🔗 Docs
+- [How the ECS deployment circuit breaker detects failures](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — `thresholdConfiguration` types, the 50%/min-3/max-200 formula with worked examples, `resetOnHealthyTask`, the two failure stages, rolling-update-only; **verified 2026-10-10**
 - [Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html) · [Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) · [Cluster endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html) · [CloudWatch Container Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html)
 - [ECS service load balancing (dynamic host port mapping)](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html)
 - [ECS task execution IAM role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html) — verified 2026-09-06

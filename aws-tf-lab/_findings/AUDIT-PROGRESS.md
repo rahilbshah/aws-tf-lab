@@ -685,3 +685,82 @@ discrimination failure §13.7 names as the measured weakness, not a coverage pro
   frequency repeat miss in the vault; flagged as the first thing to drill in that note.
 
 All five recorded as dated, trainer-sourced weak spots in their owning notes.
+
+---
+
+## Marker sweep, 2026-10-10 — 25 markers, 24 resolved, 1 permanently unresolvable
+
+Ran the 25 `⚠️ verify` markers left standing after the 30-note audit through one agent each
+(`resolve-markers.js`), schema-forced to return a verbatim quote, a URL and a page size, and
+forbidden to answer from memory. **25 returned, 24 RESOLVED, 1 UNRESOLVABLE.** The vault went
+from **34 markers to 9**, and the 9 that remain are documented below as permanent.
+
+**I re-fetched 8 of the 24 first-hand before writing** — every one that reversed a note claim,
+replaced a number, or asserted a negative. That is where §13.10c earns its place:
+
+| Marker | What the agent said | What my own fetch changed |
+|---|---|---|
+| m12 MRSC | listed **Streams** among MRSC's unsupported features | **Wrong.** *"You can enable Streams on an MRSC replica"* — not enabled by default, but supported, and records are identical across replicas. Asserting "no Streams" would have shipped an error into a note the human memorises |
+| m25 ECS circuit breaker | threshold = `ceil(0.5 × desired)`, clamped 3–200 | Confirmed **and** found `resetOnHealthyTask`, `UNBOUNDED_PERCENT`, `COUNT` and the two counting stages, none of which the marker asked about |
+| m22 GuardDuty | the "no CloudWatch metrics" negative is false | Confirmed, and found the useful residue: the metrics are **usage/scan** metrics in two namespaces, **none counts findings**, so the EventBridge conclusion survives as a conditional rather than dying outright |
+| m11 Spot cancel | cancelling does not terminate a running instance | Confirmed **and** found the asymmetry: cancelling a **`disabled`** request with a **stopped** instance *does* auto-terminate. The blanket claim would have been an unearned absolute |
+| m01 Requester Pays | the replication-destination bar is **cross-account only** | Confirmed verbatim. The agent also caught a **WebSearch summary of the same page that had stripped the cross-account qualifier** — the clearest instance yet of a paraphrase layer manufacturing an absolute |
+| m21 KMS deny | AWS states the deny direction verbatim | Confirmed — *"(You can use an IAM policy to deny a permission to a KMS key without permission from a key policy.)"* A rule I had previously flagged as a reasonable-but-unquoted inverse |
+| m18 CW Logs retention | 22 enumerated values | Confirmed verbatim, plus the 72-hour deletion lag |
+| m07 EFS Archive | AWS states it **affirmatively**, never as a One Zone exclusion | Confirmed. Wrote the affirmative per §13.10a(c) |
+
+**Pattern, consistent with the audit:** not one of the 24 resolutions turned on a plain number
+being wrong. Every correction was to an **absolute, a negative, an elimination or a scope** —
+exactly the shapes §13.10a was written for. Three of the eight above would have shipped a false
+statement had I taken the agent's word, and one (m12) would have shipped it into a comparison
+table that the generators lift verbatim into `discriminators.md`.
+
+**Also caught:** the agent working m09 found that
+`elasticloadbalancing/latest/application/disable-cross-zone.html` is **dead** (SPA shell on
+`.html`, hard 404 on `.md`). Grepped the vault — not cited anywhere, so no broken link. Worth
+noting that the 322-citation sweep would not have caught it; it was never in the vault.
+
+**Citation hygiene:** probed all 30 newly added URLs. All 200 and live. Six tripped my
+<2,600-byte size heuristic and **all six were false positives** — genuinely short pages whose
+quotes I then confirmed by grep. Size is a screen, not a verdict; confirm content. One real fix
+came out of it: the 99.8%/fail-open CloudFront quotes live on `georestrictions.html`, not the
+426-byte `DownloadDistValuesEnableGeoRestriction.html` stub I had first cited.
+
+### The 9 permanent markers — do not re-chase these
+
+Each now says *why* it will never resolve, so a future session doesn't spend agents on them:
+
+1. **CloudFront price-class country lists** (`11-cloudfront`, `cheatsheet`) — AWS retired
+   `PriceClass.html` (301 to pricing) and publishes no country breakdown anywhere.
+2. **Aurora six-copy durability formulation** (`07-rds-aurora`) — AWS replaced the precise
+   copy-loss arithmetic with vaguer prose and no longer publishes the figures.
+3. **Condition-block AND semantics** (`09-s3-security`) — AWS carries the rule in a **diagram**,
+   not a sentence. Behaviour is not in doubt; there is simply nothing to quote.
+4. **`BucketOwnerEnforced` "since April 2023"** (`09-s3-security`, `cheatsheet`) — the default
+   itself is confirmed; the date is not on the Object Ownership page.
+5. **DR RTO ladder** (`14-dr-resilience`) — three of the four figures exist only inside the
+   whitepaper's Figure 6 **graphic**. Nothing fetchable.
+6. **ElastiCache default ports** (`cheatsheet`) — no AWS page states them; not exam-load-bearing.
+7. **Snow Family end-of-support date** (`cheatsheet`) — **AWS contradicts itself** between the
+   Snowball developer guide and the General Reference. Deliberately not resolved.
+8. **ActiveMQ AMQP version** (`15-decoupling`) — the one UNRESOLVABLE of the 25. The six-protocol
+   list is confirmed verbatim; AWS **never states an AMQP version** for ActiveMQ, writing bare
+   "AMQP" and linking to Apache. RabbitMQ is explicitly 0-9-1. The exam cannot test a version
+   the docs don't publish.
+
+(Items 1–7 predate this sweep; item 8 is new.)
+
+### Content added beyond clearing the markers
+
+The resolutions carried more than they were asked for, so several notes gained facts and traps
+they didn't have: the "AWS endpoint" **billing-relationship** inversion in Route 53 and its
+comparison table; the hosted-zone **delegation** trap; CloudFront geo restriction's **99.8% /
+fail-open** behaviour (plus the WAF `/.well-known/pki-validation/` production warning); the
+three-way **ALB-free / CLB-free / NLB-charged** cross-zone table; the ECS **threshold-is-computed**
+trap; EventBridge's **`ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`** requirement for read-only
+events (the silent "my rule never fires" cause); the `Disk*`-is-instance-store trap with the
+two-namespace EBS correction; the **MRSC exclusions and witness** shape; and Transcribe **Call
+Analytics' native sentiment**, which turns a bad elimination into a real discriminator.
+
+Nine new comparison tables / traps, so these reach `discriminators.md` rather than sitting in
+prose (§13.7). Generators re-run: **111 comparison tables, 214 discriminators, 176 hooks.**

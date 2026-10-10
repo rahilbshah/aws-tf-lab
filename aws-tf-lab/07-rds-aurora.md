@@ -66,7 +66,7 @@ They are not alternatives. A Multi-AZ primary *with* read replicas attached is a
 
 Aurora stores your data as **6 copies across 3 AZs** — 2 per AZ — in one **cluster volume** that is self-healing and auto-scales without being asked, to **128 TiB** or **256 TiB on current engine versions). That volume is separate from the compute instances, and compute and storage bill and scale independently.
 
-Six copies sounds like paranoia. What AWS currently claims for it is that the cluster *"can tolerate a failure of an Availability Zone without any loss of data and only a brief interruption of service"*, because the surviving AZs already hold the data. ⚠️ verify: the older, more precise formulation — lose an entire AZ *plus one more copy* and still serve reads, lose two of six copies would be an emergency on a normal system; here it is survivable by design.
+Six copies sounds like paranoia. What AWS currently claims for it is that the cluster *"can tolerate a failure of an Availability Zone without any loss of data and only a brief interruption of service"*, because the surviving AZs already hold the data. ⚠️ verify — *and this one will not resolve: AWS replaced the precise formulation with the vaguer sentence above and no longer publishes the copy-loss arithmetic. Do not keep chasing it; carry the current wording.* The older formulation was: lose an entire AZ *plus one more copy* and still serve reads, lose two of six copies would be an emergency on a normal system; here it is survivable by design.
 
 But durability isn't the interesting consequence. This is: **the instances don't own the data.** The writer and every replica are attached to the same cluster volume and all read from it, instead of each keeping a copy of its own.
 

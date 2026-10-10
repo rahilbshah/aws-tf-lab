@@ -164,8 +164,9 @@ flowchart TB
 
 ## Key facts, limits & pricing
 
-- **Conditions in one `Condition` block are ANDed** — a `Condition` element can hold multiple condition operators, and each operator multiple key/value pairs, and all of them must hold. (⚠️ verify: AWS carries this rule in a diagram rather than a sentence; confirm against *Set operators for multivalued context keys* before leaning on it, and note multivalued keys need `ForAllValues`/`ForAnyValue`.) So `IpAddress` (allow this CIDR) together with `NotIpAddress` (except this address) in the **same statement** authorises *the range **minus** the carved-out address* — one grant with two tests, not two separate grants. The same shape appears as `aws:SourceIp` allow-plus-exclude in bucket policies and SCPs. One interaction worth knowing: Block Public Access judges an `aws:SourceIp` condition **public** if the range is very broad — AWS counts anything wider than `/8` for IPv4 or `/32` for IPv6 (private RFC1918 ranges excluded) — so a policy you meant to scope by IP can still be rejected as public. Getting this backwards and reading them as alternatives is why a policy looks more permissive than it is.
-- **S3 Access Point use can itself be bounded at the Organization level** — the access point carries its own policy, and an organization-level guardrail bounds it from above, which is how per-team least privilege is enforced at scale on a shared bucket. ⚠️ verify whether AWS documents this as an **SCP** (bounding what member-account principals may do) or an **RCP** (bounding what may be done to resources in member accounts) for access-point operations specifically — see [[01-iam-advanced]] for the distinction.
+- **Conditions in one `Condition` block are ANDed** — a `Condition` element can hold multiple condition operators, and each operator multiple key/value pairs, and all of them must hold. (⚠️ verify — **will not resolve as a quote**: AWS carries the AND rule in a **diagram**, not a sentence, so there is nothing to cite verbatim. The behaviour is not in doubt and the IAM reference's *Set operators for multivalued context keys* corroborates it; just don't expect a quotable line. Multivalued keys need `ForAllValues`/`ForAnyValue`.) So `IpAddress` (allow this CIDR) together with `NotIpAddress` (except this address) in the **same statement** authorises *the range **minus** the carved-out address* — one grant with two tests, not two separate grants. The same shape appears as `aws:SourceIp` allow-plus-exclude in bucket policies and SCPs. One interaction worth knowing: Block Public Access judges an `aws:SourceIp` condition **public** if the range is very broad — AWS counts anything wider than `/8` for IPv4 or `/32` for IPv6 (private RFC1918 ranges excluded) — so a policy you meant to scope by IP can still be rejected as public. Getting this backwards and reading them as alternatives is why a policy looks more permissive than it is.
+- **S3 Access Point use can itself be bounded at the Organization level**, and the control AWS actually documents is an **SCP**. The worked example in the S3 User Guide denies `s3:CreateAccessPoint` unless the condition key **`s3:AccessPointNetworkOrigin`** equals `VPC` — *"users in your organization can't create new access points that are accessible from the internet."* Note the scope: that SCP bounds **which access points may be created**, not what traffic an existing one carries. Stated carefully, because the tempting compression is wrong: **S3 *is* an RCP-supported service** (`prefix:s3` appears in the Organizations RCP list, and RCPs apply to the resources authorised in a member-account request), so an RCP can bound S3 data access — AWS simply publishes no access-point-*specific* RCP example. See [[01-iam-advanced]] for the SCP/RCP distinction.
+- **Two gates, both must open.** *"For an application or user to be able to access objects through an access point, both the access point and the underlying bucket or Amazon FSx file system must permit the request."* An access point cannot grant what the bucket policy withholds — it only narrows. (And access points now front **Amazon FSx** file systems, not just S3 buckets.)
 
 ### Access control
 - **IAM policy** = attached to a *principal*, answers "what can this user/role do?" Use for your own account's identities.
@@ -221,6 +222,15 @@ Two ways to become public (ACL, policy) × two enforcement styles (reject the wr
 - Protects permanent version deletion and disabling versioning. Rare in practice; exam-relevant precisely because of the root-only constraint.
 
 ## Comparisons
+
+### SCP vs RCP for S3 access points
+
+|   | SCP | RCP |
+|---|---|---|
+| Bounds | What **principals in member accounts** may do | What may be **done to resources** in member accounts |
+| Documented for access points? | **Yes** — deny `s3:CreateAccessPoint` unless `s3:AccessPointNetworkOrigin` = `VPC` | No access-point-specific example exists |
+| Covers S3 at all? | Yes | **Yes** — S3 (`prefix:s3`) is an RCP-supported service |
+| So the honest line | "the org control AWS documents for access points is an SCP" | not "access points are outside RCP scope" |
 
 ### IAM policy vs bucket policy vs ACL
 
@@ -348,3 +358,4 @@ snapshot it, then create an encrypted volume from the snapshot.
 - [Sharing objects with presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html) — generator's credentials, 7-day CLI / 12-hour console limits; verified 2026-08
 - [Blocking public access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)
 - [Bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html) / [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
+- [IAM policies for access points](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html) — the `s3:AccessPointNetworkOrigin` SCP example, and "both the access point and the underlying bucket... must permit the request"; **verified 2026-10-10**

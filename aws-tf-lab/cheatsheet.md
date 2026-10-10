@@ -692,6 +692,12 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | S3 event delivery semantics | **At-least-once**, duplicates possible on retry, and **no ordering guarantee** → consumers must be idempotent and order-independent |
 | Why a missing SNS/SQS policy fails loudly | S3 publishes a **test notification** when you enable the rule, so the policy must exist first — it fails at setup, not silently at runtime |
 
+| Requester Pays — who pays what | Requester pays **requests + data transfer out**; *"The bucket owner always pays the cost of storing data."* Requests must be **authenticated** — anonymous access is barred outright. On `RestoreObject` the requester pays the request, the **owner** pays the retrieval. The **owner** is billed for a **403** originating inside the owner's own account/organization |
+| Requester Pays as a replication destination | Barred — but AWS documents it **only** under the **cross-account** additional requirements, not as a general rule. Write the conditional |
+| Storage Class Analysis — what it recommends | **Standard → Standard-IA only**, never an archive tier (explicit *Important* callout; fields `ObjectAgeForSIATransition`/`RecommendedObjectAgeForSIATransition`). Needs **≥30 days** of data; considers Standard objects **>128 KB** |
+| Storage Lens free vs advanced | Free: no charge, 6 metric categories, daily, **14-day** console query window. Advanced (paid): adds activity + detailed status-code metrics, **prefix-level** and group aggregation, CloudWatch publishing, contextual recommendations, **15-month** query window. **Retention is 15 months either way** — the tier changes query reach, not retention. Max **50 dashboards** per home Region |
+| Access points — the org-level control AWS documents | An **SCP** denying `s3:CreateAccessPoint` unless **`s3:AccessPointNetworkOrigin`** = `VPC`. But S3 **is** RCP-supported (`prefix:s3`) — so don't say access points are outside RCP scope, only that no access-point-specific RCP example exists. Both the access point **and** the underlying bucket/FSx file system must permit a request |
+
 ↳ [[09-s3-advanced]] · [[09-s3-intro]] · [[09-s3-security]]
 
 
@@ -810,6 +816,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Signed URL vs signed cookies | Signed URL = one individual file; signed cookies = multiple files |
 
+| Hosted zone and domain ownership | `CreateHostedZone` takes **no proof of ownership** and never checks. Only name validations: well-formedness (`InvalidDomainName`) and the **TLD prohibition**. AWS permits **duplicate zone names** (*"more than one hosted zone with the same name"*, four distinct NS each). The *"permission to administer"* line under Restrictions is a rule to the reader, **not** an API check — and AWS's bar is *administer*, not own |
+| Health checks — what "AWS endpoint" means | A **billing-relationship** term, not infrastructure: provisioned in the same account **OR billed to** it ("within or **linked to**"). A sibling account under one payer = AWS endpoint (**50 free**, then $0.50/mo). A **stranger's** AWS account = **non-AWS** endpoint ($0.75/mo, no free allowance) despite running on AWS. 50 aggregate across all Regions, **no rollover**. Calculated + CloudWatch-metric checks bill at the AWS rate. **ELB** and **S3 website-endpoint** checks are **not billed at all** |
+| CloudFront geo restriction — cost and reliability | *"There is no additional charge for configuring geographic restrictions"* (feature only; traffic still bills). **99.8%** accurate and **fails open** — *"If CloudFront can't determine a user's location, CloudFront serves the content."* Distribution-wide, not per-path. Does **not** apply to certificate-validation requests for CloudFront managed certs |
+
 ↳ [[10-route53]] · [[11-cloudfront]]
 
 
@@ -918,6 +928,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Block / file / object → services | Block = EBS, instance store; File = EFS, FSx; Object = S3, Glacier |
 
+| EFS Archive — Regional vs One Zone | AWS states it **affirmatively**: *"supported on EFS Regional file systems using EFS's default Elastic Throughput mode"*, and the storage-class table has no One Zone entry for Archive. Carry the affirmative, not the flat negative |
+
 ↳ [[12-storage-extras]]
 
 
@@ -1005,7 +1017,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | S3 Replication Time Control SLA | Within **15 minutes**, SLA-backed. AWS states the percentage as both 99.9% and 99.99% across (and within) pages — carry the 15 minutes |
 | S3 CRR and delete markers | not replicated by default on a modern (`Filter`-based) rule — opt in, non-tag-based rules only |
 | DynamoDB Global Tables conflict handling | multi-active read/write everywhere; **last-writer-wins** in the default **MREC** mode |
-| DynamoDB Global Tables consistency modes | **MREC** (multi-Region eventual consistency, the default) or **MRSC** (multi-Region strong consistency, aimed at a **zero RPO**, **same-account only**). Chosen at creation and **cannot be changed afterwards**; a table cannot mix modes. ⚠️ verify which features MRSC excludes |
+| DynamoDB Global Tables consistency modes | **MREC** (multi-Region eventual consistency, the default) or **MRSC** (multi-Region strong consistency, aimed at a **zero RPO**, **same-account only**). Chosen at creation and **cannot be changed afterwards**; a table cannot mix modes |
+| What MRSC does **not** support | **TTL**, **LSIs**, **transactions** (`TransactWriteItems`/`TransactGetItems` error on an MRSC replica), and no **`ReplicationLatency`** metric. **Streams are NOT on that list** — not enabled by default, but *"You can enable Streams on an MRSC replica"*, and those records are identical across replicas including ordering |
+| MRSC shape constraints | **Exactly three Regions** — three replicas, or two replicas + a **witness** (holds data, cannot be read or written, third Region). Must be created from an **empty** table; cannot add replicas later; cannot delete just one replica. Concurrent cross-Region writes to one item → `ReplicatedWriteConflictException` (retryable) |
+| Global tables availability SLA | **99.999%**, vs **99.99%** for a single-Region table |
 | DynamoDB Global Tables account models | **Same-account** (all replicas in one account) or **multi-account** (replicas across accounts in one replication group). Both support multi-Region writes, async replication and last-writer-wins |
 | Elastic Disaster Recovery (DRS) RTO/RPO | RTO of minutes, RPO of seconds; implements pilot light; does not cover RDS |
 | CloudFront origin failover granularity | per request — later requests still try the primary first |
@@ -1018,6 +1033,12 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | What is inside the RTO clock | detection, notification, escalation, evaluation, declaration — clock starts at the failure |
 | Static stability | provision full capacity so recovery doesn't depend on Auto Scaling |
 | DR-Region drift tooling | AWS Config detects, SSM Automation remediates, CloudFormation drift detection for stacks |
+
+| Cancel a Spot request vs terminate the instance | **Asymmetric by request state.** Cancel an **`active`** request with a **running** instance → *"not automatically terminated; you must manually terminate"*. Cancel a **`disabled`** request with a **stopped** instance → *"automatically terminated"*. And terminating an instance from a **persistent** request flips the request to **`open`** and it **relaunches** — cancel first, then terminate |
+| Same-Region RDS read-replica replication traffic | **Not charged** — but cite the **User Guide**, not the pricing page (whose table carries only the Multi-AZ line). Covers **replication only**: app→replica cross-AZ still bills $0.01/GB each way, replica instance-hours bill in full, and **cross-Region** replica replication **is** charged |
+| Cost Explorer API pagination | **`GetCostAndUsage` only** (`NextPageToken`, `InvalidNextTokenException`). **`GetCostForecast` has no pagination at all.** And the API is the documented *query* interface, **not the only** programmatic route — **CUR** is the "most comprehensive" set, delivered to S3 |
+| Cost Anomaly Detection — threshold or not | **Detection** needs no threshold: *"Even if an anomaly is below the alert threshold, the machine learning model continues to detect spend anomalies."* The **alert subscription** does take one (dollar or %, two combinable AND/OR). vs **Budgets**, which needs a number to detect anything. Alerting: individual (needs **SNS**), daily summary (top 10, 00:00 UTC), weekly |
+| ElastiCache Global Datastore figures | *"typical cross-region replication latency of under 1 second"*; promote a replica *"in less than 1 minute"*. Feature page only — the Developer Guide publishes **no** figure. Typical, not a bound (replication is async) |
 
 ↳ [[13-cost-optimization]] · [[14-dr-resilience]]
 
@@ -1079,7 +1100,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| ActiveMQ wire protocols | AMQP, MQTT, OpenWire, STOMP (plus MQTT and STOMP over WebSocket) |
+| ActiveMQ wire protocols | AWS lists **exactly six**: AMQP, MQTT, MQTT over WebSocket, OpenWire, STOMP, STOMP over WebSocket (TLS endpoints `amqp+ssl://:5671`, `mqtt+ssl://:8883`, `ssl://:61617` OpenWire, `stomp+ssl://:61614`, `wss://:61619`). **AWS never states an AMQP version** for ActiveMQ — RabbitMQ is explicitly **0-9-1**. Don't expect a version the docs don't publish |
 | RabbitMQ wire protocol | AMQP 0-9-1 |
 | Deployment modes — **ActiveMQ** | single-instance: EBS **or** EFS, one AZ · **active/standby**: **EFS only**, two AZs, one active, two endpoints per wire protocol (`-1`/`-2`), failover in a few seconds |
 | Deployment modes — **RabbitMQ** | single-instance: **EBS**, one AZ, behind an **NLB** · **cluster**: **three** nodes behind an NLB across AZs, **each with its own EBS volume**, classic mirroring automatic (`ha-mode: all`). **No active/standby. No EFS.** *(Corrected 2026-10-07 — the cheatsheet listed only ActiveMQ's modes as if generic.)* |
@@ -1256,6 +1277,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | What API keys and usage plans actually do | "Track and limit usage" — metering and throttling only; they are not authentication |
 | Does API Gateway load balance across targets? | No — exactly one integration per route; an ALB does load balance |
 
+| WebSocket API — the two fixed timers | **Idle connection timeout 10 minutes**, **max connection duration 2 hours**, *neither increasable* — so heartbeats and reconnect logic are mandatory. **500** new connections/sec/account/Region (increasable); **no** concurrent-connection quota (ceiling ≈ rate × duration). Frame **32 KB**, message **128 KB**, both fixed; exceeding either closes with code **1009** |
+| Circuit breaker `resetOnHealthyTask` | **`true` by default** — the failure count resets to 0 on every healthy task, so only **consecutive** failures count. Set `false` to accumulate across the whole deployment. Circuit breaker is **rolling-update (`ECS`) controller only** |
+
 ↳ [[17-containers]] · [[19-serverless]]
 
 
@@ -1359,6 +1383,15 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Can an ACM public certificate be exported? | **Yes, now** — `aws acm export-certificate` / `ExportCertificate` returns the cert, chain and a passphrase-encrypted **private key**. Two conditions keep the classic answer mostly alive: it must have been issued as **exportable**, and "ACM public certificates created prior to **June 17, 2025** cannot be exported" |
 | Shield Advanced WAF coverage | Included on protected resources **up to 50 billion WAF requests/month** — covered, not uncapped |
 | KMS automatic rotation — what is excluded | Asymmetric keys, HMAC keys, custom key stores, **and imported key material (`EXTERNAL` origin)**. AWS: automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)" |
+
+| CloudWatch Logs retention — valid values | An **enumerated set of 22**, not any integer: **1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653**. Default = **never expire**; restore that by **deleting** the policy, not by setting a big number. Deletion lags *"up to 72 hours"* after expiry |
+| `AWS/EC2` `Disk*` metrics scope | **Instance store volumes only** — *"If there are no instance store volumes, either the value is 0 or the metric is not reported."* EBS I/O lives in **two** places: per-volume `Volume*` in **`AWS/EBS`**, and per-instance `EBSReadOps`/`EBSWriteOps`/`EBSIOBalance%` in **`AWS/EC2`** itself (Nitro, non-bare-metal). Rule: `Disk*` = instance store, `EBS*`/`Volume*` = EBS |
+| EventBridge ← CloudTrail API call | detail-type exactly **`AWS API Call via CloudTrail`**, source `aws.<service>`, **default bus only**. Needs a trail **actively logging**. The **rule** must be in the Region where the call happened (per-Region buses); the **trail** need not be — a multi-Region trail covers everywhere. IAM/STS/CloudFront global events land in **`us-east-1`** (since 22 Nov 2021) |
+| Why an EventBridge rule on a `Describe*` never fires | Default rule state **`ENABLED`** matches only **write/mutating** management events. **Read-only** management events need state **`ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`** |
+| GuardDuty CloudWatch metrics | They **exist** — don't use "no metrics" as an elimination. `AWS/GuardDuty`: **hourly usage** metrics (`AnalyzedCount`, `AnalyzedBytes`, `MonitoredVcpuHours`, `MonitoredAcuHours`, `ScannedBytes`), dims `AccountId`/`DataSource`. `AWS/GuardDuty/MalwareProtection`: S3 scan counts. **But none counts findings** — so alarming on a *finding* is still **EventBridge → SNS** |
+| `access-keys-rotated` Config rule | Checks **active** IAM access keys rotated within **`maxAccessKeyAge`** (int, **default 90** days). Trigger **Periodic**, resource `AWS::IAM::User`, and **excludes root-user access keys**. Remediation: Config `ComplianceChangeNotification` → EventBridge → Lambda |
+| ACM imported certificates | A third-party CA cert **can** be imported, and behaves like an ACM-issued one **except that ACM gives it no managed renewal** — you own expiry and reimport. "Must auto-renew" eliminates it. The legacy **IAM** server-certificate store is the fallback where ACM is unsupported: **API-only** (`UploadServerCertificate`; *"you cannot manage your certificates from the IAM Console"*), and you **cannot** upload an ACM cert into IAM |
+| KMS — deny is one-sided, quoted | *"(You can use an IAM policy to **deny** a permission to a KMS key **without permission from a key policy**.)"* vs the allow direction: *"Without permission from the key policy, IAM policies that allow permissions have no effect."* Governing rule: *"explicitly allowed, and **never denied**"* |
 
 ↳ [[20-monitoring]] · [[21-security]]
 
@@ -1526,5 +1559,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Systems Manager — which tool | **Run Command** = one-time at scale, against targets resolved *now*. **State Manager** = continuous desired state, re-applied to new nodes. **Patch Manager** = OS **and application** patching against a baseline (Windows app support = Microsoft-released apps only). **Maintenance Windows** = the *when*: a schedule with registered **targets and tasks** that invokes Run Command / Automation / Lambda / Step Functions — so it does cause work, it just isn't the thing that installs |
 | "…and on every instance launched from now on" | That phrase moves the answer from **Run Command** to **State Manager**. Run Command does not re-run on instances created later |
 | WA Tool vs Trusted Advisor vs Config | WA Tool reviews design; Trusted Advisor inspects resources; Config continuously evaluates + remediates |
+
+| EMR runtime roles | An IAM role passed **at job-submission** time (`--execution-role-arn` on `add-steps`), so each job gets its own permissions instead of the cluster's **EC2 instance profile** — the multi-tenant-EMR answer. Needs a security configuration with `EnableApplicationScopedIAMRole: true`, plus `sts:AssumeRole` **and `sts:TagSession`**. Which role a submitter may pass is gated by **`elasticmapreduce:ExecutionRoleArn`**. A job under a runtime role **cannot reach IMDS**. `emr-6.7.0`+ |
+| Transcribe Call Analytics does sentiment itself | **No Comprehend needed.** Native insight in both modes (*"Speaker sentiment"* / *"Real-time speaker sentiment"*): score **5 to −5** per quarter and overall, plus **positive/neutral/mixed/negative** per turn; usable as a custom-category rule. Not customisable. So: plain Transcribe or Transcribe Medical → sentiment needs **Comprehend**; **Call Analytics** → already included |
 
 ↳ [[22-analytics]] · [[23-machine-learning]] · [[24-other-services]] · [[25-well-architected]]

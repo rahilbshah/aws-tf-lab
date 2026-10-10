@@ -12,7 +12,7 @@ tags: [topic, domain/resilient]
 AWS's managed DNS. It answers "what IP is behind this name?" — but the exam cares about the *policy* in that answer: which of several IPs, chosen how, and what happens when one dies. Named after port 53.
 
 > [!info] Exam TL;DR
-> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — creating a hosted zone does **not** require you to own or have registered the name (⚠️ verify the exact wording in the `CreateHostedZone` API reference before treating "never validates ownership" as an absolute). Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
+> - **A hosted zone is a container of records for one domain.** Route 53 answers authoritatively for any zone it holds — creating a hosted zone does **not** require you to own or have registered the name, and nothing in `CreateHostedZone` checks. Registering a domain only buys you the **NS delegation** in the parent zone so strangers can *find* your nameservers.
 > - **Alias vs CNAME** is the #1 Route 53 question. **CNAME cannot exist at the zone apex** (DNS protocol rule). **Alias can**, is Route 53-only, points **only at AWS resources**, and **query costs are free**. You **cannot set a TTL on an alias** to an AWS resource — it uses the target's.
 > - **Eight routing policies:** simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based.
 > - **Simple ≠ load balancing.** Multiple values are returned **all at once, in random order**, and the **client** picks — with **no health checking**. The health-checked version is **multivalue answer** (up to **8 healthy** records) — though its health checks are **optional**, and a multivalue record without one counts as healthy.
@@ -48,6 +48,10 @@ Registering a domain buys you something else entirely: the **NS delegation in th
 Discovery and answering are separate — which is why you can build the entire Route 53 lab **without buying a domain**. Create a zone for a name nobody delegates to you (`saa-c03-lab.example`, a reserved TLD) and query the four assigned nameservers **directly** with `dig @ns-…`. You have skipped steps 1 and 2 of the search and gone straight to the source. Route 53 answers properly — routing policies, health checks, failover and all — because it genuinely holds the zone. The only thing you lose is that no stranger can find it.
 
 > In one line: a hosted zone makes you *able* to answer; delegation is the only thing that makes anyone *ask* you.
+
+Two details that keep this from being a guess. `CreateHostedZone` takes **no proof of ownership** — its inputs are `CallerReference`, `Name`, and optionally a delegation set, config or VPC — and the only name checks are **well-formedness** (`InvalidDomainName`: *"The specified domain name is not valid"*) and the **TLD prohibition** (*"You can't create a hosted zone for a top-level domain (TLD) such as .com."*). And AWS affirmatively permits what an ownership check would forbid: *"You can create more than one hosted zone with the same name and add different records to each. Route 53 assigns four name servers to every hosted zone, and the name servers differ for each one."* Duplicates could not exist if the name were exclusive to its owner.
+
+The one sentence that looks like a check is not one. Under **Restrictions**, AWS writes: *"You can create a hosted zone only for a domain that you have permission to administer. Typically, this means that you own the domain, but you might also be developing an application for the domain registrant."* That is a rule addressed **to the reader**, not an API behaviour — the API reference carries no error code for "you don't own this name". Note too that AWS's bar is *permission to administer*, **not ownership**: AWS itself says building for the registrant is legitimate. (`ConflictingDomainExists` is about name-server/delegation-set overlap and private-zone VPC collisions — it is **not** an ownership check.)
 
 ### Why a CNAME cannot sit at the apex
 
@@ -175,7 +179,7 @@ flowchart TB
 - **Route 53 is global**, not regional — hosted zones don't live in a Region, and the console has no Region selector for them.
 - **Hosted zones:** **$0.50/month** each for the first 25, **$0.10/month** after. **A zone deleted within 12 hours of creation is not charged** — but *queries against a public zone are still billed* even then.
 - **Queries:** **$0.40 per million** for *standard* queries (first 1B/month), $0.20/million above — but the clever policies cost more per million: **latency $0.60**, **geolocation / geoproximity $0.70**, **IP-based $0.80**. So "use latency-based routing" is not a free change. **Alias queries to AWS resources are free.** A **CNAME pointing at another Route 53 record bills as two queries**.
-- **Health checks:** **50 free** for **AWS endpoints** (⚠️ verify: whether AWS's definition of "AWS endpoint" requires the resource to be in the *same account* — the pricing page confirms the 50 and the rates but not that condition). Then **$0.50/month** (AWS) / **$0.75/month** (non-AWS). **Optional features cost $1.00 each (AWS) / $2.00 (non-AWS) per month** — HTTPS, string matching, the fast 10-second interval, and latency measurement all count. Keep lab checks basic.
+- **Health checks:** **50 free** for **AWS endpoints** — and "AWS endpoint" is a **billing-relationship** term, not an infrastructure one. AWS's definition is a disjunction: *"a resource running within AWS (e.g., an Amazon EC2 instance) that is provisioned within the same AWS account as the health check **or billed to the same account** as the health check"*, and the free-tier wording matches — 50 checks for endpoints *"that are within or **linked to** their AWS account."* So a resource in a **different** account still gets the AWS rate if it rolls up to the **same payer** (consolidated billing / Organizations); a resource in an **unrelated** account is a *non-AWS endpoint* at **$0.75/month** with no free allowance, even though it physically runs on AWS. Then **$0.50/month** (AWS) / **$0.75/month** (non-AWS). **Optional features cost $1.00 each (AWS) / $2.00 (non-AWS) per month** — HTTPS, string matching, the fast 10-second interval, and latency measurement all count. The 50 are **aggregated across all Regions** and **do not roll over**; **calculated** and **CloudWatch-metric** health checks bill at the AWS-endpoint rate; and checks on **ELB resources** and **S3 website-endpoint buckets** are **not billed at all** (AWS provisions those automatically). Keep lab checks basic.
 - **Health check mechanics:** interval is **30s or 10s** (10s = "fast", costs extra); the **failure threshold** is the number of *consecutive* checks that must fail (or pass) to flip the status. Route 53 aggregates many global checkers: **more than 18% reporting healthy ⇒ healthy**. A **new** health check counts as **healthy** until it has enough data (inverted if you enable "invert").
 - **Health check timing detail:** HTTP/HTTPS must establish TCP within **4 seconds** and return **2xx/3xx within 2 more seconds**. TCP checks must connect within **10 seconds**. **HTTPS health checks do not validate certificates** — an expired cert will not fail the check. String matching must find the string within the first **5,120 bytes**.
 - **Three health check types:** **endpoint** (IP or domain name), **calculated** (a parent watching its children with AND / OR / "at least N" — AWS says 255 on one page and 256 on another, and a calculated check can't monitor another calculated check), and **CloudWatch alarm** (watches the alarm's *data stream*, not its state — so `SetAlarmState` can't fake it; same account only, no metric math, no M-of-N).
@@ -202,6 +206,17 @@ flowchart TB
 | **IP-based** | CIDR blocks **you** supply | one | ✅ |
 
 *The pairs that get confused: **simple vs multivalue** (health checking is the whole difference) and **geolocation vs geoproximity** (users vs resources).*
+
+### AWS endpoint vs non-AWS endpoint (health-check billing)
+
+|   | AWS endpoint | Non-AWS endpoint |
+|---|---|---|
+| AWS's test | Runs in AWS **and** is provisioned in the same account **or billed to** it | Anything else — including an EC2 instance in an **unrelated** AWS account |
+| Price | **50 free**, then **$0.50**/check/month | **$0.75**/check/month, **no free allowance** |
+| Optional features | **$1.00** each/month | **$2.00** each/month |
+| The inversion to remember | A different account still counts as "AWS" if it shares the **payer** | Running on AWS does **not** make it an "AWS endpoint" |
+
+*Calculated and CloudWatch-metric health checks bill at the AWS-endpoint rate. ELB and S3-website-endpoint checks are not billed at all. The 50 aggregate across all Regions and never roll over.*
 
 ### Alias vs CNAME
 
@@ -251,6 +266,12 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 
 ## Traps
 
+> [!warning] Trap — "we created the public hosted zone but DNS still doesn't resolve"
+> The missing step is **outside Route 53**: the registrar must be pointed at the zone's four assigned name servers. *"If your domain is registered with a registrar other than Route 53, you must update the name servers with your registrar to make Route 53 the DNS service for the domain."* Creating the zone never fails for a name you don't control, so there is no error to notice — the zone simply sits there answering questions nobody asks. Any answer that has you editing records, changing TTLs or adding health checks is treating a **delegation** problem as a **zone** problem.
+
+> [!warning] Trap — "the free 50 health checks only cover resources in your own account"
+> That is the natural compression and it is wrong in **both** directions. AWS's test is *same account **or** billed to the same account*, so a sibling account under one payer is still an AWS endpoint — and conversely, an EC2 instance in a **stranger's** AWS account is a **non-AWS** endpoint at $0.75/month despite running on AWS. The word "AWS" in that column header is about **who pays**, not where the metal is.
+
 > [!warning] Trap — "use simple routing to distribute traffic across three servers"
 > Simple routing returns **all** the values in random order and the **client** chooses; Route 53 is not balancing anything and is **not health checking**. A dead server keeps being handed out. If the question wants distribution *with* health awareness, it's **multivalue answer**; if it wants controlled proportions, it's **weighted**; if it wants real load balancing, it's an **ALB**, not DNS.
 
@@ -288,6 +309,10 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 
 ## 🔗 Docs
 - [Geoproximity routing and bias values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-geoproximity.html)
+- [`CreateHostedZone` API reference](https://docs.aws.amazon.com/Route53/latest/APIReference/API_CreateHostedZone.html) — no ownership input, `InvalidDomainName`, the TLD prohibition, `ConflictingDomainExists`; **verified 2026-10-10**
+- [Public hosted zone considerations](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/hosted-zone-public-considerations.html) — duplicate zone names permitted, four distinct name servers each; **verified 2026-10-10**
+- [Creating a public hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html) — the "permission to administer" restriction, stated to the reader not enforced by the API; **verified 2026-10-10**
+- [Route 53 pricing](https://aws.amazon.com/route53/pricing/) — the "AWS endpoint" definition (same account **or billed to** it), the 50 free aggregated across Regions, ELB/S3-website checks unbilled; **verified 2026-10-10**
 
 - [Choosing a routing policy](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html) — all eight policies; verified 2026-09-03
 - [Simple routing](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-simple.html) — random order, client picks, **not health checked**; verified 2026-09-03

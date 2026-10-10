@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 345 pointers · ~30 min read*
+*176 recall hooks · 357 pointers · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -406,6 +406,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[09-s3-advanced#Events, and the two ways they fail|explain]]
 
 **Traps** [[09-s3-advanced#Worked examples|open]]
+- "a Requester Pays bucket can never be a replication destination"
 - replication copies existing objects
 - replication is transitive
 - Transfer Acceleration moves your data closer to users
@@ -419,6 +420,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - the invisible multipart bill  ↳ [[09-s3-advanced#Worked examples|open]]
 
 **Comparisons**
+- [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]]
 - [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
 - [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]]
 - [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
@@ -454,6 +456,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Object Lock in COMPLIANCE mode on a test bucket  ↳ [[09-s3-security#Worked examples|open]]
 
 **Comparisons**
+- [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]]
 - [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]]
 - [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]
 - [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
@@ -475,6 +478,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[10-route53#Private zones, and which way the Resolver points|explain]]
 
 **Traps** [[10-route53#Traps|open]]
+- "we created the public hosted zone but DNS still doesn't resolve"
+- "the free 50 health checks only cover resources in your own account"
 - "use simple routing to distribute traffic across three servers"
 - a weighted record with weight 0 is never returned
 - for a failover alias to an ALB, attach a health check to the record
@@ -490,6 +495,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[10-route53#The eight routing policies|The eight routing policies]]
+- [[10-route53#AWS endpoint vs non-AWS endpoint (health-check billing)|AWS endpoint vs non-AWS endpoint (health-check billing)]]
 - [[10-route53#Alias vs CNAME|Alias vs CNAME]]
 - [[10-route53#Public vs private hosted zone|Public vs private hosted zone]]
 - [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
@@ -511,6 +517,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[11-cloudfront#Why Global Accelerator fails over faster than DNS can|explain]]
 
 **Traps** [[11-cloudfront#Traps|open]]
+- "geo restriction will guarantee the content never leaves these countries"
 - an origin group fails over for any failing request
 - "put CloudFront in front of the S3 website endpoint and use OAC"
 - the ACM certificate in the wrong Region
@@ -579,6 +586,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[13-cost-optimization#The tools that tell you where the money went|explain]]
 
 **Traps** [[13-cost-optimization#Traps|open]]
+- "cancel the Spot request to get rid of the instance"
+- "Cost Anomaly Detection needs no threshold"
 - "buy a Savings Plan to guarantee capacity"
 - assuming the most flexible option is the cheapest
 - Standard vs Convertible RI, exchange vs modify
@@ -592,6 +601,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]]
 - [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]]
+- [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]]
 - [[13-cost-optimization#The cost tools|The cost tools]]
 
 
@@ -719,6 +729,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - the execution role is not for the pull
 - rollback needs somewhere to roll back to
 - endpoints are not automatically cheaper than NAT
+- "the circuit breaker trips after 3 failed tasks"
 
 **Failure modes**
 - the private subnet that can't pull  ↳ [[17-containers#Worked examples|open]]
@@ -815,6 +826,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - a regional certificate offered for CloudFront
 - "AWS managed" chosen as a service's default encryption key
 - Shield Advanced offered for a request-rate threshold
+- "GuardDuty publishes no CloudWatch metrics, so eliminate the alarm option"
 - "disable GuardDuty" chosen when the findings must survive
 - "delete the KMS key" offered as the way to revoke access now
 - CloudFront Geo Restriction offered for an ALB

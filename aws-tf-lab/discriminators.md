@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 206 discriminators · ~41 min read*
+*111 comparison tables · 214 discriminators · ~43 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -226,8 +226,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
 
-**Compare:** [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
+**Compare:** [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]] · [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
+- **"a Requester Pays bucket can never be a replication destination"** — The bar is real but conditional, and the condition is the trap.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
 - **replication copies existing objects** — It does not. Live CRR/SRR only handles objects created/updated after the rule. Existing data needs S3 Batch Replication.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **replication is transitive** — No. A→B and B→C does not deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.  
@@ -246,7 +248,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
 
-**Compare:** [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
+**Compare:** [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
 - **an encryption option borrowed from another service** — The distractors are real options in the wrong place. "Client-side with S3-managed keys" does not exist.  
   ↳ [[09-s3-security#Comparisons|note]]
@@ -268,8 +270,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[10-route53|10 – Route 53 (DNS)]]
 
-**Compare:** [[10-route53#The eight routing policies|The eight routing policies]] · [[10-route53#Alias vs CNAME|Alias vs CNAME]] · [[10-route53#Public vs private hosted zone|Public vs private hosted zone]] · [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
+**Compare:** [[10-route53#The eight routing policies|The eight routing policies]] · [[10-route53#AWS endpoint vs non-AWS endpoint (health-check billing)|AWS endpoint vs non-AWS endpoint (health-check billing)]] · [[10-route53#Alias vs CNAME|Alias vs CNAME]] · [[10-route53#Public vs private hosted zone|Public vs private hosted zone]] · [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
 
+- **"we created the public hosted zone but DNS still doesn't resolve"** — The missing step is outside Route 53: the registrar must be pointed at the zone's four assigned name servers.  
+  ↳ [[10-route53#Traps|note]]
+- **"the free 50 health checks only cover resources in your own account"** — That is the natural compression and it is wrong in both directions. AWS's test is same account or billed to the same account, so a sibling account under one payer is still an AWS endpoint — and conversely, an EC2 instance in a stranger's AWS account is a non-AWS endpoint at $0.75/month despite running on AWS.  
+  ↳ [[10-route53#Traps|note]]
 - **"use simple routing to distribute traffic across three servers"** — Simple routing returns all the values in random order and the client chooses; Route 53 is not balancing anything and is not health checking.  
   ↳ [[10-route53#Traps|note]]
 - **a weighted record with weight 0 is never returned** — It is returned — as a last resort. AWS: "If all the records that have a weight greater than 0 are unhealthy, then Route 53 considers the zero-weighted records." So weight 0 means stop sending traffic here, not never, and a stack you drained to 0 is now the failover target that absorbs everything if every other record fails.  
@@ -294,6 +300,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]] · [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]] · [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
 
+- **"geo restriction will guarantee the content never leaves these countries"** — Two reasons it will not.  
+  ↳ [[11-cloudfront#Traps|note]]
 - **an origin group fails over for any failing request** — Only for GET, HEAD and OPTIONS. AWS: "CloudFront does not fail over when the viewer sends a different HTTP method (for example POST, PUT, and so on)." So an origin group is the wrong answer for a write path or an API, and it also won't fire at all unless OPTIONS is among the cache behaviour's cached HTTP methods.  
   ↳ [[11-cloudfront#Traps|note]]
 - **"put CloudFront in front of the S3 website endpoint and use OAC"** — You can't. An S3 bucket configured as a website endpoint is a custom origin, and custom origins support neither OAC nor OAI.  
@@ -332,8 +340,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[13-cost-optimization|13 – Cost optimization]]
 
-**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#The cost tools|The cost tools]]
+**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]] · [[13-cost-optimization#The cost tools|The cost tools]]
 
+- **"cancel the Spot request to get rid of the instance"** — Cancelling and terminating are separate actions, and which one you need depends on the request's state.  
+  ↳ [[13-cost-optimization#Traps|note]]
+- **"Cost Anomaly Detection needs no threshold"** — Half right, and the half that is wrong is the half being tested. The ML detection needs no threshold — "Even if an anomaly is below the alert threshold, the machine learning model continues to detect spend anomalies on your account." The alert subscription does take one (dollar impact or percentage).  
+  ↳ [[13-cost-optimization#Traps|note]]
 - **"buy a Savings Plan to guarantee capacity"** — A Savings Plan is only a billing discount. It never reserves capacity. If a scenario needs certainty that an instance can be launched in a specific Availability Zone — a DR standby, a licensed workload — the answer is a Capacity Reservation or a zonal Reserved Instance.  
   ↳ [[13-cost-optimization#Traps|note]]
 - **assuming the most flexible option is the cheapest** — EC2 Instance Savings Plans give up to 72%; Compute Savings Plans up to 66%. The less flexible one is cheaper.  
@@ -432,6 +444,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **endpoints are not automatically cheaper than NAT** — Three interface endpoints billed per ENI per AZ can cost more than one NAT gateway at $0.045/hr.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **"the circuit breaker trips after 3 failed tasks"** — Only for a service with a desired count of 6 or fewer, and then only because of the clamp.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 
 
 ## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]
@@ -493,6 +507,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **"AWS managed" chosen as a service's default encryption key** — The three key types are near-identical strings and the question is usually "why is there no encryption detail in CloudTrail?".  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **Shield Advanced offered for a request-rate threshold** — "Block a source making N requests per second" is a WAF rate-based rule, every time. Shield Advanced is the answer to "we want DDoS cost protection and 24/7 response support", not to a configurable rate threshold.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **"GuardDuty publishes no CloudWatch metrics, so eliminate the alarm option"** — The elimination is too strong and the premise is false — GuardDuty does publish metrics, in two namespaces.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **"disable GuardDuty" chosen when the findings must survive** — They are opposites. Suspend stops monitoring and billing but keeps existing findings and lets you re-enable.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]

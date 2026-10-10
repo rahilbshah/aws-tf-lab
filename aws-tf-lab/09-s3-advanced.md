@@ -177,11 +177,23 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 
 ### Other advanced bits
 - **S3 Batch Operations:** run one action (copy, tag, restore, invoke Lambda, ACL change) across **millions of objects** listed in a **manifest** (a file naming the objects to act on — an S3 Inventory report or a CSV you supply), with retries and a completion report. Powers Batch Replication.
-- **Storage Lens:** org-wide storage analytics dashboard (usage, activity, cost-optimization recommendations); free metrics tier + paid advanced.
-- **Storage Class Analysis:** watches access patterns and recommends when to transition to IA.
-- **Requester Pays:** the *requester*, not the bucket owner, pays for requests + data transfer out — for sharing large datasets. ⚠️ verify: whether the bucket owner still pays storage, and the anonymous-request / replication-destination restrictions. Also ⚠️ verify: the Storage Lens free-vs-advanced metrics split, and whether Storage Class Analysis recommends Standard-IA specifically or transitions generally.
+- **Storage Lens:** org-wide storage analytics dashboard, **general purpose buckets only**, max **50 dashboards per home Region**. Two tiers, compared under `## Comparisons` below. Metrics are *retained* **15 months either way** — the tier controls only how far back you can **query** (14 days free, 15 months advanced).
+- **Storage Class Analysis:** watches access patterns and recommends one transition and one only — **Standard → Standard-IA**. AWS carries this as an explicit *Important* callout, and the export bears it out: the only recommendation fields are `ObjectAgeForSIATransition` and `RecommendedObjectAgeForSIATransition`, populated only where the storage class is `STANDARD`. It needs **30 days or more** of observation before producing a result (first console data in 24–48 h) and only considers Standard objects **larger than 128 KB**. So a stem asking "which tool tells me when to move data to Glacier?" is not this — Storage Class Analysis never recommends an archive tier.
+- **Requester Pays:** the *requester* pays for **requests and data transfer out** — for sharing large datasets. The **bucket owner always pays storage**: *"The bucket owner always pays the cost of storing data."* Requests must be **authenticated** and must opt in to the charge (`x-amz-request-payer`, the `RequestPayer` parameter, or `--request-payer`); **anonymous access is not allowed** — *"If you enable Requester Pays on a general purpose bucket, anonymous access to that bucket is not allowed."* Also unsupported: SOAP requests, and pairing a Requester Pays bucket with end-user (server access) logging in either direction. Two billing edges the exam can reach for: on a `RestoreObject` the requester pays only the **request** while the **owner** pays the **retrieval**; and the **owner** is billed for a request that returns **403 AccessDenied** when it originated inside the owner's own account or organization.
 
 ## Comparisons
+
+### Storage Lens free vs advanced tier
+
+|   | Free metrics | Advanced metrics (paid) |
+|---|---|---|
+| Cost | **No charge**, on by default via `default-account-dashboard` | Charged per the S3 pricing page |
+| Metric categories | Summary, cost optimization, data protection, access management, performance, event | All of the free ones **plus** activity metrics, detailed **status-code** metrics, and the advanced cost-optimization / data-protection / performance metrics |
+| Console **query** window | **14 days** | **15 months** |
+| Aggregation depth | Account, Region, bucket | Adds **prefix-level** and **Storage Lens group** aggregation |
+| Export / integration | Daily metrics export | Adds **CloudWatch publishing**, expanded prefixes report, contextual recommendations |
+
+*Retention is **15 months regardless of tier** — only the query reach differs. Prefix aggregation and contextual recommendations are console-only.*
 
 ### CRR vs SRR
 
@@ -220,6 +232,9 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 
 > [!failure] Failure mode — the invisible multipart bill
 > A nightly job uploads multi-GB files and sometimes crashes mid-upload. Each crash leaves an **incomplete multipart upload**: the uploaded parts are stored and **billed**, but they don't appear in `s3 ls` or the bucket's object count. Months later, storage cost far exceeds the visible data. Diagnose with `aws s3api list-multipart-uploads`; fix permanently with a lifecycle rule whose action **deletes incomplete multipart uploads 7 days after they were initiated**. That action costs nothing and there is no good reason to omit it.
+
+> [!warning] Trap — "a Requester Pays bucket can never be a replication destination"
+> The bar is real but **conditional**, and the condition is the trap. AWS documents it only under *"If you are setting the replication configuration in a **cross-account scenario**, where the source and destination buckets are owned by different AWS accounts, the following **additional** requirement applies"* → *"The destination buckets cannot be configured as Requester Pays buckets."* It is not in the general requirements list. So the sourced claim is the cross-account one; a blanket same-account prohibition is **not** documented. Worth knowing as a worked instance of the asymmetry problem: a web-search summary of this same page dropped the cross-account qualifier and rendered it as a flat rule — paraphrase layers are where unearned absolutes get manufactured.
 
 > [!warning] Trap — replication copies existing objects
 > It does **not**. Live CRR/SRR only handles objects created/updated **after** the rule. Existing data needs **S3 Batch Replication**.
@@ -265,3 +280,7 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 - [Archive retrieval options](https://docs.aws.amazon.com/AmazonS3/latest/userguide/restoring-objects-retrieval-options.html) — Expedited/Standard/Bulk times; **verified 2026-08**
 - [S3 Select](https://docs.aws.amazon.com/AmazonS3/latest/userguide/selecting-content-from-objects.html) — *"no longer available to new customers"*; **verified 2026-08**
 - [Event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html)
+- [Requester Pays buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html) — owner always pays storage, anonymous access barred, SOAP and end-user-logging exclusions, the `RestoreObject` and 403 billing edges; **verified 2026-10-10**
+- [Replication requirements](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-requirements.html) — the Requester Pays destination bar, documented **only** under the cross-account additional requirements; **verified 2026-10-10**
+- [Storage Lens metrics and recommendations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage_lens_basics_metrics_recommendations.html) — free vs advanced split, 14-day vs 15-month query window, 15-month retention either way, 50 dashboards per home Region; **verified 2026-10-10**
+- [Storage Class Analysis](https://docs.aws.amazon.com/AmazonS3/latest/userguide/analytics-storage-class.html) — Standard → Standard-IA only, 30-day minimum observation, 128 KB floor; **verified 2026-10-10**
