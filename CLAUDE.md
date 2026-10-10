@@ -579,6 +579,63 @@ A sibling project holds a 1,156-question exam bank and a web app that drills it.
 
 ---
 
+### 13.13 Post-test coverage check (standing rule, added 2026-10-10)
+
+**Run this after every completed test or mock, without being asked.** The human's instruction:
+*"after every test from now on, we will check if all the question available in our notes or
+not."* The purpose is narrow and worth stating, because it is easy to drift into something
+else: you are asking **"could this vault have answered that question at all?"** — not whether
+the human answered it, and not whether the bank's answer key is right.
+
+**Where the data is.** `../aws-saa-trainer/state/attempts.jsonl` — one JSON object per answered
+question, with `session`, `ts`, `qid`, `correct`, `confidence`. Sessions are named (`mock-02`,
+`review-security-1`). Join `qid` to `bank/questions.json`, which is **read-only — never modify
+it**; its answer keys are audited and load-bearing.
+
+**The unit of coverage is `classification.discriminator`**, not the service name. It is a short
+phrase naming the concept the question turns on ("pod-level and node-level autoscaling are both
+needed"), which is exactly what a note must contain for the question to be answerable. `topics[]`
+is the subject; `services[]` lists every service the question *names, including in its wrong
+answers*, so it is useless for this (see the counting caution above).
+
+**Procedure.**
+1. Identify the session and report the score plainly before analysing anything.
+2. **Read every missed question in full** — stem, correct answer, discriminator. This is the
+   part that actually finds gaps; do not skip it in favour of a script.
+3. For each of the *other* questions, check the discriminator's distinctive terms against the
+   notes and the cheatsheet. Treat this as triage only.
+4. For anything that looks absent, grep the vault for the concept **in the note's own likely
+   wording**, not the bank's. A concept can be well covered under different words.
+5. For each confirmed gap: **fetch the AWS page and verify before writing a single sentence.**
+   §13.10c applies in full. The bank told you *where to look*; it is never the source.
+6. Write the fact into the note that owns the topic; add a **trap** if it is drillable, since
+   that is what reaches `discriminators.md`; add a cheatsheet row; and append a dated,
+   trainer-sourced line to that note's `## 🔴 My weak spots`.
+7. Record the run in `_findings/AUDIT-PROGRESS.md`: session, score, gaps found, and what was
+   checked but already covered.
+
+**Report the misses that were *not* gaps, separately and explicitly.** Most missed questions
+turn out to be covered — those are recall or discrimination failures, and saying so is the
+useful half of the answer. Conflating "I got it wrong" with "the notes don't have it" would
+send you rewriting notes that are already correct.
+
+**Known limits of the method — state them, don't hide them.** Keyword and term matching is
+noisy in both directions. On the 2026-10-09 run it ranked "S3 event notifications" against
+`21-security`, ranked "Amazon RDS" against `19-serverless`, and falsely flagged Compute
+Optimizer plus all five "Amazon S3" questions as uncovered (a tokenizer that dropped the
+two-character token `s3`). The verdict must rest on reading the missed questions and on
+concept-level greps. And the check can only prove a question was *answerable*; it cannot prove
+the material was findable **under time pressure**. If the human recalls which correct answers
+felt like guesses, that set is the real remaining risk — ask for it.
+
+**Result of the first run, as a calibration baseline.** `mock-02`, 2026-10-09, 47/65 (72.3%),
+18 missed → **3 genuine gaps**: EKS pod-vs-node autoscaling, IAM Roles Anywhere, and FIFO
+queues being barred as S3 event-notification destinations. The other 15 misses were already
+covered. One of the three closed a claim an earlier audit had deliberately left unasserted for
+want of a source — so this check also finds places where past caution left a hole.
+
+---
+
 ## 14. Scaffolding a lab (how to hand over a build)
 
 When the human is going to write the Terraform themselves, you scaffold. A
