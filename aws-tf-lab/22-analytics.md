@@ -272,6 +272,11 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **S3 as the log store, EMR as the processor** (trainer-sourced,
+  drill-mock02-concepts, 2026-10-10): missed marked **"sure"**. The ingest → **S3 data lake** →
+  process pipeline is in the TL;DR; the miss was not recognising plain log-file collection as
+  that shape.
+
 - [ ] **Written from docs, not yet drilled** — authored 2026-09-26 from the AWS documentation and the SAA-C03 exam guide while I was working through the course section. No build, no mock yet.
 - [ ] **Athena vs Redshift vs Spectrum** — three services that all "run SQL on big data". The axis is infrastructure and frequency, not capability.
 - [ ] **OpenSearch vs Athena for logs** — the wording in log-analytics scenarios is deliberately close.

@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 344 pointers · ~30 min read*
+*176 recall hooks · 345 pointers · ~30 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -711,6 +711,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[17-containers#How it actually works|explain]]
 
 **Traps** [[17-containers#⚠️ Traps — why the wrong answer looks right|open]]
+- scale an ECS service by putting a scaling policy on its Auto Scaling group
 - "enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge
 - "ECS or Fargate?"
 - target_type on a Fargate service

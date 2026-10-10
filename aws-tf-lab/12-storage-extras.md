@@ -256,6 +256,11 @@ row below is exam material rather than something you could order today. See the 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **FSx for NetApp ONTAP is the multi-protocol one** (trainer-sourced, mock-02 2026-10-09
+  **and** drill-mock02-concepts 2026-10-10): **missed twice in two days**, the second time as a
+  guess. "Both SMB and NFS from one file system" → **ONTAP**, and nothing else. This is the
+  highest-frequency repeat miss in the vault — drill it before anything else in this note.
+
 - [ ] **Written without an orientation pass** (2026-09-05) and audited against AWS docs on 2026-10-07, but the *eliminations* here are what carry exam weight — EFS/Windows, ONTAP/iSCSI, Volume Gateway cached-vs-stored — so drill those rather than re-reading.
 - [ ] **EFS is Linux-only** — the single highest-value elimination in the topic.
 - [ ] **Volume Gateway cached vs stored** — anchor on which copy is authoritative, not on the word.

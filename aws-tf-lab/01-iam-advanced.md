@@ -358,6 +358,12 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Organizations "all features" + Identity Center federated to AD** (trainer-sourced,
+  drill-mock02-concepts, 2026-10-10): missed marked **"sure"**. Both halves are in this note —
+  the two feature sets, and Identity Center with a directory. Drill the pairing: consolidate with
+  **Organizations (all features)**, then sign in through **Identity Center integrated with the
+  existing directory**.
+
 - [ ] **IAM Roles Anywhere** (trainer-sourced, mock-02, 2026-10-09): missed it entirely — the
   concept was not in this vault until now. Trigger: *on-premises / outside AWS* workload needing
   **temporary** credentials. Mechanism: X.509 cert → **trust anchor** → role → **profile**.

@@ -3,7 +3,7 @@ topic: 17-containers
 domain: performance
 status: reviewed
 services: [ECS, Fargate, ECR, EKS]
-related: [01-iam, 02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-endpoints-peering, 14-dr-resilience]
+related: [01-iam, 02-ec2, 04-alb-asg, 05-vpc-core, 05-vpc-endpoints-peering, 14-dr-resilience, 15-decoupling]
 tags: [topic, domain/performance]
 ---
 
@@ -106,6 +106,47 @@ For Fargate platform 1.4.0+, AWS states you *"require both Amazon ECR VPC endpoi
 | `com.amazonaws.<region>.logs` | Interface | required if the task uses the `awslogs` driver in a VPC with no internet gateway |
 
 The endpoint's security group must allow **443 inbound from the private subnets**. And note the cost inversion: three interface endpoints billed per ENI per AZ can exceed one NAT gateway at $0.045/hr ([[05-vpc-core]] owns NAT pricing; [[05-vpc-endpoints-peering]] owns endpoint pricing). Endpoints win on security posture, not automatically on price — count before assuming.
+
+### Scaling ECS: the service and the capacity under it are two different things
+
+A gap a drill exposed — and it is the same shape as the EKS one below, which is the point
+worth carrying. **ECS Service Auto Scaling** is *"the ability to increase or decrease the
+**desired number of tasks** in your Amazon ECS service automatically"*, and ECS *"leverages the
+**Application Auto Scaling** service to provide this functionality"*. That is the **task**
+layer. Whether there is room to *place* those tasks is a separate question — an EC2 **Auto
+Scaling group** or a **capacity provider** on the EC2 launch type, or nothing at all on
+Fargate, where capacity is AWS's problem.
+
+So: "our ECS service can't keep up at peak" → **Service Auto Scaling**, not an EC2 ASG policy.
+"Tasks are stuck `PENDING` because the cluster is full" → the capacity layer. On **Fargate**
+only the first half exists.
+
+The policy types, because the exam names them:
+- **Target tracking** — pick a metric and a target value and let it manage the task count.
+  AWS: *"Target tracking is the easiest mode to use."* Predefined metrics include ECS's own
+  average CPU and memory utilisation.
+- **Step scaling** — CloudWatch alarms with step adjustments sized to the breach; *"you can
+  react very quickly to changes in demand"*.
+- **Scheduled** — by date and time.
+- **Predictive** — from historical daily/weekly traffic patterns.
+- **Queue-backlog** — scale on an **SQS backlog per task** custom metric, "useful for
+  asynchronous applications where Amazon ECS tasks act as workers". Exactly the backlog-per-
+  consumer shape [[15-decoupling]] and [[04-alb-asg]] use.
+
+Four behaviours worth holding, all of which make sense once you see them:
+- ECS publishes its metrics at **1-minute** intervals, and you cannot alarm on a metric that
+  does not exist yet.
+- During a **deployment**, Application Auto Scaling **suspends scale-in** but lets scale-out
+  continue — it will not shrink you mid-rollout.
+- Scaling calculates from the **actual running task count**, not the desired count, which is
+  what *"prevents excessive (runaway) scaling"* when the cluster has no room to place tasks.
+- **Minimum capacity can be 0**, so a service can scale to zero when there is no work.
+- And a caution: *"as long as you have active scaling policies and alarms on a service, Service
+  Auto Scaling could change a desired count that was manually set by you."*
+*(Added 2026-10-10 after a drill; verified against the ECS service auto scaling docs.)*
+
+> [!warning] Trap — scale an ECS service by putting a scaling policy on its Auto Scaling group
+> Those are different layers. **ECS Service Auto Scaling** (via **Application Auto Scaling**) changes the service's **desired task count**; an **EC2 Auto Scaling group** or capacity provider changes how many **container instances** exist to place tasks on. Scaling the ASG alone adds empty capacity and runs no more tasks; scaling the service alone leaves tasks `PENDING` once the cluster is full. On **Fargate** there is no instance layer at all, so an ASG answer is wrong by construction.
 
 ### Scaling EKS: two different layers, and a question usually needs both
 
@@ -225,6 +266,10 @@ the control-plane dependency [[14-dr-resilience]] warns about during a recovery)
 - [ ] **EKS scaling is two layers** (trainer-sourced, mock-02, 2026-10-09): missed a Select-TWO
   that needed **HPA + Metrics Server** for pods *and* **Karpenter** for nodes. Anchor on
   "pods vs nodes", not on "autoscaling".
+- [ ] **ECS scaling is also two layers** (trainer-sourced, drill-mock02-concepts, 2026-10-10):
+  answered this one correctly but marked it a **guess**, and the content was missing entirely.
+  Service Auto Scaling (task count, via Application Auto Scaling) vs the EC2 ASG / capacity
+  provider (room to place tasks). Same axis as EKS — learn them as one pair.
 - Believed the S3 **gateway** endpoint was unusable for ECR because it "only supports S3 and DynamoDB" — it is in fact **mandatory**, precisely because ECR keeps image layers in S3. The inversion is the thing to remember.
 - Gave "you don't need an IAM role for a public image" as a complete answer. Right about the pull, wrong about the conclusion: `awslogs` still requires the execution role.
 - Knew `least_outstanding_requests` exists but not *when* to choose it: variable or expensive request cost, or targets of differing capacity.

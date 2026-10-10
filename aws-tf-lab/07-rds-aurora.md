@@ -544,6 +544,11 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **An Aurora replica is read scaling AND a failover target** (trainer-sourced,
+  drill-mock02-concepts, 2026-10-10): missed this marked **"sure"**, on a fact this note states
+  outright. Picked the reader endpoint correctly, then chose the wrong second answer. On RDS you
+  buy those two things separately; on Aurora one replica does both.
+
 - [ ] **Aurora storage architecture** (6 copies/3 AZs, shared volume, compute/storage separation) — knew replicas differ but not the why.
 - [ ] **Aurora endpoints** (writer/cluster vs reader vs custom vs instance).
 - [ ] **Aurora Serverless v2** (variable-workload auto-scaling) and **Global Database** (<1s cross-region).

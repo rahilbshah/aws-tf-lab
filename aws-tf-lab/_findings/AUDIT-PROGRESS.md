@@ -649,3 +649,39 @@ RDS" against `19-serverless`, and it falsely flagged Compute Optimizer and all f
 questions as unowned (the latter because my tokenizer dropped the 2-character token `s3`). The
 verdict above rests on reading the 18 missed questions and concept-level greps, not on the
 score. A question whose material is present but *thin* would not necessarily show up.
+
+## Coverage check: drill-mock02-concepts (2026-10-10) — §13.13 run #2
+
+20 questions, review mode, **15/20 (75%)**. **Zero qid overlap with mock-02** — these are
+different questions on the same concepts, which is the better test: it probes whether the
+concept transferred, not whether the question was remembered.
+
+**1 real gap out of 20, and it came from the *correct* answers.**
+
+**ECS Service Auto Scaling** (`2025-8-T2-Q09`) — answered **correctly but marked `guess`**, and
+the content was absent: the note covered `desiredCount` in deployment contexts and had nothing
+on scaling it automatically. Added to `17-containers` with a trap and cheatsheet rows, sourced
+from the ECS service-auto-scaling page. It is the **same two-layer shape as the EKS gap** found
+yesterday — scale the *service* (task count, via Application Auto Scaling) versus scale the
+*capacity underneath* (EC2 ASG / capacity provider; absent on Fargate). The two are now written
+as a pair and cross-referenced.
+
+**This validates using `confidence` as the thin-coverage detector.** After run #1 I said the
+check could prove a question was *answerable* but not that the material was *findable*, and
+that only the human could identify the lucky guesses. Wrong — the trainer records
+`confidence` per question. **`correct` + `conf=guess` is the thin-or-absent-coverage set**, and
+on this run it found the only gap. Added to the §13.13 procedure.
+
+**The 5 misses were all on covered material, and 4 of 5 were marked `sure`** — the
+discrimination failure §13.7 names as the measured weakness, not a coverage problem:
+- Aurora (`sure`): the note states outright that *"an Aurora replica is read scaling and
+  failover target at the same time"*. Got the reader-endpoint half, picked the wrong second.
+- Compute Optimizer (`sure`): got the scale-out half, missed that vertical right-sizing is
+  Compute Optimizer's job. Second miss on this service in two sessions.
+- Organizations all-features + Identity Center (`sure`): both halves present, including the
+  two feature sets.
+- S3 + EMR for log processing (`sure`): the ingest → S3 → process pipeline is in the TL;DR.
+- **FSx ONTAP multi-protocol — missed twice in two days** (mock-02 and this drill). Highest-
+  frequency repeat miss in the vault; flagged as the first thing to drill in that note.
+
+All five recorded as dated, trainer-sourced weak spots in their owning notes.

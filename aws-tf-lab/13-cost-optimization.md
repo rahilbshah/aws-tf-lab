@@ -241,6 +241,11 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Compute Optimizer is the right-sizing recommender** (trainer-sourced,
+  drill-mock02-concepts, 2026-10-10): missed marked **"sure"** — got the scale-out half (ASG +
+  ALB) and missed that vertical right-sizing comes from **Compute Optimizer**. Two misses now on
+  this service across two sessions; it is a recall problem, not a coverage one.
+
 - [ ] **Never studied — the vault had no EC2 purchasing content at all** until 2026-09-05, despite `exam-prep.md` wrongly ticking it as covered by [[02-ec2]]. D4 Cost fell from 85% to 54% between the two mocks, and this hole is the likely reason.
 - [ ] **Savings Plans don't reserve capacity** — the single most-missed fact in this topic.
 - [ ] **Less flexible = bigger discount** (EC2 Instance SP 72% > Compute SP 66%; Standard RI > Convertible). Counterintuitive.

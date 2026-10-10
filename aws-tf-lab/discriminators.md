@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*107 comparison tables · 205 discriminators · ~41 min read*
+*107 comparison tables · 206 discriminators · ~41 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -416,6 +416,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[17-containers#ECS vs EKS|ECS vs EKS]] · [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]] · [[17-containers#Task execution role vs task role|Task execution role vs task role]] · [[17-containers#ALB target types|ALB target types]] · [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
 
+- **scale an ECS service by putting a scaling policy on its Auto Scaling group** — Those are different layers. ECS Service Auto Scaling (via Application Auto Scaling) changes the service's desired task count; an EC2 Auto Scaling group or capacity provider changes how many container instances exist to place tasks on.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge** — It is half. The HPA adds pods; it cannot add nodes, so once the existing nodes are full the extra pods simply stay Pending.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
