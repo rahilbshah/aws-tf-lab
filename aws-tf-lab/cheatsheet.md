@@ -147,6 +147,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Control types and their implementation | Preventive = SCPs; detective = AWS Config rules; proactive = CloudFormation hooks |
 | SCP vs RCP scope | SCP limits principals in member accounts; RCP limits resources — both need Organizations all features |
 
+| Identity store **not** SAML 2.0 compatible | Build a **custom identity broker** on-prem: it authenticates against the existing system (*"which might use LDAP, Active Directory, or another system"*), then calls **STS** — *"either `AssumeRole` or `GetFederationToken`"* — and hands the temporary credentials to the app. Not Identity Center (needs a supported identity source), not an IAM policy referencing LDAP identifiers. The one exam scenario where "write a custom application" is correct |
+
 ↳ [[01-iam]] · [[01-iam-advanced]]
 
 
@@ -259,6 +261,12 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Tag argument for the snapshot, not the AMI | snapshot_tags (AMI uses tags) |
 | AWS-native managed equivalent of a Packer pipeline | EC2 Image Builder — test-before-distribute, multi-region, cross-account via AWS RAM, STIG components |
 | Currency warning — apt install awscli on Ubuntu 24.04 | no longer available; use the AWS official installer or snap install aws-cli --classic |
+
+| `gp2` baseline IOPS formula | **3 IOPS per GiB**, floor **100** (volumes ≤33.33 GiB), ceiling **16,000** reached at **5,334 GiB**. So 250 GiB → 750 baseline, 1,000 GiB → 3,000 |
+| `gp2` burst | Volumes **smaller than 1 TiB** (provisioned <3,000 IOPS) burst to **3,000 IOPS** on I/O credits. Accrue 3/GiB/s, cap **5.4 M** = *"at least 30 minutes"* at full burst; every volume starts full. Watch `BurstBalance`. **A ≥1 TiB gp2 volume does not burst at all** |
+| `gp2` throughput by size | ≤170 GiB → 128 MiB/s · >170 and <334 GiB → bursts to 250 · ≥334 GiB → 250 MiB/s |
+| `gp3` vs `gp2` performance model | gp3 **does not burst** — *"can indefinitely sustain their full provisioned IOPS"*. **3,000 IOPS + 125 MiB/s included at any size**; buy up to **80,000** IOPS at **500 IOPS/GiB** (80,000 needs just **160 GiB**) and 2,000 MiB/s. 20% cheaper per GiB |
+| "peaks at 3,000 IOPS, used occasionally" | **gp2/gp3, not io1/io2** — 3,000 is exactly gp2's burst ceiling and gp3's included baseline. The io-series trigger words are **sustained**/**consistent**, not *peak* |
 
 ↳ [[02-ec2]] · [[03-ami-bake]]
 
@@ -697,6 +705,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Storage Class Analysis — what it recommends | **Standard → Standard-IA only**, never an archive tier (explicit *Important* callout; fields `ObjectAgeForSIATransition`/`RecommendedObjectAgeForSIATransition`). Needs **≥30 days** of data; considers Standard objects **>128 KB** |
 | Storage Lens free vs advanced | Free: no charge, 6 metric categories, daily, **14-day** console query window. Advanced (paid): adds activity + detailed status-code metrics, **prefix-level** and group aggregation, CloudWatch publishing, contextual recommendations, **15-month** query window. **Retention is 15 months either way** — the tier changes query reach, not retention. Max **50 dashboards** per home Region |
 | Access points — the org-level control AWS documents | An **SCP** denying `s3:CreateAccessPoint` unless **`s3:AccessPointNetworkOrigin`** = `VPC`. But S3 **is** RCP-supported (`prefix:s3`) — so don't say access points are outside RCP scope, only that no access-point-specific RCP example exists. Both the access point **and** the underlying bucket/FSx file system must permit a request |
+
+| "encrypt each file with a different key" | **SSE-S3 already does this** — *"Amazon S3 encrypts each object with a unique key. As an additional safeguard, it encrypts the key itself with a key that it rotates regularly."* One bucket, plain SSE-S3; no splitting into logical groups, no SSE-KMS encryption context. AES-**GCM** 256-bit. Reach for SSE-KMS only for an **audit trail / key policy / your own rotation** |
+| What S3 server-side encryption does **not** cover | *"Server-side encryption encrypts only the object data, not the object metadata"* |
 
 ↳ [[09-s3-advanced]] · [[09-s3-intro]] · [[09-s3-security]]
 
@@ -1280,6 +1291,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | WebSocket API — the two fixed timers | **Idle connection timeout 10 minutes**, **max connection duration 2 hours**, *neither increasable* — so heartbeats and reconnect logic are mandatory. **500** new connections/sec/account/Region (increasable); **no** concurrent-connection quota (ceiling ≈ rate × duration). Frame **32 KB**, message **128 KB**, both fixed; exceeding either closes with code **1009** |
 | Circuit breaker `resetOnHealthyTask` | **`true` by default** — the failure count resets to 0 on every healthy task, so only **consecutive** failures count. Set `false` to accumulate across the whole deployment. Circuit breaker is **rolling-update (`ECS`) controller only** |
 
+| Lambda layers | *".zip file archive that contains supplementary code or data"* — for smaller deployment packages, separating deps from logic, and **sharing deps across functions**. **Max 5 per function**, **.zip deployments only** (container images bake deps in). Smaller package = faster cold start |
+| Lambda metric to alarm on for runaway scaling | **`ConcurrentExecutions`** — instances currently processing events; hitting the Region quota or the function's reserved concurrency causes **throttling**. Siblings: `ProvisionedConcurrentExecutions`, `ProvisionedConcurrencyUtilization` (**not emitted when idle** — breaks naive alarms), `UnreservedConcurrentExecutions`, `ClaimedAccountConcurrency` |
+
 ↳ [[17-containers]] · [[19-serverless]]
 
 
@@ -1562,5 +1576,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | EMR runtime roles | An IAM role passed **at job-submission** time (`--execution-role-arn` on `add-steps`), so each job gets its own permissions instead of the cluster's **EC2 instance profile** — the multi-tenant-EMR answer. Needs a security configuration with `EnableApplicationScopedIAMRole: true`, plus `sts:AssumeRole` **and `sts:TagSession`**. Which role a submitter may pass is gated by **`elasticmapreduce:ExecutionRoleArn`**. A job under a runtime role **cannot reach IMDS**. `emr-6.7.0`+ |
 | Transcribe Call Analytics does sentiment itself | **No Comprehend needed.** Native insight in both modes (*"Speaker sentiment"* / *"Real-time speaker sentiment"*): score **5 to −5** per quarter and overall, plus **positive/neutral/mixed/negative** per turn; usable as a custom-category rule. Not customisable. So: plain Transcribe or Transcribe Medical → sentiment needs **Comprehend**; **Call Analytics** → already included |
+
+| Redshift DR across Regions | **Cross-Region snapshot copy** — a **cluster setting**, not a scheduled job you build. Copies **automated *or* manual** snapshots to **one destination Region at a time**; copied automated snapshots get **their own retention, default 7 days**; change destination = **disable then re-enable**; **KMS-encrypted** cluster needs a **snapshot copy grant** for a CMK **in the destination Region** |
+| Redshift snapshot retention | Automated: Redshift-managed S3, default **1 day**, settable **1–35** on RA3/RG, `0` disables (not allowed on RA3/RG). Only Redshift deletes automated ones, and it *"retains the latest automated snapshot until you disable automated snapshots or delete the cluster."* **Manual: retained indefinitely**, even after the cluster is deleted |
+| AppSync unit vs pipeline resolver | **Unit** = one operation, one data source. **Pipeline** = a request/response handler plus *"a list of functions"* run in sequence, each result passed on as `ctx.prev.result`; the pipeline resolver itself *"is not linked to any data source"*. So **one client call reads/writes across several DynamoDB tables server-side** — the answer for "aggregate multiple tables without hurting baseline performance". Not Lambda fan-out, not Athena Federated Query (analytical), not CloudFront Functions (can't reach DynamoDB) |
 
 ↳ [[22-analytics]] · [[23-machine-learning]] · [[24-other-services]] · [[25-well-architected]]

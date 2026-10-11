@@ -164,6 +164,14 @@ a subnet behind a NACL. Two consequences:
 | Retries by Lambda | **none** | **twice** (3 attempts) | the **source's** rules |
 | Failure lands where | back at the caller | DLQ or destination | source-defined — for SQS, `maxReceiveCount` → its DLQ |
 
+### Layers, package size and what to alarm on
+
+Three Lambda operational facts the vault was missing, all of which show up together in "which of these are true about Lambda" questions.
+
+- **Layers are the answer to shared or bulky dependencies.** A layer is *"a .zip file archive that contains supplementary code or data"* — library dependencies, a custom runtime, config. AWS's own reasons: *"To reduce the size of your deployment packages"*, *"To separate core function logic from dependencies"*, and *"To share dependencies across multiple functions."* So "we reuse this code in more than one function" → **a layer**. Limits: **up to five layers per function**, and layers work **only with .zip deployments** — a function packaged as a **container image** must bake its dependencies into the image instead.
+- **Package size drives cold starts**, which is the *why* behind layers: a bigger deployment package is slower to cold-start, so keeping dependencies in a layer keeps the function package small.
+- **What to alarm on is `ConcurrentExecutions`** — *"The number of function instances that are processing events. If this number reaches your concurrent executions quota for the Region, or the reserved concurrency limit on the function, then Lambda throttles additional invocation requests."* That is the metric that tells you a fast-scaling function is about to eat the account's pool, so a CloudWatch alarm on it (and on `Invocations`) is the documented practice. Siblings worth recognising: `ProvisionedConcurrentExecutions`, `ProvisionedConcurrencyUtilization`, `UnreservedConcurrentExecutions` and `ClaimedAccountConcurrency` (per Region, the concurrency unavailable for on-demand invocations). Note `ProvisionedConcurrencyUtilization` is **not emitted when the function is idle**, which quietly breaks alarms built on it.
+
 ### Reserved vs provisioned concurrency
 | | Reserved | Provisioned |
 |---|---|---|
@@ -224,6 +232,7 @@ a subnet behind a NACL. Two consequences:
 > Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration. The cost-optimisation answer to "this function is slow and expensive" is often **raise the memory**.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- **Lambda layers and `ConcurrentExecutions`** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). A select-three on Lambda design considerations. The VPC-egress leg was well covered by the existing public-subnet trap, but **layers were not mentioned in this note at all** and `ConcurrentExecutions` appeared nowhere in the vault — two of the three legs were missing. Now written above.
 
 - [ ] **DynamoDB versus Aurora Serverless when both "scale"** — the discriminator is not which scales, it is **when you must decide your queries**: DynamoDB before the table exists, SQL any time afterwards.
 - [ ] **GSI versus LSI** — did not know these at all. The hard one: an **LSI can only be created with the table and can never be added or removed**; a GSI can be added any time.
@@ -237,6 +246,8 @@ a subnet behind a NACL. Two consequences:
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [Managing Lambda dependencies with layers](https://docs.aws.amazon.com/lambda/latest/dg/chapter-layers.html) — the three reasons for layers, five per function, .zip only; **verified 2026-10-11**
+- [Types of metrics for Lambda functions](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-metrics-types.html) — `ConcurrentExecutions` and the throttling threshold, the provisioned-concurrency siblings, idle functions not emitting utilisation; **verified 2026-10-11**
 - [API Gateway WebSocket API quotas](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-execution-service-websocket-limits-table.html) — 10-min idle timeout and 2-hour max duration (neither increasable), 500 new conn/sec, 32 KB frame / 128 KB message, close code 1009; **verified 2026-10-10**
 - [Lambda function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html) · [DynamoDB on-demand capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html)
 - [Lambda environment variables (encryption at rest)](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html)

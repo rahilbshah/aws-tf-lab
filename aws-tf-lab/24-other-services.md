@@ -139,7 +139,14 @@ The features that show up in questions: **real-time updates via serverless WebSo
 
 The discriminator against **API Gateway** is simply the API style: REST/HTTP/WebSocket → API Gateway; **GraphQL → AppSync**. If a scenario says "mobile app needs real-time data and offline sync", that's AppSync (usually via **Amplify**, which is built on it).
 
-> In one line: GraphQL means AppSync, and it brings real-time subscriptions over WebSockets for free.
+**Pipeline resolvers** are the part that answers scenario questions, and the note was thin on them. A **unit resolver** runs one operation against one data source. A **pipeline resolver** *"is composed of code that defines a request and response handler and a list of functions"*, each function running against a data source in sequence, with each result handed to the next as `ctx.prev.result`. The pipeline resolver itself *"is therefore not linked to any data source"* — it orchestrates.
+
+Why that matters on the exam: it means **one client call can read and write across several DynamoDB tables server-side**, instead of the client making several round trips and stitching results together. So a stem describing microservices that must *"retrieve and write data from multiple DynamoDB tables"* efficiently, **without hurting baseline application performance**, is pointing at pipeline resolvers — the alternative (a Lambda behind API Gateway fanning out, or several client calls) adds the latency the stem is trying to avoid.
+
+> In one line: GraphQL means AppSync, and it brings real-time subscriptions over WebSockets for free — and **pipeline resolvers** chain multiple data sources behind a single call.
+
+> [!warning] Trap — "aggregate several DynamoDB tables in one call" answered with Lambda, Athena Federated Query or CloudFront Functions
+> All three are real services doing the wrong job. **Lambda behind API Gateway** works but is the operationally heavier answer and still means you write the fan-out logic — the stem's "most operationally efficient" rules it out. **Athena Federated Query** is for *analytical* SQL across sources, not an application's read/write path, and it is far too slow for a request. **CloudFront Functions** are lightweight edge viewer-request manipulations — they cannot reach DynamoDB at all. The server-side-chaining answer is an **AppSync pipeline resolver**.
 
 ### AWS Batch — containerised batch jobs at any scale
 
@@ -405,6 +412,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Directory Service is for **corporate/workforce** identity — employees, domain-joined machines, AD-aware applications. For a **consumer or SaaS application's own users**, including social sign-in and scaling to millions, the answer is **Amazon Cognito**. AWS's own guidance makes this split explicitly.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- **AppSync pipeline resolvers** (trainer-sourced, mock-03, 2026-10-10, answered `guess`). Needed efficient reads/writes across multiple DynamoDB tables from a serverless microservice app. The note had AppSync as "managed GraphQL fronting multiple data sources" but never named **pipeline resolvers** or the single-call aggregation that is the actual discriminator. Note's own coverage table had already flagged AppSync as `thin`. Now thickened above.
 
 - [ ] **Written 2026-09-26 from a coverage audit** — these are the seven in-scope services the vault had missed. Not drilled or mocked yet.
 - [ ] **DMS vs SCT** — the biggest single gap I had. DMS moves data, SCT converts schema; heterogeneous needs both.
@@ -421,6 +429,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 - [What is AWS DMS?](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html) — replication instance, one-time vs ongoing replication, heterogeneous support, SCT / DMS Schema Conversion, Fleet Advisor, KMS/SSL; verified 2026-09-26
 - [What is Step Functions?](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) — Standard vs Express table, the three integration patterns, state types; verified 2026-09-26
+- [Resolver reference (JavaScript)](https://docs.aws.amazon.com/appsync/latest/devguide/resolver-reference-overview-js.html) — unit vs pipeline resolvers, the functions list, `ctx.prev.result`, pipeline resolvers not bound to a data source; **verified 2026-10-11**
 - [What is AWS AppSync?](https://docs.aws.amazon.com/appsync/latest/devguide/what-is-appsync.html) — GraphQL + Pub/Sub, WebSocket subscriptions, auth modes, caching; verified 2026-09-26
 - [What is AWS Batch?](https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html) — ECS/EKS, EC2/Fargate/Spot, fully managed batch; verified 2026-09-26
 - [What is Elastic Beanstalk?](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/Welcome.html) — provisioning scope, supported platforms, **no additional charge**; verified 2026-09-26

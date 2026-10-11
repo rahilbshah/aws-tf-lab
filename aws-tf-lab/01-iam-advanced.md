@@ -242,6 +242,20 @@ One service in this table has not been introduced yet. **IAM Identity Center** i
 | "one sign-on for all accounts, using our on-prem AD" | **IAM Identity Center**, with **AD Connector** (or AWS Managed Microsoft AD) as the identity source | within an organization, the **organization instance is enabled from the management account** — AWS: *"Required to create an organization instance"*, and it is the only instance type with multi-account permissions (a standalone account outside Organizations can create one too, but gets no multi-account access); **permission sets** ([[01-iam]] has the mechanics) need one, since *"Account instances do not support permission sets and therefore do not support access to AWS accounts"*. The directory must reside in the management account (or the delegated admin account, if one exists) |
 | "divisions keep their own accounts, corporate IT keeps oversight" | **cross-account IAM role** in each member account trusting the management account | the built-in one is **`OrganizationAccountAccessRole`** — created automatically for accounts Organizations **creates**, and **not** created for **invited** accounts, where you add it yourself |
 | "stop anyone in these accounts from doing X" | **SCP** | caps only — it answers **none of the rows above**. No billing, no sign-on, no access granted |
+| "federate our directory, but **our identity store is not SAML 2.0 compatible**" | a **custom identity broker application** calling **STS** | the only row where you write code — see below. Identity Center and the SAML IdP rows both assume a standards-compatible store |
+
+### When the identity store is not SAML-compatible
+
+Every federation answer above assumes the identity store speaks a standard — SAML 2.0, or OIDC. When a stem says explicitly that it **does not**, AWS documents exactly one path, and it is the one that sounds least like an AWS answer: *"If your identity store is not compatible with SAML 2.0, then you can build a **custom identity broker application** to perform a similar function. The broker application authenticates users, requests temporary credentials for users from AWS, and then provides them to the user to access AWS resources."*
+
+The shape: the broker sits **on-premises**, verifies the user against the existing system (*"which might use **LDAP**, Active Directory, or another system"*), then calls **STS** for temporary credentials and hands them to the application, which caches them until they expire.
+
+Two precision points worth holding, because the obvious compressions are both wrong:
+- **It calls either `AssumeRole` *or* `GetFederationToken`** — AWS says *"calls either `AssumeRole` or `GetFederationToken` … depending on how Bob wants to manage the policies for users and when the temporary credentials should expire."* Not one fixed API.
+- **A raw LDAP directory is not an Identity Center identity source.** Identity Center takes AWS Managed Microsoft AD or **AD Connector** (which fronts *Active Directory*), an external SAML IdP, or its own store — so "use IAM Identity Center to manage access between AWS and your LDAP" is a distractor when the stem has already ruled out SAML compatibility. The broker can also mint a **temporary sign-in URL** for console SSO.
+
+> [!warning] Trap — "not compatible with SAML" answered with Identity Center or an IAM policy
+> The phrase *not compatible with SAML 2.0* is the whole question, and it eliminates every managed federation option in one stroke. The distractors are all plausible-sounding IAM: an IAM policy that "references the LDAP identifiers" (IAM policies cannot reference an external directory's identifiers at all), IAM roles that "rotate credentials whenever LDAP credentials are updated" (roles don't track an external store's password changes), or Identity Center (needs a supported identity source). The answer is the one that involves **building something**: a custom identity broker that authenticates locally and calls **STS**. On this exam, "write a custom application" is almost always wrong — this is the documented exception, and it is flagged by that one phrase about SAML.
 
 ### The four things that can cap a permission
 
@@ -357,6 +371,7 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 > The key is simply **absent** for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic. Use `aws:VpcSourceIp`, or scope on `aws:SourceVpce` / `aws:SourceVpc` instead.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- **Non-SAML identity store → custom identity broker + STS** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). The vault covered SAML, OIDC, Identity Center and AD Connector but had **no coverage at all** of what to do when the stem says the identity store is *not* SAML-compatible — the one case where "build a custom application" is the right answer. Now written above.
 
 - [ ] **Organizations "all features" + Identity Center federated to AD** (trainer-sourced,
   drill-mock02-concepts, 2026-10-10): missed marked **"sure"**. Both halves are in this note —
@@ -385,6 +400,7 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 - [Controlling access using tags](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html) — `aws:TagKeys` / `aws:RequestTag` as the alternative to a tag policy; verified 2026-10-04
 - [AWS Config `required-tags`](https://docs.aws.amazon.com/config/latest/developerguide/required-tags.html) — "does not prevent you from creating resources with incorrect tags"; verified 2026-10-04
 - [Deny access based on requested Region](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_aws_deny-requested-region.html) — the `NotAction` carve-out list, and the services that anchor outside `us-east-1`; verified 2026-10-04
+- [Access to externally authenticated users (identity federation)](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_federated-users.html) — the custom identity broker for non-SAML stores, LDAP named explicitly, `AssumeRole` **or** `GetFederationToken`; **verified 2026-10-11**
 - [IAM Identity Center instances](https://docs.aws.amazon.com/singlesignon/latest/userguide/identity-center-instances.html) — organization vs account instance, and which gets multi-account permissions; verified 2026-10-04
 - [Consolidated billing](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/consolidated-billing.html) — who pays, shared volume/RI/Savings Plans discounts, member bills informational only; verified 2026-10-04
 - [Service control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html) — "no permissions are granted by an SCP", management-account exemption, member root capped, FullAWSAccess, service-linked-role exemption, unrestricted tasks; verified 2026-08-30

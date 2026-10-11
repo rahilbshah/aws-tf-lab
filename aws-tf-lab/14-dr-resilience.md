@@ -3,7 +3,7 @@ topic: 14-dr-resilience
 domain: resilient
 status: reviewed
 services: [Route53, GlobalAccelerator, Aurora, DynamoDB, S3, AWSBackup, CloudFormation]
-related: [07-rds-aurora, 08-elasticache, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced]
+related: [07-rds-aurora, 08-elasticache, 10-route53, 04-alb-asg, 12-storage-extras, 09-s3-advanced, 22-analytics]
 tags: [topic, domain/resilient]
 ---
 
@@ -137,6 +137,7 @@ Your RPO target picks the replication mechanism, and this is where everything yo
 | **S3 Cross-Region Replication** | seconds–minutes | S3 RTC commits to **15 minutes**, SLA-backed (AWS states the percentage inconsistently — carry the 15 minutes) |
 | **RDS cross-Region read replica** | seconds–minutes | promotion takes **a few minutes and includes a reboot** |
 | **ElastiCache Global Datastore** | **typically under 1 second** (a typical figure, not a bound — replication is asynchronous) | cross-Region replication for **Valkey or Redis OSS**, **node-based clusters only** — one active primary takes writes, secondaries are read-only until promoted ([[08-elasticache]]) |
+| **Redshift cross-Region snapshot copy** | hours | a **cluster setting**, not a scheduled job you build — automated *or* manual snapshots copied to **one** destination Region, copies keeping their own retention (**7 days** by default). KMS-encrypted clusters need a **snapshot copy grant** in the destination. Stated in full in [[22-analytics]] |
 | **AWS Backup cross-Region copy** | hours | as often as the backup plan runs |
 | **Snapshots copied manually** | hours–days | backup & restore territory |
 

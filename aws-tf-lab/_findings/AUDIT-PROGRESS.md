@@ -806,3 +806,55 @@ with content that doesn't discriminate. Not a defect — leave them.
 
 Generators re-run: **113 comparison tables** (111 → 113), 214 discriminators, 176 hooks.
 Validation: 0 ragged tables, 0 broken wiki-links, 0 broken anchors, 0 invalid callouts.
+
+---
+
+## Coverage check #3 — mock-03, 2026-10-10, 49/65 (75.4%)
+
+Third run of the §13.13 standing check. **6 genuine gaps out of 65** — the highest count of any
+run so far, and notably **two of the six came from the lucky-guess / thin set rather than the
+misses**, which is the second time step 3 has earned its place.
+
+Confidence split: `sure` 36/40 correct, `unsure` 5/12, `guess` 8/13. **Four `sure`-but-wrong.**
+
+### The 6 gaps, all verified first-hand before writing (§13.10c)
+
+| Gap | Note | Why the vault couldn't answer it |
+|---|---|---|
+| **SSE-S3 gives every object a unique key** | `09-s3-security` | The note had the full SSE-S3/KMS/DSSE/SSE-C menu but **never stated** that SSE-S3 already encrypts each object under its own key — the single fact that makes "encrypt each file with a different key" an SSE-S3 answer rather than a chunking or KMS-encryption-context one |
+| **`gp2` IOPS arithmetic** | `02-ec2` | The table gave gp2's 16,000 ceiling and "scales with size, bursts on credits" but **no numbers**: no 3 IOPS/GiB, no 100 floor, no 3,000 burst ceiling. The question handed over 250 GB and a 3,000 IOPS peak and expected the arithmetic |
+| **Non-SAML identity store → custom identity broker + STS** | `01-iam-advanced` | **No coverage at all.** The note covered SAML, OIDC, Identity Center and AD Connector — every path that assumes a standards-compatible store — and nothing for the case the stem explicitly rules out |
+| **Redshift cross-Region snapshot copy** | `22-analytics` (+ link from `14-dr-resilience`) | **No Redshift backup or DR content anywhere in the vault.** Spectrum was covered in depth; durability wasn't covered at all. A seam (§13.10b): analytics owns Redshift, DR owns the RPO ladder, and the fact fell between them |
+| **AppSync pipeline resolvers** | `24-other-services` | Thin, and the note's own coverage table already said so (`AppSync … thin`). "Managed GraphQL fronting multiple data sources" was there; **pipeline resolvers** and single-call multi-table aggregation — the actual discriminator — were not. *Answered correctly as a guess* |
+| **Lambda layers + `ConcurrentExecutions`** | `19-serverless` | A select-three. The VPC-egress leg was well covered by the existing public-subnet trap, but **layers were absent from the serverless note entirely** and `ConcurrentExecutions` appeared **nowhere in the vault** — 2 of 3 legs missing. Answered `unsure` |
+
+Each gap got the fact, a trap or comparison row where drillable (so it reaches
+`discriminators.md`), a cheatsheet row, and a dated trainer-sourced weak-spot line.
+Generators: **113 → 116 comparison tables, 214 → 218 discriminators.** Dashboard thin-topic
+count **5 → 3**. Validation: 0 ragged, 0 broken links, 0 broken anchors; all 8 new citations live.
+
+### The 10 misses that were NOT gaps — report these separately (§13.13)
+
+Covered material, so these are recall or discrimination failures, not coverage problems:
+- **One Zone-IA vs Standard-IA on "highly available"** (`sure`, wrong) — the note states the
+  3-AZ vs 1-AZ split and that "highly available" is what rules One Zone out. Pure discrimination.
+- **SQS decoupling for independent scaling** — twice in one mock (`sure` and `unsure`), both on
+  queue-between-fast-producer-and-slow-consumer, which `15-decoupling` opens with.
+- **DynamoDB + Lambda for key-value HA**, **Redis geospatial** (both `sure`) — both stated
+  outright; the Redis geospatial commands are in `08-elasticache` verbatim.
+- **Athena / Redshift Spectrum / Glue "query in place"**, **QuickSight on CloudTrail**,
+  **SCT vs DMS**, **CloudTrail AccessDenied analysis** — all covered in `22-analytics` /
+  `20-monitoring`.
+- **ACM expiry notification** — and note the vault had *just* gained the `DaysToExpiry` half in
+  the marker sweep the day before, so this one was covered by hours.
+
+**Two `sure`-but-wrong on material the notes state plainly (One Zone-IA, Redis geospatial) is
+the signal worth acting on** — it is conversion, not coverage, exactly as §13.7 predicts.
+
+### Method note
+
+The `confidence` + `correct` cross-tab did the heavy lifting again: 2 of 6 gaps would have been
+invisible from the miss list alone. Keyword matching was again noisy — `Lambda`+`NAT gateway`
+matched 35 files on generic tokens, and `Layers` matched a dozen notes on the ordinary English
+word, which nearly hid the fact that `19-serverless` has no layer content. **Concept greps must
+use the note's likely wording and be read, not counted.**

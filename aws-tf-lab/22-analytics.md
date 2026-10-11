@@ -3,7 +3,7 @@ topic: 22-analytics
 domain: performance
 status: reviewed
 services: [Athena, Glue, LakeFormation, Redshift, OpenSearch, EMR, QuickSight, MSK, DataPipeline, DataExchange]
-related: [07-rds-aurora, 09-s3-advanced, 16-kinesis]
+related: [07-rds-aurora, 09-s3-advanced, 16-kinesis, 14-dr-resilience]
 tags: [topic, domain/performance]
 ---
 
@@ -180,6 +180,9 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 - **AWS Lake Formation** is *"an authorization layer that provides fine-grained access control to resources in the AWS Glue Data Catalog"* — it stores no data of its own, the objects stay in **S3**. But it is **not only permissions**: it also **builds** the lake. AWS documents a *"Data ingestion and management"* capability — point it at a database, give it credentials, and *"it then **imports the data** to your new data lake and records the metadata in a central catalog"*, from **MySQL, PostgreSQL, SQL Server, MariaDB and Oracle on RDS or EC2**, with **both bulk and incremental loading**, and from on-premises databases over **JDBC**. So "which service builds a centralised data repository and imports from our RDS databases" is **Lake Formation**, not "just put it in S3". *(Verified 2026-10-04.)*
 - **Redshift** combines **massively parallel processing, columnar storage and compression encoding**. It is a relational warehouse for analytic queries, not an OLTP database.
 - **Redshift Spectrum** runs on Redshift compute — a provisioned cluster **or Redshift Serverless** — plus a SQL client. **Same-Region is required on RA3/DC2 provisioned clusters**; RG clusters and Redshift Serverless can query S3 **across Regions**. It reads **external schemas/external tables** from a Glue, Athena or Hive (EMR) catalog. Spectrum queries incur additional charges.
+- **Redshift backup and cross-Region DR.** The vault had Spectrum in depth and nothing on durability, so: Redshift takes **automated snapshots** into Redshift-managed S3, default retention **1 day**, settable **1–35 days** on RA3/RG node types, and set to **0 to disable** (not possible on RA3/RG). **Manual** snapshots are *"retained indefinitely, even after you delete your cluster"* unless you set a retention. Only Redshift can delete an automated snapshot — and it *"retains the latest automated snapshot until you disable automated snapshots or delete the cluster."*
+  - **For a Region outage, the answer is cross-Region snapshot copy**, which is a **configuration on the cluster, not a scheduled job you build**: *"You can configure Amazon Redshift to automatically copy snapshots (automated or manual) for a cluster to another AWS Region."* Four details that discriminate it: **one destination Region at a time**; copied **automated** snapshots get their **own retention, default 7 days**, separate from the source; to change destination you **disable then re-enable**; and for a **KMS-encrypted** cluster you must first create a **snapshot copy grant** for a customer managed key **in the destination Region**. Copied snapshots become *"active and available for restoration"*. See [[14-dr-resilience]].
+
 - **Amazon OpenSearch Service** manages **domains** (= clusters); supports OpenSearch and legacy **Elasticsearch OSS up to 7.10**; scales to **1,002 data nodes** and **25 PB** of attached storage; offers **UltraWarm** and **cold storage** for read-only data, Multi-AZ across two or three AZs, and **dedicated master nodes**. **OpenSearch Serverless** and **OpenSearch Ingestion** exist and bill in OCUs.
 - **EMR node types:** **primary** (coordinates, tracks status, monitors health — a single-node cluster is primary-only), **core** (runs tasks **and stores HDFS data**; multi-node clusters need ≥1), **task** (runs tasks, **stores no HDFS data**, optional → the Spot candidate). **Instance groups vs instance fleets** is chosen at creation and **cannot be changed**.
 - **EMR clusters** auto-terminate after their steps (transient) or stay in `WAITING` for more steps (long-running). A failure terminates the cluster and deletes its data unless **termination protection** is enabled.
@@ -275,6 +278,7 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 > Athena, EMR and Redshift Spectrum all read the **same AWS Glue Data Catalog**. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did. One crawler, one catalog, three engines.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- **Redshift cross-Region snapshot copy** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). Asked for a Redshift DR plan surviving a Region outage. The vault had **no Redshift backup or DR content anywhere** — not in this note, not in [[14-dr-resilience]] — so the question was unanswerable from the notes. Now written above and cross-linked.
 
 - [ ] **S3 as the log store, EMR as the processor** (trainer-sourced,
   drill-mock02-concepts, 2026-10-10): missed marked **"sure"**. The ingest → **S3 data lake** →
@@ -293,6 +297,8 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 - [What is Amazon Athena?](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) · [Athena pricing](https://aws.amazon.com/athena/pricing/) — $5/TB scanned, the compression/columnar worked example, 10 MB federated-query minimum; verified 2026-09-26
 - [What is AWS Glue?](https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html) — serverless data integration, crawlers, Data Catalog shared by Athena/EMR/Redshift Spectrum, Lake Formation as the authorization layer; verified 2026-09-26
+- [Copying a snapshot to another AWS Region](https://docs.aws.amazon.com/redshift/latest/mgmt/cross-region-snapshot-copy.html) — automated *or* manual, one destination at a time, 7-day default retention for copies, snapshot copy grant for KMS clusters; **verified 2026-10-11**
+- [Amazon Redshift snapshots and backups](https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-snapshots.html) — 1-day default / 1–35 day retention, manual snapshots retained indefinitely, latest automated snapshot always kept; **verified 2026-10-11**
 - [Amazon Redshift architecture](https://docs.aws.amazon.com/redshift/latest/dg/c_redshift_system_overview.html) · [Getting started with Redshift Spectrum](https://docs.aws.amazon.com/redshift/latest/dg/c-getting-started-using-spectrum.html) — MPP + columnar + compression; Spectrum needs a cluster, same Region, external tables, fact-in-S3/dimension-in-cluster best practice; verified 2026-09-26
 - [What is Amazon OpenSearch Service?](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html) — domains, Elasticsearch OSS up to 7.10, UltraWarm/cold, 1,002 nodes / 25 PB; verified 2026-09-26
 - [What is Amazon EMR?](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html) · [Clusters and nodes](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-overview.html) — primary/core/task, HDFS placement, instance groups vs fleets, cluster lifecycle; verified 2026-09-26

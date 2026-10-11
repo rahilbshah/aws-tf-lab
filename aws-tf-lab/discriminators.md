@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*113 comparison tables · 214 discriminators · ~43 min read*
+*116 comparison tables · 218 discriminators · ~44 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -46,8 +46,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[01-iam-advanced|01b – IAM Advanced (Organizations, SCPs, boundaries, ABAC)]]
 
-**Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]] · [[01-iam-advanced#RAM shares resources; it never enforces policy|RAM shares resources; it never enforces policy]]
+**Compare:** [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]] · [[01-iam-advanced#When the identity store is not SAML-compatible|When the identity store is not SAML-compatible]] · [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine|How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]] · [[01-iam-advanced#Condition keys worth memorising|Condition keys worth memorising]] · [[01-iam-advanced#RAM shares resources; it never enforces policy|RAM shares resources; it never enforces policy]]
 
+- **"not compatible with SAML" answered with Identity Center or an IAM policy** — The phrase not compatible with SAML 2.0 is the whole question, and it eliminates every managed federation option in one stroke.  
+  ↳ [[01-iam-advanced|note]]
 - **RAM offered where an SCP or Control Tower belongs** — The word "multi-account" pulls toward RAM, but ask what the requirement does. Restricting what may be launched is an SCP — a deny at the OU, which is also the least-effort answer because it applies to every account at once.  
   ↳ [[01-iam-advanced|note]]
 - **"attach an SCP to give that account access"** — SCPs never grant. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes.  
@@ -66,9 +68,11 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
-**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
+**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]] · [[02-ec2#How `gp2` and `gp3` actually earn their IOPS|How gp2 and gp3 actually earn their IOPS]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
 - **EFA offered for any HPC stem** — The word "HPC" is not the discriminator; the OS and the instance family are. **Linux on a supported non-t instance type → EFA is available. Windows (outside AWS CDI SDK applications), or any t3/t3a/burstable type → EFA is not available, and the answer is plain ENA enhanced networking**, which still delivers the bandwidth, packet-rate and latency gain.  
+  ↳ [[02-ec2|note]]
+- **a spiky 3,000-IOPS requirement read as a Provisioned IOPS question** — "Peaks hitting a maximum of 3,000 IOPS" on an occasionally-used volume is a **gp2/gp3** answer, not io1/io2.  
   ↳ [[02-ec2|note]]
 - **cluster chosen for availability, or spread for scale** — They pull in opposite directions and the wrong one is always offered. Cluster is a single AZ — picking it for "high availability" actively concentrates risk; it is a performance choice.  
   ↳ [[02-ec2|note]]
@@ -250,6 +254,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[09-s3-security#Block Public Access — the four settings|Block Public Access — the four settings]] · [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
+- **"each file must have a different encryption key", so split the data or use SSE-KMS** — Both of those are the over-built answer. SSE-S3 already does it: "Amazon S3 encrypts each object with a unique key." So a stem that says "encrypt each file with a different key" and then adds "without the overhead of splitting the data into logical groups" is answered by one bucket with plain SSE-S3 — no key management, no per-chunk buckets, no KMS bill.  
+  ↳ [[09-s3-security#Comparisons|note]]
 - **an encryption option borrowed from another service** — The distractors are real options in the wrong place. "Client-side with S3-managed keys" does not exist.  
   ↳ [[09-s3-security#Comparisons|note]]
 - **SSE-KMS request cost answered by changing the encryption type** — High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the bill shows it.  
@@ -450,7 +456,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[19-serverless|19 – Serverless (Lambda, DynamoDB, API Gateway)]]
 
-**Compare:** [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]] · [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]] · [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]] · [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]] · [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]] · [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
+**Compare:** [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]] · [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]] · [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]] · [[19-serverless#Layers, package size and what to alarm on|Layers, package size and what to alarm on]] · [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]] · [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]] · [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
 
 - **"add a security group rule to let API Gateway in"** — A public API Gateway endpoint (edge-optimized or Regional) is a managed service outside your VPC with no security group and no subnet, so securing it with a security group or a NACL is wrong — you restrict callers with a resource policy, IAM, an authorizer or WAF.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
@@ -574,6 +580,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]] · [[24-other-services#Directory Service options|Directory Service options]] · [[24-other-services#Batch vs Lambda|Batch vs Lambda]] · [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
 
+- **"aggregate several DynamoDB tables in one call" answered with Lambda, Athena Federated Query or CloudFront Functions** — All three are real services doing the wrong job. Lambda behind API Gateway works but is the operationally heavier answer and still means you write the fan-out logic — the stem's "most operationally efficient" rules it out.  
+  ↳ [[24-other-services#Traps|note]]
 - **user pool offered where an identity pool is needed** — The tell is what the app does after signing in. If it only needs to know who the user is, or to put a token in front of an API, that is a user pool.  
   ↳ [[24-other-services#Traps|note]]
 - **DMS offered as the tool that extracts to the Snowball Edge device** — On the retired Snowball path above — which the exam still asks — the shape of the answer is SCT extracts to the device, DMS finishes in the cloud.  

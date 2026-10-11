@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 359 pointers · ~31 min read*
+*176 recall hooks · 366 pointers · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -68,6 +68,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[01-iam-advanced#Why one combining rule is the odd one out|explain]]
 
 **Traps** [[01-iam-advanced|open]]
+- "not compatible with SAML" answered with Identity Center or an IAM policy
 - RAM offered where an SCP or Control Tower belongs
 - "attach an SCP to give that account access"
 - root user and SCPs
@@ -81,6 +82,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[01-iam-advanced#Which multi-account requirement does this solve?|Which multi-account requirement does this solve?]]
+- [[01-iam-advanced#When the identity store is not SAML-compatible|When the identity store is not SAML-compatible]]
 - [[01-iam-advanced#The four things that can cap a permission|The four things that can cap a permission]]
 - [[01-iam-advanced#How policy types combine|How policy types combine]]
 - [[01-iam-advanced#RBAC vs ABAC|RBAC vs ABAC]]
@@ -107,6 +109,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[02-ec2|open]]
 - EFA offered for any HPC stem
+- a spiky 3,000-IOPS requirement read as a Provisioned IOPS question
 - cluster chosen for availability, or spread for scale
 - any EC2 attribute can be changed on a live instance
 - t3-micro works
@@ -124,6 +127,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]]
 - [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]]
 - [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]]
+- [[02-ec2#How `gp2` and `gp3` actually earn their IOPS|How gp2 and gp3 actually earn their IOPS]]
 - [[02-ec2#The three placement strategies|The three placement strategies]]
 - [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]]
 - [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
@@ -443,6 +447,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[09-s3-security#Object Lock, and the delete that succeeds anyway|explain]]
 
 **Traps** [[09-s3-security#Comparisons|open]]
+- "each file must have a different encryption key", so split the data or use SSE-KMS
 - an encryption option borrowed from another service
 - SSE-KMS request cost answered by changing the encryption type
 - Block Public Access can be overridden by a bucket policy
@@ -767,6 +772,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[19-serverless#DynamoDB vs relational (RDS / Aurora, including Serverless)|DynamoDB vs relational (RDS / Aurora, including Serverless)]]
 - [[19-serverless#Global secondary index vs local secondary index|Global secondary index vs local secondary index]]
 - [[19-serverless#The three Lambda invocation models|The three Lambda invocation models]]
+- [[19-serverless#Layers, package size and what to alarm on|Layers, package size and what to alarm on]]
 - [[19-serverless#Reserved vs provisioned concurrency|Reserved vs provisioned concurrency]]
 - [[19-serverless#REST API vs HTTP API|REST API vs HTTP API]]
 - [[19-serverless#API Gateway vs ALB as a front door|API Gateway vs ALB as a front door]]
@@ -933,7 +939,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[24-other-services#AWS DMS — the migration answer, and the biggest gap here|explain]]
 - Standard is exactly-once and runs up to a year; Express is at-least-once, capped at five minutes, and built for volume.  
   ↳ [[24-other-services#Step Functions — orchestration, and one table that gets tested|explain]]
-- GraphQL means AppSync, and it brings real-time subscriptions over WebSockets for free.  
+- GraphQL means AppSync, and it brings real-time subscriptions over WebSockets for free — and pipeline resolvers chain multiple data sources behind a single call.  
   ↳ [[24-other-services#AWS AppSync — managed GraphQL|explain]]
 - Batch is for containerised jobs too long or too heavy for Lambda, and Spot is its natural home.  
   ↳ [[24-other-services#AWS Batch — containerised batch jobs at any scale|explain]]
@@ -951,6 +957,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[24-other-services#The long tail — recognise and eliminate|explain]]
 
 **Traps** [[24-other-services#Traps|open]]
+- "aggregate several DynamoDB tables in one call" answered with Lambda, Athena Federated Query or CloudFront Functions
 - user pool offered where an identity pool is needed
 - DMS offered as the tool that extracts to the Snowball Edge device
 - Glue, EMR or Kinesis offered for continuous database replication

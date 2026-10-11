@@ -179,6 +179,8 @@ flowchart TB
 
 *The options themselves are tabulated once, under [[#Which encryption options actually exist — per service|Comparisons]]. What follows is the operational behaviour that the menu doesn't capture.*
 
+- **SSE-S3 already gives every object its own key.** AWS: *"Amazon S3 encrypts each object with a unique key. As an additional safeguard, it encrypts the key itself with a key that it rotates regularly."* Encryption is **256-bit AES in Galois/Counter Mode (AES-GCM)**. This is the fact that answers "we need each file encrypted with a different key" — see the trap below.
+- **Encryption covers object *data*, not object *metadata*** — *"Server-side encryption encrypts only the object data, not the object metadata."*
 - The four server-side options are **mutually exclusive** per object.
 - **Default encryption may be SSE-S3, SSE-KMS or DSSE-KMS — not SSE-C.**
 - **Changing the default does not re-encrypt existing objects.** Re-encrypt with **S3 Batch Operations → Copy**.
@@ -256,7 +258,7 @@ another. Learn the menus, and most of the distractors disappear.
 
 | Option | Key held by | Reach for it when |
 |---|---|---|
-| **SSE-S3** (`AES256`) | AWS, invisible | the automatic base level for every bucket since **5 Jan 2023**; free, but **no audit trail of key use** — "just encrypt it" |
+| **SSE-S3** (`AES256`) | AWS, invisible | the automatic base level for every bucket since **5 Jan 2023**; free, but **no audit trail of key use** — "just encrypt it". **Already encrypts every object under its own unique key** |
 | **SSE-KMS** (`aws:kms`) | your KMS key | you need an **audit trail of key use** and a **key policy** — the compliance answer |
 | **DSSE-KMS** | your KMS key, twice | two independent layers, for the strictest mandates |
 | **SSE-C** | **you send the key on every request** | you must hold the key material yourself and accept managing it. ⚠️ **Disabled by default on all new general-purpose buckets since April 2026** — must be deliberately re-enabled via `PutBucketEncryption` |
@@ -288,6 +290,9 @@ storage**"* — so "only the volume is encrypted, not the traffic to the instanc
 and **snapshots of an encrypted volume are automatically encrypted**, with no way to remove
 encryption afterwards. You also **cannot encrypt an existing unencrypted volume in place**:
 snapshot it, then create an encrypted volume from the snapshot.
+
+> [!warning] Trap — "each file must have a different encryption key", so split the data or use SSE-KMS
+> Both of those are the over-built answer. **SSE-S3 already does it**: *"Amazon S3 encrypts each object with a unique key."* So a stem that says "encrypt each file with a different key" and then adds "**without the overhead of splitting the data into logical groups**" is answered by one bucket with plain **SSE-S3** — no key management, no per-chunk buckets, no KMS bill. The distractors work by making you supply the per-object uniqueness yourself (separate buckets per logical chunk, or SSE-KMS with an **encryption context** per object), when S3 has done it by default since 5 Jan 2023. Reach for **SSE-KMS** when the requirement is an **audit trail of key use**, a **key policy**, or **your own rotation schedule** — not when it is merely "a different key per object".
 
 > [!warning] Trap — an encryption option borrowed from another service
 > The distractors are real options in the wrong place. **"Client-side with S3-managed keys"**
@@ -336,6 +341,7 @@ snapshot it, then create an encrypted volume from the snapshot.
 > Only the **root account** that owns the bucket, holding an MFA device, can enable MFA Delete, and never from the **console** — the CLI **or the API** is required, so don't reject an option just because it says SDK or `PutBucketVersioning`. Not an IAM user. It also cannot be combined with lifecycle configurations.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- **SSE-S3's per-object unique key** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). Picked a logical-chunking/KMS answer for "encrypt each file with a different key". The vault had the SSE-S3 menu but had never stated that SSE-S3 *already* generates a unique key per object — the single fact the question turned on. Now written above.
 
 - [ ] **The four Block Public Access settings** — why four (new/existing × ACL/policy), and that BPA **overrides** policy rather than the other way round.
 - [ ] **Which encryption option means what** — especially **DSSE-KMS** (two layers) and that **SSE-C is now off by default (April 2026)**.
@@ -353,4 +359,5 @@ snapshot it, then create an encrypted volume from the snapshot.
 - [Sharing objects with presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html) — generator's credentials, 7-day CLI / 12-hour console limits; verified 2026-08
 - [Blocking public access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html)
 - [Bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html) / [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
+- [Using SSE-S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingServerSideEncryption.html) — *"Amazon S3 encrypts each object with a unique key"*, AES-GCM 256-bit, metadata not encrypted, base level since 5 Jan 2023; **verified 2026-10-11**
 - [IAM policies for access points](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html) — the `s3:AccessPointNetworkOrigin` SCP example, and "both the access point and the underlying bucket... must permit the request"; **verified 2026-10-10**
