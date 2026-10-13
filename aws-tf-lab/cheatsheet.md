@@ -456,6 +456,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Full-mesh peering formula | N(N-1)/2 (5→10, 6→15, 10→45, 12→66) |
 | The three peering limits | Non-transitive, no overlapping CIDRs, no edge-to-edge routing (no peer's IGW/NAT/VPN/endpoints) |
 | Transit Gateway shape and scale | Regional hub, one attachment per VPC/VPN/DX, transitive, scales to thousands of attachments |
+| VPC sharing — what actually gets shared | **One or more subnets**, never the whole VPC. Owner shares via **AWS RAM** to participant accounts in the **same Organization**; participants launch their own EC2/RDS/Redshift/Lambda in them and can't see each other's resources. Peering stays the owner's job. |
+| Many accounts, one network — which of the three | **Same Organization, lowest complexity, one network → VPC sharing.** Two separate VPCs → peering. Many VPCs / hybrid at scale → Transit Gateway. "Share the VPC" and "peer the subnets" are both wrong wordings. |
 
 **Hybrid — VPN**
 

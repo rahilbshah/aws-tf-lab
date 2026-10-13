@@ -232,6 +232,7 @@ flowchart TB
 - [ ] **Peering is non-transitive + no CIDR overlap** — forgot the peering limits entirely at orient; these are the two most-tested facts.
 - [ ] **Transit Gateway = hub-and-spoke fix for the N(N-1)/2 mesh** — knew the mesh math but not the TGW mechanism.
 - [ ] **"Which endpoint for which service"** decision (S3/DynamoDB → gateway/free; everything else → interface/paid).
+- [ ] **VPC sharing vs peering, and *subnets* vs *the VPC*** — four encounters, zero confident-correct: `2025-4-T2-Q36` wrong-and-`sure`, `2025-4-T3-Q17` right-but-a-guess, `2025-8-T1-Q62` right-but-`unsure`, and an external practice question on 2026-10-13 answered "VPC **peering** to share one or more subnets" (right object, wrong mechanism). The trap above states both halves. *(Trainer-sourced, 2026-10-13.)*
 
 ## 🔗 Docs
 - [Security groups and VPC peering](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-security-groups.html)
