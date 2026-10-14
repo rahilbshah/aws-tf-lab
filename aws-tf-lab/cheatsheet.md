@@ -206,7 +206,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Currency warning — "EIP is free while attached" | Retired: since Feb 2024 every public IPv4 bills hourly, auto-assigned or Elastic, attached or not |
 | Elastic IP limit per region | soft 5, raisable |
-| Which wins, subnet map_public_ip_on_launch or instance setting? | associate_public_ip_address at launch overrides the subnet in either direction |
+| Which wins, the subnet's auto-assign public IPv4 setting or the instance's? | The instance's setting at launch overrides the subnet default, in either direction |
 | Auto-assigned public IP vs Elastic IP across stop/start | auto-assigned is released and changes; EIP is yours and persists |
 | EIP IPv6 equivalent | none — IPv4 only |
 
@@ -282,7 +282,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Cross-zone load balancing — ALB default | Always on at LB level, cannot disable there (only override off per target group); free |
 | Minimum AZs for an ALB | At least 2, enforced; NLB 2+ recommended but not strictly required |
 | PrivateLink endpoint service — which LB fronts it | NLB or GWLB, never an ALB directly |
-| Putting an ALB behind an NLB | Target group target_type = "alb", protocol TCP, one ALB per target group |
+| Putting an ALB behind an NLB | Target group of type **Application Load Balancer**, protocol TCP, one ALB per target group |
 | Static IP — ALB vs NLB | ALB: DNS name only. NLB: one static IP per AZ, can attach an EIP |
 | Client source IP — ALB vs NLB | ALB terminates the connection, adds X-Forwarded-For; NLB preserves source IP natively |
 | NLB flow hash inputs | Settled 2026-10-05 — AWS lists all four: *"The protocol, The source IP address and source port, The destination IP address and destination port, The TCP sequence number."* GWLB uses a 5-tuple flow hash |
@@ -312,13 +312,13 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| ASG health_check_type default | EC2 — hypervisor status checks only; ELB must be set explicitly |
-| Which check decides what | Target-group health check = routing; ASG health_check_type = replacement |
-| Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, only with health_check_type ELB |
+| ASG health check type default | **EC2** — hypervisor status checks only; **ELB** must be set explicitly |
+| Which check decides what | Target-group health check = **routing**; ASG health check type = **replacement** |
+| Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, and only when its health check type is **ELB** |
 | When a failed health check is user-visible | Only when NO targets are healthy; with ≥1 healthy the ALB routes around it silently |
 | Time to ELB-healthy with boot-time apt install | Measure from **`InService`**, not from launch — the grace-period clock starts *"after it enters the `InService` state"*. What must fit inside it: remaining bootstrap (~60s for an apt install) **plus one health-check interval** (~30s), so ~90s. (Corrected 2026-10-05.) |
 | Health-check convergence arithmetic | **A newly registered target needs ONE passing check**: *"After your target is registered, it must pass one health check to be considered healthy."* `HealthyThresholdCount` (default **5**) is for bringing an **already-unhealthy** target back; `UnhealthyThresholdCount` (default **2**) × 30s ≈ 60s to pull a healthy one. Thresholds 2–10, interval 5–300s, timeout 2–120s. (Corrected 2026-10-05 — this row previously said 5 × 30s = 150s to *become* healthy.) |
-| Safe health_check_grace_period values | ~300s with boot-time install; ~40s time-to-healthy with a baked AMI |
+| Safe health check grace period values | ~300s with a boot-time install; ~40s time-to-healthy with a baked AMI |
 
 **Target tracking**
 
@@ -378,7 +378,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Route table used by a subnet you never associated | The VPC's main route table |
-| The two conditions for a subnet to be public | 0.0.0.0/0 → IGW in its route table AND a public IP (map_public_ip_on_launch or EIP) |
+| The two conditions for a subnet to be public | 0.0.0.0/0 → IGW in its route table AND a public IP (auto-assigned at launch, or an EIP) |
 | IGW count, direction and cost | One per VPC, bidirectional, no bandwidth limit, free (pay data transfer only) |
 
 **NAT**

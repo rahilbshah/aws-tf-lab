@@ -122,7 +122,8 @@ def discriminating_text(lines, title='', min_chars=90, max_chars=420):
 
 # --- note discovery -----------------------------------------------------------
 
-GENERATED = {'README.md', 'exam-prep.md', 'exam-night.md', 'discriminators.md', 'dashboard.md'}
+GENERATED = {'README.md', 'exam-prep.md', 'exam-night.md', 'discriminators.md', 'dashboard.md',
+             'signals.md'}
 
 def _order_key(path, text):
     """Sort by the NUMBER IN THE TITLE, not the filename.

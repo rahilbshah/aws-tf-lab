@@ -71,7 +71,7 @@ it is scheduled **and** dynamic.
 
 One question: **can the app be broken while the VM is fine?**
 
-- **Yes** (which is almost always) → ASG `health_check_type = "ELB"`, so the load
+- **Yes** (which is almost always) → the ASG health check type set to **ELB**, so the load
   balancer's verdict triggers replacement.
 - **No** → the default `EC2` only watches hypervisor status checks.
 

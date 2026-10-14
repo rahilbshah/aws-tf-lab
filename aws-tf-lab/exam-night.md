@@ -734,7 +734,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge
 - "attach the IAM role to the EKS node group"
 - "ECS or Fargate?"
-- target_type on a Fargate service
+- target group type on a Fargate service
 - a green apply is not a green deployment
 - the execution role is not for the pull
 - rollback needs somewhere to roll back to

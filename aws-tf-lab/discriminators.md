@@ -444,7 +444,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
-- **target_type on a Fargate service** — With awsvpc each task gets its own elastic network interface, so there is no EC2 instance ID to register.  
+- **target group type on a Fargate service** — With awsvpc each task gets its own elastic network interface, so there is no EC2 instance ID to register.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **a green apply is not a green deployment** — A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]

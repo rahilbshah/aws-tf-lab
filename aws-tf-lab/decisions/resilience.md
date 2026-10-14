@@ -28,7 +28,7 @@ the three sizes use different tools and do not substitute for each other.
 **Stateless compute** → an ASG across at least two AZs behind an ALB. Then the
 fork people skip: **who may decide an instance is dead?** The ALB only stops
 routing, never terminates; replacement happens only when the ASG honours that
-verdict (`health_check_type = "ELB"`).
+verdict (ASG health check type **ELB**).
 ↳ [[04-alb-asg#The target group is the joint — and two health checks meet inside it]]
 
 **Relational data** → Multi-AZ. The axis that gets mis-set: **is the second copy

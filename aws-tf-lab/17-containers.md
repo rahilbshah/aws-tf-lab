@@ -63,7 +63,7 @@ Two defaults govern that dance:
 ```mermaid
 graph TB
   U[Users] --> ALB[ALB · public subnets · 2 AZs]
-  ALB -->|target_type = ip| TG[Target group]
+  ALB -->|target type: ip| TG[Target group]
   TG --> T1[Task ENI 10.0.10.x]
   TG --> T2[Task ENI 10.0.11.x]
   subgraph P [Private subnets]
@@ -291,7 +291,7 @@ for those you want EBS encryption, which is a different control. *(Verified 2026
 > [!warning] Trap — "ECS or Fargate?"
 > The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too. If a question offers "ECS" and "Fargate" as alternatives, it is really asking **who manages the servers**, not which orchestrator.
 
-> [!warning] Trap — target_type on a Fargate service
+> [!warning] Trap — target group type on a Fargate service
 > With `awsvpc` each task gets its own elastic network interface, so there is no EC2 instance ID to register. AWS states the rule directly: services whose tasks use `awsvpc` "only support Application Load Balancers and Network Load Balancers… Also, when you create any target groups for these services, **you must choose `ip` as the target type, not `instance`**. This is because tasks that use the `awsvpc` network mode are associated with an elastic network interface, not an Amazon EC2 instance." Fargate always uses `awsvpc`, so **Fargate behind an ALB is always an `ip` target group**. *(Corrected 2026-10-07: this used to assert a specific silent-failure symptom — targets never registering and a 503 — which no AWS page states.)*
 
 > [!warning] Trap — a green apply is not a green deployment
