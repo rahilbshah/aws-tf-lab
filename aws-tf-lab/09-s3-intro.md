@@ -87,7 +87,7 @@ The ladder runs: Standard → Standard-IA → One Zone-IA → Glacier Instant Re
 
 The obvious move is "put everything cold in IA and save money". Two rules make that backfire.
 
-**Minimum storage duration.** Once an object is in a class, you are billed for a minimum residence whether or not it's still there.
+**Minimum storage duration.** Once an object is in a class, you are billed for a minimum residence whether or not it's still there. This is a **billing** floor, not a waiting period: there is **no minimum age before a lifecycle rule may transition an object** — a rule can move it to Standard-IA on **day 0** if you want. (AWS's transition rules page enumerates every constraint on transitions and lists no such wait; what the minimums *do* constrain is **chained** transitions — *"S3 Glacier Instant Retrieval has a minimum storage duration of 90 days… the S3 Glacier Deep Archive transition must occur after at least 94 days."*) *(Verified 2026-10-14.)*
 
 | Class | Minimum storage duration |
 |---|---|

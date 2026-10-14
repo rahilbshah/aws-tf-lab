@@ -353,6 +353,21 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 > [!warning] Trap — "attach an SCP to give that account access"
 > SCPs **never grant**. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes. Any answer phrased as *"use an SCP to grant/enable/allow"* is a distractor.
 
+> [!warning] Trap — "enable the organization's external authentication"
+> **AWS Organizations does not authenticate anybody.** Its concepts are accounts, OUs, policy
+> guardrails (SCPs, RCPs, tag policies), consolidated billing and service integrations —
+> there is no authentication, federation or directory setting anywhere in it. So an option
+> phrased *"enable the organization's external authentication and point it at the company's
+> directory"* names **a feature that does not exist**; eliminate it on sight. The real answer
+> to "our users already exist in Active Directory, sign them in across all our accounts" is
+> **IAM Identity Center**, with **AD Connector** (proxies to on-premises AD, stores no
+> directory data in AWS) or **AWS Managed Microsoft AD** as the identity source — see
+> [[01-iam-advanced#When the identity store is not SAML-compatible]]. Two more halves of the
+> same question: **existing** accounts are *invited* and must *accept* (you only ever
+> **create** brand-new ones), and **SCPs do not "manage" member accounts** — they only cap
+> what principals inside them may do. *(Verified 2026-10-14: the Organizations concepts page
+> names no authentication, federation or directory concept.)*
+
 > [!warning] Trap — root user and SCPs
 > Both halves matter and they point opposite ways. The **management account** is immune to SCPs entirely — including its root user and every IAM principal in it. A **member account's root user is not immune** — it is capped like everyone else. That's exactly why AWS recommends keeping no workloads in the management account.
 

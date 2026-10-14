@@ -148,6 +148,19 @@ Creating a VPC quietly creates three more things:
 - a **default NACL** — allows all traffic, in and out,
 - a **default security group** — **self-referencing** inbound, meaning the only inbound it permits is traffic from resources that are themselves in that same security group; outbound is allow-all.
 
+And it sets **two DNS attributes**, which default *differently* and are the usual cause of
+"the hostname won't resolve":
+
+| VPC attribute | What it does | Default |
+|---|---|---|
+| `enableDnsSupport` | Whether queries to the **Amazon-provided DNS server** (the Route 53 Resolver at base+2) succeed | **`true`** |
+| `enableDnsHostnames` | Whether instances with a public IP get a **public DNS hostname** | **`false`** — except in a **default VPC**, where it is `true` |
+
+AWS: *"If at least one of the attributes is set to `false` … the Route 53 Resolver cannot
+resolve Amazon-provided private DNS hostnames."* So **both** must be on. This is the same
+pair a **private hosted zone** needs ([[10-route53]]) and what a **VPC peering connection**
+needs DNS resolution enabled for ([[05-vpc-endpoints-peering]]). *(Verified 2026-10-14.)*
+
 Here is the flip that gets tested. A **custom** NACL you create yourself **denies everything** until you add numbered rules, and a **new** security group denies all inbound. So AWS's defaults are the *looser* of each pair and anything you make yourself starts tighter — the opposite pairing to the one most people assume, which is what makes it such a reliable distractor.
 
 Be precise about how loose "loose" is, because the two defaults differ: the default **NACL** really does allow everything in both directions, while the default **security group** only allows inbound *from itself*. It is permissive relative to a new SG, not wide open.

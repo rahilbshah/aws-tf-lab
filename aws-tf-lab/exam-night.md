@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 366 pointers · ~31 min read*
+*176 recall hooks · 368 pointers · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -71,6 +71,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "not compatible with SAML" answered with Identity Center or an IAM policy
 - RAM offered where an SCP or Control Tower belongs
 - "attach an SCP to give that account access"
+- "enable the organization's external authentication"
 - root user and SCPs
 - permissions boundary vs SCP
 - Bool vs BoolIfExists for MFA
@@ -610,6 +611,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]]
 - [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]]
 - [[13-cost-optimization#The cost tools|The cost tools]]
+- [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)|Right-size first, or scale out? (vertical vs horizontal)]]
 
 
 ## [[14-dr-resilience|14 – Disaster recovery & resilience]]

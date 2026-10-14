@@ -217,6 +217,33 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 | **Cost allocation tags / categories** | "which team spent it?" |
 | **Compute Optimizer** | "is this resource the right size?" |
 | **Cost Optimization Hub** | "what should I change, ranked?" |
+| **Trusted Advisor** | "which *deployed resources* break best practice?" — including **service quota usage** |
+
+**Trusted Advisor is the odd one out here, and the exam leans on it.** It does not read your
+bill; it *"inspects your AWS environment, and then makes recommendations when opportunities
+exist to save money, improve system availability and performance, or help close security
+gaps."* It is **advisory only** — it changes nothing. Two details that decide questions:
+checks are **refreshed manually** (refresh before trusting a reading), and on a **Basic or
+Developer** Support plan you get **all Service Limits checks plus selected Security and Fault
+Tolerance checks only** — the full set needs **Business or Enterprise** Support. For quota
+*alarming* rather than inspection, the answer is **Service Quotas** with a CloudWatch alarm.
+*(Verified 2026-10-14.)*
+
+### Right-size first, or scale out? (vertical vs horizontal)
+
+|   | Vertical — right-sizing | Horizontal — scaling out |
+|---|---|---|
+| The move | Change the **instance type** of what you already run | Add **more instances** behind a load balancer |
+| Which service tells you | **Compute Optimizer** (rightsizing recommendations, idle-resource detection) | **Auto Scaling** policies on a metric |
+| Fixes cost from | **Over-provisioning** — paying for CPU/memory nobody uses | Nothing; it adds capacity and adds cost |
+| Fixes availability | **No** — still one instance, still one AZ | **Yes** — multiple instances across AZs |
+| Ceiling | The largest instance type in the family | Effectively none |
+| Stem wording | "over-provisioned", "under-utilised", "right-size", "reduce cost with no architecture change" | "handle the peak", "improve availability", "no single point of failure" |
+
+The exam pairs these deliberately. *"Resolve the performance issue **and** improve
+availability"* wants **one of each** — Compute Optimizer for the sizing, an ASG behind a load
+balancer for the availability. Picking two horizontal options, or two cost options, answers
+only half the stem. See [[04-alb-asg]] for the horizontal half.
 
 ## Worked examples
 

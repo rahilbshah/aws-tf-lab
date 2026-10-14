@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*116 comparison tables · 218 discriminators · ~44 min read*
+*117 comparison tables · 219 discriminators · ~44 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -53,6 +53,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **RAM offered where an SCP or Control Tower belongs** — The word "multi-account" pulls toward RAM, but ask what the requirement does. Restricting what may be launched is an SCP — a deny at the OU, which is also the least-effort answer because it applies to every account at once.  
   ↳ [[01-iam-advanced|note]]
 - **"attach an SCP to give that account access"** — SCPs never grant. If a question's correct-sounding answer is "create an SCP allowing the developers to use S3," it's wrong — you also need an IAM policy, and the SCP only ever removes.  
+  ↳ [[01-iam-advanced|note]]
+- **"enable the organization's external authentication"** — AWS Organizations does not authenticate anybody. Its concepts are accounts, OUs, policy guardrails (SCPs, RCPs, tag policies), consolidated billing and service integrations — there is no authentication, federation or directory setting anywhere in it.  
   ↳ [[01-iam-advanced|note]]
 - **root user and SCPs** — Both halves matter and they point opposite ways. The management account is immune to SCPs entirely — including its root user and every IAM principal in it. A member account's root user is not immune — it is capped like everyone else. That's exactly why AWS recommends keeping no workloads in the management account.  
   ↳ [[01-iam-advanced|note]]
@@ -346,7 +348,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[13-cost-optimization|13 – Cost optimization]]
 
-**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]] · [[13-cost-optimization#The cost tools|The cost tools]]
+**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]] · [[13-cost-optimization#The cost tools|The cost tools]] · [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)|Right-size first, or scale out? (vertical vs horizontal)]]
 
 - **"cancel the Spot request to get rid of the instance"** — Cancelling and terminating are separate actions, and which one you need depends on the request's state.  
   ↳ [[13-cost-optimization#Traps|note]]
