@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*117 comparison tables · 219 discriminators · ~44 min read*
+*119 comparison tables · 220 discriminators · ~44 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -434,11 +434,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[17-containers|17 – Containers on AWS (ECS, Fargate, ECR, EKS)]]
 
-**Compare:** [[17-containers#ECS vs EKS|ECS vs EKS]] · [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]] · [[17-containers#Task execution role vs task role|Task execution role vs task role]] · [[17-containers#ALB target types|ALB target types]] · [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
+**Compare:** [[17-containers#ECS vs EKS|ECS vs EKS]] · [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]] · [[17-containers#Task execution role vs task role|Task execution role vs task role]] · [[17-containers#Giving a *Pod* an IAM role — IRSA vs EKS Pod Identity|Giving a Pod an IAM role — IRSA vs EKS Pod Identity]] · [[17-containers#Encryption of Kubernetes API data (what used to be "secret encryption")|Encryption of Kubernetes API data (what used to be "secret encryption")]] · [[17-containers#ALB target types|ALB target types]] · [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
 
 - **scale an ECS service by putting a scaling policy on its Auto Scaling group** — Those are different layers. ECS Service Auto Scaling (via Application Auto Scaling) changes the service's desired task count; an EC2 Auto Scaling group or capacity provider changes how many container instances exist to place tasks on.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge** — It is half. The HPA adds pods; it cannot add nodes, so once the existing nodes are full the extra pods simply stay Pending.  
+  ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
+- **"attach the IAM role to the EKS node group"** — It is the wrong shape, not merely the untidy option: every Pod on that node inherits it, so least privilege is impossible and one compromised Pod reaches every other Pod's permissions.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ECS or Fargate?"** — The question is malformed and the exam knows it. ECS is the orchestrator; Fargate is a launch type / capacity option, and EKS can use Fargate too.  
   ↳ [[17-containers#⚠️ Traps — why the wrong answer looks right|note]]

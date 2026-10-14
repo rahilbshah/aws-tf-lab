@@ -212,6 +212,51 @@ the control-plane dependency [[14-dr-resilience]] warns about during a recovery)
 | Credentials visible to the container? | **No** — AWS: the execution role's credentials *"aren't directly accessible by the containers in the task"* | Yes — via the **container credentials provider** (`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` on `169.254.170.2`), which is a different interface from the **task metadata endpoint** |
 | Needed for a public image with no logs? | No | No |
 
+### Giving a *Pod* an IAM role — IRSA vs EKS Pod Identity
+
+ECS gives a task its own role (above). The EKS equivalent is the question the exam actually
+asks, and the wrong answer is always *"attach the role to the node group"* — a role on the
+**worker node** is shared by **every Pod scheduled onto that node**, so it cannot scope
+permissions to one application. AWS says so in both directions: with IMDS unrestricted, *"the
+Pod's containers also have access to the Amazon EKS node IAM role and the containers may be
+able to gain access to credentials of IAM roles of other Pods on the same node."*
+
+Two real mechanisms, both binding the role to a **Kubernetes service account**:
+
+| | IRSA — IAM roles for service accounts | EKS Pod Identity |
+|---|---|---|
+| Mechanism | An **OIDC identity provider** for the cluster, plus a **trust policy on the role** naming that provider and service account | An **association** created through the **EKS API**; no OIDC provider at all |
+| Per-cluster setup | A separate OIDC provider **and a separate trust-policy entry per cluster** | One IAM principal; *"you can make identical associations in each cluster without modifying the trust policy of the role"* |
+| Separation of duties | OIDC provider creation often sits with a different team | All association config in EKS, all permission config in IAM |
+| Needs an agent on the node | No | **Yes** — the **EKS Pod Identity Agent** `DaemonSet` |
+| Who assumes the credentials | Each AWS SDK in each Pod | The **EKS Auth service**, once per node, then handed to Pods |
+
+AWS's own framing: *"EKS Pod Identity is a simpler method than IAM roles for service accounts,
+as this method doesn't use OIDC identity providers."* Both are correct answers to "give this
+Pod its own permissions"; the node role never is. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — "attach the IAM role to the EKS node group"
+> It is the wrong *shape*, not merely the untidy option: every Pod on that node inherits it,
+> so least privilege is impossible and one compromised Pod reaches every other Pod's
+> permissions. The answer is **IRSA** (OIDC provider + role trust policy) or **EKS Pod
+> Identity** (association via the EKS API, no OIDC). If a question stresses *"without
+> managing an OIDC provider"* or *"the same role across several clusters"*, it wants **Pod
+> Identity** specifically.
+
+### Encryption of Kubernetes API data (what used to be "secret encryption")
+
+Worth knowing because the exam still asks the **old** version. EKS **used to** offer optional
+**envelope encryption of Kubernetes Secrets** with a customer managed KMS key. AWS now
+provides *"default envelope encryption for all Kubernetes API data in EKS clusters running
+Kubernetes version 1.28 or higher"* — so it is **on by default**, and it covers **all API
+data** (`ConfigMaps` included), not just Secrets.
+
+The mechanism is standard envelope encryption and worth being able to recite: the plaintext
+is encrypted with a **data encryption key (DEK)** before it is written to **etcd**, and the
+DEK is itself encrypted by a **root KMS key (the KEK)** held in AWS KMS. Scope limit that
+decides questions: *"Envelope encryption does not apply to data on nodes or EBS volumes"* —
+for those you want EBS encryption, which is a different control. *(Verified 2026-10-14.)*
+
 ### ALB target types
 | | `instance` | `ip` |
 |---|---|---|

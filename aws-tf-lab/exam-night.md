@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 368 pointers · ~31 min read*
+*176 recall hooks · 371 pointers · ~31 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -732,6 +732,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[17-containers#⚠️ Traps — why the wrong answer looks right|open]]
 - scale an ECS service by putting a scaling policy on its Auto Scaling group
 - "enable the Horizontal Pod Autoscaler" is the whole answer for an EKS traffic surge
+- "attach the IAM role to the EKS node group"
 - "ECS or Fargate?"
 - target_type on a Fargate service
 - a green apply is not a green deployment
@@ -747,6 +748,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[17-containers#ECS vs EKS|ECS vs EKS]]
 - [[17-containers#EC2 launch type vs Fargate|EC2 launch type vs Fargate]]
 - [[17-containers#Task execution role vs task role|Task execution role vs task role]]
+- [[17-containers#Giving a *Pod* an IAM role — IRSA vs EKS Pod Identity|Giving a Pod an IAM role — IRSA vs EKS Pod Identity]]
+- [[17-containers#Encryption of Kubernetes API data (what used to be "secret encryption")|Encryption of Kubernetes API data (what used to be "secret encryption")]]
 - [[17-containers#ALB target types|ALB target types]]
 - [[17-containers#ECR vs Docker Hub|ECR vs Docker Hub]]
 
