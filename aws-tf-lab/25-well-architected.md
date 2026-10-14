@@ -120,7 +120,9 @@ These three get offered together and are genuinely different jobs:
 - **Trusted Advisor** — *AWS inspects your resources* against a fixed set of best-practice checks. Objective, account-wide, advisory.
 - **AWS Config** — *continuously records configuration and evaluates rules*, with history, drift detection and auto-remediation ([[20-monitoring]]). Continuous and enforceable.
 
-"Continuously evaluate and remediate" is **Config**. "Am I over-provisioned / is root MFA on?" is **Trusted Advisor**. "Review this architecture against best practices" is the **WA Tool**.
+"Continuously evaluate and remediate" is **Config**. "Sweep my whole account against best practice — root MFA, public buckets, idle load balancers, quota usage" is **Trusted Advisor**. "Review this architecture against best practices" is the **WA Tool**.
+
+The line that matters between Trusted Advisor and **Compute Optimizer**, because both get described as finding waste: Trusted Advisor runs a **fixed checklist across six categories** and *flags* a resource; it never tells you what size to use instead. Compute Optimizer reads **CloudWatch utilisation metrics** and returns **a specific recommended instance type**. If the stem wants a named replacement size, it is Compute Optimizer ([[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)]]); if it wants an account-wide list of what is wasteful or insecure, it is Trusted Advisor.
 
 > In one line: WA Tool reviews design, Trusted Advisor inspects resources, Config continuously evaluates and remediates.
 

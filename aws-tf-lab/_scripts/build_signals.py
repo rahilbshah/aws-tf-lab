@@ -33,8 +33,17 @@ def norm(s):
     wraps at a different column than the JSON does. Neither difference means
     the fact changed, so both are normalised away before comparing. Nothing
     ELSE is normalised — if a word, number or negation differs, it fails.
+
+    Emphasis markers are stripped WHOLESALE rather than via _lib.clean(). A
+    quote that starts or ends inside a **bold** span carries one orphaned '**'
+    that clean() cannot pair off, so it survives on the quote side while the
+    note's balanced span is removed — and the comparison fails on a fact that
+    is verbatim present. That cost 6 of the first 8 rejections on 2026-10-14.
+    Stripping is safe here because this string is only ever compared, never
+    rendered; _lib.clean still guards the output path, where `rds:*` matters.
     """
-    return re.sub(r'\s+', ' ', _lib.clean(s)).strip().lower()
+    s = re.sub(r'[*_`]+', '', s)          # see below
+    return re.sub(r'\s+', ' ', s).strip().lower()
 
 def main():
     strict = '--strict' in sys.argv

@@ -219,6 +219,15 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 | **Cost Optimization Hub** | "what should I change, ranked?" |
 | **Trusted Advisor** | "which *deployed resources* break best practice?" — including **service quota usage** |
 
+**Trusted Advisor vs Compute Optimizer — do not let "over-provisioned" decide it.** Both
+services are described as finding waste, and AWS uses overlapping words for them (Compute
+Optimizer *"identif[ies] idle resources"*; Trusted Advisor saves money too). The split is
+**what the answer has to produce**: Compute Optimizer returns **a specific recommended
+instance type** from CloudWatch utilisation; Trusted Advisor returns **a checklist across six
+categories** and only flags the resource. One named workload needing a new size → Compute
+Optimizer. An account-wide sweep listed next to root MFA, public buckets or quota usage →
+Trusted Advisor.
+
 **Trusted Advisor is the odd one out here, and the exam leans on it.** It does not read your
 bill; it *"inspects your AWS environment, and then makes recommendations when opportunities
 exist to save money, improve system availability and performance, or help close security
@@ -238,7 +247,7 @@ Tolerance checks only** — the full set needs **Business or Enterprise** Suppor
 | Fixes cost from | **Over-provisioning** — paying for CPU/memory nobody uses | Nothing; it adds capacity and adds cost |
 | Fixes availability | **No** — still one instance, still one AZ | **Yes** — multiple instances across AZs |
 | Ceiling | The largest instance type in the family | Effectively none |
-| Stem wording | "over-provisioned", "under-utilised", "right-size", "reduce cost with no architecture change" | "handle the peak", "improve availability", "no single point of failure" |
+| Stem wording | "right-size", "what instance type should this be", "under-utilised", "reduce cost with no architecture change" | "handle the peak", "improve availability", "no single point of failure" |
 
 The exam pairs these deliberately. *"Resolve the performance issue **and** improve
 availability"* wants **one of each** — Compute Optimizer for the sizing, an ASG behind a load

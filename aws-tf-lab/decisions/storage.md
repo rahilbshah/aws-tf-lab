@@ -71,7 +71,7 @@ differs is **availability and AZ count**. Two questions settle it:
 **Unpredictable access is the tell for Intelligent-Tiering** — it is the only class
 with no minimum duration, so it is the safe answer when the pattern is unknown.
 
-↳ [[09-s3-intro#Storage classes (verified against AWS docs 2026-08)|Storage classes]] · [[09-s3-advanced#Glacier retrieval tiers (verified)]]
+↳ [[09-s3-intro#Storage classes (verified against AWS docs 2026-08)|Storage classes]] · [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]]
 
 ## 5. Is on-premises involved?
 
