@@ -84,16 +84,23 @@ def main():
            'middle column as the answer, and use the right column to kill the neighbour you',
            'would otherwise pick.', '']
 
+    # NOT a table. A three-column table of prose does not fit Obsidian's reading
+    # width, so columns 2 and 3 — the answer and the eliminated neighbour — are
+    # cut off entirely and the page shows only the question half. Reported
+    # 2026-10-14 with a screenshot. Stacked lines wrap at any width, and survive
+    # GitHub's renderer and a phone screen too.
     for sect in sorted(groups):
-        rows = groups[sect]
-        out.append(f'\n## {sect}\n')
-        out.append('| The stem says | The answer is | Not — because |')
-        out.append('|---|---|---|')
-        for e in sorted(rows, key=lambda r: r['signal'].lower()):
+        rows = sorted(groups[sect], key=lambda r: r['signal'].lower())
+        out.append(f'\n## {sect}  ·  {len(rows)}\n')
+        for e in rows:
             tgt = _lib.link(e['note'][:-3], e.get('heading') or None,
-                            _lib.clean(e['answer']), table=True)
+                            _lib.clean(e['answer']))
             against = _lib.clean(e.get('against') or '')
-            out.append(f"| {_lib.clean(e['signal'])} | {tgt} | {against or '—'} |")
+            out.append(f"**{_lib.clean(e['signal'])}**")
+            out.append(f"→ {tgt}")
+            if against:
+                out.append(f"✗ {against}")
+            out.append('')
 
     if stale:
         out += ['', '---', '', '## ⚠️ Dropped — the note no longer supports these', '']
