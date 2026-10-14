@@ -2943,12 +2943,12 @@
   "section": "AI / ML"
  },
  {
-  "signal": "add the capability \"without machine learning expertise\", \"fully managed\", \"minimal development effort\" or \"as quickly as possible\"",
-  "answer": "The matching pre-trained AI service — one API call, no model",
-  "against": "SageMaker: correct only when the stem asks for a custom model trained on the company's own data, and its always-on endpoint contradicts any low-cost/low-overhead framing",
+  "signal": "\"train a custom model on our own data\" / \"our data science team\" / \"our own algorithm\" — the ONLY wording that moves an ML question off a pre-trained service",
+  "answer": "SageMaker",
+  "against": "A pre-trained API (Rekognition, Textract, Comprehend, Transcribe, Polly, Translate). Note the direction: \"no ML expertise\" / \"fully managed\" / \"quickly add X\" / \"minimal development effort\" appears in a huge share of ALL SAA stems and is NOT by itself a signal — it only tells you to stay on the pre-trained side, and the modality named in the stem then picks which one. Choosing SageMaker because it sounds more serious is the single most common ML wrong answer",
   "note": "23-machine-learning.md",
-  "heading": "Traps",
-  "quote": "SageMaker is the distractor and a pre-trained API is the answer.",
+  "heading": "The two splits that actually get tested",
+  "quote": "Picking SageMaker when a one-line API would do is the single most common ML wrong answer, because it sounds more serious.",
   "section": "AI / ML"
  },
  {

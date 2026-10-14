@@ -93,11 +93,17 @@ def main():
         rows = sorted(groups[sect], key=lambda r: r['signal'].lower())
         out.append(f'\n## {sect}  ·  {len(rows)}\n')
         for e in rows:
-            tgt = _lib.link(e['note'][:-3], e.get('heading') or None,
-                            _lib.clean(e['answer']))
+            # Two trailing spaces = a HARD line break. Without them Markdown
+            # joins these three lines into one paragraph and the entry reads as
+            # a wall of text with the answer buried mid-sentence (reported with
+            # a screenshot, 2026-10-14). The answer is plain text and the note
+            # link is a short tag at the end, so the eye lands on the answer
+            # rather than on a long blue wikilink running into the next clause.
+            note = e['note'][:-3]
+            out.append(f"**{_lib.clean(e['signal'])}**  ")
+            out.append(f"→ **{_lib.clean(e['answer'])}** "
+                       f"{_lib.link(note, e.get('heading') or None, note)}  ")
             against = _lib.clean(e.get('against') or '')
-            out.append(f"**{_lib.clean(e['signal'])}**")
-            out.append(f"→ {tgt}")
             if against:
                 out.append(f"✗ {against}")
             out.append('')
