@@ -253,6 +253,15 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 > [!warning] Trap — "add the IGW route to the main route table to make setup simpler"
 > Never. That makes every unassociated subnet public by default — a subnet you forget to wire becomes internet-exposed. Keep custom route tables and explicit associations so forgotten subnets fail closed.
 
+> [!warning] Trap — "an instance with its own public IP still needs a NAT gateway or NAT instance"
+> No. For IPv4 the **internet gateway does the translation itself**: AWS says it *"logically provides the one-to-one NAT on behalf of your instance"* — outbound, the reply address is set to the instance's public IPv4 or Elastic IP; inbound, traffic to that public address *"has its destination address translated into the instance's private IPv4 address before the traffic is delivered to the VPC"*. NAT gateways are for instances **without** a public IP (private subnets). *(Verified 2026-10-14.)*
+
+> [!warning] Trap — "`us-east-1a` is the same physical AZ in every account"
+> No. AWS *"maps the physical Availability Zones **randomly** to the Availability Zone names for each AWS account"*, so your `us-east-1a` *"might not represent the same physical location as `us-east-1a` for a different AWS account"*. The cross-account identifier is the **AZ ID** (e.g. `use1-az1`) — *"a unique and consistent identifier for an Availability Zone across all AWS accounts"*. Use AZ IDs when lining up AZs across accounts — e.g. when sharing subnets with VPC sharing ([[05-vpc-endpoints-peering]]). *(Verified 2026-10-14.)*
+
+> [!warning] Trap — "convert the VPC to IPv6-only" to get past IPv4 exhaustion
+> Impossible. Secondary CIDR blocks can be disassociated, but *"you cannot disassociate the CIDR block with which you originally created the VPC (the primary CIDR block)"* — so a VPC always keeps its primary IPv4 CIDR and there is no IPv6-only VPC to convert to. What does exist is an **IPv6-only subnet**: *"The subnet has an IPv6 CIDR block but does not have an IPv4 CIDR block. The VPC must have an IPv6 CIDR block."* So a VPC that has run out of IPv4 addresses can still grow by adding **IPv6-only subnets** (AWS documents both facts but doesn't spell out this combination). *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **NAT gateway subnet placement** — put it in a *private* subnet on the first try; it must be **public** (that's its own door to the IGW). The private RT points *at* it.
@@ -274,3 +283,4 @@ Exam default: **NAT gateway** unless the question emphasizes cost-at-tiny-scale 
 - [Internet gateways](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html) — "even if they have public IP addresses", the one-to-one NAT the IGW performs, and the default-vs-nondefault VPC table showing the default VPC's main route table *does* route to the IGW; verified 2026-10-04
 - [VPC CIDR blocks](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html) — /16–/28, cannot resize, restricted ranges, the 172.17.0.0/16 warning; verified 2026-10-04
 - [Amazon VPC pricing](https://aws.amazon.com/vpc/pricing/) — NAT gateway $0.045/hr + $0.045/GB; regional NAT billed per hour per AZ; verified 2026-10-04
+- [AZ IDs for your AWS resources (AWS RAM)](https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html) — AZ names mapped randomly per account, AZ ID consistent across accounts, the shared-subnet consequence; verified 2026-10-14

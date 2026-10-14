@@ -161,11 +161,14 @@ It covers a wide spread: EC2, EBS, S3, RDS, Aurora, DynamoDB, EFS, all four FSx 
 - **EFS mount targets:** **only one per Availability Zone**, placed in **one subnet** of that AZ — EC2 instances in *any* subnet of that AZ then share it. Each mount target has its **own security group**, which is what decides who may reach the file system. To change the VPC you must delete the mount targets first. *(Verified 2026-09-30.)*
 - **EFS encryption:** at rest is enabled **at creation** (encrypts data *and* metadata); in transit is enabled **at mount time**. Network access via security groups + IAM; in-file-system permissions via POSIX.
 - **FSx for Windows** speaks **SMB 2.0–3.1.1**, requires **Microsoft Active Directory**, and offers **Single-AZ or Multi-AZ** (Multi-AZ provisions a standby file server in another AZ). SSD and HDD storage; storage, SSD IOPS and throughput are provisioned independently. Encrypted at rest with KMS, in transit with SMB Kerberos session keys. Reachable from on-premises over **Direct Connect or Site-to-Site VPN**, and cross-VPC/account/Region via peering or Transit Gateway.
+- **FSx for Windows tops out at 64 TiB per file system.** To go past it — up to **hundreds of petabytes** — group shares on **several** FSx for Windows file systems into one folder structure with **Microsoft DFS Namespaces**, so a single path reaches files on all of them. The same trick also scales **performance**, since clients read and write the file systems in parallel. *(Verified 2026-10-14.)*
 - **FSx for Lustre** is POSIX-compliant and **Linux-only** (needs the Lustre client). **Scratch** file systems are **not replicated** and do not survive a file server failure; **persistent** ones are replicated and failed servers are replaced. Storage classes: SSD, Intelligent-Tiering, HDD.
 - **FSx for Lustre + S3:** linking a bucket presents its objects as files; Amazon FSx imports file listings at creation and can import later additions, and data can be written back to S3.
 - **Storage Gateway** deploys as a VM on **VMware ESXi, KVM, Microsoft Hyper-V or Nutanix AHV**, as a hardware appliance, or as an **EC2 instance** (useful for DR and mirroring).
 - **Volume Gateway is iSCSI.** *Cached*: data lives in **S3**, frequently-accessed subset retained locally. *Stored*: **all** data local, asynchronous point-in-time snapshots to S3, recoverable to your data centre **or to EC2**.
+- **Tape Gateway** presents a **virtual tape library (VTL) over iSCSI** so existing backup software keeps writing tapes. Tapes in the VTL are backed by **S3**. When the backup software **ejects** a tape, the gateway moves it to the **archive** (the virtual tape shelf), backed by **S3 Glacier Flexible Retrieval or S3 Glacier Deep Archive**. An archived tape can't be read in place: you **retrieve** it back to the VTL first — typically **3–5 hours** from Flexible Retrieval, typically **12 hours** from Deep Archive. So decade-long, rarely-read tape retention → **Tape Gateway archiving to Deep Archive**, accepting the ~12-hour retrieval. *(Verified 2026-10-14.)*
 - **DataSync** sources: on-prem **NFS, SMB, HDFS, object storage**, and other clouds (Azure Blob/Files, Google Cloud Storage, and others). Destinations: **S3, EFS, FSx for Windows / Lustre / OpenZFS / NetApp ONTAP**. Includes **automatic encryption and data integrity validation**, supports **VPC endpoints** so traffic avoids the public internet, and uses a purpose-built parallel protocol.
+- **DataSync to S3 writes straight into the storage class you choose** on the S3 location (Standard by default), including **Glacier Deep Archive** — so a migration can land **directly in Deep Archive** with no lifecycle step. (Objects under 40 KB go to Standard instead.) *(Verified 2026-10-14.)*
 - **Snowball Edge:** Storage Optimized **210 TB** or Compute Optimized; network adapters up to **100 Gbit/s**; encryption enforced at rest and in transit; devices can be **clustered (3–16)**; supports **NFSv3/v4/v4.1** and the S3 API. Can run EC2 instances and Lambda via IoT Greengrass at the edge. ⚠️ **No longer available to new customers** (the whole Snow Family) — see the currency callout above.
 - **AWS Backup** supports EC2, EBS, S3, RDS (all engines, incl. Multi-AZ clusters), Aurora, DynamoDB, EFS, all four FSx types, Storage Gateway volumes, DocumentDB, Neptune, Redshift, **Timestream for LiveAnalytics** (*not* Timestream for InfluxDB), EKS, CloudFormation, SAP HANA on EC2, and VMware Cloud on AWS. Backups are **incremental for supported resource types** (others are full copies each time — a real cost consideration). **Cross-account** backup requires an **AWS Organizations** structure. [[14-dr-resilience]] carries the RPO/RTO angle on all this; this note owns the AWS Backup mechanics.
 - ⚠️ Pricing for EFS, FSx, Storage Gateway, DataSync and Snow changes; check current rates rather than memorising figures. The exam tests *service choice*, not price points.
@@ -201,6 +204,32 @@ row below is exam material rather than something you could order today. See the 
 | OS | any | **Linux only** | Windows (and Linux SMB clients) | **Linux only** | any |
 | Capacity | provisioned | **elastic** | provisioned | provisioned (SSD/HDD) or **elastic** (Intelligent-Tiering) | elastic |
 | Reach for it when | boot volume, single-instance disk | shared Linux file system | Windows app, AD auth, SMB | HPC/ML speed, S3-backed compute | objects, static content, backup |
+
+### EFS throughput modes: Elastic vs Provisioned vs Bursting
+
+AWS publishes this as a decision list; the **5% average-to-peak ratio** is the axis.
+
+|   | **Elastic** | **Provisioned** | **Bursting** |
+|---|---|---|---|
+| Throughput comes from | scales up and down **automatically**; nothing to provision | a level **you specify** | **stored data**: base **50 KiBps per GiB** of Standard-class storage |
+| You pay for | data **read or written** | the throughput you provision **above** your baseline | — |
+| Pick it when | **spiky / unpredictable**, or average-to-peak **≤ 5%** | you **know** the requirement, or average-to-peak **≥ 5%** | AWS's exit rule: using **> 80%** of permitted throughput or **running out of credits** → move to Elastic or Provisioned |
+
+*(Verified 2026-10-14.)*
+
+### S3 File Gateway vs FSx File Gateway
+
+"Low-latency" doesn't separate these — AWS describes **both** as low-latency access. Decide on **what backs the share and which protocols it speaks**.
+
+|   | **S3 File Gateway** | **FSx File Gateway** |
+|---|---|---|
+| Data lives in | **objects in S3** — so S3 lifecycle, cross-Region replication and versioning apply | file shares in an **existing FSx for Windows File Server**, mapped **1:1** to local shares |
+| Protocols | **NFS v3/v4.1 and SMB v2/v3** | **SMB only** (Windows) |
+| Local behaviour | **local caching** for low-latency access | low-latency access to the cloud FSx shares |
+| Pick it when | legacy on-prem app wants an NFS/SMB share with local caching, backed by cloud storage | the stem demands native Windows file-server semantics (AD, ACLs) on existing FSx shares |
+| Availability | current | ⚠️ **closed to new customers** — still appears in exam options |
+
+*(Verified 2026-10-14.)*
 
 ### Volume Gateway: cached vs stored
 
@@ -248,6 +277,9 @@ row below is exam material rather than something you could order today. See the 
 > [!warning] Trap — Snowcone is still the answer for the smallest, most portable job
 > Not orderable any more. AWS closed the **entire Snow Family** to new customers, not just Snowball Edge — "AWS will no longer offer any AWS Snow Family devices for new customers to order." Learn the device-selection logic because SAA-C03 still asks it, but know that in practice the answer today is DataSync, AWS Data Transfer Terminal, a Partner solution, or Outposts.
 
+> [!warning] Trap — "take a DynamoDB on-demand backup and copy it to the other account"
+> Copying a DynamoDB backup **cross-account** is an **AWS Backup** capability, not a DynamoDB one: it needs AWS Backup's **advanced DynamoDB backup features**, plus the Organizations requirement above. DynamoDB's own backup API has **no copy or share operation**, and its restores are documented as same- or cross-**Region** only — no documented cross-**account** route. Scheduled, automated, cross-account DynamoDB protection → **AWS Backup**. *(Verified 2026-10-14.)*
+
 > [!warning] Trap — Lustre scratch vs persistent read as a speed choice
 > The difference is **durability**, not performance. Scratch is **not replicated** and does not survive a file server failure; persistent is replicated with automatic server replacement. If the question mentions long-running work or data you can't re-create, it's persistent.
 
@@ -279,4 +311,9 @@ row below is exam material rather than something you could order today. See the 
 - [What is Volume Gateway](https://docs.aws.amazon.com/storagegateway/latest/vgw/WhatIsStorageGateway.html) — cached vs stored, iSCSI, deployment options; verified 2026-09-05
 - [What is AWS DataSync](https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html) — sources/destinations, integrity validation, VPC endpoints; verified 2026-09-05
 - [What is Snowball Edge](https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html) — 210 TB Storage Optimized, clustering, protocols, **and the notice that it is closed to new customers**; verified 2026-09-05
+- [FSx for Windows — DFS Namespaces](https://docs.aws.amazon.com/fsx/latest/WindowsGuide/using-dfs-namespaces.html) — 64 TiB per file system, scale to hundreds of PB, scale-out performance; verified 2026-10-14
+- [How Tape Gateway works](https://docs.aws.amazon.com/storagegateway/latest/tgw/StorageGatewayConcepts.html) — VTL backed by S3, archive to Glacier Flexible Retrieval / Deep Archive, 3–5 h vs 12 h retrieval; verified 2026-10-14
+- [DataSync S3 location — storage classes](https://docs.aws.amazon.com/datasync/latest/userguide/create-s3-location.html) — destination storage class, 40 KB rule and verify option for archive classes; verified 2026-10-14
+- [What is S3 File Gateway](https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html) · [What is FSx File Gateway](https://docs.aws.amazon.com/filegateway/latest/filefsxw/what-is-file-fsxw.html) — protocols, local caching, FSx prerequisites, FSx File Gateway closed to new customers; verified 2026-10-14
+- [AWS Backup advanced DynamoDB backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/advanced-ddb-backup.html) — cross-Region and cross-account copy for DynamoDB via AWS Backup; verified 2026-10-14
 - [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) — backup plans/vaults, tag-based assignment, cross-Region and cross-account, Vault Lock WORM, supported services; verified 2026-09-05

@@ -401,6 +401,18 @@ flowchart TB
 | Failover | Automatic | Manual promote |
 | Trigger words | "survive AZ failure", "HA" | "offload reads", "reporting", "scale reads" |
 
+### Multi-AZ DB instance vs Multi-AZ DB cluster
+
+|   | Multi-AZ **DB instance** | Multi-AZ **DB cluster** |
+|---|---|---|
+| Topology | primary + one standby in another AZ | a **writer + two readers** in **three** AZs, one Region |
+| Replication | **synchronous** | **semisynchronous** — a commit needs **at least one** reader to acknowledge |
+| Write latency | increased vs Single-AZ | **lower** than a Multi-AZ DB instance — AWS's product page: *"Up to 2x faster transaction commits compared to Amazon RDS Multi-AZ with one standby"* (commit latency, not throughput) |
+| Failover | ~60–120s (see Key facts) | *"typically under 35 seconds"* |
+| Engines | — | **MySQL and PostgreSQL only** — *"Multi-AZ DB clusters aren't available with"* Db2, MariaDB, Oracle or SQL Server |
+
+*(Verified 2026-10-14.)*
+
 ### RDS vs Aurora
 
 |   | RDS (MySQL/Postgres) | Aurora |
@@ -579,3 +591,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 - [Aurora Serverless v2](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html) / [requirements & capacity range](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.requirements.html) / [Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)
 - [IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) — engines, 15-min token lifetime, SSL/TLS, 300–1000 MiB memory, CloudTrail non-logging, unsupported condition keys; verified 2026-08-29
 - [IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) — `rds-db:connect`, the `dbuser` ARN format, DbiResourceId; verified 2026-08-29
+- [Multi-AZ DB cluster deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html) — writer + two readers in three AZs, semisynchronous, lower write latency than a Multi-AZ DB instance, supported instance classes; verified 2026-10-14
+- [Failover for Multi-AZ DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts-failover.html) — typically under 35 seconds, replica lag resolved first; verified 2026-10-14
+- [Multi-AZ DB cluster engine support](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RDS_Fea_Regions_DB-eng.Feature.MultiAZDBClusters.html) — not available for Db2, MariaDB, Oracle, SQL Server; verified 2026-10-14
+- [RDS Multi-AZ feature page](https://aws.amazon.com/rds/features/multi-az/) — **product page, not the User Guide**: "up to 2x faster transaction commits" vs Multi-AZ with one standby; verified 2026-10-14

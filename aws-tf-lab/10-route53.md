@@ -207,6 +207,17 @@ flowchart TB
 
 *The pairs that get confused: **simple vs multivalue** (health checking is the whole difference) and **geolocation vs geoproximity** (users vs resources).*
 
+### Active-active vs active-passive failover (Route 53's own naming)
+
+|   | **Active-active** | **Active-passive** |
+|---|---|---|
+| Configured with | **any routing policy other than failover** (or a combination) — weighted, latency, etc., with health checks | the **failover** routing policy |
+| Choose when | you want **all** your resources available the majority of the time | a **primary** set serves most of the time, a **secondary** set waits on standby |
+| What Route 53 returns | any **healthy** record sharing the name, type and policy — all are active unless unhealthy | only healthy primaries; healthy secondaries **only when all primaries are unhealthy** |
+| Documented exception | — | AWS also builds active-passive from **weighted** records: nonzero weights as primaries, **weight 0** as the standby (see the weight-0 trap below) |
+
+*A stem that says all resources should serve traffic rules out the failover policy. AWS: "You configure active-active failover using any routing policy (or combination of routing policies) other than failover, and you configure active-passive failover using the failover routing policy." The general DR meaning of these terms is in [[14-dr-resilience]]. (Verified 2026-10-14.)*
+
 ### AWS endpoint vs non-AWS endpoint (health-check billing)
 
 |   | AWS endpoint | Non-AWS endpoint |
@@ -322,4 +333,5 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 - [How Route 53 determines health](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-determining-health-of-endpoints.html) — 18% rule, 4s/2s and 10s timings, no cert validation, calculated + CloudWatch types; verified 2026-09-03
 - [Health check values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/health-checks-creating-values.html) — interval options, failure threshold, private-IP restriction, optional-feature charges; verified 2026-09-03
 - [Route 53 VPC Resolver](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver.html) — VPC+2, inbound/outbound direction, resolver rules, rename note; verified 2026-09-04
+- [Active-active and active-passive failover](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-types.html) — non-failover policies = active-active, failover policy = active-passive, the weighted zero-weight variant; verified 2026-10-14
 - [Route 53 pricing](https://aws.amazon.com/route53/pricing/) — $0.50/zone, 12-hour deletion waiver, 50 free AWS health checks, $1/$2 optional features, $0.40/million queries; verified 2026-09-03

@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*119 comparison tables · 220 discriminators · ~44 min read*
+*133 comparison tables · 268 discriminators · ~56 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -62,6 +62,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[01-iam-advanced|note]]
 - **Bool vs BoolIfExists for MFA** — aws:MultiFactorAuthPresent is not present at all for long-term access-key requests. A Deny on Bool: {"aws:MultiFactorAuthPresent": "false"} therefore does not fire for CLI access-key calls (the key is missing, not false), while an Allow gated on Bool ... "true" blocks them.  
   ↳ [[01-iam-advanced|note]]
+- **"require MFA before these CLI calls": GetSessionToken vs AssumeRole vs GetFederationToken** — The STS call for an IAM user's own long-term credentials is **GetSessionToken**. AWS: *"MFA-enabled IAM users must call GetSessionToken and submit an MFA code that is associated with their MFA device. Using the temporary security credentials that the call returns, IAM users can then make programmatic calls to API operations that require MFA authentication."* The session keeps the user's own permissions.  
+  ↳ [[01-iam-advanced|note]]
 - **Control Tower vs Organizations** — Organizations is the primitive: accounts, OUs, SCPs. Control Tower orchestrates it — it builds a landing zone using Organizations + IAM Identity Center + Service Catalog, provides Account Factory for standardised account vending, and applies controls/guardrails in three flavours: preventive, implemented using SCPs, RCPs and declarative policies (all part of Organizations); detective, implemented using AWS Config rules; and proactive, implemented using CloudFormation hooks, plus drift detection.  
   ↳ [[01-iam-advanced|note]]
 - **aws:SourceIp behind a VPC endpoint** — The key is simply absent for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic.  
@@ -70,11 +72,13 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[02-ec2|02 – EC2 (Elastic Compute Cloud)]]
 
-**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]] · [[02-ec2#How `gp2` and `gp3` actually earn their IOPS|How gp2 and gp3 actually earn their IOPS]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
+**Compare:** [[02-ec2#Stop vs Terminate|Stop vs Terminate]] · [[02-ec2#Root volume vs data volume — the "Delete on termination" default|Root volume vs data volume — the "Delete on termination" default]] · [[02-ec2#EBS vs Instance Store|EBS vs Instance Store]] · [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]] · [[02-ec2#How `gp2` and `gp3` actually earn their IOPS|How gp2 and gp3 actually earn their IOPS]] · [[02-ec2#The three placement strategies|The three placement strategies]] · [[02-ec2#Compute vs memory vs storage optimized — which bottleneck each answers|Compute vs memory vs storage optimized — which bottleneck each answers]] · [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]] · [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
 - **EFA offered for any HPC stem** — The word "HPC" is not the discriminator; the OS and the instance family are. **Linux on a supported non-t instance type → EFA is available. Windows (outside AWS CDI SDK applications), or any t3/t3a/burstable type → EFA is not available, and the answer is plain ENA enhanced networking**, which still delivers the bandwidth, packet-rate and latency gain.  
   ↳ [[02-ec2|note]]
 - **a spiky 3,000-IOPS requirement read as a Provisioned IOPS question** — "Peaks hitting a maximum of 3,000 IOPS" on an occasionally-used volume is a **gp2/gp3** answer, not io1/io2.  
+  ↳ [[02-ec2|note]]
+- **io1 and io2 share one IOPS-per-GiB ratio** — They don't. **io1: maximum 50:1** provisioned IOPS to GiB — AWS's example is a 100 GiB volume capped at 5,000 IOPS, so a 10 GiB io1 tops out at 500, and the 64,000 maximum needs ≥ 1,280 GiB.  
   ↳ [[02-ec2|note]]
 - **cluster chosen for availability, or spread for scale** — They pull in opposite directions and the wrong one is always offered. Cluster is a single AZ — picking it for "high availability" actively concentrates risk; it is a performance choice.  
   ↳ [[02-ec2|note]]
@@ -92,14 +96,28 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[02-ec2|note]]
 - **EIP is free while attached** — Was true pre-Feb 2024. Now every public IPv4 (auto-assigned and EIP) bills hourly regardless of attachment state.  
   ↳ [[02-ec2|note]]
+- **user data runs on every boot** — No. By default "user data scripts and cloud-init directives run only during the boot cycle when you first launch an instance" — not on a reboot or stop/start (Windows has the same default).  
+  ↳ [[02-ec2|note]]
+- **a default-tenancy VPC means shared hardware** — Not necessarily. A VPC has its own instance tenancy attribute (default or dedicated), separate from the tenancy you set when you launch an instance.  
+  ↳ [[02-ec2|note]]
+- **you must stop the instance (or detach the volume) to snapshot it** — No. EBS snapshot creation is asynchronous and point-in-time: *"The snapshot is created immediately, but it remains in the pending state until all of data has been transferred to Amazon S3.  
+  ↳ [[02-ec2|note]]
+- **a volume restored from a snapshot is slow, so buy a faster volume type** — The slowness is volume initialization, not the volume type: "For volumes created from snapshots, the data blocks must be downloaded from Amazon S3 to the new volume... During this time, the volume being initialized might experience increased I/O latency and decreased performance." (Empty new volumes don't have this.) The fix is fast snapshot restore (FSR), enabled per snapshot per AZ: volumes are "fully initialized at creation".  
+  ↳ [[02-ec2|note]]
+- **the On-Demand limit is a count of instances** — It isn't. On-Demand capacity is a quota per account per Region, counted in vCPUs of running instances "regardless of the instance type", with separate quotas per family group (Standard, GPU, etc.).  
+  ↳ [[02-ec2|note]]
+- **sharing an encrypted AMI, or copying it back to unencrypted** — Sharing with specific accounts means granting explicit launch permissions to their 12-digit account IDs.  
+  ↳ [[02-ec2|note]]
 
 
 ## [[04-alb-asg|04 – ALB + Auto Scaling Group]]
 
-**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Target-group health check vs ASG health-check type|Target-group health check vs ASG health-check type]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]] · [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]] · [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
+**Compare:** [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]] · [[04-alb-asg#Target type — `instance` vs `ip`|Target type — instance vs ip]] · [[04-alb-asg#Sticky sessions — duration-based vs application-based|Sticky sessions — duration-based vs application-based]] · [[04-alb-asg#Target-group health check vs ASG health-check type|Target-group health check vs ASG health-check type]] · [[04-alb-asg#Scaling policy types|Scaling policy types]] · [[04-alb-asg#Predefined termination policies|Predefined termination policies]] · [[04-alb-asg#What cross-zone actually changes — the arithmetic|What cross-zone actually changes — the arithmetic]] · [[04-alb-asg#Sizing for AZ loss — required capacity × AZ count|Sizing for AZ loss — required capacity × AZ count]]
 
 - **suspending ScheduledActions to protect an instance during maintenance** — It is the wrong process. ScheduledActions pauses scheduled scaling actions; the process that terminates and relaunches an instance the group considers unhealthy is **ReplaceUnhealthy — and AWS pairs it with HealthCheck**, which stops the verdict being formed in the first place.  
   ↳ [[04-alb-asg#How it actually works|note]]
+- **"a target group can't hold another Region's instances"** — Too strong, and the counter-example is on AWS's own page. ELB "automatically distributes your incoming traffic across multiple targets … in one or more Availability Zones"; spreading load over several Regions is a different mechanism — Global Accelerator ("distribute traffic across multiple load balancers in one or more AWS Regions") or Route 53 failover between two Regions' load balancers.  
+  ↳ [[04-alb-asg#Comparisons|note]]
 - **cross-zone distribution computed as if the AZs were merged** — With cross-zone off, traffic splits per AZ first, then within the AZ. The wrong answer divides by the total target count and gives every target the same share — which is the cross-zone-on answer.  
   ↳ [[04-alb-asg#Comparisons|note]]
 - **minimum capacity set to N when an AZ must be survivable** — The stem gives a required capacity and an AZ count, and the wrong options are near-misses on the same arithmetic: min set to N (right total, no spare zone) · the correct total parked in one AZ · one instance per AZ across N AZs (total right, per-AZ wrong) · max below the stated peak.  
@@ -118,6 +136,10 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[04-alb-asg#Worked examples|note]]
 - **redirect on the wrong load balancer, or the wrong direction** — redirect is an ALB (Layer 7) listener action; an NLB operates at Layer 4 and cannot inspect or rewrite HTTP, so "redirect HTTP to HTTPS on an NLB" is always wrong.  
   ↳ [[04-alb-asg#Worked examples|note]]
+- **a *.example.com host-header rule and the apex** — AWS's own example: *"The rule *.example.com matches test.example.com but doesn't match example.com."* To serve both, add example.com as a second value.  
+  ↳ [[04-alb-asg#Worked examples|note]]
+- **warm pool vs instance warm-up** — Similar names, different jobs. Instance warm-up excludes a new instance's metrics from scaling decisions; it does not make the instance boot any faster. A warm pool keeps instances already initialised (stopped, hibernated or running) beside the group, so a scale-out skips the slow boot.  
+  ↳ [[04-alb-asg#Worked examples|note]]
 
 
 ## [[05-vpc-core|05.1 – VPC Core (subnets, routing, IGW, NAT)]]
@@ -128,17 +150,25 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[05-vpc-core#Worked examples|note]]
 - **"add the IGW route to the main route table to make setup simpler"** — Never. That makes every unassociated subnet public by default — a subnet you forget to wire becomes internet-exposed.  
   ↳ [[05-vpc-core#Worked examples|note]]
+- **"an instance with its own public IP still needs a NAT gateway or NAT instance"** — No. For IPv4 the internet gateway does the translation itself: AWS says it "logically provides the one-to-one NAT on behalf of your instance" — outbound, the reply address is set to the instance's public IPv4 or Elastic IP; inbound, traffic to that public address "has its destination address translated into the instance's private IPv4 address before the traffic is delivered to the VPC".  
+  ↳ [[05-vpc-core#Worked examples|note]]
+- **"us-east-1a is the same physical AZ in every account"** — No. AWS "maps the physical Availability Zones randomly to the Availability Zone names for each AWS account", so your us-east-1a *"might not represent the same physical location as us-east-1a for a different AWS account"*.  
+  ↳ [[05-vpc-core#Worked examples|note]]
+- **"convert the VPC to IPv6-only" to get past IPv4 exhaustion** — Impossible. Secondary CIDR blocks can be disassociated, but "you cannot disassociate the CIDR block with which you originally created the VPC (the primary CIDR block)" — so a VPC always keeps its primary IPv4 CIDR and there is no IPv6-only VPC to convert to.  
+  ↳ [[05-vpc-core#Worked examples|note]]
 
 
 ## [[05-vpc-security|05.2 – VPC Security (SG, NACL, Flow Logs, Network Firewall)]]
 
-**Compare:** [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]] · [[05-vpc-security#Where each layer sits|Where each layer sits]]
+**Compare:** [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]] · [[05-vpc-security#Where each layer sits|Where each layer sits]] · [[05-vpc-security#Reachability Analyzer vs Network Access Analyzer|Reachability Analyzer vs Network Access Analyzer]]
 
 - **"make the NACL match the SG rules and you're done"** — No — the NACL is stateless, so it needs the ephemeral return rule the SG never required.  
   ↳ [[05-vpc-security#Worked examples|note]]
 - **"use flow logs to see what data was exfiltrated"** — Flow logs are metadata only — IPs, ports, bytes, ACCEPT/REJECT. They never show payload.  
   ↳ [[05-vpc-security#Worked examples|note]]
 - **"a higher NACL rule number can override a lower deny"** — No — first match wins, low number first. A deny at #100 is final; #200 allow never gets evaluated for that packet.  
+  ↳ [[05-vpc-security#Worked examples|note]]
+- **"flow logs only show the NAT gateway's IP, so the original address is lost"** — Not if the flow log was created with a custom format including **pkt-srcaddr / pkt-dstaddr**.  
   ↳ [[05-vpc-security#Worked examples|note]]
 
 
@@ -154,6 +184,10 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
 - **"peering scales fine, just add connections"** — Full mesh is N(N-1)/2 and non-transitive — it explodes past a few VPCs. The intended answer for "many VPCs" is Transit Gateway, not more peerings.  
   ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
+- **"one interface endpoint in every VPC" when many VPCs hang off a Transit Gateway** — Per-VPC is only the default. Each interface endpoint bills per hour plus data processing, which AWS calls "cost prohibitive and challenging to manage" across many VPCs, and its prescribed alternative is to *"host the interface endpoints in a centralized VPC.  
+  ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
+- **a stateful firewall behind a Transit Gateway sees only one direction of the flow** — The fix is appliance mode, enabled on the VPC attachment where the appliance lives.  
+  ↳ [[05-vpc-endpoints-peering#Worked examples|note]]
 
 
 ## [[05-vpc-hybrid|05.4 – VPC Hybrid Connectivity (VPN & Direct Connect)]]
@@ -168,11 +202,13 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"Client VPN = Site-to-Site VPN"** — Client VPN = individual users' devices (OpenVPN). Site-to-Site VPN = whole network ↔ VPC (IPsec).  
   ↳ [[05-vpc-hybrid#Worked examples|note]]
+- **"turn on acceleration for the VPN on the virtual private gateway"** — Accelerated Site-to-Site VPN is the documented way to make a VPN path more consistent without buying Direct Connect: it "uses AWS Global Accelerator to route traffic from your on-premises network to an AWS edge location that is closest to your customer gateway device", then carries it over the AWS global network "to avoid network disruptions that might occur when traffic is routed over the public internet".  
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
 
-**Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
+**Compare:** [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]] · [[07-rds-aurora#Multi-AZ DB instance vs Multi-AZ DB cluster|Multi-AZ DB instance vs Multi-AZ DB cluster]] · [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]] · [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]] · [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
 
 - **applying the cross-AZ charge to replication** — "Cross-AZ traffic is charged" is true in general and false for read-replica replication in the same Region.  
   ↳ [[07-rds-aurora#How it actually works|note]]
@@ -206,11 +242,15 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[08-elasticache#How it actually works|note]]
 - **DAX and ElastiCache offered for the same workload** — They front different databases and that alone usually settles it. DAX only accelerates DynamoDB; ElastiCache fronts RDS/Aurora and anything else you write caching logic for.  
   ↳ [[08-elasticache#How it actually works|note]]
+- **"raise the table's provisioned RCUs" to fix a read-hot key** — Every DynamoDB partition tops out at 3,000 read units and 1,000 write units per second ([[19-serverless]] covers how the partition key places items).  
+  ↳ [[08-elasticache#How it actually works|note]]
 - **Memcached for anything needing HA/persistence/complex data** — Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → Redis.  
   ↳ [[08-elasticache#Worked examples|note]]
 - **a question that mixes Redis-sounding use cases with Memcached-only features** — The hard version of the engine question doesn't say "pick a cache" — it describes a session store (which your instinct maps to Redis) while also specifying multi-threaded and automatic node discovery (both Memcached-only).  
   ↳ [[08-elasticache#Worked examples|note]]
 - **"add a cache" when the problem is writes** — Caches accelerate reads. If the bottleneck is heavy writes or the data must be strongly consistent per request, a cache doesn't help (and lazy-loading serves stale data).  
+  ↳ [[08-elasticache#Worked examples|note]]
+- **"require a password on the Redis cluster" answered with encryption alone** — Encryption is not authentication. At-rest encryption authenticates nobody, and in-transit encryption is the prerequisite for a password, not the password: AWS — "AUTH can only be enabled for encryption in-transit enabled Valkey or Redis OSS clusters." So "password-protect the cache" on a node-based cluster = in-transit encryption + an AUTH token.  
   ↳ [[08-elasticache#Worked examples|note]]
 - **Redis is multi-threaded because it's fast** — Redis command execution is single-threaded (one core per node); it scales via cluster-mode sharding, not more cores.  
   ↳ [[08-elasticache#Worked examples|note]]
@@ -232,7 +272,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[09-s3-advanced|09.2 – S3 Advanced (replication, big files, events)]]
 
-**Compare:** [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]] · [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]] · [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
+**Compare:** [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]] · [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]] · [[09-s3-advanced#S3 Inventory vs Storage Lens|S3 Inventory vs Storage Lens]] · [[09-s3-advanced#CRR vs SRR|CRR vs SRR]] · [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]] · [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
 
 - **"a Requester Pays bucket can never be a replication destination"** — The bar is real but conditional, and the condition is the trap.  
   ↳ [[09-s3-advanced#Worked examples|note]]
@@ -250,11 +290,17 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **"use S3 Select" on a new account** — S3 Select is no longer available to new customers. The modern answer for SQL over S3 is Athena (and it queries many objects, not one).  
   ↳ [[09-s3-advanced#Worked examples|note]]
+- **an S3 event notification to transform what a GET returns** — When the stem wants the response to a read changed — resize, redact, reformat on the way out, different views of one object for different apps — the answer is S3 Object Lambda, which runs your code on GET, LIST and HEAD requests via an Object Lambda Access Point.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
+- **CRR + Route 53 for "one global endpoint, nearest bucket"** — The answer is an S3 Multi-Region Access Point, and it is counter-intuitive twice. (1) The routing layer is AWS Global Accelerator, not Route 53: requests go over the AWS global network to the closest bucket with an active routing status.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
+- **Storage Class Analysis tells you when to archive to Glacier** — It doesn't. AWS: "Storage class analysis only provides recommendations for Standard to Standard IA classes." To find cold data, AWS points at Storage Lens advanced (paid) activity metrics — buckets with near-zero retrievals.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
 
 
 ## [[09-s3-security|09.3 – S3 Security (access, encryption, immutability)]]
 
-**Compare:** [[09-s3-security#Block Public Access — the four settings|Block Public Access — the four settings]] · [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
+**Compare:** [[09-s3-security#Block Public Access — the four settings|Block Public Access — the four settings]] · [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]] · [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]] · [[09-s3-security#Server access logging vs CloudTrail data events|Server access logging vs CloudTrail data events]] · [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
 - **"each file must have a different encryption key", so split the data or use SSE-KMS** — Both of those are the over-built answer. SSE-S3 already does it: "Amazon S3 encrypts each object with a unique key." So a stem that says "encrypt each file with a different key" and then adds "without the overhead of splitting the data into logical groups" is answered by one bucket with plain SSE-S3 — no key management, no per-chunk buckets, no KMS bill.  
   ↳ [[09-s3-security#Comparisons|note]]
@@ -262,13 +308,19 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-security#Comparisons|note]]
 - **SSE-KMS request cost answered by changing the encryption type** — High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the bill shows it.  
   ↳ [[09-s3-security#Comparisons|note]]
+- **"we must use our own encryption algorithm", so SSE-C** — SSE-C means you supply the key, not the algorithm. Its algorithm header is fixed: *"Use this header to specify the encryption algorithm.  
+  ↳ [[09-s3-security#Comparisons|note]]
 - **Block Public Access can be overridden by a bucket policy** — Backwards. BPA overrides the policy. A perfectly valid public bucket policy is simply ignored while BPA is on.  
   ↳ [[09-s3-security#Worked examples|note]]
 - **enabling default encryption encrypts what's already there** — It doesn't. Default encryption applies to new objects only. Existing objects keep their previous encryption until you rewrite them — S3 Batch Operations → Copy.  
   ↳ [[09-s3-security#Worked examples|note]]
 - **a presigned URL uses the recipient's permissions** — It uses the generator's. That's why it works for someone with no AWS account at all — and why generating one from an over-privileged role is dangerous.  
   ↳ [[09-s3-security#Worked examples|note]]
+- **CORS as a permission fix** — CORS answers one failure only: the browser blocking JavaScript from one origin calling another — e.g.  
+  ↳ [[09-s3-security#Worked examples|note]]
 - **Object Lock stops the object being deleted** — It stops that version being deleted. A simple DELETE still returns 200 OK and adds a delete marker, hiding the object.  
+  ↳ [[09-s3-security#Worked examples|note]]
+- **"Glacier Vault Lock" for WORM on an S3 bucket** — Vault Lock belongs to vaults, not buckets. Amazon Glacier Vault Lock is a feature of the original standalone Amazon Glacier service, which AWS describes as "a standalone service with its own APIs that stores data in vaults and is distinct from Amazon S3 and the Amazon S3 Glacier storage classes" — and which is no longer accepting new customers.  
   ↳ [[09-s3-security#Worked examples|note]]
 - **one public statement only breaks the public part of a policy** — It breaks the whole policy. Publicness is judged on the entire bucket policy, so a single "Principal": "*" statement makes the policy public and RestrictPublicBuckets then strips out the named cross-account grants too.  
   ↳ [[09-s3-security#Worked examples|note]]
@@ -278,7 +330,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[10-route53|10 – Route 53 (DNS)]]
 
-**Compare:** [[10-route53#The eight routing policies|The eight routing policies]] · [[10-route53#AWS endpoint vs non-AWS endpoint (health-check billing)|AWS endpoint vs non-AWS endpoint (health-check billing)]] · [[10-route53#Alias vs CNAME|Alias vs CNAME]] · [[10-route53#Public vs private hosted zone|Public vs private hosted zone]] · [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
+**Compare:** [[10-route53#The eight routing policies|The eight routing policies]] · [[10-route53#Active-active vs active-passive failover (Route 53's own naming)|Active-active vs active-passive failover (Route 53's own naming)]] · [[10-route53#AWS endpoint vs non-AWS endpoint (health-check billing)|AWS endpoint vs non-AWS endpoint (health-check billing)]] · [[10-route53#Alias vs CNAME|Alias vs CNAME]] · [[10-route53#Public vs private hosted zone|Public vs private hosted zone]] · [[10-route53#Route 53 Resolver — get the direction right|Route 53 Resolver — get the direction right]]
 
 - **"we created the public hosted zone but DNS still doesn't resolve"** — The missing step is outside Route 53: the registrar must be pointed at the zone's four assigned name servers.  
   ↳ [[10-route53#Traps|note]]
@@ -306,7 +358,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[11-cloudfront|11 – CloudFront (CDN)]]
 
-**Compare:** [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]] · [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]] · [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
+**Compare:** [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]] · [[11-cloudfront#Route 53 latency-based routing vs Global Accelerator|Route 53 latency-based routing vs Global Accelerator]] · [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]] · [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
 
 - **"geo restriction will guarantee the content never leaves these countries"** — Two reasons it will not.  
   ↳ [[11-cloudfront#Traps|note]]
@@ -322,13 +374,17 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[11-cloudfront#Traps|note]]
 - **CloudFront Functions asked to do too much** — CloudFront Functions cannot make network calls, read the request body, or run on origin events, and cap at 10 KB of code.  
   ↳ [[11-cloudfront#Traps|note]]
+- **a response headers policy that varies the response per client** — A response headers policy adds fixed headers (CORS, security, custom) — AWS says it "doesn't require writing code" and adds them "to every response that it returns to viewers".  
+  ↳ [[11-cloudfront#Traps|note]]
+- **a Global Accelerator traffic dial at 10% sends 10% of all users** — It doesn't. AWS: "The percentage is applied only to traffic that is already directed to the endpoint group, not to all listener traffic." Clients are first steered to an endpoint group by proximity; the dial then trims that group's share, and the rest is served elsewhere.  
+  ↳ [[11-cloudfront#Traps|note]]
 - **geo restriction vs geolocation routing** — CloudFront geo restriction decides whether a country may access the content at all (allow/block list, enforced at the edge). Route 53 geolocation routing ([[10-route53]]) decides which endpoint a country is sent to. "Block viewers in country X for licensing reasons" → CloudFront.  
   ↳ [[11-cloudfront#Traps|note]]
 
 
 ## [[12-storage-extras|12 – Storage extras (EFS, FSx, Storage Gateway, DataSync, Snow, Backup)]]
 
-**Compare:** [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]] · [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]] · [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
+**Compare:** [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]] · [[12-storage-extras#EFS throughput modes: Elastic vs Provisioned vs Bursting|EFS throughput modes: Elastic vs Provisioned vs Bursting]] · [[12-storage-extras#S3 File Gateway vs FSx File Gateway|S3 File Gateway vs FSx File Gateway]] · [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]] · [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
 
 - **EFS for a Windows workload** — The most reliable elimination in this topic. AWS does not support EFS with Windows EC2 instances. Any question mentioning Windows, SMB, Active Directory, or Windows ACLs is pointing at FSx for Windows File Server, however well "shared file system" seems to fit EFS.  
   ↳ [[12-storage-extras#Traps|note]]
@@ -340,6 +396,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[12-storage-extras#Traps|note]]
 - **Snowcone is still the answer for the smallest, most portable job** — Not orderable any more. AWS closed the entire Snow Family to new customers, not just Snowball Edge — "AWS will no longer offer any AWS Snow Family devices for new customers to order." Learn the device-selection logic because SAA-C03 still asks it, but know that in practice the answer today is DataSync, AWS Data Transfer Terminal, a Partner solution, or Outposts.  
   ↳ [[12-storage-extras#Traps|note]]
+- **"take a DynamoDB on-demand backup and copy it to the other account"** — Copying a DynamoDB backup cross-account is an AWS Backup capability, not a DynamoDB one: it needs AWS Backup's advanced DynamoDB backup features, plus the Organizations requirement above.  
+  ↳ [[12-storage-extras#Traps|note]]
 - **Lustre scratch vs persistent read as a speed choice** — The difference is durability, not performance. Scratch is not replicated and does not survive a file server failure; persistent is replicated with automatic server replacement. If the question mentions long-running work or data you can't re-create, it's persistent.  
   ↳ [[12-storage-extras#Traps|note]]
 - **"EFS One Zone is fine, it's still durable"** — Same shape as the S3 One Zone-IA trap in [[09-s3-intro]]. One Zone stores in a single Availability Zone, and data may be lost if that zone is lost.  
@@ -348,7 +406,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[13-cost-optimization|13 – Cost optimization]]
 
-**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]] · [[13-cost-optimization#The cost tools|The cost tools]] · [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)|Right-size first, or scale out? (vertical vs horizontal)]]
+**Compare:** [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]] · [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]] · [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]] · [[13-cost-optimization#Spot allocation strategies — which capacity pools to draw from|Spot allocation strategies — which capacity pools to draw from]] · [[13-cost-optimization#The cost tools|The cost tools]] · [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)|Right-size first, or scale out? (vertical vs horizontal)]]
 
 - **"cancel the Spot request to get rid of the instance"** — Cancelling and terminating are separate actions, and which one you need depends on the request's state.  
   ↳ [[13-cost-optimization#Traps|note]]
@@ -363,6 +421,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Dedicated Host vs Dedicated Instance** — Both give single-tenant hardware. Dedicated Host gives you visibility and control of the physical server — sockets, cores, host affinity — which is what per-socket / per-core BYOL licensing requires. Dedicated Instance gives isolation without host-level visibility.  
   ↳ [[13-cost-optimization#Traps|note]]
 - **Spot hibernation and the two minutes** — The two-minute notice applies when the interruption behaviour is stop or terminate. With hibernate, you get an interruption notice but not two minutes of warning — hibernation starts immediately.  
+  ↳ [[13-cost-optimization#Traps|note]]
+- **applying the cross-AZ charge to S3 ↔ EC2** — The general rule is that cross-AZ traffic is charged; S3 is an exception. AWS: "There is no Data Transfer charge for data transferred between Amazon EC2 (or any AWS service) and Amazon S3 within the same Region" — whichever AZ the instance is in — while EC2 ↔ S3 "across all other Regions is charged".  
+  ↳ [[13-cost-optimization#Traps|note]]
+- **instances talking to each other over public or Elastic IPs** — Same VPC, wrong address, real bill. AWS: "Instances that access other instances through their public NAT IP address are charged for regional or Internet data transfer, depending on whether the instances are in the same Region".  
+  ↳ [[13-cost-optimization#Traps|note]]
+- **Graviton for a Windows or x86-only workload** — For a Linux or containerised workload asked to cut EC2 or Fargate compute cost with no architecture constraint, moving to Graviton is a documented lever (figures in Key facts).  
   ↳ [[13-cost-optimization#Traps|note]]
 - **Cost Explorer vs Budgets vs Compute Optimizer** — Three tools, three jobs. Cost Explorer analyses what already happened and forecasts. Budgets alerts you when spend or usage crosses a threshold you set. Compute Optimizer looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.  
   ↳ [[13-cost-optimization#Traps|note]]
@@ -400,6 +464,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[15-decoupling#Traps|note]]
 - **"receiving a message removes it"** — It does not. A received message is hidden for the visibility timeout and comes back unless the consumer explicitly calls DeleteMessage.  
   ↳ [[15-decoupling#Traps|note]]
+- **delay queue vs visibility timeout** — Both make a message unavailable to consumers for a while, at different points in its life. A delay queue hides a message when it is first added, before any consumer has seen it — "postpone delivery of new messages" (max 15 minutes). A visibility timeout hides it only after it has been received — "stop another consumer picking up a message that is being processed" (max 12 hours).  
+  ↳ [[15-decoupling#Traps|note]]
 - **a queue with no dead-letter queue** — Without a DLQ there is no upper bound on retries. A message that always fails is redelivered until retention expires — up to 14 days of consumers repeatedly choking on the same thing.  
   ↳ [[15-decoupling#Traps|note]]
 - **DLQ retention set equal to the source queue's** — For standard queues the message keeps its original enqueue timestamp when it moves.  
@@ -423,6 +489,12 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **assuming ordering across the whole stream** — Kinesis guarantees order within a shard, not across the stream. Two records with different partition keys may be processed in any relative order.  
   ↳ [[16-kinesis#Traps|note]]
 - **a low-cardinality partition key** — Adding shards does nothing if the partition key only produces a handful of hash values. A key like region or event_type concentrates traffic on a few shards while the rest idle, and the stream throttles far below its nominal capacity.  
+  ↳ [[16-kinesis#Traps|note]]
+- **adding shards when tiny records hit the records/sec ceiling** — When a producer throttles on record count (1,000 records/sec per shard) while far below 1 MB/sec, the cheap fix is record aggregation, not more shards.  
+  ↳ [[16-kinesis#Traps|note]]
+- **ruling out Kinesis because the stem never says "replay"** — Replay and multiple consumers are not the only reasons to pick Data Streams.  
+  ↳ [[16-kinesis#Traps|note]]
+- **a separate ETL job to partition Firehose output by a field** — If the stem wants streamed records landed in S3 grouped by a value inside each record (customer, tenant, transaction), Firehose dynamic partitioning does it in transit — no Glue job or custom consumer needed.  
   ↳ [[16-kinesis#Traps|note]]
 - **Firehose expected to store or replay** — Firehose has no readable retention and no concept of re-reading — you cannot get data back out of it, which is the part that matters.  
   ↳ [[16-kinesis#Traps|note]]
@@ -472,6 +544,12 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **SQS is not an asynchronous invocation** — S3 and SNS invoke Lambda asynchronously, so Lambda retries twice and then uses a DLQ. SQS is an event source mapping — Lambda polls it — so retry behaviour comes from the queue's visibility timeout and maxReceiveCount, exactly as in [[15-decoupling]].  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **"raise SNS capacity" when SNS-to-Lambda deliveries are throttled** — SNS invokes a Lambda subscriber asynchronously. When the account's Lambda concurrency is used up, the invocation is throttled; SNS keeps retrying for days, then drops the message unless the subscription has a dead-letter queue.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **provisioned concurrency as the only cold-start answer** — Lambda SnapStart also cuts cold starts: when you publish a version, Lambda snapshots the initialised function and starts new environments from that snapshot.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **"expired" TTL items are not gone yet** — "Expire old items automatically, with no extra write cost" → DynamoDB TTL, not a scheduled Lambda scanner and not S3 lifecycle.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **API keys are not authentication** — Usage plans and API keys "track and limit usage". They identify a caller for metering and throttling; they prove nothing about identity.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ECS-style" two roles on Lambda** — ECS splits an execution role (the agent: pull the image, ship logs) from a task role (your code's AWS permissions) — see [[17-containers]].  
@@ -482,7 +560,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[20-monitoring|20 – Monitoring (CloudWatch, CloudTrail, Config, EventBridge)]]
 
-**Compare:** [[20-monitoring#Which Systems Manager tool — the discrimination that actually gets tested|Which Systems Manager tool — the discrimination that actually gets tested]] · [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+**Compare:** [[20-monitoring#Which Systems Manager tool — the discrimination that actually gets tested|Which Systems Manager tool — the discrimination that actually gets tested]] · [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]] · [[20-monitoring#Cross-account observability vs the cross-account cross-Region console|Cross-account observability vs the cross-account cross-Region console]]
 
 - **reboot offered for a failed system status check** — The stem describes an instance made unreachable by a fault on the underlying host and offers a reboot alarm.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
@@ -498,6 +576,10 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **"enable CloudTrail to see who read the S3 object"** — CloudTrail is on by default only for management events. Object-level reads and writes are data events, which "trails and event data stores" do not log by default.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **"CloudTrail can only deliver to S3, so query it with Athena"** — A trail can send its events to a CloudWatch Logs log group as well as S3 (management, data and Insights events are all supported), and that is what makes alarming on API activity possible.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
+- **a symptom stem: "find which service in the chain adds the latency"** — When a stem describes the symptom instead of naming tracing — a request crossing API, Lambda and database is slow, and the job is to find which hop — that is X-Ray.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **CloudWatch Events versus EventBridge** — They are the same service; CloudWatch Events was renamed to EventBridge. If a question offers both as separate options, they are not testing a distinction — look at what else the options differ on.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **the 90 days** — "CloudTrail keeps 90 days" is true of the free Event history view, per Region, management events only.  
@@ -508,7 +590,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 ## [[21-security|21 – Security & Encryption]]
 
-**Compare:** [[21-security#KMS is the exception to the resource-policy rule|KMS is the exception to the resource-policy rule]] · [[21-security#KMS key types|KMS key types]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]] · [[21-security#Rate limiting is a WAF feature, and disabling GuardDuty destroys findings|Rate limiting is a WAF feature, and disabling GuardDuty destroys findings]]
+**Compare:** [[21-security#KMS is the exception to the resource-policy rule|KMS is the exception to the resource-policy rule]] · [[21-security#KMS key types|KMS key types]] · [[21-security#KMS key policy vs grant (and `kms:ViaService`)|KMS key policy vs grant (and kms:ViaService)]] · [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]] · [[21-security#Which detection service|Which detection service]] · [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]] · [[21-security#CloudHSM vs KMS|CloudHSM vs KMS]] · [[21-security#ACM — where the certificate has to live|ACM — where the certificate has to live]] · [[21-security#Rate limiting is a WAF feature, and disabling GuardDuty destroys findings|Rate limiting is a WAF feature, and disabling GuardDuty destroys findings]]
 
 - **"grant kms:Decrypt in the IAM policy" offered as the whole fix** — A stem where a Lambda (or EC2 role, or another account) cannot decrypt an SSE-KMS object, and the options include adding kms:Decrypt to the IAM policy.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
@@ -540,6 +622,12 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 - **GuardDuty needs you to turn on flow logs** — It does not — for CloudTrail and flow logs. GuardDuty consumes "an independent and duplicated stream" of CloudTrail management events and VPC Flow Logs, with nothing to enable.  
   ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **GuardDuty eliminated for "suspicious access to an S3 bucket" because it only reads three sources** — The three foundational sources are not the whole of GuardDuty. S3 Protection is a separate plan: "GuardDuty monitors AWS CloudTrail data events for Amazon S3, that includes object-level API operations" — and "you don't need to explicitly enable or configure S3 data event logging in AWS CloudTrail".  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **Security Hub, Inspector or Macie offered for AWS's own SOC / PCI / ISO reports** — AWS Artifact is the portal for AWS's own compliance paperwork: "on-demand downloads of AWS security and compliance documents" — SOC, PCI and ISO reports — and the place to accept agreements such as the HIPAA BAA.  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
+- **KMS multi-Region keys offered for cross-Region snapshot or object replication** — A multi-Region key has replicas in other Regions that "have the same key material and key ID, so you can encrypt data in one AWS Region and decrypt it in a different AWS Region".  
+  ↳ [[21-security#⚠️ Traps — why the wrong answer looks right|note]]
 
 
 ## [[22-analytics|22 – Data & Analytics]]
@@ -559,6 +647,14 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **AWS Data Pipeline as a live answer** — It still appears in the SAA-C03 exam guide's in-scope list and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, On the exam, treat it as answerable if a question explicitly offers it for legacy orchestration — but in any "which service should we use" scenario the modern answers are Glue (ETL), Step Functions (orchestration) or MWAA (Airflow).  
   ↳ [[22-analytics#Traps|note]]
 - **building a second catalog per engine** — Athena, EMR and Redshift Spectrum all read the same AWS Glue Data Catalog. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did.  
+  ↳ [[22-analytics#Traps|note]]
+- **expecting Glue to skip already-processed data on its own** — "Rerun the ETL job but process only new files" → enable the Glue job bookmark. It is a setting you turn on, not something Glue does by itself, and it is not a content-level dedupe: for S3 sources Glue judges what is new by each object's last-modified time, so an object modified since the last run — a re-upload of the same file included — is reprocessed.  
+  ↳ [[22-analytics#Traps|note]]
+- **sharing data-lake tables with many accounts by enumerating grants or copying data** — Lake Formation tag-based access control (LF-TBAC) attaches LF-Tags (key-value attributes, e.g.  
+  ↳ [[22-analytics#Traps|note]]
+- **Redshift BI queries queue at the morning peak** — When Redshift is already the right engine and the symptom is queries waiting in a queue under a burst of concurrent users, the feature AWS built for it is Concurrency Scaling: eligible queries go to transient extra capacity instead of waiting.  
+  ↳ [[22-analytics#Traps|note]]
+- **Lake Formation row-level permissions vs QuickSight row-level security** — Both are "row-level" and they are not substitutes. Lake Formation row-level permissions govern who can read the data lake itself. QuickSight RLS filters what each reader sees inside one shared dataset/dashboard — "one dashboard, each regional manager sees only their region" → QuickSight RLS.  
   ↳ [[22-analytics#Traps|note]]
 
 

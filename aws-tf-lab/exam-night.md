@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 371 pointers · ~31 min read*
+*176 recall hooks · 433 pointers · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -75,6 +75,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - root user and SCPs
 - permissions boundary vs SCP
 - Bool vs BoolIfExists for MFA
+- "require MFA before these CLI calls": GetSessionToken vs AssumeRole vs GetFederationToken
 - Control Tower vs Organizations
 - aws:SourceIp behind a VPC endpoint
 
@@ -111,6 +112,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[02-ec2|open]]
 - EFA offered for any HPC stem
 - a spiky 3,000-IOPS requirement read as a Provisioned IOPS question
+- io1 and io2 share one IOPS-per-GiB ratio
 - cluster chosen for availability, or spread for scale
 - any EC2 attribute can be changed on a live instance
 - t3-micro works
@@ -119,6 +121,12 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Instance store survives stop
 - Long-lived access keys on an instance are fine for service-to-service
 - EIP is free while attached
+- user data runs on every boot
+- a default-tenancy VPC means shared hardware
+- you must stop the instance (or detach the volume) to snapshot it
+- a volume restored from a snapshot is slow, so buy a faster volume type
+- the On-Demand limit is a count of instances
+- sharing an encrypted AMI, or copying it back to unencrypted
 
 **Failure modes**
 - credit exhaustion (it bites two different ways)  ↳ [[02-ec2#Worked examples|open]]
@@ -130,6 +138,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[02-ec2#EBS volume types — the numbers the exam asks for|EBS volume types — the numbers the exam asks for]]
 - [[02-ec2#How `gp2` and `gp3` actually earn their IOPS|How gp2 and gp3 actually earn their IOPS]]
 - [[02-ec2#The three placement strategies|The three placement strategies]]
+- [[02-ec2#Compute vs memory vs storage optimized — which bottleneck each answers|Compute vs memory vs storage optimized — which bottleneck each answers]]
 - [[02-ec2#Auto-assigned Public IP vs Elastic IP|Auto-assigned Public IP vs Elastic IP]]
 - [[02-ec2#IMDSv1 vs IMDSv2|IMDSv1 vs IMDSv2]]
 
@@ -155,6 +164,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[04-alb-asg#How it actually works|open]]
 - suspending ScheduledActions to protect an instance during maintenance
+- "a target group can't hold another Region's instances"
 - cross-zone distribution computed as if the AZs were merged
 - minimum capacity set to N when an AZ must be survivable
 - "the ALB terminates the unhealthy instance"
@@ -164,12 +174,16 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "scale-in terminates the oldest instance"
 - a scheduled action that also pins min and max
 - redirect on the wrong load balancer, or the wrong direction
+- a *.example.com host-header rule and the apex
+- warm pool vs instance warm-up
 
 **Failure modes**
 - the grace-period boot loop  ↳ [[04-alb-asg#Worked examples|open]]
 
 **Comparisons**
 - [[04-alb-asg#ALB vs NLB vs GWLB|ALB vs NLB vs GWLB]]
+- [[04-alb-asg#Target type — `instance` vs `ip`|Target type — instance vs ip]]
+- [[04-alb-asg#Sticky sessions — duration-based vs application-based|Sticky sessions — duration-based vs application-based]]
 - [[04-alb-asg#Target-group health check vs ASG health-check type|Target-group health check vs ASG health-check type]]
 - [[04-alb-asg#Scaling policy types|Scaling policy types]]
 - [[04-alb-asg#Predefined termination policies|Predefined termination policies]]
@@ -195,6 +209,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[05-vpc-core#Worked examples|open]]
 - "the default NACL and a new NACL behave the same"
 - "add the IGW route to the main route table to make setup simpler"
+- "an instance with its own public IP still needs a NAT gateway or NAT instance"
+- "us-east-1a is the same physical AZ in every account"
+- "convert the VPC to IPv6-only" to get past IPv4 exhaustion
 
 **Failure modes**
 - NAT gateway in the wrong subnet (the routing loop)  ↳ [[05-vpc-core#Worked examples|open]]
@@ -224,6 +241,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "make the NACL match the SG rules and you're done"
 - "use flow logs to see what data was exfiltrated"
 - "a higher NACL rule number can override a lower deny"
+- "flow logs only show the NAT gateway's IP, so the original address is lost"
 
 **Failure modes**
 - the stateless NACL that "half works"  ↳ [[05-vpc-security#Worked examples|open]]
@@ -231,6 +249,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[05-vpc-security#Security Group vs Network ACL (the exam's favorite table)|Security Group vs Network ACL (the exam's favorite table)]]
 - [[05-vpc-security#Where each layer sits|Where each layer sits]]
+- [[05-vpc-security#Reachability Analyzer vs Network Access Analyzer|Reachability Analyzer vs Network Access Analyzer]]
 
 
 ## [[05-vpc-endpoints-peering|05.3 – VPC Endpoints & Peering (+ Transit Gateway)]]
@@ -251,6 +270,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "use a gateway endpoint for SQS/KMS/etc."
 - "reach the S3 gateway endpoint from a peered VPC / on-prem"
 - "peering scales fine, just add connections"
+- "one interface endpoint in every VPC" when many VPCs hang off a Transit Gateway
+- a stateful firewall behind a Transit Gateway sees only one direction of the flow
 
 **Failure modes**
 - assuming peering is transitive (the hub that isn't)  ↳ [[05-vpc-endpoints-peering#Worked examples|open]]
@@ -280,6 +301,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "use Direct Connect for a quick or temporary connection"
 - "VGW vs CGW"
 - "Client VPN = Site-to-Site VPN"
+- "turn on acceleration for the VPN on the virtual private gateway"
 
 **Failure modes**
 - betting a launch on Direct Connect lead time  ↳ [[05-vpc-hybrid#Worked examples|open]]
@@ -331,6 +353,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[07-rds-aurora#Multi-AZ vs Read Replica (memorize)|Multi-AZ vs Read Replica (memorize)]]
+- [[07-rds-aurora#Multi-AZ DB instance vs Multi-AZ DB cluster|Multi-AZ DB instance vs Multi-AZ DB cluster]]
 - [[07-rds-aurora#RDS vs Aurora|RDS vs Aurora]]
 - [[07-rds-aurora#The three RDS monitoring layers (the one the exam confuses)|The three RDS monitoring layers (the one the exam confuses)]]
 - [[07-rds-aurora#Database authentication — password vs IAM vs Secrets Manager|Database authentication — password vs IAM vs Secrets Manager]]
@@ -356,9 +379,11 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[08-elasticache#How it actually works|open]]
 - "Memcached can't replicate" stated without the Serverless carve-out
 - DAX and ElastiCache offered for the same workload
+- "raise the table's provisioned RCUs" to fix a read-hot key
 - Memcached for anything needing HA/persistence/complex data
 - a question that mixes Redis-sounding use cases with Memcached-only features
 - "add a cache" when the problem is writes
+- "require a password on the Redis cluster" answered with encryption alone
 - Redis is multi-threaded because it's fast
 
 **Failure modes**
@@ -419,6 +444,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - SSE-C objects can't be replicated
 - Batch Replication can backfill anything
 - "use S3 Select" on a new account
+- an S3 event notification to transform what a GET returns
+- CRR + Route 53 for "one global endpoint, nearest bucket"
+- Storage Class Analysis tells you when to archive to Glacier
 
 **Failure modes**
 - "replication is on, so we're backed up"  ↳ [[09-s3-advanced#Worked examples|open]]
@@ -427,6 +455,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[09-s3-advanced#Glacier retrieval tiers|Glacier retrieval tiers]]
 - [[09-s3-advanced#Storage Lens free vs advanced tier|Storage Lens free vs advanced tier]]
+- [[09-s3-advanced#S3 Inventory vs Storage Lens|S3 Inventory vs Storage Lens]]
 - [[09-s3-advanced#CRR vs SRR|CRR vs SRR]]
 - [[09-s3-advanced#CloudFront vs Transfer Acceleration|CloudFront vs Transfer Acceleration]]
 - [[09-s3-advanced#Multipart vs byte-range|Multipart vs byte-range]]
@@ -451,10 +480,13 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "each file must have a different encryption key", so split the data or use SSE-KMS
 - an encryption option borrowed from another service
 - SSE-KMS request cost answered by changing the encryption type
+- "we must use our own encryption algorithm", so SSE-C
 - Block Public Access can be overridden by a bucket policy
 - enabling default encryption encrypts what's already there
 - a presigned URL uses the recipient's permissions
+- CORS as a permission fix
 - Object Lock stops the object being deleted
+- "Glacier Vault Lock" for WORM on an S3 bucket
 - one public statement only breaks the public part of a policy
 - MFA Delete can be set up like any other bucket setting
 
@@ -467,6 +499,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[09-s3-security#SCP vs RCP for S3 access points|SCP vs RCP for S3 access points]]
 - [[09-s3-security#IAM policy vs bucket policy vs ACL|IAM policy vs bucket policy vs ACL]]
 - [[09-s3-security#GOVERNANCE vs COMPLIANCE|GOVERNANCE vs COMPLIANCE]]
+- [[09-s3-security#Server access logging vs CloudTrail data events|Server access logging vs CloudTrail data events]]
 - [[09-s3-security#Which encryption options actually exist — per service|Which encryption options actually exist — per service]]
 
 
@@ -503,6 +536,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[10-route53#The eight routing policies|The eight routing policies]]
+- [[10-route53#Active-active vs active-passive failover (Route 53's own naming)|Active-active vs active-passive failover (Route 53's own naming)]]
 - [[10-route53#AWS endpoint vs non-AWS endpoint (health-check billing)|AWS endpoint vs non-AWS endpoint (health-check billing)]]
 - [[10-route53#Alias vs CNAME|Alias vs CNAME]]
 - [[10-route53#Public vs private hosted zone|Public vs private hosted zone]]
@@ -532,6 +566,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - CloudFront vs Global Accelerator
 - "invalidate on every deploy"
 - CloudFront Functions asked to do too much
+- a response headers policy that varies the response per client
+- a Global Accelerator traffic dial at 10% sends 10% of all users
 - geo restriction vs geolocation routing
 
 **Failure modes**
@@ -539,6 +575,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator|CloudFront vs S3 Transfer Acceleration vs Global Accelerator]]
+- [[11-cloudfront#Route 53 latency-based routing vs Global Accelerator|Route 53 latency-based routing vs Global Accelerator]]
 - [[11-cloudfront#CloudFront Functions vs Lambda@Edge|CloudFront Functions vs Lambda@Edge]]
 - [[11-cloudfront#Signed URLs vs signed cookies (private content)|Signed URLs vs signed cookies (private content)]]
 
@@ -566,6 +603,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - DataSync vs Storage Gateway
 - Snow when the network would do
 - Snowcone is still the answer for the smallest, most portable job
+- "take a DynamoDB on-demand backup and copy it to the other account"
 - Lustre scratch vs persistent read as a speed choice
 - "EFS One Zone is fine, it's still durable"
 
@@ -574,6 +612,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Comparisons**
 - [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]]
+- [[12-storage-extras#EFS throughput modes: Elastic vs Provisioned vs Bursting|EFS throughput modes: Elastic vs Provisioned vs Bursting]]
+- [[12-storage-extras#S3 File Gateway vs FSx File Gateway|S3 File Gateway vs FSx File Gateway]]
 - [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]]
 - [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
 
@@ -601,6 +641,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Standard vs Convertible RI, exchange vs modify
 - Dedicated Host vs Dedicated Instance
 - Spot hibernation and the two minutes
+- applying the cross-AZ charge to S3 ↔ EC2
+- instances talking to each other over public or Elastic IPs
+- Graviton for a Windows or x86-only workload
 - Cost Explorer vs Budgets vs Compute Optimizer
 
 **Failure modes**
@@ -610,6 +653,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[13-cost-optimization#Savings Plans vs Reserved Instances|Savings Plans vs Reserved Instances]]
 - [[13-cost-optimization#When each purchasing option is the answer|When each purchasing option is the answer]]
 - [[13-cost-optimization#Cross-zone data transfer — which load balancer charges|Cross-zone data transfer — which load balancer charges]]
+- [[13-cost-optimization#Spot allocation strategies — which capacity pools to draw from|Spot allocation strategies — which capacity pools to draw from]]
 - [[13-cost-optimization#The cost tools|The cost tools]]
 - [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)|Right-size first, or scale out? (vertical vs horizontal)]]
 
@@ -673,6 +717,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[15-decoupling#Traps|open]]
 - Amazon MQ high availability means an active/standby pair
 - "receiving a message removes it"
+- delay queue vs visibility timeout
 - a queue with no dead-letter queue
 - DLQ retention set equal to the source queue's
 - assuming an empty poll means an empty queue
@@ -706,6 +751,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - SQS chosen where replay or multiple consumers are needed
 - assuming ordering across the whole stream
 - a low-cardinality partition key
+- adding shards when tiny records hit the records/sec ceiling
+- ruling out Kinesis because the stem never says "replay"
+- a separate ETL job to partition Firehose output by a field
 - Firehose expected to store or replay
 - Firehose treated as real-time
 - forgetting that read throughput is shared
@@ -769,6 +817,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - Lambda in a public subnet
 - ENI per concurrent execution
 - SQS is not an asynchronous invocation
+- "raise SNS capacity" when SNS-to-Lambda deliveries are throttled
+- provisioned concurrency as the only cold-start answer
+- "expired" TTL items are not gone yet
 - API keys are not authentication
 - "ECS-style" two roles on Lambda
 - more memory is always more expensive
@@ -806,6 +857,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - CloudTrail for "what did this resource look like"
 - memory utilisation in the EC2 console
 - "enable CloudTrail to see who read the S3 object"
+- "CloudTrail can only deliver to S3, so query it with Athena"
+- a symptom stem: "find which service in the chain adds the latency"
 - CloudWatch Events versus EventBridge
 - the 90 days
 - composite alarms doing Auto Scaling
@@ -821,6 +874,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - [[20-monitoring#CloudWatch event types|CloudWatch event types]]
 - [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]]
 - [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]]
+- [[20-monitoring#Cross-account observability vs the cross-account cross-Region console|Cross-account observability vs the cross-account cross-Region console]]
 
 
 ## [[21-security|21 – Security & Encryption]]
@@ -850,6 +904,9 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - WAF on a Network Load Balancer
 - Shield Advanced to block SQL injection
 - GuardDuty needs you to turn on flow logs
+- GuardDuty eliminated for "suspicious access to an S3 bucket" because it only reads three sources
+- Security Hub, Inspector or Macie offered for AWS's own SOC / PCI / ISO reports
+- KMS multi-Region keys offered for cross-Region snapshot or object replication
 
 **Failure modes**
 - the cross-account restore that cannot decrypt  ↳ [[21-security#Worked examples|open]]
@@ -857,6 +914,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Comparisons**
 - [[21-security#KMS is the exception to the resource-policy rule|KMS is the exception to the resource-policy rule]]
 - [[21-security#KMS key types|KMS key types]]
+- [[21-security#KMS key policy vs grant (and `kms:ViaService`)|KMS key policy vs grant (and kms:ViaService)]]
 - [[21-security#Secrets Manager vs SSM Parameter Store|Secrets Manager vs SSM Parameter Store]]
 - [[21-security#Which detection service|Which detection service]]
 - [[21-security#Shield Standard vs Advanced vs WAF|Shield Standard vs Advanced vs WAF]]
@@ -892,6 +950,10 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - EMR core nodes on Spot
 - AWS Data Pipeline as a live answer
 - building a second catalog per engine
+- expecting Glue to skip already-processed data on its own
+- sharing data-lake tables with many accounts by enumerating grants or copying data
+- Redshift BI queries queue at the morning peak
+- Lake Formation row-level permissions vs QuickSight row-level security
 
 **Failure modes**
 - the warehouse nobody needed  ↳ [[22-analytics#Worked examples|open]]

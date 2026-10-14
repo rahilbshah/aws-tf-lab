@@ -202,6 +202,7 @@ flowchart LR
 | "Connect **quickly** / temporary / this week" | Site-to-Site VPN |
 | "**Consistent** throughput, **low latency**, large/steady data (e.g. DB replication)" | Direct Connect |
 | "**Encrypted** connection over the internet" | Site-to-Site VPN |
+| "VPN performance is inconsistent — improve it **without** Direct Connect" | **Accelerated** Site-to-Site VPN (trap below) |
 | "Private line but data must be **encrypted**" | **VPN over Direct Connect** |
 | "**Backup** for Direct Connect, cost-effective" | Site-to-Site VPN failover |
 | "One private connection to VPCs in **multiple regions**" | Direct Connect **Gateway** |
@@ -231,6 +232,9 @@ flowchart LR
 > [!warning] Trap — "Client VPN = Site-to-Site VPN"
 > **Client VPN** = individual users' devices (OpenVPN). **Site-to-Site VPN** = whole network ↔ VPC (IPsec). Different services for different needs.
 
+> [!warning] Trap — "turn on acceleration for the VPN on the virtual private gateway"
+> **Accelerated Site-to-Site VPN** is the documented way to make a VPN path more consistent without buying Direct Connect: it *"uses AWS Global Accelerator to route traffic from your on-premises network to an AWS edge location that is closest to your customer gateway device"*, then carries it over the AWS global network *"to avoid network disruptions that might occur when traffic is routed over the public internet"*. The catch is the drillable part: *"Acceleration is only supported for Site-to-Site VPN connections that are attached to a transit gateway. Virtual private gateways do not support accelerated VPN connections."* And it can't be switched on for an existing VPN — you create a new one. Direct Connect stays the answer for a private, dedicated circuit. *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Whole topic was cold** at orientation — learned fresh here, so it needs re-reading rather than recall.
@@ -254,3 +258,4 @@ flowchart LR
 - [Customer gateway options](https://docs.aws.amazon.com/vpn/latest/s2svpn/cgw-options.html) — static (not necessarily public) IP, the NAT and AWS Private CA cases, ASN ranges and reservations; verified 2026-10-05
 - [Site-to-Site VPN quotas](https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-limits.html) — 1.25 Gbps standard vs 5 Gbps large-bandwidth tunnels, PPS, MTU 1446, ECMP needs dynamic routing, VGW/CGW quotas; verified 2026-10-05
 - [What is Direct Connect](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html) — the three VIF types verbatim, 400GBASE-LR4, two billing elements, no charge for a multi-account DX gateway; verified 2026-10-05
+- [Accelerated Site-to-Site VPN connections](https://docs.aws.amazon.com/vpn/latest/s2svpn/accelerated-vpn.html) — Global Accelerator to the nearest edge location, two accelerators per connection, transit gateway only (no VGW), not on existing connections, no public VIF, NAT-T required, CGW-initiated IKE; verified 2026-10-14

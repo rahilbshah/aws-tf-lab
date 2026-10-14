@@ -142,7 +142,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Retention:** default **4 days** (345,600s); minimum **60 seconds**; maximum **1,209,600 seconds (14 days)**.
 - **Visibility timeout:** default **30 seconds**; minimum 0; maximum **12 hours**.
 - **Message size:** minimum 1 byte, **maximum 1,048,576 bytes (1 MiB)**. For larger, the Extended Client Library stores the payload in S3 and puts a reference in the message — up to **2 GB**. ⚠️ Most course material and many practice questions still say **256 KB**; know both.
-- **Delay (message timer):** default 0, **maximum 15 minutes**.
+- **Delay queue vs message timer — two levels of the same delay.** A **delay queue** (`DelaySeconds` on the queue) hides each new message **when it is first added** — default **0 seconds**, **maximum 15 minutes**. A **message timer** sets that initial invisibility on **one** message (also 0 default, 15-minute max) and **overrides** the queue's `DelaySeconds`. The FIFO differences are in the Standard vs FIFO table. *(Verified 2026-10-14.)*
 - **Batching:** a single batch request carries at most **10 messages**. A message can carry up to **10 metadata attributes**.
 - **Polling:** **short polling is the default** (`WaitTimeSeconds = 0`). It samples a *subset* of SQS servers, so it can return an empty response while messages exist — AWS calls these *false empty responses*. **Long polling** queries **all** servers, waits up to **20 seconds**, and reduces both empty responses and cost.
 - **Standard queues:** nearly unlimited throughput per API action; **at-least-once** delivery; **best-effort ordering**.
@@ -152,7 +152,7 @@ So: **a new application on AWS → SQS/SNS. An existing application you don't wa
 - **Deduplication:** FIFO rejects a duplicate `MessageDeduplicationId` sent within a **5-minute** interval. **Content-based deduplication** hashes the message **body** with SHA-256 — *not* the attributes.
 - **Dead-letter queues:** the DLQ must be in the **same account and Region** as the source, and must be the **same queue type** — a FIFO queue's DLQ must be FIFO, a standard queue's DLQ must be standard. Separately, AWS advises against a DLQ on a FIFO queue at all if exact ordering matters. A **redrive allow policy** controls which source queues may use it: `allowAll` (default), `byQueue` (up to **10** source ARNs), or `denyAll`. For standard queues with `maxReceiveCount` **greater than 3**, a message received 3+ times without deletion is moved to the **back of the queue**.
 - **DLQ retention clock:** **standard** queues keep the **original enqueue timestamp** when a message moves to the DLQ, so set the DLQ's retention **longer** than the source's. **FIFO** queues **reset** the timestamp on the move.
-- **SNS subscribers:** Amazon SQS, Lambda, HTTP(S), email, SMS, mobile push, **Amazon Data Firehose**, and service providers such as Datadog, MongoDB and Splunk. Supports **A2A** and **A2P** messaging.
+- **SNS subscribers:** Amazon SQS, Lambda, HTTP(S), email, SMS, mobile push, **Amazon Data Firehose**, and service providers such as Datadog, MongoDB and Splunk. Supports **A2A** and **A2P** messaging. What happens to an SNS delivery when the Lambda subscriber is **throttled** is in [[19-serverless]].
 - **Neither a FIFO queue nor a FIFO topic can be an S3 event-notification destination.** AWS: *"Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination. To send a notification for an Amazon S3 event to an Amazon SQS FIFO queue, you can use Amazon EventBridge"*, and *"Standard SNS is only allowed as an S3 event notification destination, whereas SNS FIFO is not allowed."* So S3 → FIFO needs **EventBridge** in the middle. ([[09-s3-advanced]] owns S3 events.) *(Verified 2026-10-09 — an earlier pass of this note left this claim out for want of a source.)*
 - **SNS FIFO topics deliver only over the SQS protocol** — no email, HTTP or Lambda subscribers — and can fan out to **both FIFO and standard** queues.
 - **Subscription filter policies** let a subscriber receive only the messages it cares about, evaluated against message attributes or (with `FilterPolicyScope: MessageBody`) the body itself.
@@ -206,6 +206,7 @@ backlog-per-instance formula and worked example.
 | Throughput | effectively unlimited | **300 TPS**, 3,000 batched (more with high-throughput mode) |
 | Extra arguments | none | **`MessageGroupId`** required; dedup ID or content-based |
 | Name | anything | must end **`.fifo`** |
+| Delay | queue delay **and** per-message timers; changing the queue delay is **not retroactive** | queue delay only — **no per-message timers**; changing the queue delay **is retroactive** (affects messages already queued) |
 
 ### SQS vs SNS vs Amazon MQ
 
@@ -236,6 +237,9 @@ backlog-per-instance formula and worked example.
 > [!warning] Trap — "receiving a message removes it"
 > It does not. A received message is **hidden** for the visibility timeout and **comes back** unless the consumer explicitly calls `DeleteMessage`. Every "why was this processed twice?" scenario traces to this: a consumer that crashed, or took longer than the timeout. And deletion needs the **receipt handle**, which is issued per *receive*, not the message ID.
 
+> [!warning] Trap — delay queue vs visibility timeout
+> Both make a message unavailable to consumers for a while, at **different points in its life**. A **delay queue** hides a message **when it is first added**, before any consumer has seen it — "postpone delivery of new messages" (max **15 minutes**). A **visibility timeout** hides it **only after it has been received** — "stop another consumer picking up a message that is being processed" (max **12 hours**). *(Verified 2026-10-14.)*
+
 > [!warning] Trap — a queue with no dead-letter queue
 > Without a DLQ there is no upper bound on retries. A message that always fails is redelivered until retention expires — up to 14 days of consumers repeatedly choking on the same thing. Any scenario mentioning messages that repeatedly fail, or a consumer stuck in a loop, is a DLQ question.
 
@@ -264,6 +268,7 @@ backlog-per-instance formula and worked example.
 
 ## 🔗 Docs
 - [Amazon MQ basic elements](https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/amazon-mq-basic-elements.html) — the six ActiveMQ wire protocols and their TLS endpoint shapes; no AMQP version stated anywhere first-party; **verified 2026-10-10**
+- [SQS delay queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-delay-queues.html) · [SQS message timers](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html) — delay vs visibility timeout, 0–15 min, timer overrides `DelaySeconds`, no per-message timers on FIFO, retroactive only on FIFO; **verified 2026-10-14**
 - [Available CloudWatch metrics for SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-available-cloudwatch-metrics.html)
 
 - [SQS message quotas](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html) — retention, visibility timeout, **1 MiB** message size, delay, batch size, FIFO and high-throughput TPS by Region; verified 2026-09-06

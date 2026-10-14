@@ -2,7 +2,7 @@
 topic: 21-security
 domain: secure
 status: reviewed
-services: [KMS, CloudHSM, SecretsManager, ParameterStore, ACM, GuardDuty, Inspector, Macie, SecurityHub, Shield, WAF, FirewallManager, Detective]
+services: [KMS, CloudHSM, SecretsManager, ParameterStore, ACM, GuardDuty, Inspector, Macie, SecurityHub, SecurityLake, Artifact, Shield, WAF, FirewallManager, Detective]
 related: [01-iam, 01-iam-advanced, 09-s3-security, 11-cloudfront, 20-monitoring]
 tags: [topic, domain/secure]
 ---
@@ -67,7 +67,7 @@ That "cannot change its policy" line is the practical discriminator: the moment 
 
 | Service | Reads | Finds |
 |---|---|---|
-| GuardDuty | CloudTrail management events, VPC Flow Logs, Route 53 DNS query logs | threat activity |
+| GuardDuty | foundational: CloudTrail management events, VPC Flow Logs, Route 53 DNS query logs; plus CloudTrail **S3 data events** with the **S3 Protection** plan | threat activity |
 | Inspector | EC2 instances, ECR images, Lambda functions | software CVEs, network exposure |
 | Macie | S3 objects | sensitive data / PII |
 | Security Hub | the other services' findings | a single prioritised view |
@@ -128,7 +128,8 @@ graph TB
 - **Cannot auto-rotate:** asymmetric KMS keys, HMAC KMS keys, keys in custom key stores, and keys with **imported key material** (`EXTERNAL` origin) — AWS: *"Automatic key rotation is supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)."* These are rotated **manually**.
 - **KMS quotas:** 100,000 customer managed keys per Region, **50 aliases per key**, **50,000 grants per key**, 10 custom key stores.
 - **Parameter Store tiers:** Standard — **10,000** parameters, **4 KB**, no policies, no cross-account sharing, **no charge**. Advanced — **100,000**, **8 KB**, policies **supported**, shareable, **charges apply**. *"You can change a standard parameter to an advanced parameter, but you can't change an advanced parameter to a standard parameter."*
-- **GuardDuty foundational data sources:** **CloudTrail management events, VPC Flow Logs, Route 53 Resolver DNS query logs** — consumed as independent duplicate streams, so *"You don't need to enable anything else"* and your own flow-log config is unaffected. 30-day free trial.
+- **GuardDuty foundational data sources:** **CloudTrail management events, VPC Flow Logs, Route 53 Resolver DNS query logs** — consumed as independent duplicate streams, so *"You don't need to enable anything else"* **for these foundational sources** and your own flow-log config is unaffected. 30-day free trial. That sentence is scoped to the foundational sources, not to all of GuardDuty: **protection plans** such as **S3 Protection** are a second layer — see the S3 trap below. *(Scope corrected 2026-10-14.)*
+- **Amazon Security Lake** is a fully managed **security data lake**: it automatically centralises security **log and event data** from AWS services, SaaS providers, on-premises and third-party sources into **S3 buckets you own**. AWS: *"Security Lake converts ingested data into Apache Parquet format and a standard open-source schema called the Open Cybersecurity Schema Framework (OCSF)."* It works across **accounts and Regions**. A hand-built Glue or Lambda pipeline could do the same job, but it is the **higher-operational-overhead** option. *(Verified 2026-10-14.)*
 - **Inspector** scans **EC2 instances, container images in ECR, and Lambda functions** — and AWS now says activation enrols you in *all* scan types, so treat that list as the exam's core rather than a closed set. Scanning is *"continually"* and automatically — *"you don't need to manually schedule or configure assessment scans"* — rescanning when a package changes or a new CVE is published.
 - **Macie** analyses **Amazon S3** — bucket inventory, public-access posture, and sensitive-data discovery using **managed** and **custom data identifiers**. 30-day free trial.
 - **Shield Standard:** protection *"for all AWS customers... at no additional charge"* (network/transport layer). **Shield Advanced: $3,000/month, 1-year commitment**, and it includes *"certain AWS WAF usage for Shield protected resources at no additional cost for up to **50 billion AWS WAF requests per month**"* — covered, but not uncapped.
@@ -186,6 +187,19 @@ the answer, and a Lambda *resource* policy only controls who may **invoke** it i
 | Cross-account sharing of encrypted data | **yes** | **no** | yes (service handles it) |
 | Choose this when | cross-account, custom policy, audit, compliance, BYOK | you just want encryption on | never — you don't choose it |
 
+### KMS key policy vs grant (and `kms:ViaService`)
+A **grant** is the third authorisation mechanism for a KMS key. AWS: *"A grant is a policy instrument that allows AWS principals or AWS service principals to use KMS keys in cryptographic operations"*, and *"When authorizing access to a KMS key, grants are considered along with key policies and IAM policies."*
+
+| | Key policy (with conditions) | Grant |
+|---|---|---|
+| Lifetime | durable; changing access means editing the policy | *"often used for temporary permissions because you can create one, use its permissions, and delete it without changing your key policies or IAM policies"*; **retire** or **revoke** removes everything it allowed |
+| Scope | the whole key, any principal it names | exactly **one KMS key**, exactly **one grantee** (a principal *or* a service principal, not both), only the documented **grant operations** |
+| Allow / deny | can allow or deny | **allow only** |
+| Narrowing | condition keys — **`kms:ViaService`** *"limits use of an KMS key to requests from specified AWS services"* (requests a service makes **on your behalf**) | **grant constraints**, e.g. tied to one encryption context |
+| Exam trigger | "this key may only be used **via S3**" → `kms:ViaService` | "give one service **short-lived, narrowly scoped** use of a key **without rewriting the key policy**" → grant |
+
+*(Verified 2026-10-14.)*
+
 ### Secrets Manager vs SSM Parameter Store
 | | Secrets Manager | Parameter Store |
 |---|---|---|
@@ -200,9 +214,11 @@ the answer, and a Lambda *resource* policy only controls who may **invoke** it i
 | The stem says | Service | Because its input is |
 |---|---|---|
 | "unusual API calls", "crypto-mining", "compromised instance calling a known bad IP" | **GuardDuty** | CloudTrail + VPC Flow Logs + DNS logs |
+| "suspicious access patterns on an S3 bucket", "data exfiltration from S3" | **GuardDuty with S3 Protection** — still GuardDuty, even though CloudTrail is the log underneath | CloudTrail **S3 data events** (object-level API calls) *(Verified 2026-10-14.)* |
 | "unpatched software", "CVE", "vulnerability scan of our EC2/containers" | **Inspector** | the software on EC2, ECR images, Lambda |
 | "PII", "credit card numbers", "is there sensitive data in our buckets" | **Macie** | **S3 objects only** |
 | "single pane of glass", "aggregate findings", "CIS benchmark compliance" | **Security Hub** — AWS now names the aggregator **Security Hub CSPM** in current service docs, so either wording may appear | other services' findings |
+| "centralise security **logs** from all accounts and Regions into S3", "normalise to a standard schema (OCSF)", "security data lake" | **Security Lake** — not Security Hub, which aggregates *findings* | raw log and event data, normalised to OCSF in **your** S3 *(Verified 2026-10-14.)* |
 | "investigate the root cause of this finding", "visualise the relationships" | **Detective** | the same logs, as a behaviour graph |
 | "central firewall rules across all accounts in the org" | **Firewall Manager** | WAF/Shield/SG policies, org-wide |
 
@@ -363,7 +379,16 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > Shield is **DDoS**. SQL injection, XSS and bad bots are **WAF**. Shield Advanced adds layer-7 DDoS mitigation and *covers* your standard WAF costs on protected resources, but it is not where you write "block requests containing `' OR 1=1`". Rules are a WAF concept.
 
 > [!warning] Trap — GuardDuty needs you to turn on flow logs
-> It does not — for CloudTrail and flow logs. GuardDuty consumes *"an independent and duplicated stream"* of CloudTrail management events and VPC Flow Logs, with nothing to enable. The **DNS** source carries a condition worth knowing: GuardDuty reads Route 53 Resolver query logs only if your instances use the **AWS DNS resolvers** (the default); point them at a third-party resolver and GuardDuty loses that signal. So the sources are CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — *"You don't need to enable anything else"*, and enabling or disabling your own flow logs changes nothing about GuardDuty. Options telling you to configure the data sources first are the distractor.
+> It does not — for CloudTrail and flow logs. GuardDuty consumes *"an independent and duplicated stream"* of CloudTrail management events and VPC Flow Logs, with nothing to enable. The **DNS** source carries a condition worth knowing: GuardDuty reads Route 53 Resolver query logs only if your instances use the **AWS DNS resolvers** (the default); point them at a third-party resolver and GuardDuty loses that signal. So the **foundational** sources are CloudTrail management events, VPC Flow Logs and Route 53 DNS query logs — *"You don't need to enable anything else"* for those, and enabling or disabling your own flow logs changes nothing about GuardDuty. Options telling you to configure the data sources first are the distractor.
+
+> [!warning] Trap — GuardDuty eliminated for "suspicious access to an S3 bucket" because it only reads three sources
+> The three foundational sources are not the whole of GuardDuty. **S3 Protection** is a separate plan: *"GuardDuty monitors AWS CloudTrail data events for Amazon S3, that includes object-level API operations"* — and *"you don't need to explicitly enable or configure S3 data event logging in AWS CloudTrail"*. It is switched on automatically the first time you enable GuardDuty in a Region. So "detect suspicious access to S3 / data exfiltration" is **GuardDuty**: CloudTrail records the calls, GuardDuty analyses them for threats. Inspector scans software and Macie finds sensitive data — neither is threat detection on S3 access. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — Security Hub, Inspector or Macie offered for AWS's own SOC / PCI / ISO reports
+> **AWS Artifact** is the portal for **AWS's own** compliance paperwork: *"on-demand downloads of AWS security and compliance documents"* — SOC, PCI and ISO reports — and the place to accept agreements such as the **HIPAA BAA**. It is free. **Security Hub** is tempting because it also does compliance, but the other way round: it checks **your** resources against CIS or PCI rules. Axis: **AWS's audit reports and agreements → Artifact**; **checking your environment → Security Hub**. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — KMS multi-Region keys offered for cross-Region snapshot or object replication
+> A **multi-Region key** has replicas in other Regions that *"have the same key material and key ID, so you can encrypt data in one AWS Region and decrypt it in a different AWS Region"*. Sounds perfect for DR — but AWS services mostly ignore that: *"Most AWS services that integrate with AWS KMS for encryption at rest or digital signatures currently treat multi-Region keys as though they were single-Region keys."* A cross-Region snapshot copy or S3 replication **re-encrypts with a key in the destination Region** anyway. So "copy encrypted snapshots to another Region" = **name a destination-Region key on the copy** ([[07-rds-aurora]]). Multi-Region keys are for **your own app** encrypting in one Region and decrypting in another. An existing key can't be converted to one. *(Verified 2026-10-14.)*
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -377,7 +402,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 - [ ] **WAF cannot attach to an NLB** — no HTTP at layer 4 to inspect.
 
 > [!tip] Production gap
-> This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for cross-Region DR of encrypted data, **grants** rather than broad key policies for short-lived service access, **key policy** conditions like `kms:ViaService` to restrict a key to one service, ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
+> This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for client-side encryption across Regions (see the trap above for where they do *not* help), **grants** and `kms:ViaService` (compared above), ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
 - [Key policies in AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html) — *"(You can use an IAM policy to deny a permission to a KMS key without permission from a key policy.)"*, and the "explicitly allowed, and never denied" rule; **verified 2026-10-10**
@@ -395,7 +420,14 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 - [KMS `Encrypt` API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html) — the 4,096-byte limit; verified 2026-09-25
 - [KMS resource quotas](https://docs.aws.amazon.com/kms/latest/developerguide/resource-limits.html) — keys, aliases, grants; verified 2026-09-25
 - [Parameter Store tiers](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-advanced-parameters.html) — standard vs advanced; verified 2026-09-25
-- [GuardDuty data sources](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_data-sources.html) — verified 2026-09-25
+- [GuardDuty data sources](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_data-sources.html) — headed "GuardDuty foundational data sources"; verified 2026-09-25, scope re-checked 2026-10-14
+- [GuardDuty S3 Protection](https://docs.aws.amazon.com/guardduty/latest/ug/s3-protection.html) — CloudTrail S3 data events, no CloudTrail data-event logging needed, unauthenticated access not processed, auto-enabled with the free trial; **verified 2026-10-14**
+- [What is Amazon Security Lake](https://docs.aws.amazon.com/security-lake/latest/userguide/what-is-security-lake.html) — OCSF + Parquet, accounts and Regions, rollup Regions, subscribers; **verified 2026-10-14**
+- [What is AWS Artifact](https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html) · [Managing agreements](https://docs.aws.amazon.com/artifact/latest/ug/managing-agreements.html) · [Downloading documents](https://docs.aws.amazon.com/artifact/latest/ug/downloading-documents.html) — ISO/PCI/SOC reports, BAA for HIPAA; **verified 2026-10-14**
+- [What is Security Hub CSPM](https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html) — control checks against CIS and PCI DSS on your resources; **verified 2026-10-14**
+- [Multi-Region keys](https://docs.aws.amazon.com/kms/latest/developerguide/multi-region-keys-overview.html) — same key material and key ID; services treat MRKs as single-Region; single-Region keys the default best fit; **verified 2026-10-14**
+- [Copying an EBS snapshot](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-copy-snapshot.html) — a copy can use a different KMS key from the source; **verified 2026-10-14**
+- [KMS grants](https://docs.aws.amazon.com/kms/latest/developerguide/grants.html) · [KMS condition keys (`kms:ViaService`)](https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html) — grant scope, retire/revoke, grant tokens, constraints; ViaService "only applies for Forward access sessions"; **verified 2026-10-14**
 - [What is Amazon Inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) — EC2/ECR/Lambda, continuous; verified 2026-09-25
 - [What is Amazon Macie](https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html) — S3 only; verified 2026-09-25
 - [Associating a web ACL with a resource](https://docs.aws.amazon.com/waf/latest/developerguide/web-acl-associating-aws-resource.html) — supported targets; verified 2026-09-25

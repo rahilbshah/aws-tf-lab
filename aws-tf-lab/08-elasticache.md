@@ -177,6 +177,9 @@ hit rate above ~90% to be worth it.
 > cannot front a relational database at all. The second discriminator is consistency: if the
 > stem insists on **strongly consistent reads**, DAX does not help, whatever else fits.
 
+> [!warning] Trap — "raise the table's provisioned RCUs" to fix a read-hot key
+> Every DynamoDB partition tops out at **3,000 read units and 1,000 write units per second** ([[19-serverless]] covers how the partition key places items). **Adaptive capacity** can rebalance so a consistently hot item sits alone on its own partition, but even then *"DynamoDB can deliver throughput up to the partition maximum of 3,000 RCUs and 1,000 WCUs to that single item's primary key."* Below that ceiling, more provisioned RCUs genuinely can help; at it, no table-level number lifts one key past 3,000. AWS's documented mitigation for a read-hot key: *"offload the read activity to a DAX cache"* — API-compatible, so *"only minimal functional changes"*. If the stem needs **strongly consistent** reads, DAX is out (see above). *(Verified 2026-10-14.)*
+
 > In one line: DAX is a drop-in microsecond cache for DynamoDB only, and only for eventually
 > consistent reads.
 
@@ -202,6 +205,9 @@ flowchart LR
 - **Memcached (node-based):** no replication, no failover, no persistence, no backup — if a node dies, its data is gone. (All four of those flip on **ElastiCache Serverless** for Memcached.) Scales by partitioning keys across nodes (client-side).
 - **Data types:** Redis has strings, lists, sets, **sorted sets** (leaderboards!), hashes, bitmaps, hyperloglog, **geospatial**, plus **pub/sub** and transactions. Memcached: simple strings/objects only.
 - **Encryption:** on **node-based** clusters both in-transit and at-rest are an *option* you enable (Memcached in-transit from 1.6.12). On **ElastiCache Serverless**, any engine, both are *"Always enabled"* — at rest with an AWS managed or customer managed KMS key, and in transit with TLS that *"Clients must support"*. *(Verified 2026-10-05.)*
+- **Authentication (Valkey / Redis OSS)** — separate from encryption, three mechanisms. **AUTH**: a single token (password) set on the cluster; AWS now says AUTH *"has been superseded by"* **RBAC**. **RBAC**: individual users with passwords (rotatable via **Secrets Manager**). **IAM authentication** (Valkey 7.2+ / Redis OSS 7.0+): *"a short-lived IAM authentication token instead of a long-lived ElastiCache user password"*; it *"requires in-transit encryption (TLS)"*. *(Verified 2026-10-14.)*
+- **Evictions:** a node at its memory limit **evicts keys** per the `maxmemory-policy` parameter. The ElastiCache default is **`volatile-lru`** — *"Items with a TTL set are evicted following least-recently-used (LRU) estimation when a cache's memory limit is reached."* The policy is changed through a **parameter group**. Watch the CloudWatch **`Evictions`** metric — *"The number of keys that have been evicted due to the maxmemory limit."* Rising evictions = the cache is too small for its data. *(Verified 2026-10-14.)*
+- **Expensive, not just frequent:** a query result is worth caching when it is slow or costly to produce, not only when the same cheap query repeats. AWS's own examples are *"queries that involve joins across multiple tables or queries with intensive calculations"* — cache the result and *"you pay the price of the query only once"*. AWS's test: *"Your data is slow or expensive to get when compared to cache retrieval."* So a multi-table JOIN result is a caching **candidate**, not a reason to rule a cache out. *(Verified 2026-10-14.)*
 - **Common use cases:** DB query cache, **session store** (Redis, so sessions survive failover), **leaderboards/counters** (Redis sorted sets), **rate limiting**, **pub/sub messaging**, **geospatial** lookups.
 - **Valkey:** AWS-backed open-source fork of Redis (after Redis's license change); ElastiCache now offers Valkey, Redis OSS, and Memcached. For SAA-C03 think "Redis vs Memcached"; Valkey ≈ Redis feature-wise and is often cheaper.
 - **Auto Discovery (Memcached only):** the app connects to a single node and retrieves the full node list, then connects to any of them — no hard-coded node endpoints, and the list stays correct as nodes are added or removed (every node holds metadata about all the others). It requires an **ElastiCache client library with Auto Discovery support**. AWS explicitly states Auto Discovery is **not available for Valkey or Redis OSS**, which is what makes "node discovery" a Memcached-exclusive signal on the exam.
@@ -252,6 +258,9 @@ flowchart LR
 > [!warning] Trap — "add a cache" when the problem is writes
 > Caches accelerate **reads**. If the bottleneck is heavy **writes** or the data must be strongly consistent per request, a cache doesn't help (and lazy-loading serves stale data). Match the tool to read-heavy, repeat-query workloads.
 
+> [!warning] Trap — "require a password on the Redis cluster" answered with encryption alone
+> Encryption is not authentication. **At-rest** encryption authenticates nobody, and **in-transit** encryption is the *prerequisite* for a password, not the password: AWS — *"AUTH can only be enabled for encryption in-transit enabled Valkey or Redis OSS clusters."* So "password-protect the cache" on a node-based cluster = **in-transit encryption + an AUTH token**. On a **Serverless** cache the answer is **RBAC**: AUTH *"is available for node-based clusters only"* and *"All serverless caches must use RBAC for authentication."* For **IAM authentication**: the token is valid **15 minutes**; a connection lasts up to **12 hours**. *(Verified 2026-10-14.)*
+
 > [!warning] Trap — Redis is multi-threaded because it's fast
 > Redis command execution is **single-threaded** (one core per node); it scales via **cluster-mode sharding**, not more cores. **Memcached** is the multi-threaded one. Reversed often.
 
@@ -274,3 +283,11 @@ flowchart LR
 - [Caching strategies (lazy loading, write-through, TTL)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html)
 - [Redis replication & Multi-AZ](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Replication.html)
 - [Auto Discovery (Memcached)](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/AutoDiscovery.html) — Memcached-only, not available for Valkey/Redis OSS; verified 2026-08-29
+- [Common ElastiCache use cases](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/elasticache-use-cases.html) — expensive JOIN / intensive-calculation results as caching candidates; "slow or expensive to get when compared to cache retrieval"; verified 2026-10-14
+- [AUTH for Valkey and Redis OSS](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/auth.html) — requires in-transit encryption, node-based only, superseded by RBAC, ROTATE/SET, serverless must use RBAC; verified 2026-10-14
+- [IAM authentication](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/auth-iam.html) — 15-minute token, 12-hour connection, requires TLS, refresh-capable clients; verified 2026-10-14
+- [Valkey / Redis OSS parameters](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/RedisConfiguration.html) — `maxmemory-policy` default `volatile-lru`, `reserved-memory-percent` 25%; verified 2026-10-14
+- [Valkey / Redis OSS CloudWatch metrics](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/CacheMetrics.Redis.html) + [Performance efficiency pillar](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/PerformanceEfficiencyPillar.html) — the `Evictions` metric; verified 2026-10-14
+- [Database caching strategies using Redis — Evictions](https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/evictions.html) — **whitepaper marked "for historical reference only"**: scale up/out on evictions, `noeviction` blocks writes; checked 2026-10-14
+- [DynamoDB burst and adaptive capacity](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html) + [Partition key design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html) — 3,000 RCU / 1,000 WCU per partition, hot item isolated but still capped; verified 2026-10-14
+- [DynamoDB Accelerator (DAX)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html) — offload a hot key's reads to DAX, API-compatible, minimal changes; verified 2026-10-14

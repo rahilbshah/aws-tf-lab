@@ -122,7 +122,7 @@ These three get offered together and are genuinely different jobs:
 
 "Continuously evaluate and remediate" is **Config**. "Sweep my whole account against best practice — root MFA, public buckets, idle load balancers, quota usage" is **Trusted Advisor**. "Review this architecture against best practices" is the **WA Tool**.
 
-The line that matters between Trusted Advisor and **Compute Optimizer**, because both get described as finding waste: Trusted Advisor runs a **fixed checklist across six categories** and *flags* a resource; it never tells you what size to use instead. Compute Optimizer reads **CloudWatch utilisation metrics** and returns **a specific recommended instance type**. If the stem wants a named replacement size, it is Compute Optimizer ([[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)]]); if it wants an account-wide list of what is wasteful or insecure, it is Trusted Advisor.
+The line that matters between Trusted Advisor and **Compute Optimizer**, because both get described as finding waste: Trusted Advisor runs a **fixed checklist across six categories** and *flags* resources — where it does show a sizing recommendation, AWS says it is *"the top recommended action from AWS Cost Optimization Hub"*, which needs Compute Optimizer. Compute Optimizer reads **CloudWatch utilisation metrics** and returns **a specific recommended instance type**. If the stem wants a named replacement size, it is Compute Optimizer ([[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)]]); if it wants an account-wide list of what is wasteful or insecure, it is Trusted Advisor. *(Trusted Advisor ↔ Cost Optimization Hub link verified 2026-10-14.)*
 
 > In one line: WA Tool reviews design, Trusted Advisor inspects resources, Config continuously evaluates and remediates.
 
@@ -194,6 +194,7 @@ The line that matters between Trusted Advisor and **Compute Optimizer**, because
 - [ ] **WA Tool vs Trusted Advisor vs Config** — three "checks your account" services that are offered together.
 
 ## 🔗 Docs
+- [Trusted Advisor cost optimization checks](https://docs.aws.amazon.com/awssupport/latest/user/cost-optimization-checks.html) — the newer EC2 check shows *"the top recommended action from AWS Cost Optimization Hub"* and requires opting in to Compute Optimizer; verified 2026-10-14
 
 - [The pillars of the framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html) — the six pillars named and ordered; verified 2026-09-26
 - [What is AWS Well-Architected Tool?](https://docs.aws.amazon.com/wellarchitected/latest/userguide/tool.html) — purpose, custom lenses, Trusted Advisor and Service Catalog AppRegistry integration; **re-verified 2026-10-07**. (The old `userguide/intro.html` URL is dead — it returns the 2,459-byte not-found shell. AWS restructured the Well-Architected user guide on 2026-10-01, and Well-Architected is now two things: the **WA Tool** and a new **AWS Well-Architected Agent**.)

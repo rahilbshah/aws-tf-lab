@@ -14,7 +14,7 @@ Four services that answer four different questions, and an exam that mostly test
 > - **The whole topic collapses to one discrimination.** *"Is it healthy?"* → **CloudWatch**. *"Who did it?"* → **CloudTrail**. *"What is the configuration, and has it drifted?"* → **Config**. *"React automatically when X happens"* → **EventBridge**.
 > - **EC2 basic monitoring is every 5 minutes. Detailed monitoring is every 1 minute** (and costs extra). Alarm periods must be ≥ the metric's resolution.
 > - **Memory and disk-space are NOT default EC2 metrics.** They are *in-guest*, so they need the **CloudWatch agent**, and they arrive as **custom metrics** (billed as such).
-> - **CloudTrail Event history is 90 days of management events only, free, per Region.** Anything longer, or data events, needs a **trail** delivering to S3.
+> - **CloudTrail Event history is 90 days of management events only, free, per Region.** Anything longer, or data events, needs a **trail** delivering to S3 — a trail can also deliver to a **CloudWatch Logs log group**, which is what lets you alarm on API activity (see the trap below).
 > - **Data events are OFF by default** — *"trails and event data stores log management events, but not data or Insights events."* S3 object-level and Lambda invoke activity are data events.
 > - **An alarm invokes actions only when it CHANGES state.** Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
 > - **Composite alarms exist to reduce alarm noise** — and they cannot perform EC2 or Auto Scaling actions.
@@ -214,6 +214,7 @@ graph TB
 - **Log group retention** is an explicit setting, and the default is **Never expire** — which is the cost trap, since logs accumulate forever until you set one. It is an **enumerated set, not any integer**: *"Possible values are: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, and 3653."* That's 22 values, 1 day to 10 years; the round ones to recognise are **365** (1 yr), **731** (2 yr), **1096** (3 yr), **1827** (5 yr), **3653** (10 yr). Asking for 45 or 270 days is rejected. To go back to no expiry you **delete** the policy (`DeleteRetentionPolicy`) rather than setting a large number. And deletion is not instant: *"CloudWatch Logs doesn't immediately delete log events when they reach their retention setting. It typically takes up to 72 hours"* — though once marked for deletion they stop accruing storage cost.
 
 - **EC2 alarm actions:** **stop, terminate, reboot, recover**. `recover` works **only** with `StatusCheckFailed_System`, never `StatusCheckFailed_Instance`. Recovery **preserves** instance ID, private/public/Elastic IPs, metadata, placement group, attached EBS volumes and AZ; it **loses** RAM contents and instance-store data, and **uptime resets to zero**. **Terminated instances cannot be recovered.** **Simplified automatic recovery is enabled by default** on supported instances; CloudWatch action based recovery is configured manually. Reboot/stop/terminate actions use the service-linked role **`AWSServiceRoleForCloudWatchEvents`**. Configure these alarms to treat missing data as **`missing`**, since EC2 metrics can briefly go `INSUFFICIENT_DATA` on a healthy instance.
+- **AWS X-Ray** traces a request across services. Resources send **segments** (resource name, request, response, work done, errors); **subsegments** *"provide more granular timing information and details about downstream calls"* — an AWS service call, an external HTTP API or an SQL database. X-Ray *"groups segments that have a common request into traces"* and draws a **service map** showing each hop's latency — which is how you find the slow one. It **samples** by default rather than recording every request. *(Verified 2026-10-14.)*
 - **ACM expiry:** metric **`DaysToExpiry`**, namespace **`AWS/CertificateManager`**, dimension **`CertificateArn`**, published **twice per day** until the certificate expires. Separately, **AWS Health** events (`aws.health` / *AWS Health Event*) carry **`AWS_ACM_RENEWAL_STATE_CHANGE`**, **`CAA_CHECK_FAILURE`**, **`AWS_ACM_RENEWAL_FAILURE`** for **EventBridge → SNS**.
 *Verified against AWS docs 2026-09-29.*
 
@@ -286,6 +287,18 @@ graph TB
 | Ad-hoc query across log groups | **CloudWatch Logs Insights** |
 | Keep logs cheaply for years | **export to S3** (and lifecycle to Glacier) |
 | Stream logs to a search/analytics tool | subscription filter → **Kinesis / Firehose / Lambda** |
+
+### Cross-account observability vs the cross-account cross-Region console
+No single CloudWatch feature gives one pane of **metrics *and* logs across many accounts *and* Regions** — AWS splits the job, and the split is the testable part. *(Verified 2026-10-14.)*
+
+| | **CloudWatch cross-account observability** | **Cross-account cross-Region CloudWatch console** |
+|---|---|---|
+| Scope | many accounts, **within one Region** — *"applications that span multiple accounts within a Region"* | many accounts **and many Regions** |
+| What it shares | metrics (all or filtered), **log groups**, **X-Ray traces**, Application Signals, Application Insights, Internet Monitor | **metrics** on cross-account, cross-Region **dashboards** |
+| Logs | **yes** | **no** — *"does not provide cross-account cross-Region visibility for logs"* |
+| Set up with | a central **monitoring account** that source accounts link to | the older console feature |
+| AWS's recommendation | *"the richest cross-account observability and discovery experience for your metrics, logs, and traces within a Region"* | metrics-only dashboards that must span Regions |
+
 
 ## Worked examples
 
@@ -362,6 +375,12 @@ graph TB
 > [!warning] Trap — "enable CloudTrail to see who read the S3 object"
 > CloudTrail is on by default only for **management events**. Object-level reads and writes are **data events**, which *"trails and event data stores"* do **not** log by default. The answer must include configuring data events (an event selector) on a trail — and note they are billed by volume, which is the reason they are opt-in.
 
+> [!warning] Trap — "CloudTrail can only deliver to S3, so query it with Athena"
+> A trail can send its events to a **CloudWatch Logs log group** as well as S3 (management, data and Insights events are all supported), and that is what makes alarming on API activity possible. AWS's documented chain: configure the trail to send to CloudWatch Logs → a **metric filter** matching the pattern (an API error code, a `ConsoleLogin` failure) → a CloudWatch **metric** on the filter → an **alarm** on a threshold and period → **SNS**. The EventBridge **`AWS API Call via CloudTrail`** → SNS rule above is also correct — treat the two as alternatives. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — a symptom stem: "find which service in the chain adds the latency"
+> When a stem describes the symptom instead of naming tracing — a request crossing API, Lambda and database is slow, and the job is to find **which hop** — that is **X-Ray**. AWS: *"Use the trace map to identify bottlenecks, latency spikes, and other issues to solve to improve the performance of your applications."* *(Verified 2026-10-14.)*
+
 > [!warning] Trap — CloudWatch Events versus EventBridge
 > They are the same service; CloudWatch Events was renamed to EventBridge. If a question offers both as separate options, they are not testing a distinction — look at what else the options differ on.
 
@@ -401,4 +420,7 @@ graph TB
 - [CloudWatch metrics concepts](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html) — resolution, retention, periods; verified 2026-09-25
 - [Using CloudWatch alarms](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html) — states, actions, composite alarms; verified 2026-09-25
 - [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html) — in-guest metrics, custom-metric billing; verified 2026-09-25
+- [Monitoring CloudTrail log files with CloudWatch Logs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/monitor-cloudtrail-log-files-with-cloudwatch-logs.html) — trail → log group → metric filter → alarm → SNS, the delivery IAM role; verified 2026-10-14
+- [What is AWS X-Ray](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html) · [X-Ray concepts](https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html) — segments, subsegments, traces, service graph, inferred segments, default sampling, tracing header, 30-day retention; verified 2026-10-14
+- [CloudWatch cross-account observability](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html) · [Cross-account cross-Region CloudWatch console](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Cross-Account-Cross-Region.html) — within-a-Region OAM sinks/links vs metrics-only cross-Region dashboards, no logs cross-Region; verified 2026-10-14
 - [CloudTrail concepts](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html) — 90-day event history, event types, Insights; verified 2026-09-25

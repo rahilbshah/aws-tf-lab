@@ -85,6 +85,7 @@ graph LR
 - **VPC networking uses Hyperplane ENIs**, shared per *subnet + security group combination*, not one per concurrent execution: *"Other functions in your account that use the same subnet and security group combination can also use this ENI."* Each supports up to **65,000 connections**. A new VPC function sits in `Pending` for several minutes while the ENI is built, and 14 days idle reclaims it.
 - **VPC and the internet**: *"When you attach your function to a VPC, it can only access resources available within that VPC"*, and *"Connecting a function to a public subnet doesn't give it internet access or a public IP address."*
 - **DynamoDB Streams** retain records for **24 hours**, organised into shards. Four `StreamViewType` values: `KEYS_ONLY`, `NEW_IMAGE`, `OLD_IMAGE`, `NEW_AND_OLD_IMAGES` — and *"It is not possible to edit a StreamViewType once a stream has been setup."*
+- **DynamoDB Time to Live (TTL)** expires items on a per-item timestamp attribute you nominate, and DynamoDB deletes them for you. The attribute must be a **Number** in **Unix epoch seconds** — any other type is ignored by TTL. The delete **uses no write capacity** (except the replicated deletes in a Global Table). TTL deletes still appear in **DynamoDB Streams** (marked as service deletions). *(Verified 2026-10-14.)*
 - **Secondary index quotas**: **20 GSIs** (default) and **5 LSIs** per table. LSI: *"For each partition key value, the total size of all indexed items must be 10 GB or less."*
 - **API Gateway default throttle**: **10,000 requests/second with a 5,000 burst bucket, per account per Region — and *shared across* HTTP, REST and WebSocket APIs**, not per API. A handful of newer/smaller Regions default lower. Adjustable via Service Quotas. Note the mismatch AWS itself calls out: API Gateway defaults to 10,000 RPS while Lambda defaults to **1,000** concurrent executions, so the two don't line up out of the box.
 - **Lambda runtimes** are versioned per language release — `python3.13` and `python3.14` are both current and supported as of October 2026 (`python3.15` newer still), so don't treat a single version string as "the" current one. *"All supported Lambda runtimes support both x86_64 and arm64 architectures"* — arm64/Graviton is cheaper per GB-second.
@@ -142,6 +143,7 @@ a subnet behind a NACL. Two consequences:
 | What exists | **nothing** — an API endpoint | instances, measured in ACUs even when "serverless" |
 | Connections | none; every op is an HTTPS call | a **connection limit** you can exhaust |
 | When you decide your queries | **before the table exists** — the key schema *is* the query plan | later; write a new `SELECT` any time |
+| Adding or changing a **non-key** attribute | an ordinary write — schemaless beyond the primary key, each item can carry its own attributes; **no DDL, no migration, no table lock** (the *key* schema is still fixed, row above) | a schema change: the RDBMS defines the schema at create; in **Redshift**, `ALTER TABLE` **locks the table for reads and writes** until its transaction completes, unless the docs say a given operation allows otherwise *(Verified 2026-10-14.)* |
 | Joins, aggregates, ad-hoc reporting | no | yes |
 | Scale story | horizontal, effectively unbounded | vertical, plus read replicas |
 | Exam trigger | "single-digit millisecond latency **at any scale**", "millions of requests/sec", key-value, session store, shopping cart | "complex queries", "joins", "existing MySQL/PostgreSQL app", "our analysts query it" |
@@ -223,6 +225,15 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > [!warning] Trap — SQS is not an asynchronous invocation
 > S3 and SNS invoke Lambda asynchronously, so Lambda retries twice and then uses a DLQ. **SQS is an event source mapping** — Lambda *polls* it — so retry behaviour comes from the **queue's** visibility timeout and `maxReceiveCount`, exactly as in [[15-decoupling]]. Answering "Lambda will retry twice" for an SQS-triggered function is wrong.
 
+> [!warning] Trap — "raise SNS capacity" when SNS-to-Lambda deliveries are throttled
+> SNS invokes a Lambda subscriber **asynchronously**. When the account's Lambda concurrency is used up, the invocation is **throttled**; SNS keeps retrying for days, then **drops the message unless the subscription has a dead-letter queue**. There is no SNS capacity setting to raise. The fix is on the **Lambda** side — **raise the account concurrency quota** (default **1,000** per Region, adjustable) or set **reserved concurrency** on the function. SNS mechanics live in [[15-decoupling]]. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — provisioned concurrency as the only cold-start answer
+> **Lambda SnapStart** also cuts cold starts: when you publish a version, Lambda snapshots the initialised function and starts new environments **from that snapshot**. Runtimes: **Java, Python, .NET** (not Node.js). It only works on **published versions**, and it **can't be combined with provisioned concurrency**. It has no always-on charge like provisioned concurrency — **free on Java**; on Python and .NET you pay to cache the snapshot and per restore. Use provisioned concurrency when SnapStart can't meet the latency target. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — "expired" TTL items are not gone yet
+> "Expire old items automatically, with no extra write cost" → **DynamoDB TTL**, not a scheduled Lambda scanner and not S3 lifecycle. But TTL deletion is **not immediate**: expired items are deleted *"typically within a few days after their expiration"*, so a `Query` or `Scan` can still return them — filter them out with a **filter expression**. *(Verified 2026-10-14.)*
+
 > [!warning] Trap — API keys are not authentication
 > Usage plans and API keys *"track and limit usage"*. They identify a caller for metering and throttling; they prove nothing about identity. If an option offers API keys as the security control, it is the distractor. Authentication is **IAM** (an AWS principal), **Cognito** (an end user who logged in), or a **Lambda authorizer** (your own scheme).
 
@@ -247,6 +258,10 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [SNS message delivery retries](https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html) — 5XX and 429 retryable, AWS-managed delivery policy, only HTTP/S policies customisable; with [Lambda concurrency](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html) for the 1,000-per-Region default; **verified 2026-10-14**
+- [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) — snapshot mechanism, Java/Python/.NET runtimes, versions only, no provisioned concurrency, pricing; **verified 2026-10-14**
+- [DynamoDB Time to Live](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html) — Number epoch-seconds attribute, deletion within a few days, Streams service deletions, Global Tables replicated-delete charge; **verified 2026-10-14**
+- [DynamoDB vs SQL: creating a table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SQLtoNoSQL.CreateTable.html) · [Redshift ALTER TABLE](https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE.html) — schemaless beyond the key; ALTER TABLE locks the table; **verified 2026-10-14**
 - [Managing Lambda dependencies with layers](https://docs.aws.amazon.com/lambda/latest/dg/chapter-layers.html) — the three reasons for layers, five per function, .zip only; **verified 2026-10-11**
 - [Types of metrics for Lambda functions](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-metrics-types.html) — `ConcurrentExecutions` and the throttling threshold, the provisioned-concurrency siblings, idle functions not emitting utilisation; **verified 2026-10-11**
 - [API Gateway WebSocket API quotas](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-execution-service-websocket-limits-table.html) — 10-min idle timeout and 2-hour max duration (neither increasable), 500 new conn/sec, 32 KB frame / 128 KB message, close code 1009; **verified 2026-10-10**

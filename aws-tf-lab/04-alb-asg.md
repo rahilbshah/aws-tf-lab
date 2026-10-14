@@ -424,11 +424,15 @@ flowchart TD
 - **Scaling a queue consumer:** not CPU, and not raw queue depth — **backlog per instance** = `ApproximateNumberOfMessagesVisible` ÷ `InService` instances, target = acceptable latency ÷ per-message processing time. **Metric math** now replaces publishing a custom metric. For a latency SLA use **`ApproximateAgeOfOldestMessage`**.
 - **Lifecycle hooks:** instance parks in a **wait state**; heartbeat timeout **1 hour** default, global cap **48 h or 100× heartbeat** (smaller wins); `complete-lifecycle-action` continues early. **Termination hooks are best-effort** — on timeout or abandon, ASG terminates anyway.
 - **Instance warm-up** excludes a new instance's metrics from scaling decisions until it elapses; set the **default instance warmup** on the group, not per policy.
+- **Warm pool** — *"a pool of pre-initialized EC2 instances that sits alongside an Auto Scaling group"*, for applications with *"exceptionally long boot times"*. A scale-out draws from it (a **warm start**); with the pool empty you get a **cold start**. Pool instances wait as **`Stopped`** (cheapest: you pay only for EBS volumes and attached EIPs), **`Hibernated`** (RAM saved to the EBS root volume; you also pay to store it) or **`Running`** (*"highly discouraged"*). Needs an **EBS root volume**, and no Spot in a mixed-instances group. *(Verified 2026-10-14.)*
 - **min = max = desired = 1 across 2+ AZs** is the cheapest way to make a single non-distributed instance survive an AZ failure — the group relaunches it elsewhere. *(Verified 2026-10-01.)*
 
 - **Default routing algorithm** (ALB target group) = **round robin**; also *least outstanding requests* and *weighted random*. An **NLB does not use these at all** — it distributes by flow hash.
 - **ALB target-group health-check defaults:** `HealthyThresholdCount` **5**, `UnhealthyThresholdCount` **2**, `HealthCheckIntervalSeconds` **30**, `HealthCheckTimeoutSeconds` **5**, path `/`, success code **200**. Read the thresholds carefully: *"After your target is registered, it must pass **one** health check to be considered healthy"* — so a **new** target enters service about one interval (~30s) after its app answers. `HealthyThresholdCount` is *"the number of consecutive successful health checks required before considering an **unhealthy** target healthy"*, i.e. for recovery, and `UnhealthyThresholdCount` **2** × 30s = **60s** of failures takes a healthy target out. Thresholds range **2–10**, interval **5–300s**, timeout **2–120s**. *(Verified 2026-10-04.)*
 - **Deregistration delay (connection draining)** default = **300 seconds**. Draining target finishes in-flight requests, state `draining` → `unused`, then the ASG may terminate it. Range 0–3600s.
+- **Sticky sessions (session affinity)** let the ALB *"bind a user's session to a specific target. This ensures that all requests from the user during the session are sent to the same target."* It is a **target group attribute** (not a listener setting), it works through **cookies**, and if the cookie's target becomes unhealthy the ALB picks a new one. The two cookie types are compared under Comparisons. *(Verified 2026-10-14.)*
+- **gRPC on an ALB — what it requires.** A target group's **protocol version** is `HTTP1`, `HTTP2` or `GRPC`: *"By default, Application Load Balancers send requests to targets using HTTP/1.1. You can use the protocol version to send requests to targets using HTTP/2 or gRPC."* It needs an **HTTPS listener** and `instance` or `ip` targets (**not Lambda**). NLB and GWLB have no gRPC target-group setting, so "route gRPC calls by service/method" means an **ALB**. *(Verified 2026-10-14.)*
+- **ALB access logs** are *"an optional feature of Elastic Load Balancing that is disabled by default"*. Once on, they record each request's time, client IP, latencies, request path and server response, stored as **compressed files in an S3 bucket you specify**, written **every 5 minutes**. Query them in place with **Amazon Athena**. (AWS now also offers delivery to CloudWatch Logs or Firehose; the exam still tests the S3 version.) *(Verified 2026-10-14.)*
 - **Health checks are two independent systems:** the *ALB/target-group* health check (does the app answer on the path with the matcher code?) decides **routing**; the *ASG's* health-check type (`HealthCheckType`) decides **replacement**. `EC2` = hypervisor status checks only; `ELB` = honor the target-group health. They only cooperate if you set `ELB`.
 - **the **health check grace period**** — seconds after launch before the ASG counts health against an instance. Must exceed boot + bootstrap + health-check convergence, or you get a **boot loop**. With boot-time `apt install`, ~300s is safe; with a baked AMI you can drop it low.
 - **Target tracking:** EC2 Auto Scaling **creates and manages** the CloudWatch alarms (one high, one low) — do not edit/delete them. It **scales out aggressively and scales in gradually** (prioritizes availability). It **cannot scale out when the metric is below target** — scale-out needs real load above the target value. Predefined metrics: `ASGAverageCPUUtilization`, `ASGAverageNetworkIn`, `ASGAverageNetworkOut`, `ALBRequestCountPerTarget`.
@@ -453,7 +457,33 @@ flowchart TD
 | Static IP | ❌ DNS name only | ✅ one per AZ, can attach EIP | via endpoints |
 | Preserves client source IP | ❌ (adds `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Port`) | ✅ natively — but **on by default only for `instance`-type target groups** and for UDP/TCP_UDP/QUIC; for **`ip`-type TCP/TLS groups it is off by default** | ✅ |
 | Cross-zone default | always on (free) | off (inter-AZ charged) | off |
+| Target-group protocol / gRPC | HTTP/HTTPS, protocol version `HTTP1` (default), `HTTP2` or **`GRPC`** | TCP, UDP, TLS, TCP_UDP, TCP_QUIC — **no gRPC** | GENEVE — **no gRPC** |
 | Use it for | web apps, path/host routing, WebSockets, HTTP-aware | TCP/UDP, extreme perf, static IP, non-HTTP | inline firewalls/IDS/IPS appliances |
+
+### Target type — `instance` vs `ip`
+
+Both target types exist on **ALB and NLB** target groups (the ALB/Fargate framing is in [[17-containers#ALB target types]]).
+
+|   | `instance` (register by instance ID) | `ip` (register by IP address) |
+|---|---|---|
+| Address the load balancer reaches | the **primary private IP** of the instance's **primary network interface** *(NLB guide)* | **any private IP** on one or more of the instance's network interfaces — so several applications on one instance can use the same port, and each interface can have its own security group *(NLB guide)* |
+| Instances in a **peered VPC** (same or different Region) | ❌ must be in the load balancer's own VPC | ✅ |
+| On-premises over **Direct Connect / Site-to-Site VPN** | — | ✅ |
+| A public IP address | — | ❌ no public IPs |
+
+*(Verified 2026-10-14.)*
+
+> [!warning] Trap — "a target group can't hold another Region's instances"
+> Too strong, and the counter-example is on AWS's own page. ELB *"automatically distributes your incoming traffic across multiple targets … in one or more **Availability Zones**"*; spreading load over several **Regions** is a different mechanism — **Global Accelerator** (*"distribute traffic across multiple load balancers in one or more AWS Regions"*) or **Route 53** failover between two Regions' load balancers. So "register the other Region's instances by instance ID" is wrong, and so is a public IP target. But an `ip` target in a **peered VPC in another Region** is explicitly allowed: *"Instances in a VPC that is peered to the load balancer VPC (same Region or different Region)."* The rule is the **registration method**, not the Region. *(Verified 2026-10-14.)*
+
+### Sticky sessions — duration-based vs application-based
+
+|   | Duration-based | Application-based |
+|---|---|---|
+| Cookie issued by | the **load balancer** — named **`AWSALB`**, encoding and encrypting the chosen target | **your target** — you configure the cookie's name per target group; the ALB adds its own companion cookie prefixed **`AWSALBAPP-`** |
+| Duration | stickiness duration **1 second – 7 days**; the `AWSALB` cookie itself has a fixed **7-day** expiry | — |
+
+*(Verified 2026-10-14.)*
 
 ### Target-group health check vs ASG health-check type
 
@@ -584,6 +614,12 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 > [!warning] Trap — redirect on the wrong load balancer, or the wrong direction
 > `redirect` is an **ALB** (Layer 7) listener action; an **NLB** operates at Layer 4 and cannot inspect or rewrite HTTP, so "redirect HTTP to HTTPS on an NLB" is always wrong. And the redirect only runs one way: HTTP→HTTPS is supported, **HTTPS→HTTP is not**.
 
+> [!warning] Trap — a `*.example.com` host-header rule and the apex
+> AWS's own example: *"The rule `*.example.com` matches `test.example.com` but doesn't match `example.com`."* To serve both, add `example.com` as a second value. (Host matching ignores case; path matching does not.) Same blind spot as a wildcard certificate. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — warm pool vs instance warm-up
+> Similar names, different jobs. **Instance warm-up** excludes a new instance's *metrics* from scaling decisions; it does not make the instance boot any faster. A **warm pool** keeps instances **already initialised** (stopped, hibernated or running) beside the group, so a scale-out skips the slow boot. "Scale-out is too slow because instances take minutes to bootstrap" → a **warm pool** is a fit, alongside a golden AMI or scheduled scaling. It is not the automatic answer: AWS warns *"Creating a warm pool when it's not required can lead to unnecessary costs."* *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Conflated "ALB health check fails" with "instance gets terminated."** A failed ALB health check only stops routing; termination needs the ASG to have **ELB health checks turned on** (`HealthCheckType = ELB`). Two systems, one linking knob.
@@ -613,8 +649,14 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [REL11-BP05 Use static stability to prevent bimodal behavior](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_withstand_component_failures_static_stability.html) — pre-provision for the loss of an AZ; verified 2026-09-27
 
 - [How ELB works — cross-zone, routing, schemes](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html) — ALB cross-zone always-on, NLB/GWLB off by default; round-robin default; verified 2026-06
-- [Target group attributes — deregistration delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html) — default 300s draining; verified 2026-06
+- [Target group attributes — deregistration delay, sticky sessions](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html) — default 300s draining; verified 2026-06. Sticky sessions (`AWSALB` / `AWSALBAPP-`, duration 1s–7 days, cross-zone and weighted-random limits) live at `#sticky-sessions` on this page — the old `sticky-sessions.html` path is gone; verified 2026-10-14
 - [Target tracking scaling policies](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html) — auto-managed alarms, scale-out-fast/scale-in-gradual, can't scale out below target; verified 2026-06
 - [Termination policies](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-termination-policies.html) — zonal balance precedence, outdated-configuration ordering, predefined policy list; verified 2026-08-29
 - [Scheduled scaling](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html) — desired/min/max semantics, cron + IANA time zone, 125-action limit, composition with dynamic scaling; verified 2026-08-29
 - [ALB rule action types](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-action-types.html) — `redirect` config, 301/302, `#{host}`/`#{path}`/`#{query}` keywords, no HTTPS→HTTP; verified 2026-08-29
+- [ALB target groups](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html) — target types, `ip` targets in a peered VPC (same or different Region), no publicly routable IPs, protocol version `HTTP1`/`HTTP2`/`GRPC` and the gRPC requirements; verified 2026-10-14
+- [NLB target groups](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-target-groups.html) — instance-ID targets reach the primary private IP of the primary interface, `ip` targets any private IP; peered-VPC and DX/VPN targets need `ip`; NLB protocols (no gRPC); verified 2026-10-14
+- [What is Elastic Load Balancing](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html) — distributes across Availability Zones; Global Accelerator for multiple Regions; verified 2026-10-14
+- [ALB listener rule condition types](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-condition-types.html) — host-header wildcards, case-insensitivity, `*.example.com` not matching the apex; verified 2026-10-14
+- [ALB access logs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html) — disabled by default, S3, 5-minute interval, Athena; the newer CloudWatch Logs / Firehose option; verified 2026-10-14
+- [Warm pools for EC2 Auto Scaling](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-warm-pools.html) — pool states, default size, limitations, the unnecessary-cost warning; verified 2026-10-14

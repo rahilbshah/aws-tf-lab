@@ -144,6 +144,7 @@ flowchart LR
 - **What replication copies**, per AWS's own list: objects created after the rule; **unencrypted objects**; objects encrypted with **SSE-S3, SSE-KMS, DSSE-KMS *and* SSE-C**; object metadata; object **tags**; ACL updates; and **Object Lock retention information** — which *overrides* any default retention period on the destination bucket.
 - **What it does not copy:** replicas created by another rule (the non-transitive case); objects already replicated elsewhere; objects in **Glacier Flexible Retrieval, Glacier Deep Archive, or the Intelligent-Tiering Archive Access / Deep Archive Access** tiers (restore and copy to another class first); objects the bucket owner lacks permission to read; **bucket-level subresources** (change the lifecycle or notification config on the source and the destination keeps its own); and **anything a lifecycle action did** — lifecycle-created delete markers are never replicated.
 - **Tag-based rules have a trap of their own:** with live replication, a new object must carry the matching tag **in the `PutObject` call itself**. Tag it afterwards and it will **never** be replicated by the live rule — that needs Batch Replication.
+- **S3 Multi-Region Access Point (MRAP):** *"a global endpoint that applications can use to fulfill requests from S3 buckets that are located in multiple AWS Regions."* It **routes but does not replicate** — you still set up CRR underneath (see the trap below). Failover is something **you trigger** with failover controls, within minutes — not automatic. *(Verified 2026-10-14.)*
 - **CRR use cases:** compliance/geographic distance, lower latency for users in another region, cross-region DR. **SRR use cases:** aggregate logs into one bucket, replicate prod→test accounts, data-sovereignty copies within a region.
 
 ### Big objects
@@ -154,6 +155,7 @@ flowchart LR
 ### Speed & query
 - **Transfer Acceleration:** the client enters AWS at the **nearest CloudFront edge location**, from where data "is routed to Amazon S3 over an optimized network path". The bucket does **not** move, and AWS documents **no caching layer** (it is a path, not a CDN — that's CloudFront). Its definition is bidirectional ("between your client and an S3 general purpose bucket", and the accelerate endpoint takes `PUT` and `GET`), but every use case AWS lists is an upload. Best for long-distance transfers of large objects; costs extra per GB. Requires: one of **15 supported Regions**, a bucket name that is DNS-compliant with **no periods**, virtual-hosted-style requests, the `bucket.s3-accelerate.amazonaws.com` endpoint, and up to **20 minutes** after enabling before speeds improve.
 - **S3 Select:** SQL over a **single object** (CSV/JSON/Parquet), returning only matching rows/columns so less data crosses the wire. ⚠️ **AWS: "Amazon S3 Select is no longer available to new customers."** Existing users keep it; new work should use **Athena** (multi-object SQL over S3). Know the concept for the exam.
+- **S3 Object Lambda:** *"you can add your own code to Amazon S3 `GET`, `LIST`, and `HEAD` requests to modify and process data as it is returned to an application"* — e.g. redact data or resize images on the way out, so different apps see different versions of one object without storing copies. ⚠️ **Since 7 November 2025 it is closed to new customers** (like S3 Select: still a valid exam answer, no longer the real-world choice). *(Verified 2026-10-14.)*
 
 ### Events & automation
 - **Triggers:** `s3:ObjectCreated:*` (Put/Post/Copy/CompleteMultipartUpload), `s3:ObjectRemoved:*`, `s3:ObjectRestore:*`, replication events, and more. Can filter by **prefix** and **suffix**.
@@ -167,7 +169,8 @@ flowchart LR
 ### Other advanced bits
 - **S3 Batch Operations:** run one action (copy, tag, restore, invoke Lambda, ACL change) across **millions of objects** listed in a **manifest** (a file naming the objects to act on — an S3 Inventory report or a CSV you supply), with retries and a completion report. Powers Batch Replication.
 - **Storage Lens:** org-wide storage analytics dashboard, **general purpose buckets only**, max **50 dashboards per home Region**. Two tiers, compared under `## Comparisons` below. Metrics are *retained* **15 months either way** — the tier controls only how far back you can **query** (14 days free, 15 months advanced).
-- **Storage Class Analysis:** watches access patterns and recommends one transition and one only — **Standard → Standard-IA**. AWS carries this as an explicit *Important* callout, and the export bears it out: the only recommendation fields are `ObjectAgeForSIATransition` and `RecommendedObjectAgeForSIATransition`, populated only where the storage class is `STANDARD`. It needs **30 days or more** of observation before producing a result (first console data in 24–48 h) and only considers Standard objects **larger than 128 KB**. So a stem asking "which tool tells me when to move data to Glacier?" is not this — Storage Class Analysis never recommends an archive tier.
+- **Storage Class Analysis:** watches access patterns and recommends one transition and one only — **Standard → Standard-IA**. AWS carries this as an explicit *Important* callout, and the export bears it out: the only recommendation fields are `ObjectAgeForSIATransition` and `RecommendedObjectAgeForSIATransition`, populated only where the storage class is `STANDARD`. It needs **30 days or more** of observation before producing a result (first console data in 24–48 h) and only considers Standard objects **larger than 128 KB**. For the Glacier question, see the trap below.
+- **S3 Inventory:** a **scheduled flat-file listing** of the objects in a bucket (or under a shared prefix) with their metadata, **daily or weekly** (weekly = every Sunday UTC), as **CSV, ORC or Parquet**. Fields include **size, storage class, encryption status and replication status**. AWS's own pitch is the exam stem: *"audit and report on the replication and encryption status of your objects for business, compliance, and regulatory needs."* Query it with **Athena**. *(Verified 2026-10-14.)*
 - **Requester Pays:** the *requester* pays for **requests and data transfer out** — for sharing large datasets. The **bucket owner always pays storage**: *"The bucket owner always pays the cost of storing data."* Requests must be **authenticated** and must opt in to the charge (`x-amz-request-payer`, the `RequestPayer` parameter, or `--request-payer`); **anonymous access is not allowed** — *"If you enable Requester Pays on a general purpose bucket, anonymous access to that bucket is not allowed."* Also unsupported: SOAP requests, and pairing a Requester Pays bucket with end-user (server access) logging in either direction. Two billing edges the exam can reach for: on a `RestoreObject` the requester pays only the **request** while the **owner** pays the **retrieval**; and the **owner** is billed for a request that returns **403 AccessDenied** when it originated inside the owner's own account or organization.
 
 ## Comparisons
@@ -194,6 +197,17 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 | Export / integration | Daily metrics export | Adds **CloudWatch publishing**, expanded prefixes report, contextual recommendations |
 
 *Retention is **15 months regardless of tier** — only the query reach differs. Prefix aggregation and contextual recommendations are console-only.*
+
+### S3 Inventory vs Storage Lens
+
+|   | S3 Inventory | S3 Storage Lens |
+|---|---|---|
+| What you get | A **listing of every object** with its metadata (size, storage class, encryption, replication status…) | **Aggregated** usage and activity metrics, organization-wide, on a dashboard |
+| Schedule | Daily or weekly files (CSV / ORC / Parquet) | Dashboard, plus daily metrics export |
+| You use it by | Querying the files (Athena, Redshift Spectrum…) | Reading the dashboard / exported metrics |
+| Pick it when | "Report on every object's encryption / replication status" | "Organization-wide visibility into storage usage and activity" |
+
+*(Verified 2026-10-14.)*
 
 ### CRR vs SRR
 
@@ -257,6 +271,15 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 > [!warning] Trap — "use S3 Select" on a new account
 > S3 Select is **no longer available to new customers**. The modern answer for SQL over S3 is **Athena** (and it queries many objects, not one).
 
+> [!warning] Trap — an S3 event notification to transform what a GET returns
+> When the stem wants the **response to a read** changed — resize, redact, reformat on the way out, different views of one object for different apps — the answer is **S3 Object Lambda**, which runs your code on `GET`, `LIST` and `HEAD` requests via an Object Lambda Access Point. An event notification can't: there is **no GET event** to notify on, and notifications fire **after** the fact, so they can't change a response already sent. *(Verified 2026-10-14.)*
+
+> [!warning] Trap — CRR + Route 53 for "one global endpoint, nearest bucket"
+> The answer is an **S3 Multi-Region Access Point**, and it is counter-intuitive twice. **(1)** The routing layer is **AWS Global Accelerator**, not Route 53: requests go over the AWS global network to the closest bucket with an active routing status. **(2)** CRR is not the wrong answer so much as the **incomplete** one — MRAP does not replicate, so AWS has you configure **CRR underneath** it. MRAP = one endpoint + Global Accelerator routing **on top of** CRR, not instead of it. Failover between Regions is via MRAP **failover controls** (within minutes, same endpoint). *(Verified 2026-10-14.)*
+
+> [!warning] Trap — Storage Class Analysis tells you when to archive to Glacier
+> It doesn't. AWS: *"Storage class analysis only provides recommendations for Standard to Standard IA classes."* To *find* cold data, AWS points at **Storage Lens advanced (paid) activity metrics** — buckets with near-zero retrievals. To *move* it: an **S3 Lifecycle** rule to a Glacier class, or **Intelligent-Tiering** archive tiers. *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **S3 event destinations exclude FIFO** (trainer-sourced, mock-02, 2026-10-09): Standard
@@ -284,3 +307,10 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 - [Replication requirements](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-requirements.html) — the Requester Pays destination bar, documented **only** under the cross-account additional requirements; **verified 2026-10-10**
 - [Storage Lens metrics and recommendations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage_lens_basics_metrics_recommendations.html) — free vs advanced split, 14-day vs 15-month query window, 15-month retention either way, 50 dashboards per home Region; **verified 2026-10-10**
 - [Storage Class Analysis](https://docs.aws.amazon.com/AmazonS3/latest/userguide/analytics-storage-class.html) — Standard → Standard-IA only, 30-day minimum observation, 128 KB floor; **verified 2026-10-10**
+- [Transforming objects with S3 Object Lambda](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transforming-objects.html) — `GET`/`LIST`/`HEAD`, Object Lambda Access Point, availability notice; **verified 2026-10-14**
+- [S3 Object Lambda availability change](https://docs.aws.amazon.com/AmazonS3/latest/userguide/amazons3-ol-change.html) — existing customers and select APN partners only since 7 Nov 2025, named alternatives; **verified 2026-10-14**
+- [Event notification types and destinations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html) — the publishable event types (no read/GET event); **verified 2026-10-14**
+- [Multi-Region Access Points](https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiRegionAccessPoints.html) — global endpoint, Global Accelerator routing, CRR to sync, active-active / active-passive failover controls; **verified 2026-10-14**
+- [S3 Inventory](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-inventory.html) — daily/weekly CSV/ORC/Parquet, field list, no List API, same-Region destination, 48 h first report; **verified 2026-10-14**
+- [Using Storage Lens to optimize storage](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-lens-optimize-storage.html) — Activity metrics / retrieval rate to find cold buckets, then lifecycle or Glacier; **verified 2026-10-14**
+- [S3 Intelligent-Tiering](https://docs.aws.amazon.com/AmazonS3/latest/userguide/intelligent-tiering-overview.html) — archive tiers must be activated; **verified 2026-10-14**

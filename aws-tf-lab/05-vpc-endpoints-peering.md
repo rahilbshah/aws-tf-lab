@@ -226,6 +226,12 @@ flowchart TB
 > [!warning] Trap — "peering scales fine, just add connections"
 > Full mesh is **N(N-1)/2** and non-transitive — it explodes past a few VPCs. The intended answer for "many VPCs" is **Transit Gateway**, not more peerings.
 
+> [!warning] Trap — "one interface endpoint in every VPC" when many VPCs hang off a Transit Gateway
+> Per-VPC is only the default. Each interface endpoint bills per hour plus data processing, which AWS calls *"cost prohibitive and challenging to manage"* across many VPCs, and its prescribed alternative is to *"host the interface endpoints in a centralized VPC. All the spoke VPCs will use these centralized endpoints via Transit Gateway."* The part people miss is **DNS**: turn off the endpoint's automatic private DNS, and instead create a **Route 53 private hosted zone** ([[10-route53]]) for the service name, with an alias record to the endpoint, and **associate** that zone with the spoke VPCs. The trade-off: one endpoint policy now governs every spoke. *(Verified 2026-10-14 — source is an AWS whitepaper, i.e. AWS's recommended pattern.)*
+
+> [!warning] Trap — a stateful firewall behind a Transit Gateway sees only one direction of the flow
+> The fix is **appliance mode**, enabled on the **VPC attachment where the appliance lives**. Without it, TGW can land a flow's forward and return halves in different AZs of the appliance VPC, and the stateful appliance drops the flow as asymmetric. With it, TGW *"uses the same Availability Zone for that VPC attachment for the lifetime of the flow of traffic between a source and destination"*. AWS: *"Appliance mode is only supported for VPC attachments."* (Not to be confused with the MTU-mismatch problem above — different cause, different fix.) *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Gateway vs interface endpoint** — which is which, S3/DynamoDB-only for gateway, PrivateLink/ENI for interface, and gateway-not-reachable-cross-VPC. (Fuzzy at orient.)
@@ -248,3 +254,5 @@ flowchart TB
 - [AWS RAM shareable resources](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html) — `ec2:TransitGateway` (the gateway, not an attachment), `ec2:Subnet`, Resolver rules, License Manager configs; verified 2026-10-05
 - [Transit Gateway quotas](https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-quotas.html) — 5,000 attachments per TGW, 20 route tables, 10,000 routes, 100 Gbps per VPC attachment per AZ, MTU 8500, and the peering-to-TGW MTU mismatch warning; verified 2026-10-05
 - [AWS PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/) — interface endpoint billed per AZ per hour; data processing $0.01/GB tiering to $0.006 and $0.004; verified 2026-10-05
+- [Centralized access to VPC private endpoints (whitepaper: Building a Scalable and Secure Multi-VPC AWS Network Infrastructure)](https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/centralized-access-to-vpc-private-endpoints.html) — AWS whitepaper, not service docs: centralized interface endpoints via TGW, the disable-private-DNS + own PHZ workaround, the single-policy trade-off and 20,480-character limit; verified 2026-10-14
+- [Transit gateway VPC attachments](https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html) — appliance mode: same AZ for the flow's lifetime, VPC attachments only, route-propagation prerequisite, Network Firewall attachments enabled by default; verified 2026-10-14

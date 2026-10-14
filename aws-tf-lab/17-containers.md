@@ -93,6 +93,7 @@ graph TB
 - **Deployment circuit breaker threshold** (`BOUNDED_PERCENT`, default value 50): `clamp(0.5 × desiredCount, min 3, max 200)`. A small service therefore gets **3**. `resetOnHealthyTask` defaults to **true**, so only *consecutive* failures count — one healthy task resets the counter to zero.
 - **Circuit breaker rollback needs somewhere to roll back to.** AWS: *"When the deployment circuit breaker does not find a deployment that is in a COMPLETED state, the circuit breaker does not launch new tasks and the deployment is stalled."*
 - **ALB target group algorithms:** *"round_robin, least_outstanding_requests, or weighted_random"* — default `round_robin`.
+- **ECS Exec is off until you turn it on.** AWS: *"With Amazon ECS Exec, you can directly interact with containers without needing to first interact with the host container operating system, open inbound ports, or manage SSH keys"*, on **EC2 or Fargate**. It is off by default: turn it on with **`--enable-execute-command`**, and give the **task role** the Session Manager permissions. It's the container version of Session Manager ([[20-monitoring]]). *(Verified 2026-10-14.)*
 - **Docker Hub rate-limits anonymous pulls.** AWS's own guidance: *"By using Amazon ECR and Amazon ECR Public, you can avoid the limits imposed by Docker."*
 
 ### Pulling from ECR with no internet
@@ -202,7 +203,7 @@ the control-plane dependency [[14-dr-resilience]] warns about during a recovery)
 | Billing unit | the **instance**, full or empty | per vCPU-second + GB-second **requested** |
 | Best when | steady heavy load you can pack tightly; GPU/special instance types | spiky, small, or bursty; you don't want to run servers |
 | Network mode | bridge/host/awsvpc | **awsvpc only** |
-| SSH to the host | possible | there is no host to SSH to |
+| Shell for troubleshooting | SSH to the host, or **ECS Exec** into the container | there is no host to SSH to — use **ECS Exec**, which runs over the **Systems Manager Session Manager** channel with no inbound ports opened and no SSH keys *(Verified 2026-10-14.)* |
 
 ### Task execution role vs task role
 | | Task execution role | Task role |
@@ -343,6 +344,7 @@ With `enable = true, rollback = true` and no custom threshold, a deployment fail
 - [How the ECS deployment circuit breaker detects failures](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — `thresholdConfiguration` types, the 50%/min-3/max-200 formula with worked examples, `resetOnHealthyTask`, the two failure stages, rolling-update-only; **verified 2026-10-10**
 - [Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html) · [Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) · [Cluster endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html) · [CloudWatch Container Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html)
 - [ECS service load balancing (dynamic host port mapping)](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html)
+- [ECS Exec](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html) — shell into a container on EC2 or Fargate, `--enable-execute-command`, task-role permissions, `ssmmessages` endpoint, CloudTrail audit; **verified 2026-10-14**
 - [ECS task execution IAM role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html) — verified 2026-09-06
 - [ECS deployment circuit breaker](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — threshold formula, verified 2026-09-06
 - [ECR interface VPC endpoints](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html) — the S3 gateway requirement, verified 2026-09-06

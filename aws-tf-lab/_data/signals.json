@@ -587,10 +587,10 @@
  {
   "signal": "an account-wide sweep: \"what is obviously wasteful or insecure right now\" — listed alongside root MFA, public buckets or service quotas. It flags the resource; it does not size it",
   "answer": "Trusted Advisor — it inspects what is actually deployed, across six categories",
-  "against": "Compute Optimizer — it returns a specific instance type for one workload; Trusted Advisor only flags resources, across six fixed check categories",
+  "against": "Compute Optimizer — it produces the specific instance type for one workload; Trusted Advisor is the account-wide checklist (and any sizing advice it shows comes from Cost Optimization Hub, which needs Compute Optimizer)",
   "note": "25-well-architected.md",
   "heading": "Comparisons",
-  "quote": "Trusted Advisor runs a **fixed checklist across six categories** and *flags* a resource; it never tells you what size to use instead.",
+  "quote": "Trusted Advisor runs a **fixed checklist across six categories** and *flags* resources",
   "section": "Security & compliance"
  },
  {
@@ -873,9 +873,9 @@
   "section": "Cost"
  },
  {
-  "signal": "the stem wants a specific recommended instance type or size for ONE named workload, from observed utilisation — \"right-size\", \"what should this instance be\"",
+  "signal": "\"right-size\" — especially when the resource is EBS, Lambda, Fargate or an Auto Scaling group, not just EC2 — from observed utilisation",
   "answer": "AWS Compute Optimizer (rightsizing recommendations from CloudWatch metrics)",
-  "against": "Cost Explorer’s own rightsizing recommendations (a SPEND view that nets out what you already own) and Trusted Advisor low-utilization checks — both look right and neither returns a named replacement type. Scaling out answers availability, not sizing",
+  "against": "Cost Explorer rightsizing — it also names EC2 instance types, but covers EC2 only and is a spend view; Trusted Advisor — an account-wide checklist whose sizing advice, where shown, comes from Cost Optimization Hub and needs Compute Optimizer. Scaling out answers availability, not sizing",
   "note": "13-cost-optimization.md",
   "heading": "Key facts, limits & pricing",
   "quote": "Compute Optimizer returns **a specific recommended\ninstance type** from CloudWatch utilisation",

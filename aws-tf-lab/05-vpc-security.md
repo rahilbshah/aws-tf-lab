@@ -185,7 +185,7 @@ flowchart TB
 - **Flow log levels:** VPC, subnet, or ENI. **Destinations:** CloudWatch Logs, S3, Amazon Data Firehose (renamed from *Kinesis* Data Firehose — older material still uses the old name).
 - **Not logged by flow logs:** the Amazon DNS server (custom DNS *is* logged), DHCP, `169.254.169.254` (instance metadata), **`169.254.169.123`** (Amazon Time Sync), Windows license activation, the reserved VPC-router IP, **ARP**, **traffic-mirrored source traffic**, traffic **between a VPC endpoint ENI and an NLB ENI**, and a **short-lived regional NAT gateway**. Note this is a *different list* from the one a NACL cannot filter — the two overlap but are not the same.
 - **Maximum aggregation interval**: **600s (10 min) default, or 60s**. But there is a caveat worth knowing: *"When your network interface is attached to a Nitro-based instance, the aggregation interval is always 1 minute or less, regardless of the specified maximum aggregation interval."* Most families you would pick today are Nitro (M5+, C5+, R5+, T3/T3a/T4g), so the 600s setting often does not bite — **but not all current-generation families are Nitro**: AWS's General Purpose specs page still lists **T2 on the Xen hypervisor**, so on a `t2.micro` the 10-minute interval is real. On top of the interval, AWS publishes the delivery times: it *"typically delivers logs to CloudWatch Logs in about 5 minutes and to Amazon S3 in about 10 minutes"*, on a *"best effort basis"*. *(Verified 2026-10-05.)*
-- **A flow log is immutable.** *"After you create a flow log, you can't change its configuration or the flow log record format"* — not the IAM role, not the fields. To change anything you **delete it and create a new one**. You also choose the traffic type at creation: **accepted, rejected, or all**. Limit: **250 subscriptions per resource per account**.
+- **A flow log is immutable.** *"After you create a flow log, you can't change its configuration or the flow log record format"* — not the IAM role, not the fields. To change anything you **delete it and create a new one**. You also choose the traffic type at creation: **accepted, rejected, or all**. Limit: **250 subscriptions per resource per account**. So choose the **record format** up front: the default fields are fixed, and extra fields such as `pkt-srcaddr` (trap below) only come with a **custom format** set at creation. *(Verified 2026-10-14.)*
 - **Flow logs work on other services' network interfaces too** — AWS names Elastic Load Balancing, RDS, ElastiCache, Redshift, WorkSpaces, NAT gateways and transit gateways. For an ENI you must use the EC2 console or API to create the flow log.
 - **Network Firewall**: **$0.395/hr per firewall endpoint + $0.065/GB processed** (us-east-1, verified 2026-10-05 — re-check rather than trusting the figure later). SG/NACL are **free**. Flow logs cost only the destination storage/ingestion.
 
@@ -213,6 +213,19 @@ flowchart TB
 | Network ACL | Subnet | IP + port (L3/L4) | Yes | Free |
 | Network Firewall | VPC perimeter (firewall subnet) | **Payload / domain / protocol (L3–L7, IPS)** | Yes | $0.395/hr + $0.065/GB |
 
+### Reachability Analyzer vs Network Access Analyzer
+
+|   | Reachability Analyzer | Network Access Analyzer |
+|---|---|---|
+| Question it answers | "Will A reach B — and if not, which hop blocks it?" — **one** point-to-point path | *"identifies unintended network access to your resources"* — **every** potential path that violates requirements you declared |
+| Input | a source and a destination | a **Network Access Scope** — the paths you consider violations, minus allowed exceptions |
+| Output | hop-by-hop path, or the blocking component | **findings** — each path matching MatchPaths and not ExcludePaths |
+| What it reads | configuration (static) | configuration (static) — not observed traffic |
+| AWS's use cases | troubleshooting a path, e.g. a missing NACL rule | **segmentation** (prod can't reach dev), **internet exposure**, **trusted paths** (every internet path goes through a firewall) |
+| Exam trigger | "this instance can't reach that endpoint — why?" | "prove no unintended internet or cross-environment path exists" / segmentation evidence for compliance |
+
+Network Access Analyzer is an analysis **you run** (charged per run), not continuous monitoring. *(Verified 2026-10-14.)*
+
 ## Worked examples
 
 > [!example] Worked example — reading flow-log records (ACCEPT vs REJECT)
@@ -239,6 +252,9 @@ flowchart TB
 > [!warning] Trap — "a higher NACL rule number can override a lower deny"
 > No — **first match wins, low number first**. A `deny` at #100 is final; #200 allow never gets evaluated for that packet.
 
+> [!warning] Trap — "flow logs only show the NAT gateway's IP, so the original address is lost"
+> Not if the flow log was created with a **custom format** including **`pkt-srcaddr`** / **`pkt-dstaddr`**. `pkt-srcaddr` is *"the packet-level (original) source IP address of the traffic. Use this field with the srcaddr field to distinguish between the IP address of an intermediate layer through which traffic flows, and the original source IP address"*. AWS names the **NAT gateway** and **EKS pods** as the cases. A default-format log can't be changed afterwards — create a new one with the custom format. *(Verified 2026-10-14.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
 - [ ] **Trust policy vs permissions policy (again)** — the [[01-iam]] distinction keeps biting: the **trust policy** says *who may assume* the role, the **permissions policy** says *what they may do* once they have.
@@ -256,4 +272,6 @@ flowchart TB
 - [Security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html) / [Network ACLs](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html) — incl. ephemeral ports + default behaviors
 - [VPC Flow Logs](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html) — fields, levels, destinations, excluded traffic; verified 2026-07
 - [Flow log record fields](https://docs.aws.amazon.com/vpc/latest/userguide/flow-log-records.html)
+- [Flow log record examples](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-records-examples.html) — the zonal-NAT-gateway example with `pkt-srcaddr`/`pkt-dstaddr`; verified 2026-10-14
+- [What is Network Access Analyzer](https://docs.aws.amazon.com/vpc/latest/network-access-analyzer/what-is-network-access-analyzer.html) — Network Access Scopes, MatchPaths/ExcludePaths, findings, the four use cases, per-ENI pricing per analysis; verified 2026-10-14
 - [AWS Network Firewall — what is it](https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html) — Suricata IPS, firewall subnet, domain filtering, deep packet inspection; verified 2026-07

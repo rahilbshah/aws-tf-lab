@@ -194,9 +194,16 @@ flowchart TB
 - If signed with **temporary/role credentials**, it dies when those credentials expire, regardless of `--expires-in`.
 - Works for **uploads** too (presigned `PUT`), which is the standard "let a browser upload directly to S3" pattern.
 
+### CORS (cross-origin resource sharing)
+- **CORS** defines how a client web application loaded in one domain can interact with resources in a different domain. AWS's canonical case: a site served from the bucket's **website endpoint** (`website.s3-website.us-east-1.amazonaws.com`) whose JavaScript makes authenticated `GET`/`PUT` calls to the bucket's **S3 API endpoint** (`website.s3.us-east-1.amazonaws.com`). The browser would normally block those requests; a **CORS configuration on the bucket** explicitly permits them. *(Verified 2026-10-14.)*
+
+### Server access logging
+- Provides *"detailed records for the requests that are made to a bucket"* — for operational analysis, security posture and chargeback. Delivered to an **S3 general purpose bucket**: **no charge for delivery** (you pay only to store the files), space-delimited text, and the destination must be in the **same Region and same account** as the source. *(Verified 2026-10-14.)*
+- **Best-effort:** a record *"might be delivered long after the request was actually processed, or it might not be delivered at all"*. For audit, AWS recommends **CloudTrail** data events instead ([[20-monitoring]]); compared under Comparisons below. *(Verified 2026-10-14.)*
+
 ### Object Lock (WORM) — verified 2026-08
 - **Requires versioning** and locks a specific object **version**, not "the object". It can be enabled **either when creating the bucket or on an existing versioned bucket** (console, CLI, SDK or REST) — AWS documents both. What is irreversible is the other direction: once enabled you **cannot disable Object Lock or suspend versioning** on that bucket. A bucket with Object Lock also **cannot be a destination for server access logs**. *(Verified 2026-09-30.)*
-- **Retention period** — a "retain until" date, **fixed** (date given up front) or **variable** (event hold + duration; the date is fixed at release time + duration). Always **extendable** by anyone with `s3:PutObjectRetention`. **Shortening** is impossible under COMPLIANCE; under GOVERNANCE it needs `s3:BypassGovernanceRetention` plus the bypass header.
+- **Retention period** — a "retain until" date, **fixed** (date given up front) or **variable** (event hold + duration; the date is fixed at release time + duration). A **bucket default** is a **duration** (days or years) counted from each version's creation; a retention set explicitly on a version at upload is a **date** and **overrides** the default. Retention is **per version**. *(Verified 2026-10-14.)* Always **extendable** by anyone with `s3:PutObjectRetention`. **Shortening** is impossible under COMPLIANCE; under GOVERNANCE it needs `s3:BypassGovernanceRetention` plus the bypass header.
 - **Legal hold** — same protection, **no expiry**, independent of retention, removed explicitly (`s3:PutObjectLegalHold`).
 - **GOVERNANCE mode** — overridable by a principal with **`s3:BypassGovernanceRetention`** plus the `x-amz-bypass-governance-retention:true` header.
 - **COMPLIANCE mode** — *"a protected object version can't be overwritten or deleted by any user, including the root user"*; AWS states the only way out before expiry is **closing the AWS account**.
@@ -247,6 +254,22 @@ Two ways to become public (ACL, policy) × two enforcement styles (reject the wr
 | Retention can be shortened | Yes (with bypass) | **No** |
 | Use for | Internal policy, testing settings first | Regulatory requirements demanding immutable records (e.g. SEC 17a-4, CFTC, FINRA) |
 | Escape hatch | The bypass permission | Close the AWS account |
+
+### Server access logging vs CloudTrail data events
+
+*From AWS's own side-by-side. AWS recommends CloudTrail for audit; server logs see a few things CloudTrail doesn't. Data events themselves: [[20-monitoring]].*
+
+|   | Server access logging (to an S3 bucket) | CloudTrail data events |
+|---|---|---|
+| Delivery | **Best-effort**, "within a few hours"; records can be late, duplicated or **never arrive** | Every **5 minutes** |
+| Scope to a subset of objects by prefix | No | **Yes** |
+| Log-file integrity validation (signature/hashing) | No | **Yes** |
+| Lifecycle transitions, expirations, restores | **Yes** | No |
+| Authentication failures | **Yes** | No |
+| Cost | Delivery **free** — pay only to store the logs | Data events **incur a fee** (management events free on first delivery) |
+| Pick it when | Cheap request-level detail, chargeback, lifecycle activity | Audit / "who read this object", with integrity guarantees |
+
+*(Verified 2026-10-14.)*
 
 ### Which encryption options actually exist — per service
 
@@ -308,6 +331,9 @@ snapshot it, then create an encrypted volume from the snapshot.
 > requests dramatically while staying SSE-KMS. Dropping to **SSE-S3** or **SSE-C** also cuts
 > the cost but abandons the key policy and the audit trail that made SSE-KMS the requirement.
 
+> [!warning] Trap — "we must use our own encryption algorithm", so SSE-C
+> SSE-C means you supply the **key**, not the **algorithm**. Its algorithm header is fixed: *"Use this header to specify the encryption algorithm. The header value must be AES256."* No server-side option lets you pick the cipher. **Client-side encryption** is where the algorithm is yours, because S3 plays no part in it (*"Amazon S3 receives your objects already encrypted"*). A stem demanding a specific or in-house algorithm points to client-side. *(Verified 2026-10-14.)*
+
 ## Worked examples
 
 > [!example] Worked example — the bucket that cannot leak
@@ -331,8 +357,14 @@ snapshot it, then create an encrypted volume from the snapshot.
 > [!warning] Trap — a presigned URL uses the recipient's permissions
 > It uses **the generator's**. That's why it works for someone with no AWS account at all — and why generating one from an over-privileged role is dangerous.
 
+> [!warning] Trap — CORS as a permission fix
+> CORS answers one failure only: the **browser** blocking JavaScript from one origin calling another — e.g. a page on the bucket's **website endpoint** calling the bucket's **S3 API endpoint**. Fix that with a **CORS configuration on the bucket**, not a bucket policy. But CORS widens the browser's origin check, **not** authorisation: *"The ACLs and policies continue to apply when you enable CORS on your bucket."* So a cross-origin block → CORS; an **AccessDenied** → the bucket policy (or a presigned URL). The two are independent. *(Verified 2026-10-14.)*
+
 > [!warning] Trap — Object Lock stops the object being deleted
 > It stops that **version** being deleted. A simple `DELETE` still returns **200 OK** and adds a **delete marker**, hiding the object. Nothing was destroyed, but "it disappeared" panic is real.
+
+> [!warning] Trap — "Glacier Vault Lock" for WORM on an S3 bucket
+> Vault Lock belongs to **vaults**, not buckets. **Amazon Glacier Vault Lock** is a feature of the original standalone Amazon Glacier service, which AWS describes as *"a standalone service with its own APIs that stores data in vaults and is distinct from Amazon S3 and the Amazon S3 Glacier storage classes"* — and which is **no longer accepting new customers**. For objects in an **S3 bucket** — including the S3 Glacier storage classes — the WORM answer is **S3 Object Lock**. Not to be confused with **AWS Backup Vault Lock** ([[12-storage-extras]]), a third thing that locks Backup vaults. *(Verified 2026-10-14.)*
 
 > [!warning] Trap — one public statement only breaks the public part of a policy
 > It breaks the whole policy. Publicness is judged on the **entire bucket policy**, so a single `"Principal": "*"` statement makes the policy public and `RestrictPublicBuckets` then strips out the **named** cross-account grants too. AWS's worked example: a policy granting CloudTrail, granting Account-2, and granting everyone leaves only CloudTrail working. Debug a failing cross-account grant by reading the whole policy for a public statement *before* investigating the other account's IAM.
@@ -361,3 +393,9 @@ snapshot it, then create an encrypted volume from the snapshot.
 - [Bucket policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html) / [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
 - [Using SSE-S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingServerSideEncryption.html) — *"Amazon S3 encrypts each object with a unique key"*, AES-GCM 256-bit, metadata not encrypted, base level since 5 Jan 2023; **verified 2026-10-11**
 - [IAM policies for access points](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html) — the `s3:AccessPointNetworkOrigin` SCP example, and "both the access point and the underlying bucket... must permit the request"; **verified 2026-10-10**
+- [Specifying SSE-C](https://docs.aws.amazon.com/AmazonS3/latest/userguide/specifying-s3-c-encryption.html) — SSE-C algorithm header "must be AES256"; **verified 2026-10-14**
+- [PutObject API](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html) — the enumerated `x-amz-server-side-encryption` values; **verified 2026-10-14**
+- [Amazon Glacier Vault Lock](https://docs.aws.amazon.com/amazonglacier/latest/dev/vault-lock.html) — standalone Glacier, distinct from S3, no new customers; two-step lock, 24-hour window; vault lock vs vault access policy; **verified 2026-10-14**
+- [Cross-origin resource sharing (CORS)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/cors.html) — website-endpoint → API-endpoint scenario, first matching `CORSRule`, ACLs and policies still apply; **verified 2026-10-14**
+- [Logging server access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html) — best-effort delivery, free delivery to S3, same Region and account, CloudWatch Logs destination; **verified 2026-10-14**
+- [Logging options for S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/logging-with-S3.html) — AWS's server-access-logs vs CloudTrail side-by-side, "We recommend that you use CloudTrail"; **verified 2026-10-14**

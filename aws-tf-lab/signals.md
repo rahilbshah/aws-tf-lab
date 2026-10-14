@@ -138,6 +138,10 @@ would otherwise pick.
 → **AWS Budgets** [[13-cost-optimization#Traps|13-cost-optimization]]  
 ✗ Cost Explorer — it analyses and forecasts the past/future but does not alert; Cost Anomaly Detection alerts on unusual spend rather than a figure you name
 
+**"right-size" — especially when the resource is EBS, Lambda, Fargate or an Auto Scaling group, not just EC2 — from observed utilisation**  
+→ **AWS Compute Optimizer (rightsizing recommendations from CloudWatch metrics)** [[13-cost-optimization#Key facts, limits & pricing|13-cost-optimization]]  
+✗ Cost Explorer rightsizing — it also names EC2 instance types, but covers EC2 only and is a spend view; Trusted Advisor — an account-wide checklist whose sizing advice, where shown, comes from Cost Optimization Hub and needs Compute Optimizer. Scaling out answers availability, not sizing
+
 **"they know exactly what they will run for the next three years" and want the deepest committed discount**  
 → **EC2 Instance Savings Plan (up to 72%), committed to one family in one Region** [[13-cost-optimization#When each purchasing option is the answer|13-cost-optimization]]  
 ✗ Compute Savings Plan — more flexible and therefore cheaper a discount (66%); the counterintuitive direction is the whole question
@@ -153,10 +157,6 @@ would otherwise pick.
 **steady baseline compute spend, but they keep migrating between instance families and are moving work to Fargate/Lambda**  
 → **Compute Savings Plan (up to 66%) — flexible across family, size, Region, OS, tenancy, and covers Fargate and Lambda** [[13-cost-optimization#When each purchasing option is the answer|13-cost-optimization]]  
 ✗ EC2 Instance Savings Plan or a Reserved Instance — the deeper discount, but locked to one family (and one Region), so it is wasted the moment they migrate
-
-**the stem wants a specific recommended instance type or size for ONE named workload, from observed utilisation — "right-size", "what should this instance be"**  
-→ **AWS Compute Optimizer (rightsizing recommendations from CloudWatch metrics)** [[13-cost-optimization#Key facts, limits & pricing|13-cost-optimization]]  
-✗ Cost Explorer’s own rightsizing recommendations (a SPEND view that nets out what you already own) and Trusted Advisor low-utilization checks — both look right and neither returns a named replacement type. Scaling out answers availability, not sizing
 
 
 ## DNS & edge  ·  18
@@ -1162,7 +1162,7 @@ would otherwise pick.
 
 **an account-wide sweep: "what is obviously wasteful or insecure right now" — listed alongside root MFA, public buckets or service quotas. It flags the resource; it does not size it**  
 → **Trusted Advisor — it inspects what is actually deployed, across six categories** [[25-well-architected#Comparisons|25-well-architected]]  
-✗ Compute Optimizer — it returns a specific instance type for one workload; Trusted Advisor only flags resources, across six fixed check categories
+✗ Compute Optimizer — it produces the specific instance type for one workload; Trusted Advisor is the account-wide checklist (and any sizing advice it shows comes from Cost Optimization Hub, which needs Compute Optimizer)
 
 **rotate an APPLICATION (non-master) credential, or a non-RDS secret, automatically**  
 → **Secrets Manager** [[21-security#⚠️ Traps — why the wrong answer looks right|21-security]]  
