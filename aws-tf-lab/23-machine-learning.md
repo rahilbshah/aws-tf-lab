@@ -12,7 +12,7 @@ tags: [topic, domain/performance]
 Eleven one-line services. The exam never asks you to train a model — it asks whether you can tell Rekognition from Textract fast enough to eliminate three wrong answers.
 
 > [!info] Exam TL;DR
-> - **ML is in scope** (11 named services) and gets **no task statement of its own** — but it is not absent from the objectives either: **Task Statement 2.2** (Domain 2, *highly available / fault-tolerant architectures*, **30% of the exam**) names **Amazon Comprehend and Amazon Polly** in its Knowledge-of list. Mostly distractors and one-line answers; learn one sentence per service, and don't assume ML can never be the subject.
+> - **ML is in scope** (8 named services in the online exam guide; 11 in the PDF v1.1) and gets **no task statement of its own** — but it is not absent from the objectives either: **Task Statement 2.2** (Domain 2, *resilient architectures*, **26% of the exam**) names **Amazon Comprehend and Amazon Polly** in its Knowledge-of list. Mostly distractors and one-line answers; learn one sentence per service, and don't assume ML can never be the subject.
 > - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Train a custom model on our data"* → **SageMaker**.
 > - **Rekognition = images/video** (objects, faces, moderation). **Textract = documents** (text + **forms + tables** + handwriting). Document vs scene.
 > - **Transcribe = audio → text. Polly = text → audio.** Opposite directions.
@@ -35,7 +35,7 @@ I previously said ML was "appendix-only" and effectively skippable. Checking the
 
 But the second half of the picture is what keeps this a twenty-minute topic rather than a two-hour one: **ML gets no task statement of its own.** Domain 3 has one for data ingestion and analytics (3.5); there is no ML equivalent.
 
-One correction to that, because the note used to state it as an absolute and it is not. ML does surface inside an objective: **Task Statement 2.2 — "Design highly available and/or fault-tolerant architectures"**, in Domain 2 (**30%** of the scored content) — whose Knowledge-of list reads *"AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)"*. So ML services are *mostly* in the answer pool rather than the subject, but they can legitimately be the subject in a resilience question. *(Checked against the exam guide PDF, 2026-10-07.)*
+One correction to that, because the note used to state it as an absolute and it is not. ML does surface inside an objective: **Task Statement 2.2 — "Design highly available and/or fault-tolerant architectures"**, in Domain 2 (**26%** of the scored content — corrected 2026-10-14; 30% is Domain 1) — whose Knowledge-of list reads *"AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)"*. So ML services are *mostly* in the answer pool rather than the subject, but they can legitimately be the subject in a resilience question. *(Checked against the exam guide PDF, 2026-10-07.)*
 
 The exam-bank evidence lines up with that. Across the bank (counted at 1,168 questions here, while CLAUDE.md §13.12 records 1,156 — the figure is approximate and not an AWS claim) there is **not one question tagged with an ML topic** — yet Rekognition, Comprehend, SageMaker, Transcribe and Translate all appear inside question text in the low hundreds. They are there as **distractors and as one-line correct answers**, not as subjects.
 
@@ -227,7 +227,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 > Textract's synchronous operations handle **single-page** documents only; multi-page PDFs require the **asynchronous** API, and long audio in Transcribe works the same way. An architecture that calls the sync API inside a Lambda looks clean and fails on real input — either the page limit or Lambda's timeout — 15 minutes for a standard function, and the 90-minute Lambda Managed Instances ceiling doesn't rescue a sync, single-page API either. The correct shape is **async job + SNS completion notification**, which also decouples the pipeline.
 
 > [!warning] Trap — assuming a retired service is a wrong answer
-> **Forecast, Fraud Detector and Kendra are all closed to new customers**, but all three are still in the SAA-C03 exam guide's in-scope list. If a question describes time-series demand prediction and offers **Amazon Forecast**, that is still the intended answer — don't talk yourself out of it because you know the service is legacy. The retirement matters for real-world design, not for scoring the exam.
+> **Forecast, Fraud Detector and Kendra are all closed to new customers**, and AWS's two SAA-C03 guides now disagree: the **PDF v1.1** still lists all three as in scope, the **online** guide has dropped them *(checked 2026-10-14)*. If a question describes time-series demand prediction and offers **Amazon Forecast**, treat it as a valid answer — don't talk yourself out of it because you know the service is legacy. The retirement matters for real-world design, not for scoring the exam.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
@@ -237,6 +237,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 - [ ] **Not over-picking SageMaker** — it reads like the competent answer and is usually the trap.
 
 ## 🔗 Docs
+- [SAA-C03 exam guide (online)](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html) — domain weightings (Domain 2 = 26%) · [In-scope services](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/saa-03-in-scope-services.html) — 8 ML services; verified 2026-10-14
 - [Post-call analytics](https://docs.aws.amazon.com/transcribe/latest/dg/call-analytics-batch.html) — speaker sentiment as a native Call Analytics insight, the 5 to −5 score, per-turn labels, no Comprehend involved; **verified 2026-10-10**
 
 - [SAA-C03 Exam Guide (PDF)](https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) — the in-scope and out-of-scope Machine Learning service lists, and the absence of any ML task statement; verified 2026-09-26

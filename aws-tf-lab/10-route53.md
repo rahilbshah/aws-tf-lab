@@ -81,7 +81,7 @@ There are eight routing policies. Two pairs cause nearly all the wrong answers.
 
 **Multivalue answer** adds the missing half. Structurally it is different too: you create **one record per value**, each with its own set identifier, rather than one record holding several values — and you **optionally** attach a health check to each. Route 53 then answers with up to **8 healthy** records, randomly ordered.
 
-Two edges worth holding, because they soften the "multivalue is the health-checked one" shorthand. A multivalue record with **no** health check attached is *always* considered healthy — so you can build a multivalue set that health-checks nothing at all. And when **every** record is unhealthy, Route 53 responds with all of them rather than nothing, on the reasoning that a broken answer beats no answer.
+Two edges worth holding, because they soften the "multivalue is the health-checked one" shorthand. A multivalue record with **no** health check attached is *always* considered healthy — so you can build a multivalue set that health-checks nothing at all. And when **every** record is unhealthy, Route 53 responds with up to **8** of them rather than nothing *(corrected 2026-10-14)*, on the reasoning that a broken answer beats no answer.
 
 If the scenario wants controlled proportions, that's **weighted**. If it wants real load balancing rather than answer-shuffling, that's an **ALB**, not DNS at all.
 
@@ -202,7 +202,7 @@ flowchart TB
 | **Failover** | primary's health | primary, else secondary | ✅ (that's the point) |
 | **Geolocation** | where the **user** is (continent / country / US state) | one | ✅ |
 | **Geoproximity** | where your **resources** are + a **bias** you set (**+1…+99** expand, **−1…−99** shrink) | one | ✅ |
-| **Multivalue answer** | nothing | up to **8 healthy**, random (**all** of them if none are healthy) | ✅ **per record, and optional** — a record with no health check counts as healthy |
+| **Multivalue answer** | nothing | up to **8 healthy**, random (up to **8 unhealthy** if none are healthy) | ✅ **per record, and optional** — a record with no health check counts as healthy |
 | **IP-based** | CIDR blocks **you** supply | one | ✅ |
 
 *The pairs that get confused: **simple vs multivalue** (health checking is the whole difference) and **geolocation vs geoproximity** (users vs resources).*
@@ -319,6 +319,7 @@ The VPC's built-in resolver lives at the **VPC base + 2** address (e.g. `10.0.0.
 - [ ] **Fixing a slow failover** — diagnosed the TTL cause correctly but didn't name the fix (lower the TTL; and you can't set one at all on an alias).
 
 ## 🔗 Docs
+- [Multivalue answer routing](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-multivalue.html) — up to 8 healthy records; up to 8 unhealthy if none are healthy; verified 2026-10-14
 - [Geoproximity routing and bias values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-geoproximity.html)
 - [`CreateHostedZone` API reference](https://docs.aws.amazon.com/Route53/latest/APIReference/API_CreateHostedZone.html) — no ownership input, `InvalidDomainName`, the TLD prohibition, `ConflictingDomainExists`; **verified 2026-10-10**
 - [Public hosted zone considerations](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/hosted-zone-public-considerations.html) — duplicate zone names permitted, four distinct name servers each; **verified 2026-10-10**

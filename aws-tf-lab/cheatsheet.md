@@ -55,7 +55,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | The three evaluation states | Implicit deny (default) → explicit Allow lifts it → explicit Deny overrides everything |
-| simulate-principal-policy verdict values | allowed / implicitDeny / explicitDeny (S3 returns a flat AccessDenied for both denials) |
+| simulate-principal-policy verdict values | allowed / implicitDeny / explicitDeny (S3 403s name which, same account/org only) |
 | Does order, count or specificity matter? | No to all three — no specificity rule exists in IAM (that is NTFS ACLs) |
 
 **Policy types & limits**
@@ -99,7 +99,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | AD Connector — does it store directory data in AWS? | No — proxies sign-in to on-prem DCs, no sync, no data in AWS |
 | Simple AD — what it does NOT support | No trusts, no MFA, no schema extensions/LDAPS, not compatible with RDS for SQL Server |
-| Which directory works with RDS for SQL Server | AWS Managed Microsoft AD only — AD Connector and Simple AD are not compatible |
+| Which directory works with RDS for SQL Server | AWS Managed Microsoft AD or self-managed AD — not AD Connector or Simple AD |
 | IAM Identity Center — former name | Successor to AWS SSO (renamed); AD groups map to permission sets, which become IAM roles |
 | Permission sets and instance type | Need an organization instance in the management account — account instances do not support permission sets |
 
@@ -128,7 +128,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | How policy types combine | identity+resource = **UNION, but only within one account**; identity+boundary = INTERSECTION; identity+SCP = INTERSECTION. **Cross-account is evaluated twice** — the caller's identity policy *and* the resource policy must both allow it |
-| Boundary implicit deny vs resource policy | Implicit deny in a boundary does not limit resource-based policies; an explicit Deny does |
+| Boundary implicit deny vs resource policy | Same acct: RBP grant to a user/session ARN escapes it, role ARN doesn't; explicit Deny wins |
 | What can carry a permissions boundary | Users and roles — not groups; it takes a managed policy ARN and grants nothing |
 
 **Condition keys**
@@ -144,7 +144,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Control types and their implementation | Preventive = SCPs; detective = AWS Config rules; proactive = CloudFormation hooks |
+| Control types and their implementation | Preventive = SCP/RCP/declarative; detective = Config rules; proactive = CFN hooks |
 | SCP vs RCP scope | SCP limits principals in member accounts; RCP limits resources — both need Organizations all features |
 
 | Identity store **not** SAML 2.0 compatible | Build a **custom identity broker** on-prem: it authenticates against the existing system (*"which might use LDAP, Active Directory, or another system"*), then calls **STS** — *"either `AssumeRole` or `GetFederationToken`"* — and hands the temporary credentials to the app. Not Identity Center (needs a supported identity source), not an IAM policy referencing LDAP identifiers. The one exam scenario where "write a custom application" is correct |
@@ -161,7 +161,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Extra EBS data volume — *Delete on termination* default | **Console** at launch, or attached after launch: **Preserve** (false). At launch via **CLI/API**: **Delete** (true). Answer `false` on the exam; set it explicitly in practice |
 | Data volume attached at launch via CLI/API — default | Delete |
 | Data volume added via console at launch, or attached after launch | Preserve |
-| Additional EBS volume default (the exam answer) | false — survives termination, still billing, attachable in the same AZ |
+| Additional EBS volume default | false via console or after launch (survives, bills); CLI at launch: true |
 | Root volume default | true — deleted with the instance |
 
 **T-family CPU credits**
@@ -171,16 +171,16 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | t3.micro max banked CPU credits | 288 (24h of earnings) |
 | t3.micro CPU credit earn rate | 12 CPU credits/hour |
 | T-family baseline CPU | **Varies by size** — baseline % per vCPU = (credits earned per hour ÷ vCPUs) ÷ 60. `t3.nano` **5%** (6 credits/hr ÷ 2 vCPUs ÷ 60), `t3.micro` **10%**, `t3.small`/`medium` **20%**, `t3.large` **30%**, `t3.xlarge`/`2xlarge` **40%**. Never quote one size's baseline for the family. (Corrected 2026-10-05 — this row said 2.5%, which the formula beside it disproves.) |
-| T3 default credit mode | **unlimited** (T2 defaults to *standard*). The burst always succeeds and is **free while average CPU stays at or below baseline over a rolling 24 hours**; only sustained excess bills, at a flat rate per vCPU-hour |
+| T3 default credit mode | **unlimited** (T2: standard). Free if 24h average CPU ≤ baseline; unpaid surplus bills per vCPU-hour, incl. at stop/terminate |
 | Metric to alarm on for surplus billing | CPUSurplusCreditsCharged |
-| The three burstable CloudWatch metric names | CPUCreditBalance, CPUSurplusCreditBalance, CPUSurplusCreditsCharged |
+| Burstable CloudWatch metrics (4) | CPUCreditUsage, CPUCreditBalance, CPUSurplusCreditBalance, CPUSurplusCreditsCharged |
 | Standard mode at zero credit balance | pinned at baseline (~10% CPU on t3.micro) — CPUCreditBalance flatlined at 0 |
 
 **IMDS**
 
 | | |
 |---|---|
-| IMDSv2 PUT response IP hop limit | 1 — the token cannot leave the instance |
+| IMDSv2 PUT response IP hop limit | default 1 (2 on v2.0 AMIs); use 2 for containers |
 | IMDSv2 token max lifetime | up to 6h, and instance-specific |
 | IMDSv2 token request header name | X-aws-ec2-metadata-token-ttl-seconds (on the PUT); example value 21600 |
 | IMDSv2 header carried on every GET | X-aws-ec2-metadata-token |
@@ -188,7 +188,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Symptom of skipping the IMDSv2 token | empty / 401, silently — not a permissions error |
 | IMDS endpoint address | 169.254.169.254, link-local, reachable only from inside the instance |
 | Token flow order | PUT /latest/api/token first, then GET with the token header |
-| IMDSv1 vs IMDSv2 default | v1 was default until ~2023; v2 required by default on Ubuntu 24.04 noble, recent AL2023 |
+| IMDSv1 vs IMDSv2 default | both allowed; v2 required if AMI has ImdsSupport=v2.0 (AL2023) or account default set |
 
 **EC2 free tier & billing**
 
@@ -224,7 +224,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Instance ID after terminate | released, can never be reused |
+| Instance after terminate | permanently deleted — can't be started or recovered |
 | Private IP on stop vs terminate | preserved on stop; released on terminate |
 | EIP on terminate | disassociated; the EIP is retained in your account |
 | Only way to move an instance to another AZ | snapshot and relaunch — stop/start cannot change AZ |
@@ -236,7 +236,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Family letters | t burstable, m general, c compute, r memory, g/p GPU, i storage |
 | Generation suffixes a and g | t3a = AMD, t4g = Graviton/ARM |
 | Instance type separator | `family.size` with a **literal period** — `t3.micro`. A hyphen (`t3-micro`) is **rejected** |
-| Instance-type change vs AMI change | Instance type: **stop-modify-start**, ~1–3 min downtime. **Kept:** instance ID, EBS volumes, Elastic IP. **Lost/changed:** an **auto-assigned public IPv4** changes and **instance-store data is destroyed**. AMI: **cannot** change in place — launch a replacement |
+| Instance-type change vs AMI change | Instance type: **stop-modify-start**. **Kept:** instance ID, EBS volumes, Elastic IP. **Lost/changed:** an **auto-assigned public IPv4** changes and **instance-store data is destroyed**. AMI: **root volume replacement** on the same instance, or launch a new one |
 
 **AMI**
 
@@ -255,12 +255,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Deleting an AMI leaves what behind? | the backing EBS snapshot — needs both deregister-image and delete-snapshot |
-| Boot time baked vs user_data install | ~30 sec vs 2–5 min |
-| ami_name collisions | must be unique — Packer refuses to overwrite an existing name |
-| Tag argument for the snapshot, not the AMI | snapshot_tags (AMI uses tags) |
+| Deleting an AMI leaves what behind? | backing snapshot by default — add --delete-associated-snapshots (skipped if another AMI uses it) |
+| Ready time baked vs user_data | lab only: ~30 s vs 2–5 min |
 | AWS-native managed equivalent of a Packer pipeline | EC2 Image Builder — test-before-distribute, multi-region, cross-account via AWS RAM, STIG components |
-| Currency warning — apt install awscli on Ubuntu 24.04 | no longer available; use the AWS official installer or snap install aws-cli --classic |
+| Installing AWS CLI v2 on Linux | AWS's official installer or the AWS-maintained snap; distro repos may lag |
 
 | `gp2` baseline IOPS formula | **3 IOPS per GiB**, floor **100** (volumes ≤33.33 GiB), ceiling **16,000** reached at **5,334 GiB**. So 250 GiB → 750 baseline, 1,000 GiB → 3,000 |
 | `gp2` burst | Volumes **smaller than 1 TiB** (provisioned <3,000 IOPS) burst to **3,000 IOPS** on I/O credits. Accrue 3/GiB/s, cap **5.4 M** = *"at least 30 minutes"* at full burst; every volume starts full. Watch `BurstBalance`. **A ≥1 TiB gp2 volume does not burst at all** |
@@ -284,7 +282,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | PrivateLink endpoint service — which LB fronts it | NLB or GWLB, never an ALB directly |
 | Putting an ALB behind an NLB | Target group of type **Application Load Balancer**, protocol TCP, one ALB per target group |
 | Static IP — ALB vs NLB | ALB: DNS name only. NLB: one static IP per AZ, can attach an EIP |
-| Client source IP — ALB vs NLB | ALB terminates the connection, adds X-Forwarded-For; NLB preserves source IP natively |
+| Client source IP — ALB vs NLB | ALB: X-Forwarded-For. NLB: kept for instance targets; IP-type TCP/TLS off by default |
 | NLB flow hash inputs | Settled 2026-10-05 — AWS lists all four: *"The protocol, The source IP address and source port, The destination IP address and destination port, The TCP sequence number."* GWLB uses a 5-tuple flow hash |
 | ALB layer and routing conditions | Layer 7; routes on host, path, header, method, query-string, source-IP |
 
@@ -312,7 +310,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| ASG health check type default | **EC2** — hypervisor status checks only; **ELB** must be set explicitly |
+| ASG health check type default | **EC2** — status checks + scheduled events; ELB results ignored until **ELB** is turned on |
 | Which check decides what | Target-group health check = **routing**; ASG health check type = **replacement** |
 | Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, and only when its health check type is **ELB** |
 | When a failed health check is user-visible | Only when NO targets are healthy; with ≥1 healthy the ALB routes around it silently |
@@ -325,8 +323,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Predefined metrics | ASGAverageCPUUtilization, ASGAverageNetworkIn, ASGAverageNetworkOut, ALBRequestCountPerTarget |
-| Alarms it auto-creates for a CPU target of 50 | AlarmHigh at 50% (scale out), AlarmLow at 35% (scale in) — AWS-managed, don't edit |
-| Can lowering target_value force a scale-out | No — it never scales out while the metric is below target; only triggers scale-in |
+| Alarms it auto-creates for a CPU target of 50 | AlarmHigh at 50% (out), AlarmLow below it (in; no published value) — AWS-managed |
+| Can lowering the target value force a scale-out | Yes, if the new target is below the current metric; otherwise only scale-in can follow |
 | Scale-out vs scale-in behaviour | Scales out aggressively, scales in gradually — prioritises availability |
 
 **Scale-in termination order**
@@ -339,7 +337,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Instances that skip the termination policy | Unhealthy ones — replaced regardless of policy |
 | Policy for true oldest-instance behaviour | OldestInstance — a separate policy you opt into; default is ["Default"] |
 | OldestLaunchTemplate policy terminates | Noncurrent launch template first, then oldest version of the current one |
-| ASG detection lag after out-of-band termination | ~1–2 min periodic health-check cycle; Activity tab is the authoritative log |
+| ASG detection lag after out-of-band termination | Next periodic check (~1–2 min in lab, no AWS figure); Activity tab is authoritative |
 
 **Scheduled scaling**
 
@@ -378,7 +376,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Route table used by a subnet you never associated | The VPC's main route table |
-| The two conditions for a subnet to be public | 0.0.0.0/0 → IGW in its route table AND a public IP (auto-assigned at launch, or an EIP) |
+| Public subnet vs internet-reachable instance | Subnet public = route to IGW; instance also needs a public IP/EIP |
 | IGW count, direction and cost | One per VPC, bidirectional, no bandwidth limit, free (pay data transfer only) |
 
 **NAT**
@@ -389,8 +387,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | NAT gateway security group | None — there is nothing to attach |
 | The one IPv6 job a NAT gateway does | NAT64 (always on), paired with DNS64 on the subnet |
 | NAT instance's required non-default setting | Source/destination check disabled (legacy option; gateway has no equivalent) |
-| Which subnet the NAT gateway lives in | A public subnet |
-| NAT gateway resilience scope | AZ-scoped; redundant only within its own AZ — one per AZ for HA |
+| Which subnet the NAT gateway lives in | Zonal NAT gateway (the exam's answer): **a public subnet**. Newer regional NAT gateway: no subnet |
+| NAT gateway resilience scope | Zonal (the exam's answer): one AZ — **one per AZ for HA**. Newer regional NAT gateway: one ID spans AZs |
 | Outbound-only internet for IPv6 | Egress-only Internet Gateway, at the VPC edge |
 
 **VPC defaults**
@@ -419,7 +417,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | OS-specific ephemeral port ranges | AWS's figures: many **Linux** kernels `32768–61000`; **Windows Server 2008+** `49152–65535`; **ELB / Lambda / NAT gateway** `1024–65535`. AWS's example NACL uses `32768–65535`; `1024–65535` is the safe superset |
 | Which direction the ephemeral rule goes | Receiving requests → outbound; initiating requests → inbound |
 | Ephemeral range to open on a NACL | 1024–65535 |
-| Traffic a NACL cannot filter at all | Amazon-provided DNS resolver (VPC+2) and the Amazon Time Sync Service |
+| Traffic a NACL cannot filter at all | Amazon DNS, DHCP, IMDS, ECS metadata, Windows activation, Time Sync, router IPs |
 
 **Flow Logs**
 
@@ -438,7 +436,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Rule engine it is built on | Suricata — stateful IPS, deep packet inspection + domain filtering |
-| Where the endpoint sits | Its own dedicated firewall subnet; route tables must redirect traffic to it |
+| Where the endpoint sits | Dedicated firewall subnet + route redirect, or attached directly to a TGW |
 
 **VPC endpoints**
 
@@ -454,7 +452,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Full-mesh peering formula | N(N-1)/2 (5→10, 6→15, 10→45, 12→66) |
-| The three peering limits | Non-transitive, no overlapping CIDRs, no edge-to-edge routing (no peer's IGW/NAT/VPN/endpoints) |
+| The three peering limits | Non-transitive, no overlapping CIDRs, no edge-to-edge (peer's IGW/NAT/VPN/DX/gateway endpoint) |
 | Transit Gateway shape and scale | Regional hub, one attachment per VPC/VPN/DX, transitive, scales to thousands of attachments |
 | VPC sharing — what actually gets shared | **One or more subnets**, never the whole VPC. Owner shares via **AWS RAM** to participant accounts in the **same Organization**; participants launch their own EC2/RDS/Redshift/Lambda in them and can't see each other's resources. Peering stays the owner's job. |
 | Many accounts, one network — which of the three | **Same Organization, lowest complexity, one network → VPC sharing.** Two separate VPCs → peering. Many VPCs / hybrid at scale → Transit Gateway. "Share the VPC" and "peer the subnets" are both wrong wordings. |
@@ -501,28 +499,28 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which id goes in the ARN | DbiResourceId (db-ABC…), not the DB identifier; Aurora = DbClusterResourceId; RDS Proxy = prx- |
 | DB-side mapping per engine | MySQL: AWSAuthenticationPlugin · PostgreSQL: GRANT rds_iam TO <user> |
 | Supported engines | MariaDB, MySQL, PostgreSQL (and Aurora MySQL/PostgreSQL) |
-| Transport encryption | **With IAM DB authentication: always SSL/TLS** (the token is only valid over TLS). With a native password or Secrets Manager, TLS is **optional** — you must require it |
-| PostgreSQL rds_iam role precedence | IAM auth takes precedence over password auth for that user; no Kerberos, no replication connections |
+| Transport encryption | **IAM DB auth: traffic is SSL/TLS.** Native password or Secrets Manager: TLS **optional** — you must require it |
+| PostgreSQL rds_iam role precedence | IAM auth takes precedence over password auth for that user; no IAM + Kerberos together |
 | Default state of the feature | Off by default |
 
 **Aurora storage**
 
 | | |
 |---|---|
-| Cluster volume auto-scaling range | 10 GB → 128 TiB (256 TiB on the newest engine versions) |
+| Cluster volume auto-scaling range | Grows automatically to 128 TiB (256 TiB on newer engine versions) |
 | Copies and AZ spread | 6 copies across 3 AZs — 2 per AZ, one shared cluster volume |
-| Loss tolerance for reads | A whole AZ plus one more copy |
+| Loss tolerance | Loses a whole AZ with no data loss, brief interruption |
 
 **Aurora features**
 
 | | |
 |---|---|
-| Aurora replica lag | <10 ms typical (note also states "well under 100 ms") |
+| Aurora replica lag | Usually much less than 100 ms (rises with write rate) |
 | Global Database secondary regions | 1 primary + up to 10 read-only secondary regions, <1s replication |
 | The four endpoint types | writer/cluster, reader (LB'd reads), custom, instance |
 | Serverless v2 capacity unit and instance class | Capacity is measured in **ACUs**, settable from **0 to 256 ACUs in increments of 0.5** (the allowed minimum depends on the Aurora version; 0 means auto-pause). Each ACU ≈ **2 GiB RAM** plus matching CPU/network. The DB instance class is **always `db.serverless`**. |
 | Backtrack engine support | Aurora MySQL only — rewinds the DB in place, no restore |
-| Throughput claim vs stock engines | ~5× MySQL / 3× PostgreSQL |
+| Throughput claim vs stock engines | Up to 6× MySQL and PostgreSQL (older: 5×/3×) |
 | Engine compatibility | MySQL/PostgreSQL-compatible only |
 | Max Aurora replicas, and how failover is ordered | 15; automatic failover ordered by priority tiers |
 
@@ -558,18 +556,18 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Legacy RDS Free Tier cutoff and allowance | Accounts activated before 2025-07-15: db.t2/t3/t4g.micro, single-AZ, 750 hrs/mo, 20 GB, 12 months |
-| Free Plan backup retention guardrail | retention 7 fails with FreeTierRestrictionError; 1 is accepted |
+| Free Plan backup retention (lab only) | Our lab: 7 rejected, 1 accepted; no AWS doc found |
 
 **ElastiCache engines**
 
 | | |
 |---|---|
-| Threading, per engine | Redis single-threaded (one core/node); Memcached multi-threaded |
+| Threading, per engine | Redis/Valkey: single main thread; Memcached multi-threaded |
 | Auto Discovery availability | Memcached only — AWS states it is NOT available for Valkey or Redis OSS |
 | Auto Discovery client requirement | An ElastiCache client library with Auto Discovery support |
-| Memcached persistence | **None at all** — no replication, no failover, no persistence, no backup. A dead node's data is gone |
-| What Memcached lacks, exactly | No replication, no failover, no persistence, no backup |
-| Valkey, one line | AWS-backed open-source Redis fork after Redis's licence change; ≈ Redis, minus Auto Discovery |
+| Memcached persistence | Node-based: no replication, failover, persistence or backup (Serverless can back up) |
+| What Memcached lacks, exactly | Node-based: no replication/failover/persistence/backup |
+| Valkey, one line | Open-source Redis fork; has all Redis OSS 7.2 features (neither has Auto Discovery) |
 
 **ElastiCache Redis HA**
 
@@ -577,7 +575,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Replication group size | 1 primary + up to 5 read replicas |
 | Minimum nodes for auto-failover / Multi-AZ | **2** — Multi-AZ with automatic failover requires a cluster **with at least one replica**, so 1 primary + 1 replica. Max **5** read replicas per shard |
-| Redis port | ⚠️ verify: 6379 (Memcached 11211) — not confirmed against AWS docs. Tried the VPC, CreateCacheCluster API and serverless getting-started pages; none states a default port. Not exam-load-bearing — do not memorise it as verified. |
+| Redis port | Valkey/Redis OSS default 6379; Memcached default 11211 |
 
 **Caching strategies**
 
@@ -614,7 +612,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which options can be bucket default encryption | SSE-S3, SSE-KMS, DSSE-KMS — never SSE-C (the key arrives with the request, so there is nothing to hold). Separate setting, same API: whether the bucket **accepts** SSE-C writes at all |
 | Client-side encryption — current naming | **Amazon S3 Encryption Client** + a **wrapping key** (a KMS key you own, or an AES/RSA key you hold). Older names still in question banks: *CSE-KMS* and *CSE with a client-side master key*. The Encryption Client ignores **S3 Bucket Keys** even with a KMS wrapping key |
 | Re-encrypt objects already in the bucket | S3 Batch Operations → Copy (changing the default only affects new writes) |
-| Encryption automatic since when | SSE-S3 on every object since 5 January 2023 |
+| Encryption automatic since when | SSE-S3 on every new upload since 5 Jan 2023 |
 | Header value: SSE-S3 vs SSE-KMS | AES256 = SSE-S3; aws:kms = SSE-KMS |
 | Cut SSE-KMS request cost | S3 Bucket Keys — short-lived bucket-level data key |
 | Condition key that enforces TLS | aws:SecureTransport = false (deny it in the bucket policy) |
@@ -639,7 +637,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Batch Replication — the four cases it covers | Pre-existing objects, FAILED replications, newly-added destination, replicas-of-replicas (+ objects tagged *after* upload under a tag-based rule) |
 | Batch Replication — what it CANNOT do | Objects in Glacier Flexible / Deep Archive / Intelligent-Tiering archive tiers (restore + copy to another class first); objects deleted from the destination **by version ID** (use **Batch Copy** in place) |
-| What replication copies that people assume it doesn't | **SSE-C** objects (plus SSE-S3/SSE-KMS/DSSE-KMS), object tags, ACL updates, and **Object Lock retention — which overrides the destination's default retention** |
+| What replication copies that people assume it doesn't | **SSE-C** & SSE-S3 objects, tags, ACL updates, **Object Lock retention (overrides destination default)**; SSE-KMS/DSSE-KMS only if the rule **opts in** |
 | What it never copies | Lifecycle-created delete markers, anything a lifecycle action did, bucket-level subresources (lifecycle/notification config), objects in archive tiers |
 | Tag-based replication rule trap | The object must carry the matching tag **in the `PutObject` call**; tagged afterwards it is never replicated by the live rule |
 | What a live replication rule copies | Only objects created or updated AFTER the rule existed |
@@ -730,20 +728,20 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | CloudWatch alarm health check watches what | The alarm's data stream, not its state; same account only, no metric math, no M-of-N |
 | Do HTTPS health checks validate certificates? | No — an expired cert passes |
 | IP types a health check cannot target | Private, nonroutable, or multicast |
-| Failover time formula | (health check interval × failure threshold) + TTL; default-ish (30s × 3) + TTL |
+| Failover time (rough model) | ≈ (interval × failure threshold) + TTL — a mental model, not an AWS formula |
 
 **Route 53 routing policies**
 
 | | |
 |---|---|
 | The eight routing policies | simple · weighted · latency · failover · geolocation · geoproximity · multivalue answer · IP-based |
-| Multivalue answer — how many records returned | Up to **8 healthy** records, randomly ordered — and **all** of them if none are healthy. Health checks are **optional and per record**; a multivalue record with no health check counts as **healthy** |
+| Multivalue answer — how many records returned | Up to **8 healthy** records, random order; if none healthy, up to **8 unhealthy**. Health checks **optional, per record**; a record with no health check counts as **healthy** |
 | Meaning of weight 0 | **"Stop sending traffic here", NOT "never return this."** AWS: if **all** nonzero-weight records are unhealthy, Route 53 falls back to the zero-weighted ones — so weight 0 is a last-resort fallback, and the documented way to build active/passive from weighted records. *(Corrected 2026-10-06: this row said "never return this record".)* |
 | Route 53 SLA — the "100%" line | AWS **no longer states a 100% commitment**: "commercially reasonable efforts … with the Monthly Uptime Percentages set forth in the table". Credits still start **below 100%**: 10% under 100%, 25% under 99.99%, 100% under 99.95% (GovCloud bands start 99.995%). Covers **authoritative DNS hosted zones only** — not the API or console |
 | Failover to an ALB/NLB/CloudFront alias | **Do NOT attach a health check to the record.** Set **Evaluate Target Health = Yes** on the alias and Associate with Health Check = **No**. Attach your own health check only for raw IPs and non-AWS endpoints |
 | Query price by routing policy | Standard **$0.40**/million · latency **$0.60** · geolocation & geoproximity **$0.70** · IP-based **$0.80** (first 1B/mo). Alias queries to AWS resources are **free**; a CNAME to another R53 record bills **twice** |
-| Route 53 VPC Resolver addresses | **169.254.169.253** (IPv4 link-local), **fd00:ec2::253** (IPv6), **and** VPC base **+2**. Link-local still works in an IPv6-only subnet. **Cannot** be filtered by security groups or NACLs. Link-local traffic capped at **1,024 pps per instance**, shared with IMDS/NTP/Windows licensing — the usual cause of DNS throttling |
-| Private hosted zone over VPN | **Not transitive** — you cannot resolve its private names from the far side of a VPN/DX without a Resolver **inbound** endpoint |
+| Route 53 VPC Resolver addresses | **169.254.169.253** (IPv4 link-local), **fd00:ec2::253** (IPv6), **and** VPC base **+2**. Link-local still works in an IPv6-only subnet. **Cannot** be filtered by security groups or NACLs. Capped at **1,024 pps per network interface**, shared with IMDS/NTP/Windows licensing — the usual cause of DNS throttling |
+| Private hosted zone over VPN | **Not transitive** — on-prem resolves its names via a Resolver **inbound** endpoint (or a forwarder inside the VPC) |
 | Geolocation catch-all for unmatched locations | A record with country `*` as the default |
 | Simple routing — health checks? | None; returns all values in random order, client picks |
 | Geolocation vs geoproximity | Geolocation = where the **USER** is (continent/country/US state) — localization, licensing, compliance. Geoproximity = where your **RESOURCES** are plus a **bias** (**+1…+99** expand, **−1…−99** shrink) — a capacity sentence. The policy does **not** need Traffic Flow; only the console's bias maps do |
@@ -780,7 +778,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | What skips the regional edge cache | **Three** cases: proxy methods (`PUT`, `POST`, `PATCH`, `OPTIONS`, `DELETE`); **dynamic requests** as determined at request time; and an **S3 origin whose optimal regional edge cache is in the same Region as the bucket**. *(Corrected 2026-10-07 — this row listed only two.)* |
-| Origin group failover — the method restriction | Fails over **only** for `GET`, `HEAD`, `OPTIONS`. Never for `POST`/`PUT` → origin groups are the **wrong answer for a write path or API**. Also won't fire unless `OPTIONS` is a cached HTTP method |
+| Origin group failover — the method restriction | Fails over **only** for `GET`, `HEAD`, `OPTIONS`. Never for `POST`/`PUT` → origin groups are the **wrong answer for a write path**. Also won't fire unless `OPTIONS` is a cached HTTP method |
 | Origin group failover — triggers | A status code you nominated (choose from **400, 403, 404, 416, 429, 500, 502, 503, 504**). A failed **connection** counts only if **503** is configured; a **timeout** only if **504** is |
 | Origin group failover — timing | Default up to **30 s** on the primary (3 attempts × 10 s). Connection timeout **1–10 s**, attempts **1–3**, origin response timeout **30 s** default / **1–120 s**. No stickiness — every request goes to the primary first |
 | CloudFront pricing — two models | **Flat-rate plans** $0 / $15 / $200 / $1,000 per month bundling CDN + WAF + DDoS + DNS + TLS + logging + edge compute, **no overage charges**; or **pay-as-you-go** (per-GB out + per-request). Either way, **AWS origin → CloudFront data transfer is waived** |
@@ -819,7 +817,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Addresses it gives you | Two static anycast IPs (four dual-stack), and they never change |
+| Addresses it gives you | Two static anycast IPs (four dual-stack), kept until the accelerator is deleted |
 | Valid endpoint types | NLB, ALB, EC2, Elastic IP |
 | Caching and protocols | Caches nothing; routes any TCP/UDP |
 
@@ -915,14 +913,14 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Volume Gateway stored — where primary copy lives | On premises (entire dataset); async point-in-time snapshots to S3 |
 | Volume Gateway local protocol | iSCSI |
 | S3 File Gateway local protocols | NFS or SMB |
-| The four gateway types | S3 File Gateway, FSx File Gateway, Volume Gateway, Tape Gateway |
+| The four gateway types | S3 File, FSx File (closed to new customers), Volume, Tape Gateway |
 
 **DataSync**
 
 | | |
 |---|---|
 | DataSync sources | On-prem NFS, SMB, HDFS, object storage; and other clouds (Azure Blob/Files, GCS) |
-| DataSync destinations | S3, EFS, FSx for Windows / Lustre / OpenZFS / NetApp ONTAP |
+| DataSync directions | **Both ways**: into S3, EFS, all four FSx — and back out to NFS/SMB/HDFS/object storage/other clouds |
 | DataSync vs Storage Gateway | DataSync transfers (one-off or scheduled); Storage Gateway is a permanent bridge |
 
 **AWS Backup**
@@ -933,7 +931,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Vault Lock governance vs compliance mode | **Governance**: unlockable by anyone holding the IAM permission. **Compliance**: unlockable by nobody, including AWS — **but only once the grace period expires** (minimum **3 days**). During that window it is still cancellable, which is what an "accidentally locked vault" question turns on |
 | AWS Backup cross-account copy requirement | An AWS Organizations structure |
 | AWS Backup incremental vs full | Incremental for supported resource types; others are full copies each time |
-| AWS Backup resource assignment method | By tag (plus Vault Lock = WORM) |
+| AWS Backup resource assignment | Tags, resource types, ARNs, or all resources (Vault Lock = WORM) |
 
 **Storage shapes**
 
@@ -958,7 +956,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which purchases actually reserve capacity | **Zonal** Reserved Instances · **On-Demand Capacity Reservations** · **Capacity Blocks** (a cluster of GPU instances) · **Dedicated Hosts** (a physical host dedicated to you). **Savings Plans and *regional* RIs reserve nothing** — they are discounts. *(Corrected 2026-10-07: this row said "only zonal RIs and Capacity Reservations", missing two.)* |
 | Spot request type — one-time vs persistent | *One-time*: if interrupted, "the request is **not** resubmitted". *Persistent*: "the request **is** resubmitted to replenish the interrupted Spot Instance". **Default = one-time.** Interruption behaviour is tied to type: `Stop`/`Hibernate` **persistent only**, `Terminate` **one-time only** (and `Terminate` is the default, so a persistent request left on the default errors). "Valid to" expiry is persistent-only. Maintaining a **target capacity** is EC2 Fleet / Spot Fleet, not a persistent request |
 | Who gives Savings Plans / reservation purchase recommendations | **Cost Explorer** *and* **Cost Optimization Hub** (AWS steers you to the Hub first). **Compute Optimizer never does** — it only rightsizes and finds idle resources |
-| Reserved Instances vs Savings Plans — status | AWS: "We recommend Savings Plans over Reserved Instances." But RIs are **not legacy** — they remain the only route to **zonal capacity**, the **RI Marketplace**, and RDS/Redshift/ElastiCache reservations |
+| Reserved Instances vs Savings Plans — status | AWS: "We recommend Savings Plans over Reserved Instances." RIs are **not legacy**: RI Marketplace + RDS/Redshift/ElastiCache reservations are RI-only. AZ capacity: **zonal RI or Capacity Reservation** |
 | Non-EC2 services Compute Savings Plans cover | AWS Fargate and AWS Lambda |
 | What a Savings Plan commits to | a spend rate in USD/hour, for 1 or 3 years |
 
@@ -994,7 +992,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Compute Optimizer metric lookback | last 14 days of CloudWatch metrics; 93 days with paid enhanced infrastructure metrics |
+| Compute Optimizer metric lookback | 14 days default; 32 days free; 93 days needs paid enhanced infrastructure metrics |
 | Compute Optimizer enablement | you must opt in |
 | Cost Explorer vs Budgets vs Compute Optimizer | Explorer analyses/forecasts past; Budgets alerts on a threshold; Optimizer says the resource is the wrong size |
 
@@ -1095,7 +1093,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | High-throughput FIFO TPS in other Regions | 19,000 Ohio/Frankfurt; 9,000 Mumbai/Singapore/Sydney/Tokyo/Spain; 4,500 London/São Paulo; 2,400 else |
 | What content-based deduplication hashes | the message body with SHA-256 — not the attributes |
 | MessageGroupId on a STANDARD queue | enables fair queues (on FIFO it is required — send fails without it) |
-| Deduplication window | **FIFO only: 5 minutes.** A repeated `MessageDeduplicationId` inside that window is rejected. **Content-based deduplication** derives the ID from a SHA-256 of the message **body** |
+| Deduplication window | **FIFO only: 5 minutes.** A repeated `MessageDeduplicationId` in that window is accepted but not delivered. **Content-based dedup** = SHA-256 of the **body** |
 | FIFO throughput ceiling | 300 TPS per API action per partition; 3,000 messages/sec with batching (300 × 10) |
 | FIFO queue name requirement | must end in .fifo |
 
@@ -1130,7 +1128,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Capacity mode switches allowed | twice in 24 hours |
 | On-demand starting throughput | 4 MB/sec write, 8 MB/sec read for a new stream |
 | On-demand maximum throughput | 10 GB/s write / 20 GB/s read in N. Virginia, Oregon, Ireland; 200 MB/s / 400 MB/s elsewhere |
-| Partition key — length and hash | Unicode string up to 256 characters, mapped to a shard by MD5 hash; required on every write |
+| Partition key — length and hash | ≤256 Unicode chars, MD5-hashed to a shard; required unless on-demand AUTO distribution |
 | Retention — default / min / max | default and minimum 24 hours; maximum 8,760 hours (365 days); above 24 h costs extra |
 | Per-shard write limit | 1 MB/sec OR 1,000 records/sec — whichever binds first |
 | Per-shard read limit | **2 MB/sec *or* 2,000 records/sec out** per shard, max **5 `GetRecords`/sec** — **shared across all consumers only under the default shared fan-out**. With **enhanced fan-out** each registered consumer gets its own 2 MB/sec per shard (`SubscribeToShard`, pushed). "Several consumers each needing full throughput" → enhanced fan-out |
@@ -1140,7 +1138,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Where the KCL stores consumption state | DynamoDB — three tables per application |
+| Where the KCL stores consumption state | DynamoDB — KCL 3.x default: 3 tables |
 | Registered (enhanced fan-out) consumers per stream | up to 20 (50 on On-demand Advantage) |
 | Enhanced fan-out API and throughput | SubscribeToShard, pushed; own 2 MB/sec per shard per registered consumer |
 
@@ -1189,7 +1187,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Valid memory values when Fargate cpu = 256 | 512, 1024, 2048 MiB only; an invalid pair fails at apply with ClientException, not at plan |
+| Valid memory values when Fargate cpu = 256 | 512, 1024, 2048 MiB only; cpu/memory must be one of AWS's valid pairs |
 | ALB target group algorithms | round_robin, least_outstanding_requests, weighted_random — default round_robin |
 | Fargate network mode | awsvpc only — every task gets its own ENI and private IP |
 | ALB target type for Fargate | **`ip`, never `instance`** — AWS: services whose tasks use `awsvpc` "only support Application Load Balancers and Network Load Balancers… you must choose `ip` as the target type, not `instance`", because those tasks have an ENI rather than an EC2 instance. Fargate always uses `awsvpc`. *(Corrected 2026-10-07: this row asserted a silent-503 symptom no AWS page states.)* |
@@ -1288,12 +1286,12 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Feature HTTP API has and REST does not | Native JWT authorizer (REST needs a Lambda authorizer) |
 | The three authorizer types | IAM (AWS principal), Cognito (logged-in end user), Lambda authorizer (your own scheme) |
 | What API keys and usage plans actually do | "Track and limit usage" — metering and throttling only; they are not authentication |
-| Does API Gateway load balance across targets? | No — exactly one integration per route; an ALB does load balance |
+| Does API Gateway load balance across targets? | Only via HTTP API + Cloud Map (spreads over healthy instances) |
 
 | WebSocket API — the two fixed timers | **Idle connection timeout 10 minutes**, **max connection duration 2 hours**, *neither increasable* — so heartbeats and reconnect logic are mandatory. **500** new connections/sec/account/Region (increasable); **no** concurrent-connection quota (ceiling ≈ rate × duration). Frame **32 KB**, message **128 KB**, both fixed; exceeding either closes with code **1009** |
 | Circuit breaker `resetOnHealthyTask` | **`true` by default** — the failure count resets to 0 on every healthy task, so only **consecutive** failures count. Set `false` to accumulate across the whole deployment. Circuit breaker is **rolling-update (`ECS`) controller only** |
 
-| Lambda layers | *".zip file archive that contains supplementary code or data"* — for smaller deployment packages, separating deps from logic, and **sharing deps across functions**. **Max 5 per function**, **.zip deployments only** (container images bake deps in). Smaller package = faster cold start |
+| Lambda layers | *".zip file archive that contains supplementary code or data"* — smaller packages, deps separate from logic, **sharing deps across functions**. **Max 5 per function**, **.zip only** (container images bake deps in). Can *increase* cold start (AWS: Go/Rust) |
 | Lambda metric to alarm on for runaway scaling | **`ConcurrentExecutions`** — instances currently processing events; hitting the Region quota or the function's reserved concurrency causes **throttling**. Siblings: `ProvisionedConcurrentExecutions`, `ProvisionedConcurrencyUtilization` (**not emitted when idle** — breaks naive alarms), `UnreservedConcurrentExecutions`, `ClaimedAccountConcurrency` |
 
 ↳ [[17-containers]] · [[19-serverless]]
@@ -1315,17 +1313,17 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Valid alarm / metric periods | 1, 5, 10, 30, or any multiple of 60 seconds |
-| High-resolution alarm periods | 10 or 30 seconds (costs more) |
+| Valid periods | metric stats: 1, 5, 10, 20, 30, n×60 s · alarms: 10, 20, 30, n×60 s |
+| High-resolution alarm periods | 10, 20 or 30 seconds (costs more) |
 | Alarm history retention / max alarms | history kept 30 days; no limit on number of alarms |
 | When an alarm invokes its actions | only on state CHANGE; states OK / ALARM / INSUFFICIENT_DATA; ASG actions repeat once a minute |
-| Composite alarm cannot do | EC2 actions or Auto Scaling actions (SNS only) |
+| Composite alarm cannot do | EC2 or Auto Scaling actions (SNS, Lambda, OpsItems OK) |
 
 **CloudWatch Logs**
 
 | | |
 |---|---|
-| Alarm on a log line containing ERROR | not possible directly — metric filter → metric → alarm |
+| Alarm on log line containing ERROR | metric filter → metric → alarm (classic), or a log alarm |
 | Ad-hoc query across log groups | CloudWatch Logs Insights |
 
 **CloudTrail**
@@ -1353,7 +1351,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | AWS managed key rotation (currency warning) | every year — changed from every 3 years (~1,095 days) in May 2022 |
 | On-demand rotations per key | maximum 25, quota not adjustable |
 | Resource quotas | 100,000 customer managed keys/Region · 50 aliases/key · 50,000 grants/key · 10 custom key stores |
-| Keys that cannot auto-rotate | Automatic rotation works **only on symmetric encryption keys whose key material AWS KMS generated**. So asymmetric, HMAC, custom-key-store **and imported (BYOK) key material** are all manual-only — the list is a rule, not three exceptions |
+| Keys that cannot auto-rotate | Auto-rotation needs symmetric + AWS_KMS origin. Asymmetric, HMAC, custom key store: manual only. Imported (EXTERNAL): no auto, but on-demand OK |
 | Encrypt max plaintext (SYMMETRIC_DEFAULT) | 4,096 bytes |
 | What rotation does to your data | nothing — no re-encrypt, no data-key rotation, key ID unchanged |
 | What GenerateDataKey returns | a plaintext data key plus an encrypted copy of the same key |
@@ -1420,7 +1418,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Athena federated query minimum data scan | 10 MB minimum per query |
 | Athena cost reduction, AWS's worked example | 12x cut: 3:1 compression, then Parquet columnar (~4x further) |
-| Athena billing unit | Data scanned off S3 (per TB) — nothing to resize, it is serverless |
+| Athena billing unit | Per TB scanned by default; Capacity Reservations bill per DPU-hour |
 | Where a per-query data scan limit is set | On the Athena workgroup |
 
 **Redshift**
@@ -1446,10 +1444,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Which EMR node type stores HDFS data | Core (task nodes store none; primary coordinates) — task is the Spot node |
+| Which EMR node type stores HDFS data | Core (task stores none; primary coordinates); task is the usual Spot node |
 | Instance groups vs instance fleets — when chosen | At cluster creation, and cannot be changed afterwards |
 | Transient vs long-running cluster | Transient auto-terminates after its steps; long-running stays in WAITING |
-| What stops a failed cluster deleting its data | Termination protection enabled |
+| EMR: keep a failed cluster's data | Write to S3 (protection won't save HDFS) |
 
 **QuickSight**
 
@@ -1465,24 +1463,24 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Which engines read the Glue Data Catalog | Athena, EMR and Redshift Spectrum — one catalog, three engines |
 | Athena Provisioned Capacity | **It exists** — Capacity Reservations at **$0.30 per DPU-hour**, dedicated capacity for predictable workloads, and it removes the 10 MB per-query minimum on federated queries. Don't reject an option just for naming it; it is simply not the fix for "this query scans too much data" (that's Parquet/ORC, compression, partitioning) |
 | Analytics services with a Serverless flavour | **Redshift Serverless, EMR Serverless, OpenSearch Serverless** — so "Redshift/EMR/OpenSearch" no longer implies a cluster to manage. Read whether the stem names the serverless variant before applying the "least operational overhead ⇒ serverless" heuristic |
-| Lake Formation — what it actually is | An authorization layer over the Glue Data Catalog; stores no data itself |
+| Lake Formation — what it is | Permissions over the Glue Catalog, and it also ingests data into the lake |
 | Glue visual editor vs no-code data prep | Glue Studio = visual job editor; Glue DataBrew = no-code data prep |
 
 **Analytics renames & retirements**
 
 | | |
 |---|---|
-| Kinesis Data Analytics is now called | Amazon Managed Service for Apache Flink — renamed 30 August 2023 |
-| AWS Data Pipeline status | Closed to new customers, maintenance mode, console removed 30 April 2023 (CLI/API only). **Still listed in-scope in the SAA-C03 exam guide — still answer it** |
-| QuickSight rename | Now "Amazon Quick Sight", a feature within Amazon Quick; exam still says QuickSight |
-| Only analytics service explicitly out of scope | Amazon CloudSearch |
+| Kinesis Data Analytics now | Flink apps → Managed Service for Apache Flink; KDA for SQL discontinued |
+| AWS Data Pipeline status | Closed to new customers, maintenance mode. In-scope in PDF guide v1.1, absent from docs guide; answer it if offered |
+| QuickSight rename | Now Amazon Quick Sight; docs exam guide says Amazon Quick, PDF v1.1 says QuickSight |
+| Analytics out of scope | CloudSearch (PDF v1.1); docs guide: none |
 | Exam task statement covering analytics | Task Statement 3.5 — determine high-performing data ingestion and transformation solutions |
 
 **ML exam scope**
 
 | | |
 |---|---|
-| How many ML services are in scope, and task statements | 11 in-scope ML services; zero task statements name machine learning |
+| ML services in scope, and task statements | 8 in the online exam guide (11 in PDF v1.1); Task 2.2 names Comprehend and Polly |
 | Amazon Personalize exam status | Explicitly OUT of scope (with Ground Truth, Data Wrangler, DeepRacer, Lookout family, Monitron) |
 
 **ML currency**
@@ -1490,9 +1488,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | SageMaker rename | The ML service became **Amazon SageMaker AI** on 3 December 2024, and "Amazon SageMaker" was reused for a new unified data/analytics/AI platform. **On the exam, bare "Amazon SageMaker" means the ML service** |
-| Amazon Forecast status | Closed to new customers 29 July 2024 → SageMaker Canvas; still exam-answerable |
-| Amazon Fraud Detector status | Closed to new customers 7 November 2025 → SageMaker, AutoGluon, AWS WAF. **Still in the SAA-C03 exam guide — still answer it on the exam.** Legacy in the real world, not in the question bank |
-| Amazon Kendra status | Closed to new customers → Amazon Bedrock Knowledge Bases. **Still in the SAA-C03 exam guide — still answer it on the exam**, e.g. natural-language enterprise search. Do not eliminate it for being legacy |
+| Amazon Forecast status | Closed to new customers → SageMaker Canvas; in PDF v1.1 only; answer if offered |
+| Amazon Fraud Detector status | Closed to new customers 7 November 2025 → SageMaker, AutoGluon, AWS WAF. In the **PDF** exam guide v1.1, gone from the online guide — **answer it if it's offered** |
+| Amazon Kendra status | Closed to new customers → Amazon Bedrock Knowledge Bases. In the **PDF** exam guide v1.1, gone from the online guide — **answer it if it's offered**, e.g. natural-language enterprise search |
 
 **ML services**
 
@@ -1501,7 +1499,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Textract sync vs async limit | Synchronous = single-page only; multi-page documents require the asynchronous operations |
 | Textract specialised APIs | AnalyzeExpense (invoices/receipts), AnalyzeID (licences/passports), Queries, Analyze Lending |
 | Rekognition vs Textract | Rekognition = images/video scenes **and text detection, including handwritten text**; Textract = documents — **structure**: forms, key-value pairs, tables, multipage. The axis is **structure**, not handwriting: AWS says Rekognition detects "printed and handwritten text". *(Corrected 2026-10-07.)* |
-| Does ML appear in an SAA-C03 task statement? | **Yes, once** — **Task Statement 2.2** (Domain 2, highly available / fault-tolerant, **30%** of scored content) lists "AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)". ML has no task statement *of its own*, but it is not absent from the objectives |
+| Does ML appear in an SAA-C03 task statement? | **Yes, once** — **Task Statement 2.2** (Domain 2, resilient architectures, **26%** of scored content) lists "AWS managed services with appropriate use cases (for example, **Amazon Comprehend, Amazon Polly**)" |
 | Transcribe vs Polly direction | Transcribe: audio → text. Polly: text → speech |
 | Comprehend outputs | Entities, key phrases, PII, dominant language, sentiment, targeted sentiment, syntax, topic modeling |
 | Comprehend vs Kendra | Comprehend analyses text; Kendra searches it (natural-language Q&A, semantic similarity) |
@@ -1513,8 +1511,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Express workflow maximum duration | 5 minutes (Standard: 1 year) |
 | Standard vs Express execution semantics | Standard = **exactly-once**. Express splits: **Asynchronous = at-least-once** (a step may run more than once), **Synchronous = at-most-once** (it may run fewer). Neither Express flavour is exactly-once. *(Corrected 2026-10-07 — this row gave only the async half.)* |
 | Step Functions throughput quotas | `StateTransition`: Standard **5,000/sec** in N. Virginia / Oregon / Ireland, **800/sec** elsewhere; Express **unlimited**. `StartExecution`: Standard refills **300/sec** / **150/sec** on the same Region split; Express **6,000/sec**. Synchronous Express calls don't count against account capacity. **"2,000/sec" and "100,000/sec" are legacy figures AWS no longer publishes** |
-| Services in full shutdown you may still meet on the exam | **QLDB** (end of support 31 Jul 2025) · **Elastic Transcoder** (13 Nov 2025 → MediaConvert) · **DMS Fleet Advisor** (20 May 2026) · **Snowball Edge** (12 Nov 2025, and the whole Snow Family is closed to new customers) · **MediaStore** (12 Nov 2025). Learn the concepts; none can be deployed |
-| Execution rate limits | Standard 2,000/sec (4,000 state transitions/sec); Express 100,000/sec |
+| Services shut down that you may still meet on the exam | **QLDB** (end of support 31 Jul 2025) · **Elastic Transcoder** (13 Nov 2025 → MediaConvert) · **DMS Fleet Advisor** (20 May 2026) · **MediaStore** (12 Nov 2025). **Snow Family**: closed to *new* customers only — existing Snowball Edge users unaffected. Learn the concepts |
+| Execution rate limits | Standard StartExecution 300/sec (150 most Regions); Express 6,000/sec |
 | Pricing basis, Standard vs Express | Standard priced per state transition; Express by execution count + duration |
 | Which pattern does human-in-the-loop approval | Wait for Callback (.waitForTaskToken) — Standard only; Express is Request Response only |
 | Where Express execution history goes | CloudWatch Logs (Standard keeps it in Step Functions) |
@@ -1523,7 +1521,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Which directory option works with RDS for SQL Server | Only AWS Managed Microsoft AD — AD Connector and Simple AD are both incompatible |
+| Directory option for RDS SQL Server | Managed Microsoft AD (or self-managed AD direct); not AD Connector, not Simple AD |
 | Managed Microsoft AD object limits by edition | Standard ~30,000 objects; Enterprise ~500,000 (approximate) |
 | Simple AD underlying technology and gaps | Samba 4; no MFA, trusts, schema extensions, LDAPS, or PowerShell AD cmdlets |
 | AD Connector in three words | Proxy to on-premises — stores nothing, no sync, no federation |
@@ -1534,7 +1532,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | FTP/FTPS data channel port range | Ports 8192–8200 |
-| Protocols and targets | SFTP (v3), FTPS, FTP, AS2 → into Amazon S3 or Amazon EFS; up to 3 AZs |
+| Protocols and targets | SFTP (v3)/FTPS/FTP → S3 or EFS; AS2 → S3 only; up to 3 AZs |
 | Which protocol means B2B/EDI | AS2 |
 
 **Batch & Beanstalk**
@@ -1551,7 +1549,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Heterogeneous migration needs which second tool | AWS SCT / DMS Schema Conversion for the schema; DMS moves only the data |
-| Tool that inventories on-prem database estate | DMS Fleet Advisor |
+| On-prem DB inventory tool | DMS Fleet Advisor (ended 20 May 2026) |
 
 **Well-Architected**
 
@@ -1568,7 +1566,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Checks available on Basic/Developer Support | All Service limits checks + EBS/RDS public snapshots, S3 bucket permissions, MFA on root, SG ports, STS endpoint |
 | Number and names of check categories | Six: cost optimization, performance, security, fault tolerance, service limits, operational excellence |
-| Support-plan restructuring | Developer, Business and Enterprise On-Ramp discontinued **1 January 2027**, replaced by **Business Support+**; full Trusted Advisor then needs Business Support+, Enterprise Support or Unified Operations. **The exam still uses the old Business / Enterprise framing — answer with that** |
+| Support-plan restructuring | From **1 January 2027** Developer and Business are discontinued → **Business Support+**; Enterprise On-Ramp is auto-upgraded to **Enterprise Support**. **The exam still uses the old Business / Enterprise framing — answer with that** |
 | Which plan gets the full Trusted Advisor check set | **Business Support+, Enterprise Support or Unified Operations** — "paid plan" is the wrong axis, since **Developer Support is paid and does not get it**. **Basic and Developer** get all **Service limits** checks plus six named Security/Fault-Tolerance checks (EBS/RDS public snapshots, S3 bucket permissions, MFA on root, Security Groups – Specific Ports Unrestricted, STS global endpoint usage). The Trusted Advisor **API** and EventBridge monitoring also need Business Support+ and above |
 | Trusted Advisor Performance category — what it actually flags | High-CPU-utilisation EC2 instances, CloudFront cache-hit-ratio and content-delivery optimisation. **"Unrestricted" is Security vocabulary** ("Security Groups – Specific Ports Unrestricted"), not Performance |
 | Trusted Advisor → CloudWatch alarms | **Yes, this works** — Trusted Advisor publishes to the **`AWS/TrustedAdvisor`** namespace (`RedResources`, `YellowResources`, `ServiceLimitUsage`; dimension `CheckName`), and AWS documents building an alarm → SNS on it. Metrics live in **us-east-1**; no metrics are sent for GreenResources. Eliminate Trusted Advisor for *coarseness*, never on "you can't alarm on it" |

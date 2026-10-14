@@ -191,7 +191,7 @@ Don't confuse it with **DataSync** ([[12-storage-extras]]): DataSync is for bulk
 
 **AWS Directory Service** provides Microsoft Active Directory for AWS. Three options, and the exam tests picking between them:
 
-**AWS Managed Microsoft AD** is *actual Microsoft Active Directory* running in AWS, managed by AWS. It supports **trusts** with on-premises AD, **schema extensions**, **MFA**, **LDAPS**, Group Policy, and — the detail that decides questions — **Amazon RDS for SQL Server**. Standard Edition targets ~30,000 directory objects; Enterprise Edition ~500,000.
+**AWS Managed Microsoft AD** is *actual Microsoft Active Directory* running in AWS, managed by AWS. It supports **trusts** with on-premises AD, **schema extensions**, **MFA**, **LDAPS**, Group Policy, and — the detail that decides questions — **Amazon RDS for SQL Server** (of the Directory Service options it's the only one RDS SQL Server supports; RDS SQL Server can also join a **self-managed** AD directly — corrected 2026-10-14). Standard Edition targets ~30,000 directory objects; Enterprise Edition ~500,000.
 
 **AD Connector** is a **proxy**. It stores nothing: sign-in requests are **forwarded to your existing on-premises domain controllers** for authentication. No directory in the cloud, no synchronisation, no federation infrastructure. It exists so on-premises users can sign in to AWS applications with their existing credentials. **Not compatible with RDS SQL Server.**
 
@@ -423,6 +423,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [RDS for SQL Server with self-managed AD](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_SQLServer_SelfManagedActiveDirectory.html) — joins a self-managed AD wherever it is hosted; verified 2026-10-14
 - [AWS Batch multi-node parallel jobs](https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)
 - [What is AWS App2Container](https://docs.aws.amazon.com/app2container/latest/UserGuide/what-is-a2c.html) · [DynamoDB auto scaling](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AutoScaling.html)
 - [Working with AWS DMS Serverless](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Serverless.html)

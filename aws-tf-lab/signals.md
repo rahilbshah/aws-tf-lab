@@ -42,8 +42,8 @@ would otherwise pick.
 ✗ Rekognition — it reads scenes and text in a picture of the world, and does not preserve document structure or key-value pairs
 
 **time-series demand or inventory prediction, with Amazon Forecast among the options**  
-→ **Amazon Forecast is still the intended answer** [[23-machine-learning#Traps|23-machine-learning]]  
-✗ Talking yourself out of it because the service is closed to new customers — it remains in the exam guide's in-scope list
+→ **Amazon Forecast — treat it as a valid answer if offered** [[23-machine-learning#Traps|23-machine-learning]]  
+✗ Talking yourself out of it because it's closed to new customers — the PDF exam guide v1.1 still lists it (the online guide has dropped it)
 
 
 ## Compute  ·  11

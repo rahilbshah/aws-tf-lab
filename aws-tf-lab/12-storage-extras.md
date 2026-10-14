@@ -19,7 +19,7 @@ Everything in AWS storage that isn't S3 or EBS. Shared file systems, the bridge 
 > - **FSx for NetApp ONTAP** = the **multi-protocol** one — **NFS, SMB, iSCSI and NVMe**, so it is the only FSx with **block** storage, and it does **Multi-AZ**. **OpenZFS** = NFS with cheap snapshots/clones.
 > - **Storage Gateway** = on-prem appliance. **S3 File Gateway** (NFS/SMB→S3) · **FSx File Gateway** · **Volume Gateway** (iSCSI) · **Tape Gateway** (virtual tape library).
 > - **Volume Gateway: cached** = primary in **S3**, hot subset local (shrink on-prem storage). **stored** = primary **on-prem**, snapshots to S3 (low-latency for everything + offsite backup).
-> - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object → S3/EFS/FSx, integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
+> - **DataSync** = over the network, agent-based, NFS/SMB/HDFS/object ↔ S3/EFS/FSx (**both directions**), integrity-validated, schedulable. **Snow** = physical shipping when the network would take too long.
 > - **AWS Backup** = central backup plans, tag-based assignment, cross-Region **and** cross-account (needs Organizations), and **Vault Lock = WORM**.
 
 > [!warning] Build tier — **conceptual-only**

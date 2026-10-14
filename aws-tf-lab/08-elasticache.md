@@ -77,7 +77,7 @@ Memcached gets to do it the other way round. Being multi-threaded, it genuinely 
 
 ### What Memcached simply does not have
 
-Memcached's feature list is short, and the short list is the whole point of it. No replication. No failover. No persistence. No backup.
+Memcached's feature list is short, and the short list is the whole point of it. On node-based clusters: no replication, no failover, no persistence, no backup (Serverless Memcached differs — see Key facts).
 
 Which means: **if a node-based Memcached node dies, the data on it is gone.** Not degraded, not slow to recover — gone. Same if it reboots, or gets replaced while scaling.
 

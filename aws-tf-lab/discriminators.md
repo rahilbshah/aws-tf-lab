@@ -284,7 +284,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **point an S3 event notification straight at a FIFO queue to keep the order** — You can't. AWS: "Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination.  
   ↳ [[09-s3-advanced#Worked examples|note]]
-- **SSE-C objects can't be replicated** — They can. AWS lists objects encrypted with customer-provided keys (SSE-C) alongside SSE-S3, SSE-KMS and DSSE-KMS under what replication does copy.  
+- **SSE-C objects can't be replicated** — They can. AWS lists objects encrypted with customer-provided keys (SSE-C) under what replication does copy.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **Batch Replication can backfill anything** — It can't. Objects sitting in Glacier Flexible Retrieval, Glacier Deep Archive, or the Intelligent-Tiering archive tiers must be restored and copied to another storage class first.  
   ↳ [[09-s3-advanced#Worked examples|note]]
@@ -672,7 +672,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[23-machine-learning#Traps|note]]
 - **synchronous ML APIs on large inputs** — Textract's synchronous operations handle single-page documents only; multi-page PDFs require the asynchronous API, and long audio in Transcribe works the same way.  
   ↳ [[23-machine-learning#Traps|note]]
-- **assuming a retired service is a wrong answer** — Forecast, Fraud Detector and Kendra are all closed to new customers, but all three are still in the SAA-C03 exam guide's in-scope list.  
+- **assuming a retired service is a wrong answer** — Forecast, Fraud Detector and Kendra are all closed to new customers, and AWS's two SAA-C03 guides now disagree: the PDF v1.1 still lists all three as in scope, the online guide has dropped them (checked 2026-10-14).  
   ↳ [[23-machine-learning#Traps|note]]
 
 

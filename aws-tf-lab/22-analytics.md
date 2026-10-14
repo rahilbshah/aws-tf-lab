@@ -147,7 +147,7 @@ The other framing: **transient vs long-running clusters.** A transient cluster r
 **SPICE** — *Super-fast, Parallel, In-memory Calculation Engine* — is the one term that gets tested. It's an in-memory engine you **import** data into, as opposed to **direct query** which hits the source every time. Importing into SPICE makes queries fast and, if your source charges per query (hello, Athena at $5/TB), stops you paying for the same scan repeatedly. SPICE capacity is allocated **per Region** and shared across everyone using QuickSight in that account and Region.
 
 > [!warning] Naming change — QuickSight is now "Amazon Quick Sight"
-> AWS has rebranded: *"Amazon Quick evolved from Amazon QuickSight. QuickSight continues as Amazon Quick Sight, a feature within Quick."* The SAA-C03 exam guide and every practice question still say **QuickSight** — answer to the old name, but don't be thrown if the console says Quick.
+> AWS has rebranded: *"Amazon Quick evolved from Amazon QuickSight. QuickSight continues as Amazon Quick Sight, a feature within Quick."* The SAA-C03 **PDF** guide and the practice questions still say **QuickSight**; the **online** guide now says *Amazon Quick* — treat them as the same service.
 
 > In one line: QuickSight is the dashboard, and SPICE is its in-memory cache that also saves you re-paying per-query source costs.
 

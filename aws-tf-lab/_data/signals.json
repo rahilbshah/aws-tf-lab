@@ -2989,11 +2989,11 @@
  },
  {
   "signal": "time-series demand or inventory prediction, with Amazon Forecast among the options",
-  "answer": "Amazon Forecast is still the intended answer",
-  "against": "Talking yourself out of it because the service is closed to new customers — it remains in the exam guide's in-scope list",
+  "answer": "Amazon Forecast — treat it as a valid answer if offered",
+  "against": "Talking yourself out of it because it's closed to new customers — the PDF exam guide v1.1 still lists it (the online guide has dropped it)",
   "note": "23-machine-learning.md",
   "heading": "Traps",
-  "quote": "If a question describes time-series demand prediction and offers **Amazon Forecast**, that is still the intended answer",
+  "quote": "treat it as a valid answer — don't talk yourself out of it because you know the service is legacy",
   "section": "AI / ML"
  },
  {
