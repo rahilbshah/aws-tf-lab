@@ -110,7 +110,7 @@ Putting an analytics workload on RDS is a classic wrong answer, and so is puttin
 
 AWS's stated best practice is the thing to carry into the exam: **keep the large fact tables in S3 and the smaller dimension tables in the cluster**, then join across both in one query. That's the scenario Spectrum exists for — "we have 3 years of history we rarely touch and 3 months we query constantly."
 
-> In one line: Redshift is OLAP (columnar + MPP), Spectrum extends it to query S3 in place, and it still needs a cluster in the same Region as the data.
+> In one line: Redshift is OLAP (columnar + MPP), Spectrum extends it to query S3 in place; it runs on Redshift compute (a cluster **or Serverless**), and same-Region is the classic constraint.
 
 ### OpenSearch — search and logs, not reporting
 
@@ -157,7 +157,7 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 
 - **AWS Lake Formation** — an **authorization layer over the Glue Data Catalog**, giving fine-grained (table-, column-, row-level) permissions on a data lake, instead of hand-writing S3 bucket policies. "Centrally govern who can see which columns of the data lake" → Lake Formation.
 - **Amazon MSK** (Managed Streaming for Apache Kafka) — fully managed Apache Kafka. AWS runs the brokers and the ZooKeeper/KRaft metadata layer. **MSK Serverless** removes capacity planning. Pick MSK over Kinesis when the answer says *"we already have Kafka"* or needs Kafka APIs/tooling.
-- **Amazon Managed Service for Apache Flink** — real-time stream processing with SQL or Flink. **Renamed from Amazon Kinesis Data Analytics on 30 August 2023**, so older material and the exam may use either name. (It isn't named separately in the exam guide; it sits under the listed *Amazon Kinesis*.)
+- **Amazon Managed Service for Apache Flink** — real-time stream processing with Flink (or Flink SQL). **Renamed from Kinesis Data Analytics *for Apache Flink* on 30 August 2023**, so older material and the exam may use either name. (It isn't named separately in the exam guide; it sits under the listed *Amazon Kinesis*.)
 - **AWS Data Exchange** — a marketplace for subscribing to third-party datasets and having them land in S3.
 - **AWS Data Pipeline** — see the trap below. It's in the exam guide and it's effectively dead.
 
@@ -191,7 +191,7 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 - **SPICE** = **Super-fast, Parallel, In-memory Calculation Engine**. Imported (ingested) data vs **direct query**. SPICE capacity is allocated **per AWS Region** and shared by everyone using QuickSight in that account+Region; Enterprise edition encrypts SPICE at rest.
 - **QuickSight row-level security (RLS)** is configured by attaching a **permissions dataset** (a file or a query against a permissions table) as the rules on a **dataset**: one column naming the principal (`UserName`/`GroupName`, or `UserARN`/`GroupARN`) plus one column per field to restrict. *"If you don't add a rule for a user or group, that user or group can't see any of the data."* *(Verified 2026-10-14.)*
 - **Amazon MSK** manages broker nodes and the **ZooKeeper / KRaft** metadata layer; **MSK Serverless** removes capacity planning; **MSK Connect** and **MSK Replicator** handle connectors and cross-Region replication.
-- **Amazon Managed Service for Apache Flink** was **renamed from Amazon Kinesis Data Analytics on 30 August 2023** — no changes to endpoints, APIs, CLI, IAM policies or metrics.
+- **Amazon Managed Service for Apache Flink** was **renamed from Kinesis Data Analytics *for Apache Flink* on 30 August 2023** — no changes to endpoints, APIs, CLI, IAM policies or metrics. Kinesis Data Analytics **for SQL** applications was **discontinued** instead: no new apps from 15 Oct 2025, apps deleted from 27 Jan 2026. *(Corrected 2026-10-15.)*
 - **⚠️ AWS Data Pipeline is no longer available to new customers** and is in **maintenance mode** with no new features or Region expansions. AWS recommends **Glue**, **Step Functions** or **MWAA** instead. *(The claim that console access was removed on 30 April 2023 was dropped on 2026-10-07: the live Data Pipeline documentation still lists the AWS Management Console among its interfaces, and no AWS page was found stating the removal.)* It is still listed as in-scope in the SAA-C03 exam guide.
 - **Exam scope:** analytics is covered by **Task Statement 3.5 — "Determine high-performing data ingestion and transformation solutions"**, which names *Athena, Lake Formation and QuickSight* as examples. The **PDF** guide v1.1's in-scope Analytics list is: **Athena, Data Exchange, Data Pipeline, EMR, Glue, Kinesis, Lake Formation, MSK, OpenSearch Service, QuickSight, Redshift**, with **Amazon CloudSearch** out of scope. The **online** guide drops Data Pipeline, adds Data Firehose, and says *Amazon Quick*. *(Checked 2026-10-15.)*
 
@@ -202,7 +202,7 @@ These are in the exam guide's Analytics list and deserve a line each, not a sect
 |   | **Athena** | **Redshift** | **Redshift Spectrum** | **EMR** |
 |---|---|---|---|---|
 | What it is | serverless SQL over S3 | provisioned OLAP warehouse | Redshift querying S3 in place | managed Hadoop/Spark cluster |
-| Infrastructure | **none** | cluster (or Serverless) | **needs a cluster** | EC2 cluster you size |
+| Infrastructure | **none** | cluster (or Serverless) | **needs Redshift** (cluster or Serverless) | EC2 cluster you size |
 | Data lives | **S3** | loaded into the cluster | **S3** (external tables) | S3 and/or HDFS |
 | Priced by | **data scanned ($5/TB)** | node-hours | data scanned, plus the cluster | instance-hours |
 | Best for | **ad-hoc / infrequent** queries | **sustained** BI, complex joins, concurrency | joining **cold S3 history** to hot cluster tables | custom **Spark/Hadoop** code, ML prep |

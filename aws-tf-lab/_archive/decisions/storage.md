@@ -41,7 +41,7 @@ One question: **must the data survive a stop?**
 |---|---|
 | **NFS**, Linux clients | **EFS** — elastic, multi-AZ, nothing to provision |
 | **SMB** + Active Directory | **FSx for Windows** |
-| **both** NFS and SMB | **FSx for NetApp ONTAP** |
+| **both** NFS and SMB — or iSCSI / NVMe **block** | **FSx for NetApp ONTAP** |
 | Lustre — storage speed is the bottleneck (HPC, ML training) | **FSx for Lustre** |
 
 **EFS is not supported with Windows EC2 instances.** That single fact resolves most
@@ -104,5 +104,5 @@ These live *between* services, which is why they aren't in any single note.
 - **Instance store does not survive a stop.** Not just terminate — stop as well.
 - **DataSync versus Storage Gateway.** A migration ends; a hybrid bridge doesn't.
   "Migrate" → DataSync. "Continue to access" → Storage Gateway.
-- **Multi-Attach is same-AZ.** Cross-AZ shared block storage does not exist; that
-  requirement means a file system.
+- **EBS Multi-Attach is same-AZ.** For **block storage across AZs**, use **FSx for NetApp
+  ONTAP Multi-AZ** (iSCSI / NVMe); otherwise the requirement means a shared file system.

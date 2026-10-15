@@ -82,7 +82,7 @@ The axis is **past, threshold, or size.**
 
 - **What happened, and next month** → **Cost Explorer** (also the source of Savings Plans recommendations).
 - **Warn me before a number I picked** → **Budgets**.
-- **Warn me when something is odd and I picked no number** → **Cost Anomaly Detection**.
+- **Spot unusual spend without me naming a budget figure first** → **Cost Anomaly Detection** (detection needs no number; the alert subscription takes a $ or % threshold).
 - **Which team or environment spent it** → **cost allocation tags**. Without them the bill is one number and no tool can help.
 - **Is this resource the wrong size, or idle** → **Compute Optimizer**.
 - **Many accounts** → **consolidated billing**: free, pools volume/RI/SP discounts.

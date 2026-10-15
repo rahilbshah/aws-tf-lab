@@ -74,7 +74,7 @@ graph LR
 - **API Gateway throttling:** token bucket — a **steady-state rate** plus a **burst**; over the limit is **`429 Too Many Requests`** and the request never reaches the backend. Settable **per stage**, **per method**, or **per client** via a **usage plan** + API key (per-client can't exceed per-account).
 - **API Gateway canary release:** attaches to a **stage**, splits traffic at random by a configured **percentage**, keeps separate metrics/logs, then you **promote** the canary. Same endpoint and domain — no second API, no DNS change.
 - **ACM certificate Region for a custom domain depends on the endpoint type:** **Regional** → same Region as the API; **edge-optimized** → **`us-east-1`** (it is CloudFront-fronted).
-- **API Gateway is outside your VPC** — no security group, no subnet. Restrict callers with a **resource policy** + `aws:SourceIp`; reach a private backend with a **private integration over a VPC link**.
+- **API Gateway is outside your VPC** — no security group, no subnet. Restrict callers with a **resource policy** — `aws:SourceIp` for a public endpoint, `aws:SourceVpce` / `aws:SourceVpc` for a **private** API ([[01-iam]]); reach a private backend with a **private integration over a VPC link**.
 - **An `AWS` integration exposes AWS service actions directly** — e.g. a REST API straight to **DynamoDB**, no Lambda. On a **REST** API that is the non-proxy type (`AWS`, not `AWS_PROXY`), so you map request and response yourself. **HTTP** APIs reach AWS services through **first-class integrations** that use `AWS_PROXY` with an integration *subtype* (e.g. `SQS-SendMessage`), so "non-proxy only" is a REST-API rule, not an API Gateway rule.
 *Verified against AWS docs 2026-10-01.*
 
@@ -126,7 +126,7 @@ a subnet behind a NACL. Two consequences:
 > [!warning] Trap — "add a security group rule to let API Gateway in"
 > A **public** API Gateway endpoint (edge-optimized or Regional) is a managed service outside your VPC with no security group and no subnet, so securing it with a security group or a NACL is wrong — you restrict callers with a **resource policy**, IAM, an authorizer or WAF.
 > One carve-out, so the elimination isn't absolute: a **private REST API** is reached through an **interface VPC endpoint**, and *that endpoint* is an ENI in your subnets with its own security group. Once a stem says *private* API, "security group" stops being automatically wrong.
-> Keep the two directions apart, because the exam pairs them as distractors: restricting callers is a **resource policy** with `aws:SourceIp` (a **private endpoint** — who can reach the API), while reaching a private backend is a **private integration over a VPC link** (what the API can reach).
+> Keep the two directions apart, because the exam pairs them as distractors: restricting callers is a **resource policy** (who can reach the API — `aws:SourceIp` for public endpoints, but for a **private** API `aws:SourceVpce` / `aws:SourceVpc`, because the VPC endpoint rewrites the source IP), while reaching a private backend is a **private integration over a VPC link** (what the API can reach).
 
 > [!warning] Trap — the certificate Region for a custom domain
 > It depends on the **endpoint type**, not on the service. AWS: to use an ACM certificate with a

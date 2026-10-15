@@ -21,7 +21,7 @@ Streaming data: a continuous, ordered log that several consumers read independen
 > - **Firehose destinations:** S3, Redshift (via S3 then `COPY`), OpenSearch, Splunk, Iceberg, HTTP endpoints, partners. **Firehose can read from a Data Stream** — the two are usually combined.
 > - **Enhanced fan-out** = each registered consumer gets its own 2 MB/sec per shard, pushed via `SubscribeToShard` over HTTP/2 (~70 ms vs ~200 ms polling); up to **20** consumers on Provisioned and On-demand Standard, **50** on **On-demand Advantage**.
 > - The **KCL tracks progress in DynamoDB** (three tables per application).
-> - **SQS vs Kinesis:** one consumer per message and delete-when-done → SQS. Several independent consumers, ordering, or replay → Kinesis.
+> - **SQS vs Kinesis:** one consumer per message and delete-when-done → SQS. Several consumers reading a **shared log at their own position**, per-key ordering, or replay → Kinesis. Several consumers that each just need **their own copy** → SNS fan-out into SQS ([[15-decoupling]]).
 
 > [!warning] Build tier — **conceptual-only (blocked on this account)**
 > Kinesis Data Streams and Amazon Data Firehose are **both unavailable on this AWS account's Free plan** — even a read-only `ListStreams` returns `SubscriptionRequiredException`. This is a plan-level block, not a quota or a cost limit. Learned from the docs; the exam tests the *decisions* here, not the HCL.
@@ -66,7 +66,7 @@ That read limit matters more than it looks: **2 MB/sec is shared across every co
 
 ### The partition key decides both placement and ordering
 
-Every record you write carries a **partition key** — a string up to 256 characters. Kinesis runs it through an **MD5 hash** and maps the result onto the shards' hash-key ranges. Same key, same shard — with two caveats worth holding. A **reshard** re-routes keys to child shards, and per-key order only survives if you finish reading the parent shard before the children. And a stream can be set to an **`AUTO`** record-distribution strategy, where Kinesis "distributes records evenly across shards using service-managed algorithms, and **ignores any partition key**" — which removes per-key affinity entirely.
+Every record you write carries a **partition key** — a string up to 256 characters. Kinesis runs it through an **MD5 hash** and maps the result onto the shards' hash-key ranges. Same key, same shard — with two caveats worth holding. A **reshard** re-routes keys to child shards, and per-key order only survives if you finish reading the parent shard before the children. And an **on-demand** stream can be set to an **`AUTO`** record-distribution strategy, where Kinesis "distributes records evenly across shards using service-managed algorithms, and **ignores any partition key**" — which removes per-key affinity entirely.
 
 Now the consequence that gets tested:
 
@@ -118,7 +118,7 @@ One operational detail worth knowing because it surprises people: the **Kinesis 
 - **A stream is a set of shards**; a shard is a uniquely identified sequence of records. A **record** = sequence number + partition key + data blob.
 - **Retention:** default **24 hours**, **minimum 24 hours** (you cannot go below), maximum **8,760 hours / 365 days**. Above 24 hours incurs an additional charge.
 - **Per-shard throughput:** writes **1 MB/sec** or **1,000 records/sec**; reads **2 MB/sec** with at most **5 `GetRecords` transactions/sec**. A single `GetRecords` call returns at most **10 MB** or **10,000 records**; if it returns 10 MB, calls in the next 5 seconds throw.
-- **Partition keys** are Unicode strings up to **256 characters**, mapped to shards by an **MD5 hash** over the shards' hash-key ranges. A partition key is **required** under the default `USER_PARTITION_KEY` strategy; under **AUTO** distribution it's optional and ignored. *(Corrected 2026-10-15.)*
+- **Partition keys** are Unicode strings up to **256 characters**, mapped to shards by an **MD5 hash** over the shards' hash-key ranges. A partition key is **required** under the default `USER_PARTITION_KEY` strategy; under **AUTO** distribution (**on-demand streams only**) it's optional and ignored. *(Corrected 2026-10-15.)*
 - **Sequence numbers** are unique per partition key within a shard and generally increase over time. AWS warns they must **not** be used as indexes into a dataset.
 - **Capacity modes:** *provisioned* — you set the shard count, billed hourly per shard, and reshard with `UpdateShardCount` / split / merge. *On-demand* — AWS scales shards automatically; new streams start at **4 MB/sec write and 8 MB/sec read**, scaling to **10 GB/s write / 20 GB/s read** in N. Virginia, Oregon and Ireland (200 MB/s / 400 MB/s elsewhere). You can switch modes **twice in 24 hours**.
 - **Consumers:** *shared fan-out* splits the shard's 2 MB/sec; *enhanced fan-out* gives each registered consumer its own 2 MB/sec, pushed via `SubscribeToShard`. **Up to 20 registered consumers per stream** (50 on On-demand Advantage). Multiple applications can consume one stream **independently and concurrently**.

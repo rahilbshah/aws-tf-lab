@@ -931,7 +931,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[22-analytics#The pipeline, once, so the rest makes sense|explain]]
 - Athena is serverless SQL over S3 at $5/TB scanned, so every optimisation is about scanning fewer bytes — Parquet, compression, partitioning.  
   ↳ [[22-analytics#Athena — SQL on S3, and you pay per byte you touch|explain]]
-- Redshift is OLAP (columnar + MPP), Spectrum extends it to query S3 in place, and it still needs a cluster in the same Region as the data.  
+- Redshift is OLAP (columnar + MPP), Spectrum extends it to query S3 in place; it runs on Redshift compute (a cluster or Serverless), and same-Region is the classic constraint.  
   ↳ [[22-analytics#Redshift — the warehouse, and when you actually need one|explain]]
 - OpenSearch is for search and log analytics — reach for it when the question says "search", "logs" or "observability dashboard", not "SQL report".  
   ↳ [[22-analytics#OpenSearch — search and logs, not reporting|explain]]

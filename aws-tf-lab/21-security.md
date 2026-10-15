@@ -139,8 +139,9 @@ graph TB
 
 ### KMS is the exception to the resource-policy rule
 
-Everywhere else in IAM, an identity policy and a resource policy **widen** each other: either
-one allowing is enough, which is what makes cross-account access possible at all
+Everywhere else in IAM, *within one account*, an identity policy and a resource policy **widen**
+each other: either one allowing is enough. A **cross-account** request needs **both** to allow
+([[01-iam-advanced]])
 ([[01-iam-advanced]]). **A KMS key policy does not work that way**, and it is the one carve-out
 worth memorising. AWS's wording:
 
@@ -246,7 +247,8 @@ carry almost every ACM question:
 
 **Region.** A certificate is **regional**, and it can only be attached to something in its own
 Region — except for **CloudFront**, which is global and requires its certificate in
-**us-east-1 (N. Virginia)**. An ALB in `eu-west-1` needs its certificate in `eu-west-1`; a
+**us-east-1 (N. Virginia)** — and so does anything fronted by CloudFront, notably an
+**edge-optimized API Gateway** custom domain (a Regional API uses its own Region; [[19-serverless]]). An ALB in `eu-west-1` needs its certificate in `eu-west-1`; a
 CloudFront distribution serving the same site needs one in `us-east-1`. The same site can
 therefore need two.
 
@@ -271,7 +273,7 @@ only when the scenario says *internal* or *private PKI*. *(Verified 2026-10-07.)
 > from **email to DNS validation** so renewal stops needing a human.
 
 > In one line: certificates are regional and auto-renew with DNS validation, but CloudFront
-> takes its certificate from us-east-1 only.
+> (and an edge-optimized API Gateway domain) takes its certificate from us-east-1 only.
 
 > [!warning] Trap — "AWS managed" chosen as a service's default encryption key
 > The three key types are near-identical strings and the question is usually *"why is there

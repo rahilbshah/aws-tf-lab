@@ -313,7 +313,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | ASG health check type default | **EC2** — status checks + scheduled events; ELB results ignored until **ELB** is turned on |
 | Which check decides what | Target-group health check = **routing**; ASG health check type = **replacement** |
 | Does the ALB terminate an unhealthy instance | No — it only stops routing; termination is the ASG's job, and only when its health check type is **ELB** |
-| When a failed health check is user-visible | Only when NO targets are healthy; with ≥1 healthy the ALB routes around it silently |
+| What the ALB does with unhealthy targets | ≥1 healthy: routes around the bad ones silently. **All** unhealthy: **fails open** — routes to every target regardless of health |
 | Time to ELB-healthy with boot-time apt install | Measure from **`InService`**, not from launch — the grace-period clock starts *"after it enters the `InService` state"*. What must fit inside it: remaining bootstrap (~60s for an apt install) **plus one health-check interval** (~30s), so ~90s. (Corrected 2026-10-05.) |
 | Health-check convergence arithmetic | **A newly registered target needs ONE passing check**: *"After your target is registered, it must pass one health check to be considered healthy."* `HealthyThresholdCount` (default **5**) is for bringing an **already-unhealthy** target back; `UnhealthyThresholdCount` (default **2**) × 30s ≈ 60s to pull a healthy one. Thresholds 2–10, interval 5–300s, timeout 2–120s. (Corrected 2026-10-05 — this row previously said 5 × 30s = 150s to *become* healthy.) |
 | Safe health check grace period values | ~300s with a boot-time install; ~40s time-to-healthy with a baked AMI |
@@ -1313,7 +1313,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Valid periods | metric stats: 1, 5, 10, 20, 30, n×60 s · alarms: 10, 20, 30, n×60 s |
+| Valid periods | metric stats: 1, 5, 10, 30, n×60 s (20 also valid for high-resolution metrics) · alarms: 10, 20, 30, n×60 s |
 | High-resolution alarm periods | 10, 20 or 30 seconds (costs more) |
 | Alarm history retention / max alarms | history kept 30 days; no limit on number of alarms |
 | When an alarm invokes its actions | only on state CHANGE; states OK / ALARM / INSUFFICIENT_DATA; ASG actions repeat once a minute |

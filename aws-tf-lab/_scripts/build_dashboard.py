@@ -124,8 +124,7 @@ def main():
             '- ⚖️ [[discriminators]]: "which of these two is it?"',
             '- 🌙 [[exam-night]]: one-sitting recall skim',
             '- 📇 [[cheatsheet]]: exact facts',
-            '- 🧭 decision pages: `decisions/`',
-            '- 🗺️ [[exam-prep]]: blueprint and coverage',
+                '- 🗺️ [[exam-prep]]: blueprint and coverage',
             '- 📊 [[Study HQ.base|Notes by domain]]: weak-spot tags and stale notes', '']
 
     io.open(os.path.join(VAULT, 'dashboard.md'), 'w', encoding='utf-8').write(

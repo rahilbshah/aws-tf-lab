@@ -16,7 +16,7 @@ The single dashboard for "how ready am I?" Covered topics link to their vault no
 - **Breadth:** Stephane Maarek Udemy course (owned) — **complete**, all 25 sections noted in this vault.
 - **Depth (career-grade):** Adrian Cantrill SAA-C03 (optional now) — the "understand, not just pass" layer for Backend+DevOps.
 - **Readiness:** `../aws-saa-trainer` — **1,156 serveable questions** (1,168 in the bank, less 7 quarantined and 5 near-duplicates) from three third-party practice sets (Tutorials Dojo / Jon Bonso included), audited against AWS docs. This replaced the planned TD purchase.
-- **Reference:** this vault, in three tiers — **notes** (`NN-topic.md`, how it works) → **decision pages** (`decisions/`, 13 pages routing you to which service) → **[[cheatsheet]]** (677 exact facts). Plus [[discriminators]], [[exam-night]], AWS FAQs (S3/EC2/VPC/RDS) and the Well-Architected whitepaper. *`revision/` was deleted 2026-09-27 — it was the note with the explanation removed, i.e. summarization + rereading, both rated low-utility.*
+- **Reference:** this vault, in three tiers — **notes** (`NN-topic.md`, how it works) → **[[cheatsheet]]** (~770 exact facts, verified 2026-10-14). Plus [[signals]] (exam wording → answer), [[discriminators]], [[exam-night]], AWS FAQs (S3/EC2/VPC/RDS) and the Well-Architected whitepaper. *`decisions/` was retired to `_archive/` on 2026-10-15 — it drifted, and [[signals]] does its job. `revision/` was deleted 2026-09-27 — it was the note with the explanation removed, i.e. summarization + rereading, both rated low-utility.*
 - **Retention / real skill:** this vault + the Terraform builds (the hands-on layer).
 
 > [!tip] Readiness gate
