@@ -28,7 +28,7 @@ The axis is **what should still exist once a consumer has handled it**.
   deleted; it ages out on retention. Go to §5.
 
 "Several consumers" is *not* the tell — fan-out gives each its own copy. **Re-reading**
-is: a consumer starting later, or going back over last Tuesday. Only a log does that.
+is: a consumer starting later, or going back over last Tuesday. That needs a log (Kinesis) — or an **SNS FIFO topic with archiving**, which can replay ([[16-kinesis]]).
 
 ↳ [[16-kinesis#SQS vs SNS vs Kinesis]]
 
@@ -59,7 +59,7 @@ matters" in the abstract. Real requirements are per customer or per device, not 
 
 - **Writing one** — custom processing, sub-second reaction, replay → **Data Streams**.
 - **Landing it** in S3, Redshift, OpenSearch or Splunk with no code → **Firehose**.
-  It buffers before delivering, so near-real-time, and it keeps nothing.
+  It buffers before delivering, so near-real-time; nothing you can re-read (it holds undelivered data ≤24 h only while retrying).
 - **Both, the usual answer** → a stream, your consumer, and a Firehose archiving to S3.
 
 Then, if you chose Data Streams: **are the consumers starving each other?** A shard's
@@ -92,7 +92,7 @@ These live *between* services, which is why they aren't in any single note.
 
 - **"Two teams need this" routed to SNS fan-out.** Fan-out solves *sharing*; each
   queue's copy still vanishes on processing. If anyone will read from the past, the
-  requirement was replay — only Kinesis has it.
+  requirement was replay — Kinesis, or an SNS FIFO topic with archiving; a standard topic can't.
 - **A queue and a Lambda written to put records into S3.** That is Firehose with extra
   steps. A queue is for when something must *do* work; Firehose is for pure delivery.
 - **Step Functions used as a buffer.** Orchestration does not absorb rate. Fast

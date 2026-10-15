@@ -102,7 +102,7 @@ These two look interchangeable in a question. Both "make it faster globally," bo
 
 **CloudFront caches HTTP content.** **Global Accelerator caches nothing** — it routes **any TCP/UDP** traffic over the AWS backbone to the nearest healthy Region, with **NLB, ALB, EC2 or an Elastic IP** as endpoints.
 
-The discriminator that actually decides exam questions is failover speed, and it comes from one detail: Global Accelerator gives you **two static anycast IPs** (four dual-stack) and **those IPs never change**. Failover normally means publishing a different DNS answer, and you are then stuck waiting for every resolver's cached copy to expire — [[10-route53]] failover is bounded by `(interval × threshold) + TTL`. With Global Accelerator there is nothing for a resolver to cache in the first place, because the address is identical before and after. The switch happens inside AWS's network. No DNS, no TTL.
+The discriminator that actually decides exam questions is failover speed, and it comes from one detail: Global Accelerator gives you **two static anycast IPs** (four dual-stack) and **those IPs don't change while the accelerator exists**. Failover normally means publishing a different DNS answer, and you are then stuck waiting for every resolver's cached copy to expire — [[10-route53]] failover is no faster than roughly `(interval × threshold) + TTL`. With Global Accelerator there is nothing for a resolver to cache in the first place, because the address is identical before and after. The switch happens inside AWS's network. No DNS, no TTL.
 
 CloudFront has its own failover, and it is worth not confusing with either of the above: an **origin group** holds a primary and a secondary origin and switches when the primary returns one of the HTTP status codes you nominated. Per request, inside CloudFront, no DNS involved — but only for **`GET`, `HEAD` and `OPTIONS`** viewer requests. A `POST` or `PUT` never fails over, which quietly rules origin groups out of any write-path scenario.
 
@@ -160,7 +160,7 @@ flowchart LR
 | Endpoints | origins | one bucket | **NLB, ALB, EC2, Elastic IP** |
 | Reach for it when | cacheable web content, global static/dynamic sites | large uploads to S3 from far away | gaming, VoIP, IoT/MQTT, non-HTTP, static IPs required, sub-minute regional failover |
 
-*The Global Accelerator discriminator that matters: the IPs **never change**, so there is nothing for a resolver to cache. Compare with [[10-route53]] failover, which is bounded by `(interval × threshold) + TTL`.*
+*The Global Accelerator discriminator that matters: the IPs **don't change while the accelerator exists**, so there is nothing for a resolver to cache. Compare with [[10-route53]] failover, which is no faster than roughly `(interval × threshold) + TTL`.*
 
 ### Route 53 latency-based routing vs Global Accelerator
 

@@ -99,8 +99,8 @@ workload moves. Trigger words: load that **varies or spikes**, *"dynamically all
 > the two halves reversed.
 > **Why it is retired:** AWS has **removed the large-data-store/Snowball Edge chapter from the
 > DMS user guide** (`CHAP_LargeDBs.md` now 404s while sibling chapters resolve), Snowball Edge
-> has been **closed to new customers since 2025-11-07**, and support for Snowball devices
-> **ends in all commercial Regions on 2026-12-31**. Today the same problem is answered with
+> is **closed to new customers**; AWS's own pages disagree on what happens to existing users —
+> see [[12-storage-extras]]'s currency callout. Today the same problem is answered with
 > **DataSync** over the network, or **AWS Data Transfer Terminal** for physical transfer.
 > See [[12-storage-extras]]. (Verified 2026-09-30; mechanism from an archived 2022 copy of the
 > removed chapter, since no live AWS page documents it.)
@@ -195,7 +195,7 @@ Don't confuse it with **DataSync** ([[12-storage-extras]]): DataSync is for bulk
 
 **AD Connector** is a **proxy**. It stores nothing: sign-in requests are **forwarded to your existing on-premises domain controllers** for authentication. No directory in the cloud, no synchronisation, no federation infrastructure. It exists so on-premises users can sign in to AWS applications with their existing credentials. **Not compatible with RDS SQL Server.**
 
-**Simple AD** is a **Samba 4**-powered, Active-Directory-*compatible* standalone directory. Basic features only — user accounts, group membership, domain join, Kerberos SSO, group policies. It explicitly does **not** support **MFA, trust relationships, schema extensions, LDAPS, or PowerShell AD cmdlets**, and is **not compatible with RDS SQL Server**. It's the low-cost option for basic needs.
+**Simple AD** is a **Samba 4**-powered, Active-Directory-*compatible* standalone directory. Basic features only — user accounts, group membership, domain join, Kerberos SSO, group policies. It explicitly does **not** support **MFA, trust relationships, schema extensions, LDAPS, or PowerShell AD cmdlets**, and is **not compatible with RDS SQL Server**. It's the low-cost option for basic needs — ⚠️ but AWS: *"new customer onboarding to Simple AD is not permitted"* (existing customers keep it). *(Verified in [[01-iam]], 2026-10-14.)*
 
 And the fourth answer that isn't Directory Service at all: for a **SaaS application's own end users**, the answer is **Amazon Cognito**, not a directory.
 
@@ -292,7 +292,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 - **App2Container vs App Runner** — both sound like "containers", and only one *containerises*. **AWS App2Container (A2C)** inspects existing applications on **Windows or Linux** servers and **generates OCI container images**, including **commercial off-the-shelf** apps, and *"does not need source code for the application to containerize it"*. **App Runner** is only a **runtime**: it takes an image or a source repo that is already buildable and runs it — it cannot containerise anything.
   ⚠️ **Currency:** A2C is **no longer open to new customers** (sign-up ended **2025-11-07**); AWS now points to **AWS Transform**. Still answerable on the exam — treat it like Kendra and Fraud Detector.
-- **DynamoDB auto scaling is on by default only from the console:** *"If you use the AWS Management Console to create a table or a global secondary index, DynamoDB auto scaling is enabled by default."* A table created by **CLI, API, SDK or IaC** does **not** get it, so a stem where the table was created programmatically needs it **explicitly enabled** — and AWS recommends applying it to the table's **GSIs** too, or writes throttle. *(Verified 2026-10-01.)*
+- **DynamoDB auto scaling defaults** (console-only) now live in [[19-serverless]], which owns DynamoDB capacity.
 
 - **AWS DMS** migrates relational databases, data warehouses, NoSQL databases and other data stores, into AWS or between cloud and on-premises. It is *"a server in the AWS Cloud that runs replication software"* — the **replication instance**. It **creates target tables and primary keys if they don't exist**, supports **one-time migration or ongoing replication to keep source and target in sync**, provides **automatic failover to a backup replication server**, and encrypts data at rest with **KMS** and in flight with **SSL**. It supports **fully heterogeneous** migrations between supported engines.
 - **AWS SCT / DMS Schema Conversion** converts source schemas and code objects (tables, indexes, views, triggers) to the target engine. **DMS Fleet Advisor** (⚠️ end of support **May 20, 2026**) inventories on-premises database and analytics servers to identify migration candidates.
@@ -311,7 +311,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 - **DMS is not database-to-database only.** Targets include **Redshift / Redshift Serverless**, **S3**, **DynamoDB**, **OpenSearch**, **Kinesis Data Streams**, DocumentDB, Neptune, Apache Kafka and **Babelfish** for Aurora PostgreSQL; **S3 can also be a source**. DMS → Redshift beats Glue/EMR for *continuous replication into a warehouse*.
 - **DMS Serverless** vs **DMS Standard**: Serverless auto-provisions and auto-scales capacity with built-in HA and pay-for-use, and removes capacity estimation, provisioning and engine patching. You define a **replication configuration**, not a replication instance. Trigger: spiky/variable volume + least operational overhead.
-- **DMS with Snowball Edge — RETIRED, still examinable:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction. AWS has removed this chapter from the DMS user guide; Snowball support ends **2026-12-31**. Modern answer: **DataSync** or **AWS Data Transfer Terminal**.
+- **DMS with Snowball Edge — RETIRED, still examinable:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction. AWS has removed this chapter from the DMS user guide; the Snow Family is closed to new customers ([[12-storage-extras]]). Modern answer: **DataSync** or **AWS Data Transfer Terminal**.
 *Verified against AWS docs 2026-09-30.*
 
 ## Comparisons
@@ -399,7 +399,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Decide on **duration and volume**, not sophistication. **Express caps at five minutes**, and its guarantee depends on the flavour — **Asynchronous Express is at-least-once**, **Synchronous Express is at-most-once**; neither is exactly-once. So anything long-running, anything needing exactly-once, and anything waiting on a **human approval** (`.waitForTaskToken`, which Express doesn't support) must be **Standard**. Conversely, at tens of thousands of events per second, Standard's per-state-transition pricing is the wrong cost model. "Human approval" in a question is effectively a Standard flag.
 
 > [!warning] Trap — AD Connector or Simple AD where RDS for SQL Server is involved
-> **Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server.** AD Connector and Simple AD are both explicitly incompatible. Directory questions frequently bury an RDS SQL Server requirement in the scenario precisely because it collapses three options to one. Same logic for **trusts, schema extensions, LDAPS and MFA** — Simple AD supports none of them.
+> **Of the three Directory Service options, only AWS Managed Microsoft AD works with Amazon RDS for SQL Server** (a self-managed AD can also be joined directly). AD Connector and Simple AD are both explicitly incompatible. Directory questions frequently bury an RDS SQL Server requirement in the scenario precisely because it collapses three options to one. Same logic for **trusts, schema extensions, LDAPS and MFA** — Simple AD supports none of them.
 
 > [!warning] Trap — Lambda for a job that outgrows 15 minutes
 > Lambda's **15-minute** maximum is the figure the exam uses, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it. Currency: it is no longer an absolute — AWS allows up to **90 minutes** for **Lambda Managed Instances** functions invoked asynchronously or through an event source mapping ([[19-serverless]]). Answer 15 minutes on the exam; don't carry "hard ceiling" as a fact. The answer is **AWS Batch** (containerised, no time limit, Spot-friendly) or ECS/Fargate tasks. Watch for the inverse too: a short, event-driven, spiky workload put on Batch is over-engineering — Batch has queue and provisioning latency that Lambda doesn't.

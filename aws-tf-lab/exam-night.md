@@ -151,7 +151,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[04-alb-asg#The ALB opens your HTTP request, and everything follows from that|explain]]
 - The ASG registers instances into the target group, but only acts on the ALB's health verdict once you turn on ELB health checks (HealthCheckType = ELB) — and only after the grace period expires.  
   ↳ [[04-alb-asg#The target group is the joint — and two health checks meet inside it|explain]]
-- Target tracking is asymmetric on purpose — nothing below the target will ever scale you out, only real load above it will.  
+- Target tracking scales out only while the metric is above the target — lower the target below the current metric and it will; on an idle fleet nothing will.  
   ↳ [[04-alb-asg#Target tracking scales out fast and scales in slowly, deliberately|explain]]
 - AZ balance first, then oldest configuration, then billing hour, then random — and unhealthy instances bypass the whole ordering.  
   ↳ [[04-alb-asg#Which instance dies when it scales in|explain]]
@@ -1056,7 +1056,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[25-well-architected#What a "whitepaper" actually is, and which ones matter|explain]]
 - The WA Tool is a free, question-driven self-assessment of a workload against the pillars, extensible with lenses.  
   ↳ [[25-well-architected#AWS Well-Architected Tool — the free self-assessment|explain]]
-- Trusted Advisor inspects what's deployed across six categories; Basic/Developer gets service limits plus a handful of security and fault-tolerance checks, everything else needs a paid plan.  
+- Trusted Advisor inspects what's deployed across six categories; Basic/Developer gets service limits plus a handful of security and fault-tolerance checks, everything else needs Business or Enterprise (Developer, though paid, doesn't).  
   ↳ [[25-well-architected#AWS Trusted Advisor — the automated inspection|explain]]
 - WA Tool reviews design, Trusted Advisor inspects resources, Config continuously evaluates and remediates.  
   ↳ [[25-well-architected#WA Tool vs Trusted Advisor vs Config — three things that "check your account"|explain]]

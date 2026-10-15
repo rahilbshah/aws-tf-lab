@@ -42,7 +42,7 @@ You configure **memory**, and AWS allocates CPU in proportion. AWS: *"Lambda all
 
 > In one line: the partition key is not a column name, it is the physical layout of your data.
 
-**API Gateway** is a managed front door. It does not load balance across a fleet — each route invokes exactly one integration. AWS scales the gateway itself.
+**API Gateway** is a managed front door, not a general load balancer — each route invokes one integration (the exception: an **HTTP API** private integration via **Cloud Map** spreads requests across healthy instances). AWS scales the gateway itself.
 
 ## Architecture diagram
 
@@ -61,6 +61,8 @@ graph LR
 
 - **A Lambda function URL is a built-in, dedicated HTTPS endpoint** on the function itself — *"A function URL is a dedicated HTTP(S) endpoint for your Lambda function"*. A third-party **webhook** can POST straight to it with **no API Gateway in the path**. Use API Gateway instead when you need what it adds: throttling, usage plans and API keys, request validation, canary stages, WAF, or a private integration.
 - **DynamoDB on-demand absorbs a spike instantly; provisioned + auto scaling does not.** On-demand *"instantly accommodates your workloads as they ramp up or down to any previously reached traffic level"* and **instantly handles up to double the previous peak**; a brand-new on-demand table already sustains **4,000 writes/sec and 12,000 reads/sec**, you pay **nothing at zero traffic**, and it is now AWS's **default and recommended** mode. Provisioned auto scaling reacts only **after a CloudWatch alarm fires** — minutes — so a sudden unpredictable spike throttles in the meantime. "Unpredictable" or "sudden spike" → **on-demand**; steady, forecastable traffic → provisioned (cheaper per request).
+- **DynamoDB auto scaling is on by default only from the console:** *"If you use the AWS Management Console to create a table or a global secondary index, DynamoDB auto scaling is enabled by default."* A table created by CLI, API, SDK or IaC doesn't get it — enable it explicitly, on the **GSIs** too. *(Verified 2026-10-01; moved here from [[24-other-services]] 2026-10-15.)*
+- **One partition tops out at 3,000 RCU and 1,000 WCU per second.** Adaptive capacity can isolate a hot item on its own partition, but AWS: *"DynamoDB can deliver throughput up to the partition maximum of 3,000 RCUs and 1,000 WCUs to that single item's primary key."* So no table-level capacity setting lifts one hot key past that — design a better partition key, or offload hot reads to **DAX** ([[08-elasticache]]). *(Verified 2026-10-14; moved here 2026-10-15.)*
 - **DAX** is the DynamoDB-only write-through cache that turns millisecond reads into microsecond ones — it fronts DynamoDB and nothing else, so it is never the answer for caching an RDS query ([[08-elasticache]] owns the cache comparison).
 - **To alert on new items without touching the application:** enable **DynamoDB Streams**, trigger a **Lambda** from the stream, and have it publish to **SNS**. That is the native change-notification path — no polling and no application change. Note it is **not** DynamoDB's only change-data-capture route: a table can also stream item-level changes straight to **Kinesis Data Streams** ([[16-kinesis]]), which buys longer retention and enhanced fan-out. Use **DynamoDB Streams** for "trigger a Lambda on every change"; use **Kinesis Data Streams** when the changes feed an analytics pipeline or several independent consumers. The stream sees every insert/update/delete.
 *Verified against AWS docs 2026-10-04.*
@@ -172,7 +174,7 @@ a subnet behind a NACL. Two consequences:
 Three Lambda operational facts the vault was missing, all of which show up together in "which of these are true about Lambda" questions.
 
 - **Layers are the answer to shared or bulky dependencies.** A layer is *"a .zip file archive that contains supplementary code or data"* — library dependencies, a custom runtime, config. AWS's own reasons: *"To reduce the size of your deployment packages"*, *"To separate core function logic from dependencies"*, and *"To share dependencies across multiple functions."* So "we reuse this code in more than one function" → **a layer**. Limits: **up to five layers per function**, and layers work **only with .zip deployments** — a function packaged as a **container image** must bake its dependencies into the image instead.
-- **Package size drives cold starts**, which is the *why* behind layers: a bigger deployment package is slower to cold-start, so keeping dependencies in a layer keeps the function package small.
+- **Layers** shrink the deployment package and let functions **share dependencies** — but AWS doesn't present them as a cold-start fix, and for Go and Rust they can *increase* cold start. For cold starts, look at **SnapStart** or **provisioned concurrency**. *(Corrected 2026-10-15.)*
 - **What to alarm on is `ConcurrentExecutions`** — *"The number of function instances that are processing events. If this number reaches your concurrent executions quota for the Region, or the reserved concurrency limit on the function, then Lambda throttles additional invocation requests."* That is the metric that tells you a fast-scaling function is about to eat the account's pool, so a CloudWatch alarm on it (and on `Invocations`) is the documented practice. Siblings worth recognising: `ProvisionedConcurrentExecutions`, `ProvisionedConcurrencyUtilization`, `UnreservedConcurrentExecutions` and `ClaimedAccountConcurrency` (per Region, the concurrency unavailable for on-demand invocations). Note `ProvisionedConcurrencyUtilization` is **not emitted when the function is idle**, which quietly breaks alarms built on it.
 
 ### Reserved vs provisioned concurrency
@@ -200,7 +202,7 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 |---|---|---|
 | Cost at zero traffic | **nothing** | **~$0.0225/hr** (~$16/month) |
 | Cost at very high volume | per request, forever | hourly cost amortises — **becomes cheaper** |
-| Load balances across targets | no — one integration per route | yes |
+| Load balances across targets | not generally — one integration per route (HTTP API + Cloud Map is the exception) | yes |
 | API keys, usage plans, request validation | yes (REST) | no |
 
 ## Worked examples

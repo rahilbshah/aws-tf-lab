@@ -33,7 +33,7 @@ Which directory sits behind it turns on **may directory data live in AWS?**
 - **Yes, and AD-aware workloads need real AD in the cloud** → **AWS Managed Microsoft AD**.
 - **Simple AD** is eliminated the moment trusts, MFA, LDAPS, schema extensions or RDS for
   SQL Server appear. It supports none of them.
-- **Nothing exists yet** → an **IAM user**, for break-glass or a legacy service account only.
+- **Nothing exists yet** → **IAM Identity Center with its own identity store**. IAM users only for break-glass or a client that can't use Identity Center.
 
 ↳ [[01-iam#Bringing existing corporate identities into AWS (Directory Service + federation)]] · [[24-other-services#Directory Service options]]
 
@@ -51,7 +51,8 @@ reaches it**.
 - **EC2** → through an **instance profile**. A role cannot be attached to an instance.
 - **Lambda, ECS, everything else** → the role directly.
 - Both policies are required and fail differently: no **trust policy** and the door never
-  opens; no **permissions policy** and it opens onto an empty room.
+  opens; no **permissions policy** and it opens, but the role can act only where a resource's
+  own policy names it.
 
 ↳ [[01-iam#Trust policy vs Permissions policy (on a Role)]] · [[01-iam#The instance profile — the wrapper the console hides]]
 
@@ -74,13 +75,13 @@ Ask **is this a grant or a ceiling**, and **whose side is it written on**.
 | What you need | Write it as |
 |---|---|
 | let a principal in my account do X | **identity policy** |
-| let a principal *outside* my account reach my resource | **resource policy** |
+| let a principal *outside* my account reach my resource | **resource policy** — and their own identity policy must also allow it |
 | cap everyone in these accounts | **SCP** — needs Organizations, all features |
 | cap this one user or role | **permissions boundary** |
 | cap one assumed session | **session policy** |
 | permissions that track teams without a policy per team | **ABAC** — tags on caller vs resource |
 
-Only the resource policy adds access; everything else subtracts, and an explicit `Deny` anywhere ends the argument.
+Identity and resource policies grant; SCPs, RCPs, permissions boundaries and session policies only subtract; an explicit `Deny` anywhere ends the argument. Full list: [[01-iam]].
 
 ↳ [[01-iam-advanced#The four things that can cap a permission]] · [[01-iam-advanced#How policy types combine]] · [[01-iam-advanced#RBAC vs ABAC]]
 

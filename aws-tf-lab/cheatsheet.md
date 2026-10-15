@@ -34,7 +34,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Temporary credential lifetime on AssumeRole | Default 1 hour, maximum 12 hours |
+| Temporary credential lifetime on AssumeRole | Default 1 hour; up to 12 h if the role's max-session setting allows; **role chaining caps at 1 h** |
 | API for SAML 2.0 federation to IAM | sts:AssumeRoleWithSAML |
 | API for OIDC / web identity federation | sts:AssumeRoleWithWebIdentity |
 
@@ -82,7 +82,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Consistency model for new IAM objects | Eventually consistent — a few seconds to become globally visible |
 | Access Analyzer — what bills | Free: external-access findings, policy validation, policy generation. Bills: unused access, internal access, custom checks |
 | EC2 vs Lambda/ECS role attachment | EC2 needs an instance profile wrapper; Lambda and ECS take a role directly |
-| Trust vs permissions policy failure modes | No trust policy = nobody can assume it; no permissions policy = assumes fine, does nothing |
+| Trust vs permissions policy failure modes | No trust policy = nobody can assume it; no permissions policy = assumes fine, can act **only where a resource policy names the role** |
 
 **Cross-account access**
 
@@ -233,7 +233,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | | |
 |---|---|
-| Family letters | t burstable, m general, c compute, r memory, g/p GPU, i storage |
+| Family letters | t burstable, m general, c compute, r memory, g/p GPU, **d/h/i** storage |
 | Generation suffixes a and g | t3a = AMD, t4g = Graviton/ARM |
 | Instance type separator | `family.size` with a **literal period** — `t3.micro`. A hyphen (`t3-micro`) is **rejected** |
 | Instance-type change vs AMI change | Instance type: **stop-modify-start**. **Kept:** instance ID, EBS volumes, Elastic IP. **Lost/changed:** an **auto-assigned public IPv4** changes and **instance-store data is destroyed**. AMI: **root volume replacement** on the same instance, or launch a new one |
@@ -463,7 +463,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Tunnels per Site-to-Site VPN connection | Always 2 |
 | Standard VPN tunnel throughput | Up to ~1.25 Gbps per tunnel |
-| What a Customer Gateway object holds | The on-prem router's public IP + BGP ASN |
+| What a Customer Gateway object holds | The on-prem device's **static** IP (usually public; the NAT device's IP if behind NAT) + BGP ASN |
 | VPN CloudHub | VGW as a hub-and-spoke point for multiple branch offices, over BGP |
 | VGW vs CGW | VGW = AWS side (on the VPC); CGW = config object describing your on-prem router |
 | Client VPN vs Site-to-Site | Client VPN = OpenVPN for individual laptops; Site-to-Site = IPsec, whole networks |
@@ -473,7 +473,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Hosted DX connection speeds | Fixed steps **50/100/200/300/400/500 Mbps and 1/2/5/10/25 Gbps** via a partner. It is the only route to a **sub-1 Gbps** link (dedicated starts at 1 Gbps) — but it is **not** capped below 1 Gbps |
-| How to encrypt Direct Connect | Site-to-Site VPN over DX (IPsec over a public VIF), or MACsec on supported ports |
+| How to encrypt Direct Connect | IPsec VPN over DX — classic: over a **public VIF**; newer: **private IP VPN** over a transit VIF (no public IPs). MACsec = L2 on the cross-connect only, not end-to-end |
 | The three VIF types and where they land | Private → one VPC (via VGW); Public → AWS public services; Transit → TGW (via DXGW) |
 | Direct Connect Gateway reach and limit | Global fan-out to multiple VGWs/TGWs across regions and accounts; non-transitive |
 | Dedicated DX port speeds | 1 / 10 / 100 Gbps (400 on some) |
@@ -722,7 +722,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | String-matching health check search window | Must find the string within the first 5,120 bytes |
 | HTTP/HTTPS health check timing budget | TCP established within 4 seconds, then 2xx/3xx within 2 more seconds |
 | TCP health check timing budget | Must connect within 10 seconds |
-| Calculated health check — max children | One parent watches up to 255 children, with AND / OR / "at least N" |
+| Calculated health check — max children | ~255 (AWS pages say 255 and 256 — don't memorise the exact figure), with AND / OR / "at least N"; can't watch another calculated check |
 | Status of a brand-new health check | Counts as healthy until it has enough data (inverted if "invert" is enabled) |
 | Health check interval options | 30s, or 10s "fast" (costs extra) |
 | CloudWatch alarm health check watches what | The alarm's data stream, not its state; same account only, no metric math, no M-of-N |
@@ -783,7 +783,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Origin group failover — timing | Default up to **30 s** on the primary (3 attempts × 10 s). Connection timeout **1–10 s**, attempts **1–3**, origin response timeout **30 s** default / **1–120 s**. No stickiness — every request goes to the primary first |
 | CloudFront pricing — two models | **Flat-rate plans** $0 / $15 / $200 / $1,000 per month bundling CDN + WAF + DDoS + DNS + TLS + logging + edge compute, **no overage charges**; or **pay-as-you-go** (per-GB out + per-request). Either way, **AWS origin → CloudFront data transfer is waived** |
 | Free invalidation allowance | First **1,000 paths per month per AWS account** (across all distributions); a path containing `*` counts as **one** path, and **tag invalidations draw on the same allowance**. AWS recommends versioned filenames instead, since invalidation cannot reach a browser cache or corporate proxy |
-| Price class coverage | `_100` cheapest/fewest locations · `_200` adds more of Asia, Middle East, Africa · `_All` everywhere (default). ⚠️ verify the exact country lists — AWS retired the PriceClass docs page (301 to the pricing page) and publishes no country breakdown |
+| Price class coverage | `_100` = USA, Canada, Europe, Israel (cheapest) · `_200` = `_100` + much of Asia, Middle East, Africa · `_All` = everywhere (default). Source: AWS CDK reference — the CloudFront page was retired |
 | Two-tier TTL pattern values | index.html 60s; hashed /static/app.a1b2c3.css one year |
 
 **CloudFront OAC & origins**
@@ -855,8 +855,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | EFS Transition into Standard default | None — an accessed file does NOT return to Standard automatically |
 | EFS lifecycle default to Infrequent Access | 30 days of no access |
 | EFS lifecycle default to Archive | 90 days of no access |
-| EFS Archive class restrictions | Regional-only; requires Elastic throughput mode |
-| Which EFS classes have One Zone variants | Standard and Infrequent Access (not Archive) |
+| EFS Archive class restrictions | Supported on Regional file systems; requires Elastic throughput mode |
+| Which EFS classes have One Zone variants | Standard and Infrequent Access (AWS lists no One Zone Archive) |
 | EFS storage classes | Standard, Infrequent Access, Archive |
 
 **EFS**
@@ -1003,7 +1003,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Gateway endpoint cost vs NAT Gateway | gateway endpoint free; NAT Gateway bills per hour AND per GB processed |
 | Elastic IP / public IPv4 billing | billed hourly whether attached or not |
 | EBS snapshots after the volume is deleted | keep charging indefinitely |
-| Data transfer charging directions | inbound generally free; outbound to internet charged; cross-AZ charged |
+| Data transfer charging directions | inbound generally free; outbound to internet charged; cross-AZ **generally** charged — except same-Region S3↔EC2, RDS Multi-AZ / same-Region replica replication, ALB/CLB cross-zone |
 | Consolidated billing cost | free; shares volume, RI and Savings Plan discounts across the organization |
 
 **DR strategies**
@@ -1215,9 +1215,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Execution role vs task role — who uses it | Execution role = the ECS/Fargate agent; task role = your application code |
-| What the execution role is actually required for | Private ECR pulls, the awslogs driver, Secrets Manager/SSM refs — NOT for a public Docker Hub pull |
+| What the execution role is actually required for | Private ECR pulls, the awslogs driver and Secrets Manager/SSM refs (awslogs/secrets: on Fargate, Managed Instances, external) — NOT for a public Docker Hub pull |
 | Execution role trust principal and managed policy | Trust policy principal is **`"Service": "ecs-tasks.amazonaws.com"`** (verified verbatim 2026-10-07), role conventionally named **`ecsTaskExecutionRole`**, with the managed policy **`AmazonECSTaskExecutionRolePolicy`** attached |
-| Are execution-role credentials visible in the container? | No — "not directly accessible by the containers in the task"; task role creds are, via task metadata endpoint |
+| Are execution-role credentials visible in the container? | No — "not directly accessible by the containers in the task"; task role creds are, via the **container credentials endpoint** (169.254.170.2) — not the task metadata endpoint |
 
 **ECR & VPC endpoints**
 
@@ -1396,7 +1396,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | ACM public certificate cost | **Non-exportable** (what you attach to an ALB/CloudFront/API Gateway): **no cost**. **Exportable** (since June 2025): **$7.00 per FQDN**, **$79.00 per wildcard**, charged at issuance *and* at each renewal |
 | Can an ACM public certificate be exported? | **Yes, now** — `aws acm export-certificate` / `ExportCertificate` returns the cert, chain and a passphrase-encrypted **private key**. Two conditions keep the classic answer mostly alive: it must have been issued as **exportable**, and "ACM public certificates created prior to **June 17, 2025** cannot be exported" |
 | Shield Advanced WAF coverage | Included on protected resources **up to 50 billion WAF requests/month** — covered, not uncapped |
-| KMS automatic rotation — what is excluded | Asymmetric keys, HMAC keys, custom key stores, **and imported key material (`EXTERNAL` origin)**. AWS: automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)" |
+| KMS automatic rotation — what is excluded | Asymmetric keys, HMAC keys, custom key stores, **and imported key material (`EXTERNAL` origin)** — though imported keys *can* be rotated on demand. AWS: automatic rotation is "supported only on symmetric encryption KMS keys with key material that AWS KMS generates (`AWS_KMS` origin)" |
 
 | CloudWatch Logs retention — valid values | An **enumerated set of 22**, not any integer: **1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653**. Default = **never expire**; restore that by **deleting** the policy, not by setting a big number. Deletion lags *"up to 72 hours"* after expiry |
 | `AWS/EC2` `Disk*` metrics scope | **Instance store volumes only** — *"If there are no instance store volumes, either the value is 0 or the metric is not reported."* EBS I/O lives in **two** places: per-volume `Volume*` in **`AWS/EBS`**, and per-instance `EBSReadOps`/`EBSWriteOps`/`EBSIOBalance%` in **`AWS/EC2`** itself (Nitro, non-bare-metal). Rule: `Disk*` = instance store, `EBS*`/`Volume*` = EBS |
@@ -1511,7 +1511,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Express workflow maximum duration | 5 minutes (Standard: 1 year) |
 | Standard vs Express execution semantics | Standard = **exactly-once**. Express splits: **Asynchronous = at-least-once** (a step may run more than once), **Synchronous = at-most-once** (it may run fewer). Neither Express flavour is exactly-once. *(Corrected 2026-10-07 — this row gave only the async half.)* |
 | Step Functions throughput quotas | `StateTransition`: Standard **5,000/sec** in N. Virginia / Oregon / Ireland, **800/sec** elsewhere; Express **unlimited**. `StartExecution`: Standard refills **300/sec** / **150/sec** on the same Region split; Express **6,000/sec**. Synchronous Express calls don't count against account capacity. **"2,000/sec" and "100,000/sec" are legacy figures AWS no longer publishes** |
-| Services shut down that you may still meet on the exam | **QLDB** (end of support 31 Jul 2025) · **Elastic Transcoder** (13 Nov 2025 → MediaConvert) · **DMS Fleet Advisor** (20 May 2026) · **MediaStore** (12 Nov 2025). **Snow Family**: closed to *new* customers only — existing Snowball Edge users unaffected. Learn the concepts |
+| Services shut down that you may still meet on the exam | **QLDB** (end of support 31 Jul 2025) · **Elastic Transcoder** (13 Nov 2025 → MediaConvert) · **DMS Fleet Advisor** (20 May 2026) · **MediaStore** (12 Nov 2025). **Snow Family**: closed to new customers; AWS's own pages disagree on support for existing users (see 12-storage-extras). Learn the concepts |
 | Execution rate limits | Standard StartExecution 300/sec (150 most Regions); Express 6,000/sec |
 | Pricing basis, Standard vs Express | Standard priced per state transition; Express by execution count + duration |
 | Which pattern does human-in-the-loop approval | Wait for Callback (.waitForTaskToken) — Standard only; Express is Request Response only |

@@ -242,7 +242,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[08-elasticache#How it actually works|note]]
 - **DAX and ElastiCache offered for the same workload** — They front different databases and that alone usually settles it. DAX only accelerates DynamoDB; ElastiCache fronts RDS/Aurora and anything else you write caching logic for.  
   ↳ [[08-elasticache#How it actually works|note]]
-- **"raise the table's provisioned RCUs" to fix a read-hot key** — Every DynamoDB partition tops out at 3,000 read units and 1,000 write units per second ([[19-serverless]] covers how the partition key places items).  
+- **"raise the table's provisioned RCUs" to fix a read-hot key** — One DynamoDB partition tops out at 3,000 RCU / 1,000 WCU per second, even for a single hot key ([[19-serverless]] owns the detail).  
   ↳ [[08-elasticache#How it actually works|note]]
 - **Memcached for anything needing HA/persistence/complex data** — Memcached is simple, multi-threaded, ephemeral. Need failover, backup, sorted sets, pub/sub, or a session store that survives a node loss → Redis.  
   ↳ [[08-elasticache#Worked examples|note]]
@@ -644,7 +644,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[22-analytics#Traps|note]]
 - **EMR core nodes on Spot** — Task nodes are the Spot answer because they store no HDFS data — losing one costs compute only.  
   ↳ [[22-analytics#Traps|note]]
-- **AWS Data Pipeline as a live answer** — It still appears in the SAA-C03 exam guide's in-scope list and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, On the exam, treat it as answerable if a question explicitly offers it for legacy orchestration — but in any "which service should we use" scenario the modern answers are Glue (ETL), Step Functions (orchestration) or MWAA (Airflow).  
+- **AWS Data Pipeline as a live answer** — It still appears in the PDF SAA-C03 guide's in-scope list (the online guide has dropped it) and in older practice questions, but AWS Data Pipeline is closed to new customers and in maintenance mode, On the exam, treat it as answerable if a question explicitly offers it for legacy orchestration — but in any "which service should we use" scenario the modern answers are Glue (ETL), Step Functions (orchestration) or MWAA (Airflow).  
   ↳ [[22-analytics#Traps|note]]
 - **building a second catalog per engine** — Athena, EMR and Redshift Spectrum all read the same AWS Glue Data Catalog. Options that propose defining schemas separately for each engine, or syncing metadata between them, are describing work AWS already did.  
   ↳ [[22-analytics#Traps|note]]
@@ -692,7 +692,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[24-other-services#Traps|note]]
 - **Standard vs Express workflows** — Decide on duration and volume, not sophistication. Express caps at five minutes, and its guarantee depends on the flavour — Asynchronous Express is at-least-once, Synchronous Express is at-most-once; neither is exactly-once. So anything long-running, anything needing exactly-once, and anything waiting on a human approval (.waitForTaskToken, which Express doesn't support) must be Standard.  
   ↳ [[24-other-services#Traps|note]]
-- **AD Connector or Simple AD where RDS for SQL Server is involved** — Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server. AD Connector and Simple AD are both explicitly incompatible.  
+- **AD Connector or Simple AD where RDS for SQL Server is involved** — Of the three Directory Service options, only AWS Managed Microsoft AD works with Amazon RDS for SQL Server (a self-managed AD can also be joined directly).  
   ↳ [[24-other-services#Traps|note]]
 - **Lambda for a job that outgrows 15 minutes** — Lambda's 15-minute maximum is the figure the exam uses, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it.  
   ↳ [[24-other-services#Traps|note]]

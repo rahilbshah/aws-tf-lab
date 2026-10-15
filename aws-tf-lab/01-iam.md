@@ -78,7 +78,7 @@ Because a role belongs to nobody, one object has to answer two completely differ
 | Where it lives | On the role itself — its **Trust relationships** (`AssumeRolePolicyDocument`) | Attached separately, like any other policy |
 | If it's missing | Nobody can assume the role at all | The role assumes fine and can still act **only where a resource's own policy names it** |
 
-Both halves are required, and the failure modes look nothing alike, which is what makes the distinction stick. Forget the trust policy and the door won't open. Forget the permissions policy and the door opens onto an empty room.
+Both halves are required, and the failure modes look nothing alike, which is what makes the distinction stick. Forget the trust policy and the door won't open. Forget the permissions policy and the door opens onto an almost empty room — the role can act only where a resource's own policy names it.
 
 The trust policy is also where a role's reach comes from. Change nothing but the principal it trusts and the same mechanic covers wildly different cases: `Service: ec2.amazonaws.com` for an instance, `Service: lambda.amazonaws.com` for a function, another account's ARN for cross-account access, or `Federated: <provider ARN>` for a human arriving via SAML or a CI job arriving via OIDC. It's one pattern wearing different clothes.
 
@@ -229,12 +229,12 @@ flowchart TD
 |---|---|---|
 | Lives on | The role itself — it is part of the role | Attached to the role separately, as a managed or inline policy |
 | Answers | **Who is allowed to assume me?** | **What can I do once assumed?** |
-| Without it | Nobody can assume the role | Role can be assumed but does nothing |
+| Without it | Nobody can assume the role | Role can be assumed, but acts only where a resource policy names it |
 | Common values | `Service: ec2.amazonaws.com`, `Service: lambda.amazonaws.com`, `AWS: arn:aws:iam::<acct>:root` (cross-account), `Federated: <SAML/OIDC provider ARN>` | Standard policy JSON over S3, DynamoDB, etc. |
 
 ### How an application authenticates to RDS
 
-Three mechanisms, in decreasing order of how much credential there is to steal. A password in config is stored forever and never changes. Secrets Manager still stores a password, but rotates it on a schedule — and *which* rotation you get depends on whose credential it is: a Lambda rotation function you own for ordinary application users, or **managed rotation**, where *"the service configures and manages rotation for you"* and *"you don't use an AWS Lambda function"*, for the RDS/Aurora/DocumentDB **master user** credential (also Redshift admin passwords). IAM database authentication stores no password at all.
+Three places the credential can live — not AWS's three *auth methods*, which are password, Kerberos and IAM ([[07-rds-aurora]]); Secrets Manager is still password auth. In decreasing order of how much credential there is to steal: A password in config is stored forever and never changes. Secrets Manager still stores a password, but rotates it on a schedule — and *which* rotation you get depends on whose credential it is: a Lambda rotation function you own for ordinary application users, or **managed rotation**, where *"the service configures and manages rotation for you"* and *"you don't use an AWS Lambda function"*, for the RDS/Aurora/DocumentDB **master user** credential (also Redshift admin passwords). IAM database authentication stores no password at all.
 
 |   | Password in config | Password in Secrets Manager | **IAM database authentication** |
 |---|---|---|---|

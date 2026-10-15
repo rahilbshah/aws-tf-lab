@@ -20,7 +20,7 @@ The fourth exam domain, worth **20%**. Not a service — a way of reading questi
 > - **Spot** = spare capacity, steepest discount, **two-minute interruption notice** via **EventBridge** and **instance metadata** (`spot/instance-action`). Hibernate gets a notice but **no two minutes**. For fault-tolerant, interruptible work only.
 > - **Dedicated Hosts** for **BYOL per-socket/per-core licensing**; Dedicated Instances for single-tenant hardware without host visibility.
 > - **Cost Explorer** analyses and forecasts · **Budgets** alerts on a threshold · **Cost Anomaly Detection** watches for the unexpected · **Compute Optimizer** rightsizes from 14 days of CloudWatch metrics · **cost allocation tags** slice the bill.
-> - **Non-compute levers:** gateway endpoints are free vs NAT per-hour+per-GB · outbound and cross-AZ data transfer is charged · unattached EIPs cost money · S3 lifecycle · `gp3` · orphaned EBS snapshots · consolidated billing shares volume/RI/SP discounts.
+> - **Non-compute levers:** gateway endpoints are free vs NAT per-hour+per-GB · outbound and (with exceptions) cross-AZ data transfer is charged · unattached EIPs cost money · S3 lifecycle · `gp3` · orphaned EBS snapshots · consolidated billing shares volume/RI/SP discounts.
 
 ## What problem does this solve?
 
@@ -168,7 +168,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - **AWS Graviton (ARM — the `g` suffix: `t4g`, `m7g`, `c7g`, `r7g`) is a compute-cost lever.** AWS Prescriptive Guidance: *"Not only are current Graviton processors 20 percent cheaper than their Intel counterparts, but they also deliver a 20 percent or greater performance boost."* The catch: the workload must run on **arm64**, and Windows Server is ruled out (see the Graviton trap). ⚠️ Guidance figures — check current pricing. *(Verified 2026-10-14.)*
 - **Dedicated Hosts** expose the physical server (sockets, cores, host affinity) and support **per-socket / per-core / per-VM BYOL**. **Dedicated Instances** are single-tenant hardware billed hourly, without host-level visibility.
 - **AWS Compute Optimizer** analyses **CloudWatch metrics from the last 14 days** (extendable to **93 days** with the paid enhanced infrastructure metrics) and recommends rightsizing plus flags idle resources. Covers EC2, Auto Scaling groups, EBS volumes, Lambda, ECS on Fargate, Aurora/RDS, NAT Gateway, DynamoDB, ElastiCache, MemoryDB, DocumentDB, WorkSpaces and SageMaker. **You must opt in.**
-- **Cost Explorer** analyses and forecasts cost/usage and produces **Savings Plans recommendations**. **AWS Budgets** alerts on **cost or usage** thresholds. **Cost Anomaly Detection** alerts without a threshold. **Cost allocation tags** and **cost categories** slice the bill by team/app/environment.
+- **Cost Explorer** analyses and forecasts cost/usage and produces **Savings Plans recommendations**. **AWS Budgets** alerts on **cost or usage** thresholds. **Cost Anomaly Detection** *detects* anomalies with no threshold you set (ML); its alert subscription then takes a $ or % threshold. **Cost allocation tags** and **cost categories** slice the bill by team/app/environment.
 - **Consolidated billing** (AWS Organizations) is **free** and **combines usage across accounts**, so volume discounts, RI discounts and Savings Plans are shared organization-wide.
 - ⚠️ Discount percentages are AWS's stated maxima and change over time; the exam tests the **ordering and the trade-off**, not the exact figure. Check current pricing before relying on a number.
 
@@ -202,7 +202,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 
 |   | ALB | CLB | NLB |
 |---|---|---|---|
-| Cross-zone setting | **Always on**, not disableable at the LB | On by default | **Off** by default, per-target-group |
+| Cross-zone setting | **Always on**, not disableable at the LB | On by default in the console; off via API/CLI | **Off** by default, per-target-group |
 | Regional (cross-AZ) data transfer | **Not charged** | **Not charged** | **Charged** when enabled |
 | AWS's wording | "you are not charged for this type of regional data transfer" | "you are not charged" | "you **will** be charged for regional data transfer between Availability Zones" |
 
@@ -227,7 +227,7 @@ Both optimized strategies avoid interruption-prone pools; the axis is **price**.
 |---|---|
 | **Cost Explorer** | "where did the money go, and what will it be?" |
 | **Budgets** | "tell me before I cross $X" |
-| **Cost Anomaly Detection** | "tell me when something is weird, without me setting a threshold" |
+| **Cost Anomaly Detection** | "tell me when spend is unusual — detection needs no number I set" |
 | **Cost allocation tags / categories** | "which team spent it?" |
 | **Compute Optimizer** | "is this resource the right size?" |
 | **Cost Optimization Hub** | "what should I change, ranked?" |
@@ -247,7 +247,7 @@ Trusted Advisor.
 bill; it *"inspects your AWS environment, and then makes recommendations when opportunities
 exist to save money, improve system availability and performance, or help close security
 gaps."* It is **advisory only** — it changes nothing. Two details that decide questions:
-checks are **refreshed manually** (refresh before trusting a reading), and on a **Basic or
+Security-category checks are **refreshed manually** on Basic Support (refresh before trusting a reading; see [[25-well-architected]]), and on a **Basic or
 Developer** Support plan you get **all Service Limits checks plus selected Security and Fault
 Tolerance checks only** — the full set needs **Business or Enterprise** Support. For quota
 *alarming* rather than inspection, the answer is **Service Quotas** with a CloudWatch alarm.

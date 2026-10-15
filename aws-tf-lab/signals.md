@@ -987,7 +987,7 @@ would otherwise pick.
 ✗ API Gateway — REST, HTTP and WebSocket APIs, not GraphQL
 
 **the directory must work with Amazon RDS for SQL Server (or needs trusts, schema extensions, LDAPS or MFA)**  
-→ **AWS Managed Microsoft AD** [[24-other-services#Traps|24-other-services]]  
+→ **AWS Managed Microsoft AD — the only Directory Service option RDS SQL Server supports (a self-managed AD can also be joined directly)** [[24-other-services#Traps|24-other-services]]  
 ✗ AD Connector and Simple AD — both explicitly incompatible with RDS for SQL Server, and Simple AD supports none of trusts, schema extensions, LDAPS or MFA
 
 **tightly coupled HPC with MPI AND the options are services that RUN the job — "one submission", "gang scheduling", "minimal operational overhead"**  

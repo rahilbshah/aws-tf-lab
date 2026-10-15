@@ -72,7 +72,7 @@ You choose an availability shape at creation:
 - **Regional** (recommended) — data stored redundantly across several Availability Zones, so it survives losing one.
 - **One Zone** — a single AZ, cheaper, and data may be lost if that zone is lost. The same trade you saw with S3 One Zone-IA in [[09-s3-intro]].
 
-Storage classes work like S3's: **Standard** for active files, **Infrequent Access** for files touched rarely, **Archive** for files touched almost never — Standard and IA have One Zone variants, **Archive is Regional-only**. Lifecycle moves files *down* on last-access age (IA at 30 days, Archive at 90 by default). Moving them back up is **not** automatic: by default an accessed file stays in IA or Archive, and you only get promotion by setting the **Transition into Standard** policy to *On first access*.
+Storage classes work like S3's: **Standard** for active files, **Infrequent Access** for files touched rarely, **Archive** for files touched almost never — Standard and IA have One Zone variants; **Archive** is documented as supported on **Regional** file systems (AWS never lists a One Zone Archive). Lifecycle moves files *down* on last-access age (IA at 30 days, Archive at 90 by default). Moving them back up is **not** automatic: by default an accessed file stays in IA or Archive, and you only get promotion by setting the **Transition into Standard** policy to *On first access*.
 
 Encryption at rest is enabled **at creation**; encryption in transit is enabled **when you mount**. Access is controlled by IAM and security groups on the network side, and POSIX permissions inside the file system.
 

@@ -299,7 +299,7 @@ for those you want EBS encryption, which is a different control. *(Verified 2026
 > A deploy reports success once the ECS API accepts the new task definition. Whether the containers actually start is a separate control loop on its own clock. Two systems, two definitions of "done", and only one of them shows up in your pipeline output.
 
 > [!warning] Trap — the execution role is not for the pull
-> Nothing in AWS authenticates you to Docker Hub; a public image needs *network egress*, not IAM. The execution role is required for **private ECR pulls, the `awslogs` driver, and secrets**. Answer "internet" for the public-image pull and "execution role" for the logs.
+> Nothing in AWS authenticates you to Docker Hub; a public image needs *network egress*, not IAM. The execution role is required for **private ECR pulls, the `awslogs` driver, and secrets** (awslogs and secrets: on Fargate, Managed Instances and external instances). Answer "internet" for the public-image pull and "execution role" for the logs.
 
 > [!warning] Trap — rollback needs somewhere to roll back to
 > The circuit breaker rolls back to the most recent `COMPLETED` deployment. If the **first ever** deployment of a new service is broken, there is no such deployment to roll back to — so no new tasks are launched and the deployment simply **stalls** with zero tasks. (It does not "trip and roll back"; there is nothing to roll back to.) Rollback protects against bad changes, not against a bad start.

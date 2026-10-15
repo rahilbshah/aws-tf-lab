@@ -23,7 +23,7 @@ anything. Ask **who must hold the key, and must its use be logged?**
   managed KMS key**. Also the only answer that survives cross-account.
 - **A regulator wants single-tenant hardware, or AWS must be unable to touch the key** →
   **CloudHSM**.
-- **AWS must never see plaintext** → **client-side**, or SSE-C to keep S3 doing the work
+- **AWS must never see plaintext** → **client-side** only. (SSE-C keeps the *key* yours, but S3 still receives the plaintext and encrypts it.)
   while you carry the key on every request.
 
 Decided **when the data is written**, not when someone later asks to share it.
@@ -65,7 +65,7 @@ Over all of it: **Block Public Access overrides a policy**, it is not outvoted b
 - **A regulator, and nobody — including root** → **COMPLIANCE**. A one-way door whose
   documented escape is closing the account; never on an account you keep.
 - **Permanent deletes and disabling versioning specifically** → **MFA Delete**: root plus
-  an MFA device, CLI only, no Terraform surface.
+  an MFA device, CLI or API (never the console).
 
 ↳ [[09-s3-security#Object Lock, and the delete that succeeds anyway]] · [[09-s3-security#GOVERNANCE vs COMPLIANCE]]
 
@@ -76,7 +76,7 @@ Over all of it: **Block Public Access overrides a policy**, it is not outvoted b
   that speaks HTTP. Never an NLB, never an EC2 instance.
 - **The bill from an attack, or a human to call during one** → **Shield Advanced**:
   $3,000/month on a year's commitment, so it needs a stated reason.
-- **Whole countries** → CloudFront **geo restriction** (may they in at all), not Route 53
+- **Whole countries** → CloudFront **geo restriction** if a distribution is in the path; ALB / API Gateway with no CloudFront → **WAF geo match**; not Route 53
   geolocation (where they are sent).
 - **The same rules across every account in the org** → **Firewall Manager**.
 
@@ -101,8 +101,9 @@ These live *between* services, which is why they aren't in any single note.
   OAC, no OAI — so one forces the bucket public. Private means the REST endpoint, losing S3's site features.
 - **WAF on CloudFront while the origin stays publicly reachable.** Edge filtering only sees
   traffic that came through the edge; an internet-facing ALB still answers direct requests.
-- **Security Hub enabled with nothing underneath it.** It has no detectors of its own — the
-  detection decision comes first, aggregation second.
+- **Security Hub enabled with nothing underneath it.** Its own checks are configuration
+  controls (CIS, PCI…); threat and vulnerability detection needs GuardDuty, Inspector or Macie
+  underneath — the detection decision comes first, aggregation second.
 - **An AWS managed key blocking a share nobody has asked for yet.** A snapshot encrypted
   under `aws/rds` cannot go cross-account, and that key policy cannot be edited to fix it.
 - **The certificate requested where the application lives.** Anything viewers reach through

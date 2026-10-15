@@ -59,8 +59,8 @@ against each other; they answer different kinds of question.
 - **Loaded into the engine; sustained concurrency; complex multi-table joins** →
   **Redshift**. A cluster earns its keep only under continuous load.
 - **Both at once** — hot months in the cluster, cold years in S3, joined in one
-  query → **Redshift Spectrum**. It still requires a running cluster, in the
-  **same Region** as the data.
+  query → **Redshift Spectrum**. It still needs Redshift (a cluster or Serverless) — see
+  [[22-analytics]].
 
 ↳ [[22-analytics#The four query engines]] · [[22-analytics#Which engine does the exam mean?]]
 

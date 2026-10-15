@@ -42,7 +42,7 @@ an index question — and **an LSI can only be created with the table.**
 The engine settles it first: **Aurora is MySQL- and PostgreSQL-compatible only**, so
 Oracle, SQL Server and MariaDB mean **RDS**, full stop. Where both are possible, Aurora
 earns its higher price for one reason — shared storage. Pick it for **auto-scaling storage
-(10 GB → 128 TB)**, **replica lag under 10 ms**, **failover faster than Multi-AZ's 1–2
+(auto-growing to 128 TiB)**, **replica lag well under 100 ms**, **failover faster than Multi-AZ's 1–2
 minutes**, **Serverless v2**, or **Global Database**. Otherwise RDS.
 
 ↳ [[07-rds-aurora#RDS vs Aurora]]
@@ -66,7 +66,7 @@ Reach for a cache when the **same** answer is being recomputed, not merely when 
 are heavy. In front of DynamoDB that is **DAX**; in front of RDS/Aurora, **ElastiCache**.
 For the engine, ignore the use case — it is the distractor — and find the capability only
 one side has. Persistence, replication, Multi-AZ failover, backup and sorted sets are
-Redis-only; multi-threaded and Auto Discovery are Memcached-only. **Valkey** ≈ Redis.
+Redis-only against **node-based** Memcached (Serverless Memcached replicates and backs up); multi-threaded and Auto Discovery are Memcached-only. **Valkey** ≈ Redis.
 
 ↳ [[08-elasticache#Reading the engine question the right way round]] · [[08-elasticache#Redis vs Memcached (the exam table)]]
 
@@ -98,8 +98,8 @@ These live *between* services, which is why they aren't in any single note.
   they share. The fork is *when* you commit to your queries.
 - **Picking by data volume.** A 200 TB OLTP app is still relational; a 50 GB
   aggregate-only workload is still OLAP. Shape decides the service, size only the bill.
-- **Redshift Spectrum instead of Athena.** Both query S3 in place, but **Spectrum requires
-  a cluster** in the same Region. With no warehouse in the picture it is the distractor.
+- **Redshift Spectrum instead of Athena.** Both query S3 in place, but **Spectrum is a Redshift
+  feature** — it needs a Redshift cluster or Redshift Serverless. With no warehouse in the picture it is the distractor.
 - **OpenSearch as the reporting layer.** "Dashboard" pulls people there and "SQL" pulls
   them to Athena — the words are doing the work, not the requirement. Free text and
   relevance → OpenSearch; business aggregates → a query engine plus QuickSight.

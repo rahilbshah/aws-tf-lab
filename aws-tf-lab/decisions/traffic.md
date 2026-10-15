@@ -103,8 +103,9 @@ These live *between* services, which is why they aren't in any single note.
 - **Guaranteeing capacity by pinning min and max.** "Guarantee 10 at 9am" and "run
   exactly 10 at 9am" are different requirements. Pinning buys the second one and
   switches dynamic scaling off for the day.
-- **Lowering the target value to get more instances.** Target tracking never scales
-  out while the metric is below target, so this only ever scales you in. More
-  capacity comes from real load, or from §4's scheduled action.
+- **Lowering the target value to get more instances.** Target tracking scales out only
+  while the metric is *above* target — so lowering it adds capacity only if the new target
+  drops below the current metric (on an idle fleet it just scales in). It's a crude lever;
+  planned capacity comes from §4's scheduled action.
 - **Choosing an ASG when the address was the problem.** An ASG fixes capacity and
   replacement; it gives clients no single address to talk to. That is still §2.

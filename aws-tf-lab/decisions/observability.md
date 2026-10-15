@@ -31,7 +31,7 @@ Four services, four units of record, and they barely overlap:
 - **It lives inside the guest OS** (memory, disk space used, swap) → the **CloudWatch
   agent**, arriving as **custom metrics**. Detailed monitoring is never the answer here;
   it changes frequency (5 min → 1 min), never coverage.
-- **The fact is in a log line** → you cannot alarm on a log group: **metric filter →
+- **The fact is in a log line** → classic answer: **metric filter →
   metric → alarm**.
 - **You want to ask, not be told** → **Logs Insights**.
 

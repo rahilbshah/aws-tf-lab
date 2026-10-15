@@ -17,7 +17,7 @@ three ride the same AWS edge network, so *speed* never separates them.
 
 - **HTTP/HTTPS** → **CloudFront**. Cacheable content is the obvious case; uncacheable HTTP still wins, because the request joins the AWS backbone at the edge.
 - **Not HTTP** — TCP/UDP, gaming, VoIP, IoT/MQTT — or **static IPs are a stated requirement** → **Global Accelerator**. It caches nothing.
-- **Large uploads into one bucket from far away** → **S3 Transfer Acceleration**. Direction is the tell: that is upload, CloudFront is download.
+- **Large transfers into one bucket from far away** → **S3 Transfer Acceleration** (stems are usually uploads, but AWS defines it as two-way). The real axis is **path vs cache**: CloudFront caches, TA doesn't. See [[09-s3-advanced]].
 
 ↳ [[11-cloudfront#CloudFront vs S3 Transfer Acceleration vs Global Accelerator]]
 
@@ -51,7 +51,7 @@ that is an **ALB**, and DNS is the wrong layer.
 
 The axis is **what has to change before traffic moves.**
 
-- **The DNS answer** → **Route 53 failover**, bounded by `(interval × threshold) + TTL`, and the TTL term usually dominates.
+- **The DNS answer** → **Route 53 failover**, no faster than roughly `(interval × threshold) + TTL` — a floor, not a ceiling — and the TTL term usually dominates.
 - **Which origin one distribution uses** → **CloudFront origin group**: per request, no DNS involved.
 - **Nothing — the address is identical either side** → **Global Accelerator**: seconds, because no resolver cached anything to wait out.
 
@@ -64,7 +64,7 @@ load balancer, or use a **CloudWatch alarm** check.
 
 The axis is **whether, or where.**
 
-- "Country X may not have this at all" → **CloudFront geo restriction** (edge, free); "Country X goes somewhere specific" → **Route 53 geolocation**.
+- "Country X may not have this at all" → **CloudFront geo restriction** if CloudFront is in the path (else **WAF geo match**); "Country X goes somewhere specific" → **Route 53 geolocation**.
 - "This one file" → **signed URL**; "a whole section, or I can't change my URLs" → **signed cookies**.
 - "Unreachable except through CloudFront" → **OAC**, and the bucket policy needs the `AWS:SourceArn` condition to mean anything.
 

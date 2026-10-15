@@ -375,7 +375,7 @@ snapshot it, then create an encrypted volume from the snapshot.
 ## 🔴 My weak spots (this topic)   #weak-spot
 - **SSE-S3's per-object unique key** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). Picked a logical-chunking/KMS answer for "encrypt each file with a different key". The vault had the SSE-S3 menu but had never stated that SSE-S3 *already* generates a unique key per object — the single fact the question turned on. Now written above.
 
-- [ ] **The four Block Public Access settings** — why four (new/existing × ACL/policy), and that BPA **overrides** policy rather than the other way round.
+- [ ] **The four Block Public Access settings** — why four (ACL/policy × block-the-write/ignore-at-request-time — **not** new/existing), and that BPA **overrides** policy rather than the other way round.
 - [ ] **Which encryption option means what** — especially **DSSE-KMS** (two layers) and that **SSE-C is now off by default (April 2026)**.
 - [ ] **Default encryption doesn't touch existing objects** — needs S3 Batch Operations Copy.
 - [ ] **Presigned URLs carry the generator's permissions**, are bearer tokens, max 7 days CLI / 12 hours console.

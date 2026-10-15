@@ -105,12 +105,12 @@ Two terms to recognise. A **lens** applies a specialised set of questions — th
 
 Note that six — **Operational Excellence was added later**, so older material saying "five categories" is out of date.
 
-**The support-plan split is the classic exam fact.** With **Basic or Developer Support** you get **all checks in the Service Limits category**, plus a short fixed list in Security and Fault Tolerance: *EBS Public Snapshots, RDS Public Snapshots, S3 Bucket Permissions, MFA on root account, Security Groups – Specific Ports Unrestricted,* and *STS global endpoint usage*. **All** checks — plus the API and EventBridge integration — require a higher support plan.
+**The support-plan split is the classic exam fact.** With **Basic or Developer Support** you get **all checks in the Service Limits category**, plus a short fixed list in Security and Fault Tolerance: *EBS Public Snapshots, RDS Public Snapshots, S3 Bucket Permissions, MFA on root account, Security Groups – Specific Ports Unrestricted,* and *STS global endpoint usage*. **All** checks — plus the API and EventBridge integration — need Business Support+, Enterprise or Unified Operations (exam framing: Business or Enterprise). Developer, though paid, doesn't get them.
 
 > [!warning] Currency — the support plans are being restructured
-> AWS documentation now states that **Developer, Business and Enterprise On-Ramp support plans will be discontinued on 1 January 2027**, replaced by **Business Support+**, and that full Trusted Advisor requires *"Business Support+, Enterprise Support, or Unified Operations"*. The exam still uses the old **Business / Enterprise** framing — answer with that, but know the tiers are moving.
+> AWS documentation now states that on **1 January 2027** **Developer and Business** support are discontinued, replaced by **Business Support+**, and **Enterprise On-Ramp** customers are auto-upgraded to **Enterprise Support**, and that full Trusted Advisor requires *"Business Support+, Enterprise Support, or Unified Operations"*. The exam still uses the old **Business / Enterprise** framing — answer with that, but know the tiers are moving.
 
-> In one line: Trusted Advisor inspects what's deployed across six categories; Basic/Developer gets service limits plus a handful of security and fault-tolerance checks, everything else needs a paid plan.
+> In one line: Trusted Advisor inspects what's deployed across six categories; Basic/Developer gets service limits plus a handful of security and fault-tolerance checks, everything else needs Business or Enterprise (Developer, though paid, doesn't).
 
 ### WA Tool vs Trusted Advisor vs Config — three things that "check your account"
 
@@ -133,7 +133,7 @@ The line that matters between Trusted Advisor and **Compute Optimizer**, because
 - **AWS Trusted Advisor** *"inspects your AWS environment, and then makes recommendations when opportunities exist to save money, improve system availability and performance, or help close security gaps."*
 - **Trusted Advisor check categories (6):** Cost optimization · Performance · Security · Fault tolerance · Service limits · Operational Excellence.
 - **Trusted Advisor by support plan:** Basic and Developer Support get **all checks in the Service limits category**, plus exactly these — *Amazon EBS Public Snapshots, Amazon RDS Public Snapshots, Amazon S3 Bucket Permissions, MFA on root account, Security Groups – Specific Ports Unrestricted,* and *AWS STS global endpoint usage*. Automatic check updates are **not** available on Basic; Security-category checks must be refreshed manually. Full access (plus the **Trusted Advisor API** and **EventBridge** monitoring) requires a paid plan.
-- **⚠️ Support-plan restructuring:** AWS documentation states **Developer Support, Business Support and Enterprise On-Ramp will be discontinued on 1 January 2027**, with **Business Support+** as the replacement tier, and that full Trusted Advisor now requires *Business Support+, Enterprise Support, or Unified Operations*. The exam's framing is still Business/Enterprise.
+- **⚠️ Support-plan restructuring:** AWS documentation states **Developer and Business Support are discontinued on 1 January 2027**, replaced by **Business Support+**, with **Enterprise On-Ramp** auto-upgraded to **Enterprise Support**, and that full Trusted Advisor now requires *Business Support+, Enterprise Support, or Unified Operations*. The exam's framing is still Business/Enterprise.
 - **Exam structure:** SAA-C03 scored content is Domain 1 Design Secure Architectures **30%**, Domain 2 Design Resilient Architectures **26%**, Domain 3 Design High-Performing Architectures **24%**, Domain 4 Design Cost-Optimized Architectures **20%**, across **14 task statements**.
 
 ## Comparisons

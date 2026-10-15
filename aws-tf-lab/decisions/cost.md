@@ -62,7 +62,7 @@ The axis is **which billed boundary each byte crosses**; the fix is routing, not
 
 - **Private subnet reading S3 or DynamoDB through a NAT** → a **gateway endpoint** is free and drops that traffic from the NAT's hourly *and* per-GB charge.
 - **Leaving for the internet** → charged outbound; inbound generally isn't.
-- **Chatter between AZs** → charged. Keep the talkative pair in one AZ, or accept it as the price of the resilience you chose.
+- **Chatter between AZs** → generally charged (exceptions: same-Region S3↔EC2, RDS replication, ALB cross-zone — see [[13-cost-optimization]]). Keep the talkative pair in one AZ, or accept it as the price of the resilience you chose.
 
 ↳ [[13-cost-optimization#The bill that isn't compute]]
 

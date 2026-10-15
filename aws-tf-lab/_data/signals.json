@@ -3088,11 +3088,11 @@
  },
  {
   "signal": "the directory must work with Amazon RDS for SQL Server (or needs trusts, schema extensions, LDAPS or MFA)",
-  "answer": "AWS Managed Microsoft AD",
+  "answer": "AWS Managed Microsoft AD — the only Directory Service option RDS SQL Server supports (a self-managed AD can also be joined directly)",
   "against": "AD Connector and Simple AD — both explicitly incompatible with RDS for SQL Server, and Simple AD supports none of trusts, schema extensions, LDAPS or MFA",
   "note": "24-other-services.md",
   "heading": "Traps",
-  "quote": "**Only AWS Managed Microsoft AD works with Amazon RDS for SQL Server.**",
+  "quote": "Of the three Directory Service options, only AWS Managed Microsoft AD works with Amazon RDS for SQL Server",
   "section": "Other services"
  },
  {

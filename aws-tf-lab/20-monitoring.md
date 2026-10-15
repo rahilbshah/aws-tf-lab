@@ -65,7 +65,7 @@ The clean rule is **`Disk*` = instance store, `EBS*`/`Volume*` = EBS** — *not*
 
 > In one line: if the metric requires looking inside the operating system, it needs the agent.
 
-**CloudWatch Logs** groups log streams by source. The bridge back to metrics is a **metric filter** — a pattern that turns matching log lines into a metric you can alarm on. That is the answer to "alert me when the application logs an error", because you cannot alarm on a log line directly, only on a metric derived from it.
+**CloudWatch Logs** groups log streams by source. The bridge back to metrics is a **metric filter** — a pattern that turns matching log lines into a metric you can alarm on. That is the classic answer to "alert me when the application logs an error". CloudWatch now also offers **log alarms**, which run a scheduled Logs Insights query and alarm on the result — but metric filter → alarm is what most exam questions expect. *(Corrected 2026-10-15.)*
 
 **Alarms** watch one metric (or a math expression) over evaluation periods. *"An alarm invokes actions only when the alarm changes state"* — it does not re-fire every period while in `ALARM`. The exception is Auto Scaling actions, which repeat once a minute while the state holds.
 
@@ -203,7 +203,7 @@ graph TB
 *Verified against AWS docs 2026-09-25.*
 
 - **Resolution:** *"Standard resolution, with data having a one-minute granularity"*; *"High resolution, with data at a granularity of one second."* AWS-service metrics are standard resolution by default.
-- **Valid alarm/metric periods:** 1, 5, 10, 30, or **any multiple of 60** seconds. High-resolution alarms may use **10 or 30 seconds** and cost more.
+- **Valid periods:** metric statistics — 1, 5, 10, 30 (20 for high-resolution metrics) or **any multiple of 60** seconds. **Alarms** — 10, 20, 30 or any multiple of 60; **10, 20 and 30** make it a high-resolution alarm, which costs more. *(Corrected 2026-10-15.)*
 - **EC2 monitoring:** *"basic monitoring for Amazon EC2 provides metrics for your instances every 5 minutes... Detailed monitoring... a resolution of 1 minute."* Alarm period must be ≥ the metric resolution.
 - **Metric retention:** 3 hours / 15 days / 63 days / 455 days by period, as the table above. Metrics expire after **15 months** without new data.
 - **Alarm history is kept 30 days.** There is **no limit** on the number of alarms.
@@ -303,7 +303,7 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 ## Worked examples
 
 > [!example] Worked example — "alert us when the application starts erroring"
-> The application writes to CloudWatch Logs via the agent. You cannot create an alarm on a log group directly — alarms watch **metrics**.
+> The application writes to CloudWatch Logs via the agent. The classic route: alarms watch **metrics**, so a metric filter turns the log line into one (a newer log alarm can query the logs directly).
 >
 > So: a **metric filter** on the log group with a pattern like `ERROR`, whose **metric transformation** publishes `1` to a custom metric each time a line matches. Then a **metric alarm** on that metric — say, ≥ 5 in 5 minutes — with an **alarm action** pointing at an SNS topic.
 >
@@ -398,7 +398,7 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 - [ ] **Data events are off by default** — "enable CloudTrail" is never sufficient for S3 object-level or Lambda invoke activity.
 - [ ] **Detailed monitoring changes frequency, not coverage** — 5 min → 1 min. It does not add memory or disk-space metrics; only the agent does.
 - [ ] **Alarms fire on state CHANGE**, not continuously while breaching (Auto Scaling actions excepted).
-- [ ] **You cannot alarm on a log line** — metric filter first, then alarm on the derived metric.
+- [ ] **Alarming on a log line** — classic answer: metric filter, then alarm on the derived metric (newer log alarms query logs directly).
 
 > [!tip] Production gap
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
