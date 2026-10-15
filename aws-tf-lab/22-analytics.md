@@ -80,7 +80,7 @@ Athena is an interactive query service: point it at S3, write standard SQL, get 
 
 The pricing model is the whole personality of the service: **$5 per TB of data scanned**. Not per query, not per hour. Per byte read off S3.
 
-That single fact generates the most common Athena exam question, which is always some version of *"how do you make this cheaper/faster?"* The answer is always some combination of three things, and AWS's own documentation works the example:
+That single fact generates the most common Athena exam question, which is always some version of *"how do you make this cheaper/faster?"* The answer is usually some combination of three things, and AWS's own documentation works the example:
 
 | Technique | Why it works | AWS's worked saving |
 |---|---|---|

@@ -13,7 +13,7 @@ Eleven one-line services. The exam never asks you to train a model — it asks w
 
 > [!info] Exam TL;DR
 > - **ML is in scope** (8 named services in the online exam guide; 11 in the PDF v1.1) and gets **no task statement of its own** — but it is not absent from the objectives either: **Task Statement 2.2** (Domain 2, *resilient architectures*, **26% of the exam**) names **Amazon Comprehend and Amazon Polly** in its Knowledge-of list. Mostly distractors and one-line answers; learn one sentence per service, and don't assume ML can never be the subject.
-> - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Train a custom model on our data"* → **SageMaker**.
+> - **Pre-trained API vs SageMaker** is the main split. *"No ML expertise"* / *"managed API"* → pre-trained service. *"Our own algorithm / data science team / full control of training"* → **SageMaker**. A custom label or classifier from a small labelled set → try **Rekognition Custom Labels** / **Comprehend custom** first.
 > - **Rekognition = images/video** (objects, faces, moderation). **Textract = documents** (text + **forms + tables** + handwriting). Document vs scene.
 > - **Transcribe = audio → text. Polly = text → audio.** Opposite directions.
 > - **Translate** = language → language. **Comprehend** = NLP insights: **sentiment, entities, key phrases, PII, language, topic modeling**.
@@ -71,18 +71,18 @@ This table is the note. Everything else is commentary on it.
 
 Most ML exam questions resolve on one of two distinctions, and the rest of the options are noise.
 
-**Split one: pre-trained AI service vs SageMaker.** Every service in the table except SageMaker is a **pre-trained API** — you call it, you get an answer, you need no ML expertise and you train nothing. **SageMaker** is the platform for when you need a **custom model**: your own data, your own algorithm, your own training job, your own endpoint.
+**Split one: pre-trained AI service vs SageMaker.** Every service in the table except SageMaker is a **managed AI service** — you call an API and need no ML expertise. Most are pre-trained; a few (Forecast, Fraud Detector, **Rekognition Custom Labels**, Comprehend custom models) train on your data for you. *(Corrected 2026-10-15.)* **SageMaker** is the platform for when you need a **custom model**: your own data, your own algorithm, your own training job, your own endpoint.
 
 So the discriminator is a phrase in the question:
 
 - *"no machine learning expertise"*, *"fully managed API"*, *"quickly add X to our app"* → **the pre-trained service**
-- *"train a custom model on our own data"*, *"our data science team"*, *"our own algorithm"* → **SageMaker**
+- *"our data science team"*, *"our own algorithm"*, *"full control of training"* → **SageMaker**. A custom label or classifier from a small labelled set (e.g. detect *our* logo) → **Rekognition Custom Labels** / **Comprehend custom** — still no ML expertise.
 
 Picking SageMaker when a one-line API would do is the single most common ML wrong answer, because it sounds more serious.
 
 **Split two: which modality.** Images, documents, audio, text — these are four different services and the exam deliberately pairs the near-neighbours. That's the next section.
 
-> In one line: pre-trained API unless the question says "custom model" or "our own data", in which case SageMaker.
+> In one line: managed AI service (pre-trained, or custom-trained for you like Rekognition Custom Labels) unless the question wants your own algorithm or a data science team — then SageMaker.
 
 ### The near-neighbours, resolved
 
@@ -215,7 +215,7 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 > Both take things that look like images, so scenarios use "scanned" and "uploaded image" interchangeably to bait you. **If the subject is a document — an invoice, a form, a tax return, a contract — it's Textract**, because the ask is almost always *structured* extraction (fields, tables, totals), which Rekognition doesn't do. Rekognition is for what's *in a picture of the world*: objects, faces, moderation. Rekognition's text-in-image detection is for signs and labels, not for reading a form.
 
 > [!warning] Trap — SageMaker as the serious-sounding answer
-> SageMaker is correct only when the question calls for a **custom model trained on the customer's own data**, or says the pre-trained options don't fit. When the question says *"without machine learning expertise"*, *"fully managed"*, *"minimal development effort"* or *"as quickly as possible"*, SageMaker is the distractor and a pre-trained API is the answer. The cost tell: a SageMaker endpoint bills continuously, which contradicts any scenario emphasising low cost or low operational overhead.
+> SageMaker is correct when the question calls for **your own model-building** — your algorithm, your data science team, full control of training — or says the managed options don't fit. (A simple custom classifier on your own images or text may still be **Rekognition Custom Labels** / **Comprehend custom**.) When the question says *"without machine learning expertise"*, *"fully managed"*, *"minimal development effort"* or *"as quickly as possible"*, SageMaker is the distractor and a pre-trained API is the answer. The cost tell: a SageMaker endpoint bills continuously, which contradicts any scenario emphasising low cost or low operational overhead.
 
 > [!warning] Trap — Transcribe and Polly reversed
 > They're one word apart in a question and opposite in direction. **Transcribe consumes audio and produces text** (call recordings, subtitles, meeting notes). **Polly consumes text and produces speech** (accessibility, voice responses, IVR prompts). Read which side the audio is on before choosing, because both will appear as options whenever the scenario mentions voice at all.

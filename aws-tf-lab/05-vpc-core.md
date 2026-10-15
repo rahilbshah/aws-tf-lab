@@ -17,7 +17,7 @@ The plumbing of a VPC: how you carve address space into public and private subne
 > - **IGW = bidirectional** — traffic can start on either side — and it sits at the VPC edge, one per VPC. **NAT = outbound-only**: private instances can start connections out, nothing on the internet can start one in.
 > - Creating a VPC auto-creates **3 defaults**: main route table, default NACL (allow-all), default SG (self-referencing). A **new custom** NACL denies all; a **new custom** SG denies inbound — opposite of the defaults.
 > - Subnets are **AZ-scoped**; a VPC spans a region. AWS reserves **5 IPs per subnet** (first 4 + last 1).
-> - **Default to the NAT gateway**; pick a NAT instance only if the stem stresses tiny-scale cost or wants the NAT box to double as a bastion. **NAT gateway** = managed, AZ-scoped, one-per-AZ for HA, **no SG ever**. A **public** NAT gateway needs an EIP and lives in a public subnet; a **private** one cannot have an EIP and is for reaching other VPCs or on-prem, not the internet. **NAT instance** = legacy EC2, needs source/dest-check off, has an SG, can double as a bastion.
+> - **Default to the NAT gateway**; pick a NAT instance only if the stem stresses tiny-scale cost or wants the NAT box to double as a bastion. **NAT gateway** = managed, zonal (the exam's answer): one-per-AZ for HA, **no SG ever**. A **public** NAT gateway needs an EIP and lives in a public subnet; a **private** one cannot have an EIP and is for reaching other VPCs or on-prem, not the internet. **NAT instance** = legacy EC2, needs source/dest-check off, has an SG, can double as a bastion.
 
 ## What problem does this solve?
 

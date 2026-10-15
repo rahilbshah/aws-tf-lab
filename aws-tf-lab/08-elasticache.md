@@ -19,7 +19,7 @@ Managed in-memory caching in front of a database — or used as a datastore in i
 > - **Caching strategies:** *lazy loading / cache-aside* (populate on miss) vs *write-through* (populate on write); use **TTL** to bound staleness.
 > - **Auto Discovery is Memcached-only** — the client connects to one node and learns all the others. AWS states it is **not** available for Valkey or Redis OSS.
 > - **Valkey** = the newer open-source Redis fork AWS backs. Treat it as Redis for engine-choice purposes, but it is **no longer feature-identical**: on ElastiCache only Valkey gets vector search (8.2+), full-text/hybrid search, hash-field TTLs and **durability** (all 9.0+). Redis OSS on ElastiCache stops at 7.1.
-> - **Read the question for engine-exclusive signals, not the use case.** "Multi-threaded" and "node discovery" are Memcached-only; persistence / replication / failover / sorted sets are Redis-only. One exclusive signal decides it.
+> - **Read the question for engine-exclusive signals, not the use case.** "Multi-threaded" and "node discovery" are Memcached-only; sorted sets are Redis-only; persistence / replication / failover are Redis-only against **node-based** Memcached. One exclusive signal decides it.
 
 ## What problem does this solve?
 

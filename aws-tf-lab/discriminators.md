@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*133 comparison tables · 268 discriminators · ~56 min read*
+*133 comparison tables · 268 discriminators · ~57 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -124,9 +124,9 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[04-alb-asg#Comparisons|note]]
 - **"the ALB terminates the unhealthy instance"** — It doesn't. The ALB only stops routing to it. Termination is the ASG's job, and only if you have turned on ELB health checks (HealthCheckType = ELB).  
   ↳ [[04-alb-asg#Worked examples|note]]
-- **"a failed ALB health check means users get errors"** — It never does, in either direction. With at least one healthy target the ALB quietly routes around the bad one and users are fine — you are simply at reduced capacity with nobody alerted.  
+- **"a failed ALB health check means users get errors"** — Not from the ALB itself, in either direction. With at least one healthy target the ALB quietly routes around the bad one and users are fine — you are simply at reduced capacity with nobody alerted.  
   ↳ [[04-alb-asg#Worked examples|note]]
-- **NLB vs ALB for a static IP / source-IP / PrivateLink** — Three different stems, one answer, and it is always the NLB: - "Need a static IP for the load balancer" → NLB: one static address per AZ, and you may attach an EIP per subnet. An ALB gives you a DNS name and "can't specify Elastic IP addresses for your subnets".  
+- **NLB vs ALB for a static IP / source-IP / PrivateLink** — Three different stems, and the NLB (or PrivateLink in front of one) is the usual answer: - "Need a static IP for the load balancer" → NLB: one static address per AZ, and you may attach an EIP per subnet. An ALB gives you a DNS name and "can't specify Elastic IP addresses for your subnets" — but if an existing ALB must keep its Layer 7 routing, put Global Accelerator (two static IPs, ALB as endpoint) in front instead.  
   ↳ [[04-alb-asg#Worked examples|note]]
 - **cross-zone billing** — Cross-zone is free & always-on for ALB, but off by default and inter-AZ-billed for NLB.  
   ↳ [[04-alb-asg#Worked examples|note]]
@@ -262,7 +262,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **"S3 has folders"** — No. S3 is a flat key→object store; photos/cat.jpg is one key. The console renders "folders" by splitting on /.  
   ↳ [[09-s3-intro#Worked examples|note]]
-- **"Glacier means slow retrieval"** — Glacier Instant Retrieval returns objects in milliseconds. Only Flexible Retrieval (minutes–hours) and Deep Archive (hours) need a restore job.  
+- **"Glacier means slow retrieval"** — Glacier Instant Retrieval returns objects in milliseconds. Only Flexible Retrieval (minutes–hours), Deep Archive (hours) and Intelligent-Tiering's opt-in archive tiers need a restore job.  
   ↳ [[09-s3-intro#Worked examples|note]]
 - **durability vs availability** — Every current class is 11 nines durable (won't lose data) — the only exception is the legacy Reduced Redundancy Storage at 99.99%, which AWS tells you not to use. What differs is availability (can you reach it right now): Standard 99.99%, IA 99.9%, One Zone-IA 99.5%.  
   ↳ [[09-s3-intro#Worked examples|note]]
@@ -386,7 +386,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]] · [[12-storage-extras#EFS throughput modes: Elastic vs Provisioned vs Bursting|EFS throughput modes: Elastic vs Provisioned vs Bursting]] · [[12-storage-extras#S3 File Gateway vs FSx File Gateway|S3 File Gateway vs FSx File Gateway]] · [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]] · [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
 
-- **EFS for a Windows workload** — The most reliable elimination in this topic. AWS does not support EFS with Windows EC2 instances. Any question mentioning Windows, SMB, Active Directory, or Windows ACLs is pointing at FSx for Windows File Server, however well "shared file system" seems to fit EFS.  
+- **EFS for a Windows workload** — The most reliable elimination in this topic. AWS does not support EFS with Windows EC2 instances. A question mentioning Windows, SMB, Active Directory or Windows ACLs usually points at FSx for Windows File Server, however well "shared file system" seems to fit EFS — unless it also needs NFS or iSCSI block, which is FSx for NetApp ONTAP (it speaks SMB and joins AD too).  
   ↳ [[12-storage-extras#Traps|note]]
 - **cached vs stored Volume Gateway, reversed** — Read where the primary copy lives. Cached = primary in S3, hot subset local — chosen to stop on-premises storage growing. Stored = primary on-premises, snapshots to S3 — chosen when you need low-latency access to the whole dataset and want offsite backups.  
   ↳ [[12-storage-extras#Traps|note]]
@@ -472,7 +472,7 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[15-decoupling#Traps|note]]
 - **assuming an empty poll means an empty queue** — Short polling is the default, and it samples only a subset of SQS servers — so it can return nothing while messages are waiting.  
   ↳ [[15-decoupling#Traps|note]]
-- **SNS delivering straight to a service instead of into a queue** — SNS delivers, it does not hold. Push it directly at a Lambda or HTTP endpoint that is down and the notification is lost.  
+- **SNS delivering straight to a service instead of into a queue** — SNS delivers, it does not hold. Push it directly at a Lambda or HTTP endpoint that is down and SNS retries for a while, then drops it unless the subscription has a dead-letter queue.  
   ↳ [[15-decoupling#Traps|note]]
 - **FIFO chosen without noticing the throughput ceiling** — FIFO's strict ordering and exactly-once cost you throughput: 300 TPS per API action, 3,000/second batched, against a standard queue's effectively unlimited rate.  
   ↳ [[15-decoupling#Traps|note]]
@@ -664,7 +664,7 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **Rekognition where Textract belongs** — Both take things that look like images, so scenarios use "scanned" and "uploaded image" interchangeably to bait you.  
   ↳ [[23-machine-learning#Traps|note]]
-- **SageMaker as the serious-sounding answer** — SageMaker is correct only when the question calls for a custom model trained on the customer's own data, or says the pre-trained options don't fit.  
+- **SageMaker as the serious-sounding answer** — SageMaker is correct when the question calls for your own model-building — your algorithm, your data science team, full control of training — or says the managed options don't fit.  
   ↳ [[23-machine-learning#Traps|note]]
 - **Transcribe and Polly reversed** — They're one word apart in a question and opposite in direction. Transcribe consumes audio and produces text (call recordings, subtitles, meeting notes).  
   ↳ [[23-machine-learning#Traps|note]]

@@ -806,7 +806,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 - Serverless trades control for the ability to cost nothing when idle.  
   ↳ [[19-serverless#What problem does this solve?|explain]]
-- Memory is the only performance dial, and it moves CPU with it.  
+- Memory is the main performance dial, and it moves CPU with it.  
   ↳ [[19-serverless#How it actually works|explain]]
 - The partition key is not a column name, it is the physical layout of your data.  
   ↳ [[19-serverless#How it actually works|explain]]
@@ -971,7 +971,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[23-machine-learning#What problem does this solve?|explain]]
 - Every AI service is a fixed input type mapped to a fixed output type — match the noun in the question to the noun in the table.  
   ↳ [[23-machine-learning#The whole topic, as a recognition table|explain]]
-- Pre-trained API unless the question says "custom model" or "our own data", in which case SageMaker.  
+- Managed AI service (pre-trained, or custom-trained for you like Rekognition Custom Labels) unless the question wants your own algorithm or a data science team — then SageMaker.  
   ↳ [[23-machine-learning#The two splits that actually get tested|explain]]
 - Document vs scene (Textract/Rekognition), audio direction (Transcribe/Polly), analyse vs search (Comprehend/Kendra).  
   ↳ [[23-machine-learning#The near-neighbours, resolved|explain]]

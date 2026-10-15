@@ -322,8 +322,9 @@ snapshot it, then create an encrypted volume from the snapshot.
 > does not exist. **SSE-C and client-side encryption do not exist for EBS** — EBS is KMS-only.
 > **DynamoDB** defaults to an **AWS owned** key and is always encrypted ([[21-security]]).
 > And when a stem demands an **audit trail of who used the key**, or **cross-account access to
-> encrypted data**, SSE-S3 and SSE-C both fail: only **SSE-KMS with a customer managed key**
-> gives you a key policy and CloudTrail records.
+> encrypted data**, reach for **SSE-KMS with a customer managed key**: SSE-S3 leaves no key-usage
+> trail, and the AWS managed key (`aws/s3`) can't be shared cross-account. (SSE-S3 itself doesn't
+> block cross-account reads — a bucket policy grant is enough.) *(Corrected 2026-10-15.)*
 
 > [!warning] Trap — SSE-KMS request cost answered by changing the encryption type
 > High-throughput workloads on SSE-KMS generate a KMS request per object operation, and the

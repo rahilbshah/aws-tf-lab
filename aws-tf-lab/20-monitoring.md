@@ -12,11 +12,11 @@ Four services that answer four different questions, and an exam that mostly test
 
 > [!info] Exam TL;DR
 > - **The whole topic collapses to one discrimination.** *"Is it healthy?"* → **CloudWatch**. *"Who did it?"* → **CloudTrail**. *"What is the configuration, and has it drifted?"* → **Config**. *"React automatically when X happens"* → **EventBridge**.
-> - **EC2 basic monitoring is every 5 minutes. Detailed monitoring is every 1 minute** (and costs extra). Alarm periods must be ≥ the metric's resolution.
+> - **EC2 basic monitoring is every 5 minutes. Detailed monitoring is every 1 minute** (and costs extra). Set alarm periods ≥ the metric's resolution (shorter ones get created but never fire properly).
 > - **Memory and disk-space are NOT default EC2 metrics.** They are *in-guest*, so they need the **CloudWatch agent**, and they arrive as **custom metrics** (billed as such).
 > - **CloudTrail Event history is 90 days of management events only, free, per Region.** Anything longer, or data events, needs a **trail** delivering to S3 — a trail can also deliver to a **CloudWatch Logs log group**, which is what lets you alarm on API activity (see the trap below).
 > - **Data events are OFF by default** — *"trails and event data stores log management events, but not data or Insights events."* S3 object-level and Lambda invoke activity are data events.
-> - **An alarm invokes actions only when it CHANGES state.** Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
+> - **An alarm invokes actions when it CHANGES state** (exception: Auto Scaling actions repeat every minute while in the state). Three states: `OK`, `ALARM`, `INSUFFICIENT_DATA`.
 > - **Composite alarms exist to reduce alarm noise** — and they cannot perform EC2 or Auto Scaling actions.
 > - **EventBridge = CloudWatch Events, renamed.** Same service; a question naming either means the same thing.
 > - **Systems Manager is not just Session Manager.** **Run Command** = push an arbitrary command/installer **once**, against the targets resolved at that moment; **Patch Manager** = patch operating systems *and applications* against a baseline; **State Manager** = hold a desired state over time, re-applying to new nodes as they appear; **Maintenance Windows** = the *schedule* only, never the doer. "Install a tool" and "apply a patch" are different answers.
@@ -343,8 +343,8 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 > renew certificates that you import.**"* So for **imported third-party certificates**, the Config
 > managed rule plus SNS is the least-effort 30-day warning and is the **correct** answer. Eliminate
 > a Config option only when it is described as a **custom** rule you must write yourself.
-> Trusted Advisor is a **weaker** answer here, not an impossible one ([[25-well-architected]] covers its check categories and support-plan tiers) — and this note used to say it was impossible. Trusted Advisor publishes check results to CloudWatch under the **`AWS/TrustedAdvisor`** namespace (metrics `RedResources`, `YellowResources`, `ServiceLimitUsage`; dimension `CheckName`), and AWS has a page titled *"Creating Amazon CloudWatch alarms to monitor AWS Trusted Advisor metrics"* walking through exactly the alarm→SNS shape. Eliminate it when the stem wants **per-certificate, 30-day precision**, because the check is coarse and refresh-driven — not on the grounds that the metric does not exist. (Note the metrics live in **us-east-1**.) *(Corrected 2026-10-07.)* The older wording follows: it has an ACM check, but you do
-> not build a CloudWatch alarm on a Trusted Advisor *metric*), and **ACM Private CA** — switching
+> Trusted Advisor is a **weaker** answer here, not an impossible one ([[25-well-architected]] covers its check categories and support-plan tiers) — and this note used to say it was impossible. Trusted Advisor publishes check results to CloudWatch under the **`AWS/TrustedAdvisor`** namespace (metrics `RedResources`, `YellowResources`, `ServiceLimitUsage`; dimension `CheckName`), and AWS has a page titled *"Creating Amazon CloudWatch alarms to monitor AWS Trusted Advisor metrics"* walking through exactly the alarm→SNS shape. Eliminate it when the stem wants **per-certificate, 30-day precision**, because the check is coarse and refresh-driven — not on the grounds that the metric does not exist. (Note the metrics live in **us-east-1**.) *(Corrected 2026-10-07.)*
+> The other wrong answer here is **ACM Private CA** — switching
 > your public certificates to a paid private CA to get an alert is the most expensive wrong answer
 > on the page.
 

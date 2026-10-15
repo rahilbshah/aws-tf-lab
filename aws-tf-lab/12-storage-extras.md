@@ -200,7 +200,7 @@ row below is exam material rather than something you could order today. See the 
 |---|---|---|---|---|---|
 | Shape | block | file | file | file | object |
 | Protocol | — (attached disk) | **NFS** | **SMB** | Lustre | HTTP API |
-| Shared by many instances | ❌ one at a time | ✅ | ✅ | ✅ | ✅ (API) |
+| Shared by many instances | ❌ one at a time (io1/io2 Multi-Attach: up to 16, same AZ) | ✅ | ✅ | ✅ | ✅ (API) |
 | OS | any | **Linux only** | Windows (and Linux SMB clients) | **Linux only** | any |
 | Capacity | provisioned | **elastic** | provisioned | provisioned (SSD/HDD) or **elastic** (Intelligent-Tiering) | elastic |
 | Reach for it when | boot volume, single-instance disk | shared Linux file system | Windows app, AD auth, SMB | HPC/ML speed, S3-backed compute | objects, static content, backup |
@@ -263,7 +263,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 ## Traps
 
 > [!warning] Trap — EFS for a Windows workload
-> The most reliable elimination in this topic. **AWS does not support EFS with Windows EC2 instances.** Any question mentioning Windows, SMB, Active Directory, or Windows ACLs is pointing at **FSx for Windows File Server**, however well "shared file system" seems to fit EFS.
+> The most reliable elimination in this topic. **AWS does not support EFS with Windows EC2 instances.** A question mentioning Windows, SMB, Active Directory or Windows ACLs usually points at **FSx for Windows File Server**, however well "shared file system" seems to fit EFS — **unless it also needs NFS or iSCSI block, which is FSx for NetApp ONTAP** (it speaks SMB and joins AD too).
 
 > [!warning] Trap — cached vs stored Volume Gateway, reversed
 > Read where the *primary* copy lives. **Cached** = primary in S3, hot subset local — chosen to stop on-premises storage growing. **Stored** = primary on-premises, snapshots to S3 — chosen when you need low-latency access to the *whole* dataset and want offsite backups. The words are unhelpfully similar; anchor on "which copy is authoritative".

@@ -184,7 +184,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 | Reserves capacity | ❌ **never** | only **zonal** RIs (capacity also comes from Capacity Reservations, Capacity Blocks and Dedicated Hosts) |
 | Can be sold | ❌ | ✅ Standard RIs, on the **RI Marketplace** |
 | Applies to | EC2, **Fargate, Lambda** (Compute SP) | EC2 (and separately RDS, Redshift, ElastiCache…) |
-| AWS's recommendation | ✅ **"We recommend Savings Plans over Reserved Instances"** | still fully supported — and still the only answer for **zonal capacity**, the **RI Marketplace**, and RDS/Redshift/ElastiCache reservations |
+| AWS's recommendation | ✅ **"We recommend Savings Plans over Reserved Instances"** | still fully supported — and still the answer for **zonal capacity** (or a Capacity Reservation), the **RI Marketplace** and **Redshift**; RDS and ElastiCache also have **Database Savings Plans** |
 
 ### When each purchasing option is the answer
 

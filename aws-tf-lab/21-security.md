@@ -53,7 +53,7 @@ Default encryption by service, where it gets tested:
 | **S3** | **SSE-S3** (AES256) since Jan 2023 | see [[09-s3-security]] |
 | **EBS, RDS, EFS** | AWS managed (`aws/ebs`, `aws/rds`…) when you tick "encrypt" | these predate the 2021 change |
 
-That "cannot change its policy" line is the practical discriminator: the moment a stem mentions cross-account access to encrypted data, or an audit trail of key usage, or controlling exactly who may decrypt, the answer is a **customer managed key**.
+That "cannot change its policy" line is the practical discriminator: the moment a stem mentions cross-account access to encrypted data, or controlling exactly who may decrypt, the answer is a **customer managed key**. (A bare *audit trail of key use* doesn't decide it — AWS managed keys are logged in CloudTrail too; only AWS owned keys aren't.)
 
 **Envelope encryption, concretely.** `GenerateDataKey` returns two things — a plaintext data key and the same key encrypted under your KMS key. You encrypt your object locally with the plaintext key, discard it from memory, and store the encrypted copy alongside the ciphertext. To read it back, you send the encrypted key to KMS's `Decrypt`, get the plaintext key back, and decrypt locally. Your data never crosses the KMS API.
 
@@ -186,7 +186,7 @@ the answer, and a Lambda *resource* policy only controls who may **invoke** it i
 | **Usage auditable in CloudTrail** | **yes** | **yes** | **no** — *"not viewable by the customer"* |
 | Counts against your KMS key quota | **yes** | no | no |
 | Cross-account sharing of encrypted data | **yes** | **no** | yes (service handles it) |
-| Choose this when | cross-account, custom policy, audit, compliance, BYOK | you just want encryption on | never — you don't choose it |
+| Choose this when | cross-account, custom policy, compliance, BYOK | you just want encryption on | never — you don't choose it |
 
 ### KMS key policy vs grant (and `kms:ViaService`)
 A **grant** is the third authorisation mechanism for a KMS key. AWS: *"A grant is a policy instrument that allows AWS principals or AWS service principals to use KMS keys in cryptographic operations"*, and *"When authorizing access to a KMS key, grants are considered along with key policies and IAM policies."*
@@ -254,7 +254,7 @@ therefore need two.
 
 **Validation.** You prove you own the domain by **DNS validation** (add a CNAME — and if the
 zone is in Route 53, ACM can write it for you) or **email validation**. DNS validation is the
-one to pick, because it is what lets ACM **renew automatically** and forever; email validation
+one to pick, because it is what lets ACM **renew automatically** for as long as the certificate is in use; email validation
 needs a human every time.
 
 **Non-exportable** public certificates from ACM — the kind you attach to an ALB, CloudFront or

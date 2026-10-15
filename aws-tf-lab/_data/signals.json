@@ -1679,7 +1679,7 @@
   "against": "Glacier Flexible Retrieval — the word 'Glacier' reads as slow, but Flexible needs a restore job (minutes–hours) and Instant does not",
   "note": "09-s3-intro.md",
   "heading": "Worked examples",
-  "quote": "returns objects in **milliseconds**. Only **Flexible Retrieval** (minutes–hours) and **Deep Archive** (hours) need a restore job.",
+  "quote": "Only **Flexible Retrieval** (minutes–hours), **Deep Archive** (hours) and Intelligent-Tiering's opt-in archive tiers need a restore job.",
   "section": "Storage — S3"
  },
  {
@@ -1981,11 +1981,11 @@
  },
  {
   "signal": "Windows EC2 instances need a shared file system, with Active Directory users and Windows ACLs",
-  "answer": "FSx for Windows File Server (SMB + AD + Windows ACLs)",
+  "answer": "FSx for Windows File Server (SMB + AD + Windows ACLs) — unless NFS or iSCSI is also needed, then FSx for NetApp ONTAP",
   "against": "EFS — 'shared file system' fits perfectly in words, but AWS does not support EFS with Windows EC2 instances, so it is an automatic elimination",
   "note": "12-storage-extras.md",
   "heading": "Traps",
-  "quote": "**AWS does not support EFS with Windows EC2 instances.** Any question mentioning Windows, SMB, Active Directory, or Windows ACLs is pointing at **FSx for Windows File Server**",
+  "quote": "**AWS does not support EFS with Windows EC2 instances.**",
   "section": "Storage — other"
  },
  {
@@ -2943,7 +2943,7 @@
   "section": "AI / ML"
  },
  {
-  "signal": "\"train a custom model on our own data\" / \"our data science team\" / \"our own algorithm\" — the ONLY wording that moves an ML question off a pre-trained service",
+  "signal": "\"our data science team\" / \"our own algorithm\" / \"full control of training\" — what moves an ML question off the managed AI services",
   "answer": "SageMaker",
   "against": "A pre-trained API (Rekognition, Textract, Comprehend, Transcribe, Polly, Translate). Note the direction: \"no ML expertise\" / \"fully managed\" / \"quickly add X\" / \"minimal development effort\" appears in a huge share of ALL SAA stems and is NOT by itself a signal — it only tells you to stay on the pre-trained side, and the modality named in the stem then picks which one. Choosing SageMaker because it sounds more serious is the single most common ML wrong answer",
   "note": "23-machine-learning.md",
@@ -3070,11 +3070,11 @@
  },
  {
   "signal": "external partners upload over SFTP/FTPS/FTP/AS2 and cannot change their clients",
-  "answer": "AWS Transfer Family, landing files directly in S3 or EFS",
-  "against": "DataSync — a transfer job you run to move a dataset between storage systems, not a standing protocol endpoint. If the stem names a protocol, it is Transfer Family",
+  "answer": "AWS Transfer Family, landing files in S3 or EFS (AS2: S3 only)",
+  "against": "DataSync — a transfer job you run to move a dataset between storage systems (it speaks NFS/SMB/HDFS), not a standing SFTP/FTPS/FTP/AS2 endpoint",
   "note": "24-other-services.md",
   "heading": "Traps",
-  "quote": "If the question names a **protocol**, it's Transfer Family.",
+  "quote": "If the question names **SFTP, FTPS, FTP or AS2**, it's Transfer Family",
   "section": "Other services"
  },
  {
@@ -3142,11 +3142,11 @@
  },
  {
   "signal": "keep (or snapshot) a database when its CloudFormation stack is deleted",
-  "answer": "A `DeletionPolicy` of `Retain`, or `Snapshot` to take one first",
-  "against": "Relying on the default, which is `Delete`",
+  "answer": "`DeletionPolicy: Retain` to keep it — RDS DB instances and clusters already default to `Snapshot`",
+  "against": "Assuming every resource defaults to `Delete` — most do, but RDS instances/clusters default to `Snapshot`",
   "note": "24-other-services.md",
   "heading": "AWS CloudFormation — the standardisation answer",
-  "quote": "default is **Delete**; `Retain` keeps it, `Snapshot` takes one first (RDS, EBS and friends)",
+  "quote": "default is **Delete** (RDS DB instances/clusters default to **Snapshot**)",
   "section": "Other services"
  },
  {

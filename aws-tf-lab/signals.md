@@ -17,7 +17,7 @@ would otherwise pick.
 
 ## AI / ML  ·  7
 
-**"train a custom model on our own data" / "our data science team" / "our own algorithm" — the ONLY wording that moves an ML question off a pre-trained service**  
+**"our data science team" / "our own algorithm" / "full control of training" — what moves an ML question off the managed AI services**  
 → **SageMaker** [[23-machine-learning#The two splits that actually get tested|23-machine-learning]]  
 ✗ A pre-trained API (Rekognition, Textract, Comprehend, Transcribe, Polly, Translate). Note the direction: "no ML expertise" / "fully managed" / "quickly add X" / "minimal development effort" appears in a huge share of ALL SAA stems and is NOT by itself a signal — it only tells you to stay on the pre-trained side, and the modality named in the stem then picks which one. Choosing SageMaker because it sounds more serious is the single most common ML wrong answer
 
@@ -959,12 +959,12 @@ would otherwise pick.
 ✗ Running the template per account by hand; and for "let teams self-serve only pre-approved configurations" the answer is Service Catalog, not raw CloudFormation
 
 **external partners upload over SFTP/FTPS/FTP/AS2 and cannot change their clients**  
-→ **AWS Transfer Family, landing files directly in S3 or EFS** [[24-other-services#Traps|24-other-services]]  
-✗ DataSync — a transfer job you run to move a dataset between storage systems, not a standing protocol endpoint. If the stem names a protocol, it is Transfer Family
+→ **AWS Transfer Family, landing files in S3 or EFS (AS2: S3 only)** [[24-other-services#Traps|24-other-services]]  
+✗ DataSync — a transfer job you run to move a dataset between storage systems (it speaks NFS/SMB/HDFS), not a standing SFTP/FTPS/FTP/AS2 endpoint
 
 **keep (or snapshot) a database when its CloudFormation stack is deleted**  
-→ **A DeletionPolicy of Retain, or Snapshot to take one first** [[24-other-services#AWS CloudFormation — the standardisation answer|24-other-services]]  
-✗ Relying on the default, which is Delete
+→ **DeletionPolicy: Retain to keep it — RDS DB instances and clusters already default to Snapshot** [[24-other-services#AWS CloudFormation — the standardisation answer|24-other-services]]  
+✗ Assuming every resource defaults to Delete — most do, but RDS instances/clusters default to Snapshot
 
 **move a large on-premises Oracle database to Aurora PostgreSQL with only minutes of downtime**  
 → **AWS SCT (or DMS Schema Conversion) for the schema, then DMS full load plus ongoing replication (CDC) until cutover** [[24-other-services#AWS DMS — the migration answer, and the biggest gap here|24-other-services]]  
@@ -1402,7 +1402,7 @@ would otherwise pick.
 ✗ Stored volumes — the names are nearly interchangeable; anchor on which copy is authoritative, and 'reduce on-prem storage' means the primary must live in S3
 
 **Windows EC2 instances need a shared file system, with Active Directory users and Windows ACLs**  
-→ **FSx for Windows File Server (SMB + AD + Windows ACLs)** [[12-storage-extras#Traps|12-storage-extras]]  
+→ **FSx for Windows File Server (SMB + AD + Windows ACLs) — unless NFS or iSCSI is also needed, then FSx for NetApp ONTAP** [[12-storage-extras#Traps|12-storage-extras]]  
 ✗ EFS — 'shared file system' fits perfectly in words, but AWS does not support EFS with Windows EC2 instances, so it is an automatic elimination
 
 

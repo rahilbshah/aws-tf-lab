@@ -252,7 +252,7 @@ Four features carry the exam weight:
 | **StackSets** | deploy one template across **many accounts and Regions in a single operation** — the multi-account standardisation answer, driven from an admin account or via Organizations |
 | **Change sets** | **preview** what an update would add, modify or delete before applying it |
 | **Drift detection** | has someone changed these resources **outside** CloudFormation? |
-| **`DeletionPolicy`** | what happens to a resource when the stack is deleted — default is **Delete**; `Retain` keeps it, `Snapshot` takes one first (RDS, EBS and friends) |
+| **`DeletionPolicy`** | what happens to a resource when the stack is deleted — default is **Delete** (RDS DB instances/clusters default to **Snapshot**); `Retain` keeps it, `Snapshot` takes one first (RDS, EBS and friends) |
 
 **AWS Service Catalog** sits above it: administrators publish **approved products** as
 portfolios, and end users launch only those, within the constraints set for them. "Let teams
@@ -405,7 +405,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Lambda's **15-minute** maximum is the figure the exam uses, and scenarios describing genomics processing, video rendering, simulations or multi-hour ETL are built around it. Currency: it is no longer an absolute — AWS allows up to **90 minutes** for **Lambda Managed Instances** functions invoked asynchronously or through an event source mapping ([[19-serverless]]). Answer 15 minutes on the exam; don't carry "hard ceiling" as a fact. The answer is **AWS Batch** (containerised, no time limit, Spot-friendly) or ECS/Fargate tasks. Watch for the inverse too: a short, event-driven, spiky workload put on Batch is over-engineering — Batch has queue and provisioning latency that Lambda doesn't.
 
 > [!warning] Trap — Transfer Family confused with DataSync
-> Both move files into AWS and both appear together as options. **Transfer Family is a standing endpoint speaking SFTP/FTPS/FTP/AS2, for external parties using their own clients.** **DataSync is a transfer job you run** to move a dataset between storage systems. "Partners upload to us and can't change their software" → Transfer Family. "Migrate 50 TB from an on-premises NAS" → DataSync. If the question names a **protocol**, it's Transfer Family.
+> Both move files into AWS and both appear together as options. **Transfer Family is a standing endpoint speaking SFTP/FTPS/FTP/AS2, for external parties using their own clients.** **DataSync is a transfer job you run** to move a dataset between storage systems. "Partners upload to us and can't change their software" → Transfer Family. "Migrate 50 TB from an on-premises NAS" → DataSync. If the question names **SFTP, FTPS, FTP or AS2**, it's Transfer Family (DataSync speaks NFS/SMB/HDFS).
 
 > [!warning] Trap — assuming Elastic Beanstalk costs extra or hides the resources
 > **Beanstalk itself is free — you pay only for the EC2, ELB and other resources it creates**, so "additional service cost" is never a reason to reject it. And it doesn't abstract the infrastructure away: the instances, ASG and load balancer live in your account and remain fully inspectable and tunable. Beanstalk is the answer for "deploy this app quickly with minimal setup **while keeping control of the infrastructure**" — which is exactly what distinguishes it from a fully managed container service.

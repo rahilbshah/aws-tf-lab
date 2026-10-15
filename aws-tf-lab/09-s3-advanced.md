@@ -177,7 +177,7 @@ flowchart LR
 
 ### Glacier retrieval tiers
 
-An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it sits: you issue a **restore**, which makes a temporary readable copy, and you choose how fast — faster costs more. Glacier **Instant** Retrieval and the other classes need no restore at all. Storage classes themselves are [[09-s3-intro]].
+An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it sits: you issue a **restore**, which makes a temporary readable copy, and you choose how fast — faster costs more. Glacier **Instant** Retrieval needs no restore; Intelligent-Tiering's opt-in **archive** tiers do. Storage classes themselves are [[09-s3-intro]].
 
 | Storage class | Expedited | Standard | Bulk |
 |---|---|---|---|

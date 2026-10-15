@@ -104,7 +104,7 @@ Glacier Flexible Retrieval and Deep Archive have no 128 KB floor, but they are n
 
 So the rule is: transition only data that is genuinely large and genuinely going to sit there.
 
-The other thing people get wrong on this ladder is retrieval speed. "Glacier" does not mean slow. **Glacier Instant Retrieval** returns objects in **milliseconds** — it's an archive price with normal access. Only **Flexible Retrieval** (minutes to hours) and **Deep Archive** (hours) require a restore job before you can read anything.
+The other thing people get wrong on this ladder is retrieval speed. "Glacier" does not mean slow. **Glacier Instant Retrieval** returns objects in **milliseconds** — it's an archive price with normal access. Only **Flexible Retrieval** (minutes to hours), **Deep Archive** (hours) and Intelligent-Tiering's opt-in archive tiers require a restore job before you can read anything.
 
 And if you genuinely don't know the access pattern, that's what **Intelligent-Tiering** is for. Inside the class each object sits in an internal **access tier** that S3 moves it between based on when you last touched it; these tiers are not storage classes you pick, and moving between them is not a lifecycle transition. The three automatic tiers are Frequent Access → Infrequent Access after **30** consecutive days without access → Archive Instant Access after **90**. (Confusingly, *Archive Instant Access* is a tier inside Intelligent-Tiering, not the separate Glacier Instant Retrieval class.) You pay a small per-object monitoring and automation fee and **no retrieval fees**. Objects under 128 KB aren't monitored and just stay in Frequent Access.
 
@@ -216,7 +216,7 @@ flowchart LR
 > No. S3 is a flat key→object store; `photos/cat.jpg` is one key. The console renders "folders" by splitting on `/`. Listing by **prefix** is how you emulate a directory.
 
 > [!warning] Trap — "Glacier means slow retrieval"
-> **Glacier Instant Retrieval** returns objects in **milliseconds**. Only **Flexible Retrieval** (minutes–hours) and **Deep Archive** (hours) need a restore job. "Archive but must be instantly available" → Glacier Instant Retrieval.
+> **Glacier Instant Retrieval** returns objects in **milliseconds**. Only **Flexible Retrieval** (minutes–hours), **Deep Archive** (hours) and Intelligent-Tiering's opt-in archive tiers need a restore job. "Archive but must be instantly available" → Glacier Instant Retrieval.
 
 > [!warning] Trap — durability vs availability
 > Every current class is **11 nines durable** (won't lose data) — the only exception is the legacy Reduced Redundancy Storage at 99.99%, which AWS tells you not to use. What differs is **availability** (can you reach it *right now*): Standard 99.99%, IA 99.9%, One Zone-IA 99.5%. Questions about "surviving AZ loss" are about **AZ count**, not durability.

@@ -12,7 +12,7 @@ tags: [topic, domain/secure]
 The multi-account layer of IAM. [[01-iam]] answered *"what may this principal do?"* — this note answers a different question: *"what is anyone in this account **permitted to be allowed** to do?"*
 
 > [!info] Exam TL;DR
-> - **An SCP never grants anything.** It sets a **ceiling**. Effective permissions = **intersection** of the SCP and the identity/resource policies. A user with no IAM policy still has no access, however permissive the SCP.
+> - **An SCP never grants anything.** It sets a **ceiling**. Effective permissions = **intersection** of the SCP and the identity/resource policies. With no identity or resource policy granting it, there's no access, however permissive the SCP.
 > - **SCPs do not affect the management account** — member accounts only. But they **do** cap the **root user of a member account**. That asymmetry is the single most tested SCP fact.
 > - **An `Allow` must exist at *every* level** root → OU → account. A **`Deny` at *any* level** kills it for everything beneath. This is why **`FullAWSAccess`** is attached by default — remove it without replacing it and every action in that subtree fails.
 > - SCPs require **all features enabled**; they don't exist in consolidated-billing-only mode.
@@ -176,7 +176,7 @@ flowchart LR
 non-compliant" is a **tag policy** — but do not eliminate the neighbours, because all three
 mechanisms are real and the stem's verb picks between them:
   - **Prevention** → an **SCP** (or any IAM policy) using `aws:RequestTag/x` and `aws:TagKeys`. AWS presents these as the alternative to a tag policy for the same job: *"use the `aws:TagKeys` condition to define the tag keys that your users can apply, **or** use tag policies"*. This is the answer when the stem wants resource creation actually **blocked** unless the right tag is passed.
-  - **Standardisation + reporting** → a **tag policy**. Two limits decide questions: *"Untagged resources or tags that aren't defined in the tag policy aren't evaluated for compliance"*, so a tag policy can never **require** a tag; and blocking needs *enforcement* turned on, and only for specified resource types.
+  - **Standardisation + reporting** → a **tag policy**. Two limits decide questions: *"Untagged resources or tags that aren't defined in the tag policy aren't evaluated for compliance"*, so on its own a tag policy doesn't require a tag (newer required-tag reporting can, with IaC enforcement set up); and blocking needs *enforcement* turned on, and only for specified resource types.
   - **Detection after the fact** → **AWS Config's `required-tags`** rule, which checks for missing tags but *"does not prevent you from creating resources with incorrect tags"*.
   *(Verified 2026-10-04.)*
 - **Organizations is free.** You pay only for what the member accounts use. (What consolidated billing changes about discounts is in the Comparisons table below, and in [[13-cost-optimization]].)
@@ -215,8 +215,8 @@ How it hangs together, which is what the exam actually tests:
   is tied to the role through an **`aws:SourceArn`** condition carrying the trust anchor's ARN.
   Same confused-deputy shape as every other service-principal grant in this vault.
 - A **profile** says which roles Roles Anywhere may assume and can carry **session policies**
-  to narrow the resulting permissions. A profile can reference many roles but only one session
-  policy.
+  to narrow the resulting permissions. A profile can reference many roles, plus an inline session policy and/or managed session
+  policies.
 - Trust is **account-scoped**: a certificate from any trust anchor in the account can assume
   any target role in that same account unless the role's trust policy says otherwise, and there
   is **no automatic integration with organization-wide controls**. All its resources are

@@ -75,13 +75,13 @@ AWS names four, and they line up on a single axis: **how much of your workload i
 
 Three of the four are **active/passive** — only one Region serves users, and the other waits. Only multi-site is active/active. (Hot standby is the odd one: full capacity deployed, still active/passive.)
 
-**Backup & restore** is backups plus a plan. Note what it's *for*: AWS frames it as the answer to **data loss or corruption**, not just to a cheap Region outage. It's the only strategy that gives you a copy the disaster didn't touch — which is why a corruption or ransomware scenario lands here even when the RTO sounds tight. Crucially, "backups" means more than data: to rebuild in another Region you also need the **infrastructure, configuration and application code**. AWS is emphatic that this means **infrastructure as code** — without CloudFormation or CDK, rebuilding by hand is slow and error-prone, and you'll miss your RTO. Back up your **AMIs** too, and copy them to the recovery Region.
+**Backup & restore** is backups plus a plan. Note what it's *for*: AWS frames it as the answer to **data loss or corruption**, not just to a cheap Region outage. Its whole design is a copy the disaster didn't touch — but AWS says **every** strategy needs point-in-time backups or versioning against corruption, so a corruption stem with a tight RTO still wants a faster strategy *plus* backups. Crucially, "backups" means more than data: to rebuild in another Region you also need the **infrastructure, configuration and application code**. AWS is emphatic that this means **infrastructure as code** — without CloudFormation or CDK, rebuilding by hand is slow and error-prone, and you'll miss your RTO. Back up your **AMIs** too, and copy them to the recovery Region.
 
 **Pilot light** keeps the *data* live — continuously replicated — and the core infrastructure deployed, but the application servers are **switched off**. The metaphor is exact: a pilot light is a small permanent flame you use to ignite the main burner.
 
 **Warm standby** is a complete, working, smaller copy. It could serve traffic right now if you pointed traffic at it — just not at full volume.
 
-**Multi-site active/active** runs everywhere at once and serves users from every Region. There is no failover, because nothing was ever passive. It's the most complex and most expensive, and it's the only one that gets you near-zero RTO.
+**Multi-site active/active** runs everywhere at once and serves users from every Region. There is no failover, because nothing was ever passive. It's the most complex and most expensive, and, with hot standby, it's how you get near-zero RTO.
 
 One thing the strategy names hide: **all four can be built across Availability Zones instead of Regions.** If data-residency rules pin you to a country with only one AWS Region, you use that Region's AZs as your discrete locations. You lose protection against a Region-wide event, but you keep the strategy — and you keep compliance. The exam reaches for this whenever a scenario mentions data sovereignty.
 

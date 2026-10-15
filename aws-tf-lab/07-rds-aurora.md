@@ -33,7 +33,7 @@ Somebody has to patch it. Somebody has to take backups, and — the part everyon
 
 That solves the operations problem while leaving the *architecture* untouched. RDS is still, fundamentally, a database process writing to one volume. Everything you might want on top of that — a second copy for safety, a third copy to serve reads — means physically copying the data onto another volume: a full second instance to stay available, and a read copy that is kept in sync asynchronously and therefore runs slightly behind.
 
-**Aurora** is AWS's answer to that. They kept MySQL and PostgreSQL compatibility, threw away the storage layer, and rebuilt it as a distributed, self-healing volume spread across Availability Zones and decoupled from the compute instances. That single change is where every Aurora feature comes from: storage that grows on its own, replicas that share the same data instead of copying it, fast failover, serverless capacity, and cross-region global databases. Plain RDS can't do those things — not because AWS withheld them, but because a single volume can't.
+**Aurora** is AWS's answer to that. They kept MySQL and PostgreSQL compatibility, threw away the storage layer, and rebuilt it as a distributed, self-healing volume spread across Availability Zones and decoupled from the compute instances. That single change is where every Aurora feature comes from: storage that grows on its own, replicas that share the same data instead of copying it, fast failover, serverless capacity, and cross-region global databases. Plain RDS can't do most of those (it does autoscale storage) — not because AWS withheld them, but because a single volume can't.
 
 > In one line: RDS hands AWS the operational chores; Aurora hands them over too, and re-architects the storage underneath so the limits of a single volume stop applying.
 
@@ -433,7 +433,7 @@ flowchart TB
 | Answers | "is the instance busy?" | "**which process** is busy?" | "**which query** is slow, and waiting on what?" |
 | Granularity | 1 min (60s) standard | sub-minute, configurable | continuous |
 | Stored in | CloudWatch **Metrics** | CloudWatch **Logs** (`RDSOSMetrics`, 30 days) | its own dashboard + API |
-| Alarm on it directly? | **Yes** | **No** — metric filter over the log group first | No |
+| Alarm on it directly? | **Yes** | **No** — metric filter over the log group first | **Yes** — it publishes `DBLoad` to CloudWatch |
 | Example signal | `CPUUtilization`, `FreeableMemory`, `DatabaseConnections` | RDS child processes / RDS processes / OS processes | **DB load** by waits, SQL, hosts, users |
 | Stem trigger | "alert when CPU is high" | "see how **processes or threads** use the CPU" | "find the **query** causing the load" |
 
