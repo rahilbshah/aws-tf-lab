@@ -134,6 +134,8 @@ graph TB
 - **Macie** analyses **Amazon S3** — bucket inventory, public-access posture, and sensitive-data discovery using **managed** and **custom data identifiers**. 30-day free trial.
 - **Shield Standard:** protection *"for all AWS customers... at no additional charge"* (network/transport layer). **Shield Advanced: $3,000/month, 1-year commitment**, and it includes *"certain AWS WAF usage for Shield protected resources at no additional cost for up to **50 billion AWS WAF requests per month**"* — covered, but not uncapped.
 - **WAF web ACL targets:** regional — **API Gateway REST API, Application Load Balancer, AppSync GraphQL API, Cognito user pool, App Runner, Bedrock AgentCore Gateway, Verified Access, Amplify**; global — **CloudFront**, whose web ACL *"will have a hard-coded Region of US East (N. Virginia)"*. One web ACL per resource; a CloudFront web ACL cannot also be attached to a regional resource.
+- **WAF IP set match:** *"The IP set match statement inspects the IP address of a web request against a set of IP addresses and address ranges"*; *"An IP set can hold up to 10,000 IP addresses or IP address ranges to check."* Put it in a web ACL on CloudFront to allow-list IPs at the edge. **Security groups and NACLs can't do this for CloudFront**: SGs attach to resources in a VPC and NACLs to subnets, and a distribution is neither. *(Verified 2026-10-15.)*
+- **DDoS resiliency, AWS's way:** use edge services — *"such as Amazon CloudFront, AWS Global Accelerator, and Amazon Route 53"* — with WAF and Shield; keep anything users don't need off the internet (*"make sure that those resources aren't accessible from the internet"*); scale with Auto Scaling or serverless. **Dedicated Instances** (tenancy) and **EFA** (HPC networking) are not DDoS measures. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -394,6 +396,8 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **WAF IP set for an edge allow-list** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **DDoS best practices** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 *Not yet measured — written from the video section rather than a drill. These are where courses commonly teach a stale or half-fact, so check yourself against them first; real misses get added after the next mock.*
 
 - [ ] **AWS managed key rotation is yearly, not three-yearly** — AWS changed it in May 2022 and a lot of material still says 1,095 days.
@@ -407,6 +411,7 @@ GuardDuty off everywhere you must disable it in **each Region** where it is on.
 > This note is exam-shaped. Production adds **Firewall Manager** to push WAF and security-group policies across an Organization, **Security Hub** standards (CIS, AWS Foundational) with automated remediation, KMS **multi-Region keys** for client-side encryption across Regions (see the trap above for where they do *not* help), **grants** and `kms:ViaService` (compared above), ACM **Private CA** for internal TLS, and CloudHSM where a regulator requires single-tenant hardware.
 
 ## 🔗 Docs
+- [WAF IP set match](https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-ipset-match.html) · [DDoS mitigation techniques](https://docs.aws.amazon.com/whitepapers/latest/aws-best-practices-ddos-resiliency/mitigation-techniques.html) · [Attack surface reduction](https://docs.aws.amazon.com/whitepapers/latest/aws-best-practices-ddos-resiliency/attack-surface-reduction.html); verified 2026-10-15
 - [Key policies in AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html) — *"(You can use an IAM policy to deny a permission to a KMS key without permission from a key policy.)"*, and the "explicitly allowed, and never denied" rule; **verified 2026-10-10**
 - [`access-keys-rotated`](https://docs.aws.amazon.com/config/latest/developerguide/access-keys-rotated.html) — `maxAccessKeyAge` default **90**, Periodic trigger, `AWS::IAM::User`, root keys excluded; **verified 2026-10-10**
 - [Importing certificates into ACM](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html) — no managed renewal for imported certs, the IAM store fallback, "you cannot manage your certificates from the IAM Console"; **verified 2026-10-10**

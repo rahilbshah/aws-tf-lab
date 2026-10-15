@@ -148,6 +148,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | SCP vs RCP scope | SCP limits principals in member accounts; RCP limits resources — both need Organizations all features |
 
 | Identity store **not** SAML 2.0 compatible | Build a **custom identity broker** on-prem: it authenticates against the existing system (*"which might use LDAP, Active Directory, or another system"*), then calls **STS** — *"either `AssumeRole` or `GetFederationToken`"* — and hands the temporary credentials to the app. Not Identity Center (needs a supported identity source), not an IAM policy referencing LDAP identifiers. The one exam scenario where "write a custom application" is correct |
+| Per-user S3 folders from one policy | IAM **policy variables** (Version 2012-10-17). `${aws:username}` is absent for roles/federated users → `${aws:userid}` / `${saml:sub}` |
 
 ↳ [[01-iam]] · [[01-iam-advanced]]
 
@@ -265,6 +266,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | `gp2` throughput by size | ≤170 GiB → 128 MiB/s · >170 and <334 GiB → bursts to 250 · ≥334 GiB → 250 MiB/s |
 | `gp3` vs `gp2` performance model | gp3 **does not burst** — *"can indefinitely sustain their full provisioned IOPS"*. **3,000 IOPS + 125 MiB/s included at any size**; buy up to **80,000** IOPS at **500 IOPS/GiB** (80,000 needs just **160 GiB**) and 2,000 MiB/s. 20% cheaper per GiB |
 | "peaks at 3,000 IOPS, used occasionally" | **gp2/gp3, not io1/io2** — 3,000 is exactly gp2's burst ceiling and gp3's included baseline. The io-series trigger words are **sustained**/**consistent**, not *peak* |
+| "Maximum I/O", data reproducible | Instance store on a storage optimized instance — above that instance's EBS limit |
 
 ↳ [[02-ec2]] · [[03-ami-bake]]
 
@@ -356,6 +358,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Legacy ELB free tier — who no longer gets it | Accounts opened since 2025-07-15 get the credits-based Free plan instead |
 | Legacy ELB free tier allowance | 750 LB-hrs/month (**shared with Classic LBs**) + 15 LCUs. ⚠️ Dated pricing — check current; accounts opened since 2025-07-15 get the credits-based Free plan instead, so an ALB spends credits from hour one |
 | Launch configuration status | Deprecated predecessor to launch templates |
+| Can an ASG span Regions? | No — one VPC, one Region. Separate ASG per Region + Route 53 / Global Accelerator |
+| Minimum capacity, load-balanced fleet across AZs | ≥ 2 in two AZs (min 1 = down until a replacement launches) |
 
 ↳ [[04-alb-asg]]
 
@@ -479,6 +483,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Dedicated DX port speeds | 1 / 10 / 100 Gbps (400 on some) |
 | DX encryption by default | Not encrypted |
 | Setup time, VPN vs DX | VPN minutes–hours; DX weeks–months |
+| VPN redundancy against a failed customer gateway | Second CGW device + second VPN connection — the two tunnels share your one device |
+| Redundancy for a VPC peering connection | None needed — peering has no single point of failure |
 
 ↳ [[05-vpc-core]] · [[05-vpc-endpoints-peering]] · [[05-vpc-hybrid]] · [[05-vpc-security]]
 
@@ -584,6 +590,10 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Other name for lazy loading | Cache-aside — populates only on a miss |
 | Write-through, in three words | Writes cache and DB together — always fresh, slower writes |
 | Cache hit latency vs DB read | Microseconds (sub-millisecond) vs milliseconds |
+| Multi-AZ: OS patch vs engine upgrade | OS patch: standby first → failover → old primary (minimal impact). Engine upgrade: both at once (downtime) |
+| Aurora with no replica — where is the new primary? | Recreated in the **same AZ**, typically < 10 min; add a reader in another AZ for fast failover |
+| Provisioned → Serverless v2, minimal downtime | Same cluster (mixed configuration): add a `db.serverless` reader, fail over to it |
+| Encrypt a live RDS DB with no data loss | snapshot → encrypted copy → restore, **plus DMS CDC** until in sync, then cut over |
 
 ↳ [[07-rds-aurora]] · [[08-elasticache]]
 
@@ -708,6 +718,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | "encrypt each file with a different key" | **SSE-S3 already does this** — *"Amazon S3 encrypts each object with a unique key. As an additional safeguard, it encrypts the key itself with a key that it rotates regularly."* One bucket, plain SSE-S3; no splitting into logical groups, no SSE-KMS encryption context. AES-**GCM** 256-bit. Reach for SSE-KMS only for an **audit trail / key policy / your own rotation** |
 | What S3 server-side encryption does **not** cover | *"Server-side encryption encrypts only the object data, not the object metadata"* |
+| Object Ownership settings | Bucket owner enforced (default, ACLs off) · Bucket owner preferred (owner owns uploads sent with `bucket-owner-full-control`) · Object writer (uploader owns) |
 
 ↳ [[09-s3-advanced]] · [[09-s3-intro]] · [[09-s3-security]]
 
@@ -831,6 +842,9 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Hosted zone and domain ownership | `CreateHostedZone` takes **no proof of ownership** and never checks. Only name validations: well-formedness (`InvalidDomainName`) and the **TLD prohibition**. AWS permits **duplicate zone names** (*"more than one hosted zone with the same name"*, four distinct NS each). The *"permission to administer"* line under Restrictions is a rule to the reader, **not** an API check — and AWS's bar is *administer*, not own |
 | Health checks — what "AWS endpoint" means | A **billing-relationship** term, not infrastructure: provisioned in the same account **OR billed to** it ("within or **linked to**"). A sibling account under one payer = AWS endpoint (**50 free**, then $0.50/mo). A **stranger's** AWS account = **non-AWS** endpoint ($0.75/mo, no free allowance) despite running on AWS. 50 aggregate across all Regions, **no rollover**. Calculated + CloudWatch-metric checks bill at the AWS rate. **ELB** and **S3 website-endpoint** checks are **not billed at all** |
 | CloudFront geo restriction — cost and reliability | *"There is no additional charge for configuring geographic restrictions"* (feature only; traffic still bills). **99.8%** accurate and **fails open** — *"If CloudFront can't determine a user's location, CloudFront serves the content."* Distribution-wide, not per-path. Does **not** apply to certificate-validation requests for CloudFront managed certs |
+| ALB reachable only through CloudFront | Custom header the ALB requires and/or ALB SG = CloudFront managed prefix list; or VPC origins. Not OAI |
+| Different paths → different origins | Cache behaviours (path pattern → origin); default `*` is processed last |
+| Encrypt specific form fields end to end | CloudFront **field-level encryption** (up to 10 POST fields) |
 
 ↳ [[10-route53]] · [[11-cloudfront]]
 
@@ -941,6 +955,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Block / file / object → services | Block = EBS, instance store; File = EFS, FSx; Object = S3, Glacier |
 
 | EFS Archive — Regional vs One Zone | AWS states it **affirmatively**: *"supported on EFS Regional file systems using EFS's default Elastic Throughput mode"*, and the storage-class table has no One Zone entry for Archive. Carry the affirmative, not the flat negative |
+| Where a Snowball import lands | S3 objects; an S3 Lifecycle rule afterwards to reach Glacier |
 
 ↳ [[12-storage-extras]]
 
@@ -1051,6 +1066,8 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Cost Explorer API pagination | **`GetCostAndUsage` only** (`NextPageToken`, `InvalidNextTokenException`). **`GetCostForecast` has no pagination at all.** And the API is the documented *query* interface, **not the only** programmatic route — **CUR** is the "most comprehensive" set, delivered to S3 |
 | Cost Anomaly Detection — threshold or not | **Detection** needs no threshold: *"Even if an anomaly is below the alert threshold, the machine learning model continues to detect spend anomalies."* The **alert subscription** does take one (dollar or %, two combinable AND/OR). vs **Budgets**, which needs a number to detect anything. Alerting: individual (needs **SNS**), daily summary (top 10, 00:00 UTC), weekly |
 | ElastiCache Global Datastore figures | *"typical cross-region replication latency of under 1 second"*; promote a replica *"in less than 1 minute"*. Feature page only — the Developer Guide publishes **no** figure. Typical, not a bound (replication is async) |
+| 24×7 fleet with a steady floor | RIs / Savings Plan on the baseline (e.g. ASG minimum); On-Demand + Spot above it |
+| Track service-quota usage | Quota Monitor (TA refresh + EventBridge + SNS) or Service Quotas + CloudWatch alarms; TA EventBridge needs Business Support+ / Enterprise / Unified Ops |
 
 ↳ [[13-cost-optimization]] · [[14-dr-resilience]]
 
@@ -1294,6 +1311,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | Lambda layers | *".zip file archive that contains supplementary code or data"* — smaller packages, deps separate from logic, **sharing deps across functions**. **Max 5 per function**, **.zip only** (container images bake deps in). Can *increase* cold start (AWS: Go/Rust) |
 | Lambda metric to alarm on for runaway scaling | **`ConcurrentExecutions`** — instances currently processing events; hitting the Region quota or the function's reserved concurrency causes **throttling**. Siblings: `ProvisionedConcurrentExecutions`, `ProvisionedConcurrencyUtilization` (**not emitted when idle** — breaks naive alarms), `UnreservedConcurrentExecutions`, `ClaimedAccountConcurrency` |
+| DynamoDB availability by default | 3 AZs, 99.99% SLA; global tables 99.999% |
 
 ↳ [[17-containers]] · [[19-serverless]]
 
@@ -1407,6 +1425,11 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | `access-keys-rotated` Config rule | Checks **active** IAM access keys rotated within **`maxAccessKeyAge`** (int, **default 90** days). Trigger **Periodic**, resource `AWS::IAM::User`, and **excludes root-user access keys**. Remediation: Config `ComplianceChangeNotification` → EventBridge → Lambda |
 | ACM imported certificates | A third-party CA cert **can** be imported, and behaves like an ACM-issued one **except that ACM gives it no managed renewal** — you own expiry and reimport. "Must auto-renew" eliminates it. The legacy **IAM** server-certificate store is the fallback where ACM is unsupported: **API-only** (`UploadServerCertificate`; *"you cannot manage your certificates from the IAM Console"*), and you **cannot** upload an ACM cert into IAM |
 | KMS — deny is one-sided, quoted | *"(You can use an IAM policy to **deny** a permission to a KMS key **without permission from a key policy**.)"* vs the allow direction: *"Without permission from the key policy, IAM policies that allow permissions have no effect."* Governing rule: *"explicitly allowed, and **never denied**"* |
+| IP allow-list in front of CloudFront | WAF **IP set** match (≤ 10,000 entries) in a web ACL — not a security group or NACL |
+| DDoS best practices | Edge services (CloudFront, Global Accelerator, Route 53) + WAF/Shield, private back ends, Auto Scaling. Not Dedicated Instances / EFA |
+| Encrypt CloudTrail log files | Already on by default (SSE-KMS from the console, else SSE-S3) |
+| Warn about scheduled events on my EC2 instances | AWS Health **account-specific** events → EventBridge → SNS |
+| Find API errors in CloudTrail | `errorCode` / `errorMessage`; query with Athena |
 
 ↳ [[20-monitoring]] · [[21-security]]
 
@@ -1581,5 +1604,6 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Redshift DR across Regions | **Cross-Region snapshot copy** — a **cluster setting**, not a scheduled job you build. Copies **automated *or* manual** snapshots to **one destination Region at a time**; copied automated snapshots get **their own retention, default 7 days**; change destination = **disable then re-enable**; **KMS-encrypted** cluster needs a **snapshot copy grant** for a CMK **in the destination Region** |
 | Redshift snapshot retention | Automated: Redshift-managed S3, default **1 day**, settable **1–35** on RA3/RG, `0` disables (not allowed on RA3/RG). Only Redshift deletes automated ones, and it *"retains the latest automated snapshot until you disable automated snapshots or delete the cluster."* **Manual: retained indefinitely**, even after the cluster is deleted |
 | AppSync unit vs pipeline resolver | **Unit** = one operation, one data source. **Pipeline** = a request/response handler plus *"a list of functions"* run in sequence, each result passed on as `ctx.prev.result`; the pipeline resolver itself *"is not linked to any data source"*. So **one client call reads/writes across several DynamoDB tables server-side** — the answer for "aggregate multiple tables without hurting baseline performance". Not Lambda fan-out, not Athena Federated Query (analytical), not CloudFront Functions (can't reach DynamoDB) |
+| Amplify Hosting vs S3 + CloudFront | Amplify = convenience (AWS recommends it for S3 sites); MOST cost-effective = S3 + CloudFront |
 
 ↳ [[22-analytics]] · [[23-machine-learning]] · [[24-other-services]] · [[25-well-architected]]

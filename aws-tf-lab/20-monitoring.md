@@ -217,6 +217,9 @@ graph TB
 - **AWS X-Ray** traces a request across services. Resources send **segments** (resource name, request, response, work done, errors); **subsegments** *"provide more granular timing information and details about downstream calls"* — an AWS service call, an external HTTP API or an SQL database. X-Ray *"groups segments that have a common request into traces"* and draws a **service map** showing each hop's latency — which is how you find the slow one. It **samples** by default rather than recording every request. *(Verified 2026-10-14.)*
 - **ACM expiry:** metric **`DaysToExpiry`**, namespace **`AWS/CertificateManager`**, dimension **`CertificateArn`**, published **twice per day** until the certificate expires. Separately, **AWS Health** events (`aws.health` / *AWS Health Event*) carry **`AWS_ACM_RENEWAL_STATE_CHANGE`**, **`CAA_CHECK_FAILURE`**, **`AWS_ACM_RENEWAL_FAILURE`** for **EventBridge → SNS**.
 *Verified against AWS docs 2026-09-29.*
+- **CloudTrail log files are encrypted by default:** *"By default, when you create a trail in the CloudTrail console, your event log files and digest files are encrypted with a KMS key. If you choose not to enable SSE-KMS encryption, your event log files and digest files are encrypted using Amazon S3 server-side encryption (SSE)."* So "encrypt the CloudTrail logs" needs no extra setup; choose SSE-KMS only for your own key or key-use auditing. *(Verified 2026-10-15.)*
+- **AWS Health: account-specific vs public events.** *"Account-specific events affect your account and resources, such as an event that tells you about a required update to an Amazon EC2 instance"*; public events are about a service's Regional availability. To be warned about scheduled events on **your** instances, *"You can use Amazon EventBridge to detect and react to AWS Health events"* with an **SNS** target — the public service-health page can't tell you about your instance. *(Verified 2026-10-15.)*
+- **Finding errors in CloudTrail:** every record has `errorCode` / `errorMessage`, and the message *"includes messages for authorization failures"*. Query the logs in place with **Athena** — *"You can use Athena to query these log files directly from Amazon S3"*. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -392,6 +395,9 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **CloudTrail logs encrypted by default** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **AWS Health account-specific events** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **CloudTrail errors via Athena** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 *Not yet measured — I wrote this note from the video section, not from a drill. These are the places courses commonly teach a stale or half-fact, so check yourself against them first; real misses get added after the next mock.*
 
 - [ ] **CloudWatch vs CloudTrail vs Config** — the one discrimination this whole topic reduces to. Behaviour / caller / configuration-over-time. Getting this reflexive is worth more than any individual limit.
@@ -404,6 +410,7 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [How CloudTrail works (default encryption)](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html) · [AWS Health public vs account events](https://docs.aws.amazon.com/health/latest/ug/about-public-events.html) · [Health + EventBridge](https://docs.aws.amazon.com/health/latest/ug/cloudwatch-events-health.html) · [CloudTrail record contents](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html) · [Athena + CloudTrail](https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html); verified 2026-10-15
 - [List the available CloudWatch metrics for your instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/viewing_metrics_with_cloudwatch.html) — `Disk*` = instance store only ("either the value is 0 or the metric is not reported"), the per-instance `EBS*` metrics in `AWS/EC2`; **verified 2026-10-10**
 - [Events from AWS services via CloudTrail](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-service-event-cloudtrail.html) — the exact detail-type, default-bus-only, trail-must-be-logging, per-Region buses, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS` for read-only events; **verified 2026-10-10**
 - [`PutRetentionPolicy`](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html) — the 22 enumerated retention values, `DeleteRetentionPolicy` for no expiry, up-to-72-hour deletion lag; **verified 2026-10-10**

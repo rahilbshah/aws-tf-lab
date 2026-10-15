@@ -50,7 +50,7 @@ Be careful with "public" there. AWS's requirement is that *"The IP address must 
 
 The tunnel itself is a third object joining the two: VGW/TGW on one end, CGW on the other. Routing across it is either **static** or **BGP** (dynamic).
 
-One thing you don't get to choose: every Site-to-Site VPN connection comes with **two tunnels**, always. That's the built-in redundancy — the VPN has HA baked in before you've designed any.
+One thing you don't get to choose: every Site-to-Site VPN connection comes with **two tunnels**, always. That's the built-in redundancy on the **AWS side** — but both tunnels end on *your* customer gateway device, so it is still a single point of failure (see the trap below).
 
 > In one line: VGW is AWS's end, CGW is a description of *your* end, and every connection ships with two tunnels whether you asked for them or not.
 
@@ -235,8 +235,12 @@ flowchart LR
 > [!warning] Trap — "turn on acceleration for the VPN on the virtual private gateway"
 > **Accelerated Site-to-Site VPN** is the documented way to make a VPN path more consistent without buying Direct Connect: it *"uses AWS Global Accelerator to route traffic from your on-premises network to an AWS edge location that is closest to your customer gateway device"*, then carries it over the AWS global network *"to avoid network disruptions that might occur when traffic is routed over the public internet"*. The catch is the drillable part: *"Acceleration is only supported for Site-to-Site VPN connections that are attached to a transit gateway. Virtual private gateways do not support accelerated VPN connections."* And it can't be switched on for an existing VPN — you create a new one. Direct Connect stays the answer for a private, dedicated circuit. *(Verified 2026-10-14.)*
 
+> [!warning] Trap — the VPN's two tunnels as the answer to a failed customer gateway
+> Two tunnels don't help if your on-premises device dies. AWS: *"To protect against a loss of connectivity in case your customer gateway device becomes unavailable, you can set up a second Site-to-Site VPN connection to your VPC and virtual private gateway by adding a second customer gateway device."* Both devices advertise the same routes and BGP picks the working one. *(Verified 2026-10-15.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **second customer gateway for VPN redundancy** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Whole topic was cold** at orientation — learned fresh here, so it needs re-reading rather than recall.
 - [ ] **DX is NOT encrypted by default** — the single most-tested nuance; encrypt via VPN-over-DX.
 - [ ] **VGW (AWS side) vs CGW (on-prem side)** — which is which.
@@ -244,6 +248,7 @@ flowchart LR
 - [ ] **Direct Connect Gateway** = one DX to multiple regions; non-transitive *by design*, but a supernet advertised from on-prem defeats it.
 
 ## 🔗 Docs
+- [Redundant Site-to-Site VPN connections](https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-redundant-connection.html) — second customer gateway device; verified 2026-10-15
 - [Direct Connect pricing elements (port hours + outbound data transfer)](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html)
 - [Direct Connect hosted connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/hosted_connection.html) · [dedicated connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/dedicated_connection.html)
 

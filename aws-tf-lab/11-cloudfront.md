@@ -146,6 +146,8 @@ flowchart LR
 
 > [!warning] Trap — "geo restriction will guarantee the content never leaves these countries"
 > Two reasons it will not. It is **99.8%** accurate, and when CloudFront **cannot** determine a location it **serves the content** rather than blocking it — *"CloudFront serves the content that the user has requested."* A compliance requirement phrased as "must not be accessible from X under any circumstances" is therefore not satisfied by this feature alone; that is signed URLs/cookies or an authorisation layer, with geo restriction as defence in depth. The free-ness is also narrower than it sounds: **no additional charge** covers CloudFront's own country-level allow/block list, not the third-party geolocation service (Digital Element, MaxMind) you would need for sub-country granularity, which is a separately paid external account.
+- **Keep viewers from bypassing CloudFront to the ALB:** (1) CloudFront adds a secret **custom HTTP header** that an ALB listener rule requires; (2) the ALB security group allows only the **CloudFront managed prefix list**, which *"prevents non-CloudFront traffic from reaching your origin"* — and *"CloudFront maintains the managed prefix list"*; (3) **VPC origins** put the ALB in a private subnet. OAI is S3-only, so it is not the answer here. *(Verified 2026-10-15.)*
+- **Cache behaviours route by path.** Each behaviour has a path pattern (e.g. `images/*.jpg`) and *"the origin to which you want CloudFront to forward your requests"* — so one distribution can send images, API calls and video to different origins. *"The default cache behavior is always the last to be processed. Other cache behaviors are processed in the order in which they're listed"*. **Field-level encryption** encrypts specific POST fields (*"up to 10 data fields"*) at the edge with your public key — *"Field-level encryption adds an additional layer of security"* beyond HTTPS. Price class only picks edge locations; it never picks an origin. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -213,6 +215,7 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 
 > [!warning] Not yet applied
 > **Not applied or verified live** as of 2026-09-04 — the practical was deferred. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
+- [Restrict access to an ALB](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html) · [Managed prefix list](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/LocationsOfEdgeServers.html) · [VPC origins](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html) · [Cache behaviour settings](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesCacheBehavior.html) · [Field-level encryption](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/field-level-encryption.html); verified 2026-10-15
 - [Custom error responses](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GeneratingCustomErrorResponses.html) · [Configure them](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/custom-error-pages-procedure.html) — keep pages in S3, not on the failing origin · [Error caching](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/custom-error-pages-expiration.html) — 10 s default; verified 2026-10-15
 
 ## Traps
@@ -247,8 +250,13 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > [!warning] Trap — geo restriction vs geolocation routing
 > **CloudFront geo restriction** decides *whether a country may access the content at all* (allow/block list, enforced at the edge). **Route 53 geolocation routing** ([[10-route53]]) decides *which endpoint a country is sent to*. "Block viewers in country X for licensing reasons" → CloudFront. "Send German users to the German site" → Route 53.
 
+> [!warning] Trap — locking an ALB origin with OAI or signed URLs
+> **OAI is for S3 origins.** Signed URLs/cookies control *viewers* going through CloudFront, not traffic that skips it. To make the ALB reachable only via CloudFront: a **custom header** the ALB requires, and/or the ALB security group restricted to the **CloudFront managed prefix list** (or a private ALB via **VPC origins**). *(Verified 2026-10-15.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **locking an ALB to CloudFront** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **cache behaviours and field-level encryption** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Reached for invalidation first** when asked how to fix a stale object. Correct, but it's the emergency tool — **versioned filenames** are the design AWS recommends.
 - [ ] **Hadn't met regional edge caches** or the fact that CloudFront accelerates **dynamic**, uncacheable content too.
 - [ ] **OAC's hard constraint** — S3 *website* endpoint = custom origin = no OAC. This is exactly why the [[10-route53]] buckets had to be public.

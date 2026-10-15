@@ -171,6 +171,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - **Cost Explorer** analyses and forecasts cost/usage and produces **Savings Plans recommendations**. **AWS Budgets** alerts on **cost or usage** thresholds. **Cost Anomaly Detection** *detects* anomalies with no threshold you set (ML); its alert subscription then takes a $ or % threshold. **Cost allocation tags** and **cost categories** slice the bill by team/app/environment.
 - **Consolidated billing** (AWS Organizations) is **free** and **combines usage across accounts**, so volume discounts, RI discounts and Savings Plans are shared organization-wide.
 - ⚠️ Discount percentages are AWS's stated maxima and change over time; the exam tests the **ordering and the trade-off**, not the exact figure. Check current pricing before relying on a number.
+- **Layer the purchase for a 24×7 fleet with a steady floor:** cover the always-on baseline (e.g. the ASG minimum) with **RIs or a Savings Plan**, and run the variable layer on **On-Demand + Spot** in a mixed-instances ASG. An "On-Demand base" is billed at full price unless a commitment covers it: RIs are a *"billing discount applied to the use of On-Demand Instances"*, and in a mixed group *"you can use Reserved Instances or a Savings Plans to receive discounts on the regular On-Demand Instance pricing."* *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -315,8 +316,13 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 > [!warning] Trap — Cost Explorer vs Budgets vs Compute Optimizer
 > Three tools, three jobs. **Cost Explorer** analyses what already happened and forecasts. **Budgets** alerts you when spend or usage crosses a threshold you set. **Compute Optimizer** looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.
 
+> [!warning] Trap — tracking service-quota usage with a bare SNS topic, or on the Developer plan
+> AWS's **Quota Monitor** solution refreshes Trusted Advisor checks on a schedule (its Lambda *"executes at an interval of 24 hours to refresh Trusted Advisor checks"*) and routes the events through EventBridge to SNS; the other route is **Service Quotas + CloudWatch alarms**. Trusted Advisor EventBridge rules need a paid tier above Developer: *"You must have an AWS Business Support+, AWS Enterprise Support, or AWS Unified Operations plan"*. *(Verified 2026-10-15.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **RIs/SP on the steady floor, On-Demand + Spot above** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **tracking service-quota usage** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Compute Optimizer is the right-sizing recommender** (trainer-sourced,
   drill-mock02-concepts, 2026-10-10): missed marked **"sure"** — got the scale-out half (ASG +
   ALB) and missed that vertical right-sizing comes from **Compute Optimizer**. Two misses now on
@@ -329,6 +335,7 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 - [ ] **Non-compute levers** — gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
 
 ## 🔗 Docs
+- [Mixed-instances groups](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-mixed-instances-groups.html) · [Reserved Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html) · [Quota Monitor architecture](https://docs.aws.amazon.com/solutions/latest/quota-monitor-for-aws/architecture-overview.html) · [Trusted Advisor + EventBridge](https://docs.aws.amazon.com/awssupport/latest/user/cloudwatch-events-ta.html); verified 2026-10-15
 - [Cost Explorer rightsizing calculations](https://docs.aws.amazon.com/cost-management/latest/userguide/understanding-rr-calc.html) — ML engine identifies optimal EC2 instance types · [What is Compute Optimizer](https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html) — supported resource list; verified 2026-10-14
 - [Working with read replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) — same-Region replica replication traffic not charged (**cite this, not the pricing page** — the pricing table carries only the Multi-AZ line); **verified 2026-10-10**
 - [Elastic Load Balancing FAQs](https://aws.amazon.com/elasticloadbalancing/faqs/) — cross-zone data transfer free on ALB and CLB, charged on NLB; **verified 2026-10-10**

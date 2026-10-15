@@ -136,6 +136,7 @@ a subnet behind a NACL. Two consequences:
 > `us-east-1` rule from [[21-security#ACM — where the certificate has to live]]. A stem that says
 > "regional API" and offers a `us-east-1` certificate is offering the CloudFront answer to a
 > non-CloudFront question.
+- **DynamoDB is highly available with nothing to configure:** *"By default, DynamoDB automatically replicates your data across three Availability Zones to provide high durability and a 99.99% availability SLA."* *"Global tables provide multi-active replication of your data across your chosen AWS Regions with 99.999% availability."* *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -246,6 +247,7 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration. The cost-optimisation answer to "this function is slow and expensive" is often **raise the memory**.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **DynamoDB is multi-AZ by default** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **Lambda layers and `ConcurrentExecutions`** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). A select-three on Lambda design considerations. The VPC-egress leg was well covered by the existing public-subnet trap, but **layers were not mentioned in this note at all** and `ConcurrentExecutions` appeared nowhere in the vault — two of the three legs were missing. Now written above.
 
 - [ ] **DynamoDB versus Aurora Serverless when both "scale"** — the discriminator is not which scales, it is **when you must decide your queries**: DynamoDB before the table exists, SQL any time afterwards.
@@ -260,6 +262,7 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [What is DynamoDB (3 AZs, 99.99%; global tables 99.999%)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html); verified 2026-10-15
 - [SNS message delivery retries](https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html) — 5XX and 429 retryable, AWS-managed delivery policy, only HTTP/S policies customisable; with [Lambda concurrency](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html) for the 1,000-per-Region default; **verified 2026-10-14**
 - [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) — snapshot mechanism, Java/Python/.NET runtimes, versions only, no provisioned concurrency, pricing; **verified 2026-10-14**
 - [DynamoDB Time to Live](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html) — Number epoch-seconds attribute, deletion within a few days, Streams service deletions, Global Tables replicated-delete charge; **verified 2026-10-14**

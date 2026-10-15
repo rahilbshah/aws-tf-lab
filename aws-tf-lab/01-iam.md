@@ -344,6 +344,7 @@ permissions. The mechanics of both are above, under *When the users already exis
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Trust policy vs permissions policy** — keeps biting outside this note too (the VPC flow-log role, [[05-vpc-security]]): the **trust policy** says *who may assume* the role, the **permissions policy** says *what they may do* once they have. *(Moved here from 05-vpc-security 2026-10-15 — this note owns it.)*
 - [ ] **Enumerating IAM core objects under "list them" framing** — forgot Role in the orient step, even though I clearly knew it (used it correctly in the very next answer). Quick recall under enumeration is a different muscle than recognising/using a concept.
 - [ ] **Reading plan symbols** — was unsure whether renaming a user shows `~` (in-place) or `-/+` (replacement). The deeper habit: trust the plan output, never your memory of provider behavior. Verify against source for anything you'd put in notes.
 - [ ] **AD groups mapped to IAM roles — missed while marked _sure_** (mock 2026-08-28, trainer-sourced). Directory Service and IAM Identity Center were **absent from this note** until 2026-08-29. Trigger phrase to catch: *"users already exist in Active Directory."*

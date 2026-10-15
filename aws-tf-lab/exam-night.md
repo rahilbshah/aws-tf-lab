@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 434 pointers · ~34 min read*
+*176 recall hooks · 440 pointers · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -78,6 +78,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "require MFA before these CLI calls": GetSessionToken vs AssumeRole vs GetFederationToken
 - Control Tower vs Organizations
 - aws:SourceIp behind a VPC endpoint
+- ${aws:username} to scope federated users' S3 folders
 
 **Failure modes**
 - the deny-only SCP that locked out the whole organization  ↳ [[01-iam-advanced#Worked examples|open]]
@@ -302,6 +303,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - "VGW vs CGW"
 - "Client VPN = Site-to-Site VPN"
 - "turn on acceleration for the VPN on the virtual private gateway"
+- the VPN's two tunnels as the answer to a failed customer gateway
 
 **Failure modes**
 - betting a launch on Direct Connect lead time  ↳ [[05-vpc-hybrid#Worked examples|open]]
@@ -346,6 +348,8 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - assuming an Aurora failover always promotes a replica
 - Aurora replica lag is like RDS replica lag
 - "RDS is serverless / auto-scales like Aurora"
+- OS patching and engine upgrades treated the same on Multi-AZ
+- snapshot → encrypted copy → restore on a busy database
 
 **Failure modes**
 - "we'll encrypt the database later"  ↳ [[07-rds-aurora#Worked examples|open]]
@@ -570,6 +574,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - a Global Accelerator traffic dial at 10% sends 10% of all users
 - "static error page if the website goes down" answered with Route 53 failover
 - geo restriction vs geolocation routing
+- locking an ALB origin with OAI or signed URLs
 
 **Failure modes**
 - the bucket policy that trusts every CloudFront distribution on earth  ↳ [[11-cloudfront#Worked examples|open]]
@@ -646,6 +651,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - instances talking to each other over public or Elastic IPs
 - Graviton for a Windows or x86-only workload
 - Cost Explorer vs Budgets vs Compute Optimizer
+- tracking service-quota usage with a bare SNS topic, or on the Developer plan
 
 **Failure modes**
 - Spot for the wrong tier  ↳ [[13-cost-optimization#Worked examples|open]]

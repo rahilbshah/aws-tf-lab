@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*133 comparison tables · 269 discriminators · ~57 min read*
+*133 comparison tables · 275 discriminators · ~58 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -67,6 +67,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Control Tower vs Organizations** — Organizations is the primitive: accounts, OUs, SCPs. Control Tower orchestrates it — it builds a landing zone using Organizations + IAM Identity Center + Service Catalog, provides Account Factory for standardised account vending, and applies controls/guardrails in three flavours: preventive, implemented using SCPs, RCPs and declarative policies (all part of Organizations); detective, implemented using AWS Config rules; and proactive, implemented using CloudFormation hooks, plus drift detection.  
   ↳ [[01-iam-advanced|note]]
 - **aws:SourceIp behind a VPC endpoint** — The key is simply absent for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic.  
+  ↳ [[01-iam-advanced|note]]
+- **${aws:username} to scope federated users' S3 folders** — For a user who signed in through a corporate IdP (SAML/OIDC) and is acting as a role, aws:username is not present, so a policy keyed on it matches nothing.  
   ↳ [[01-iam-advanced|note]]
 
 
@@ -204,6 +206,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"turn on acceleration for the VPN on the virtual private gateway"** — Accelerated Site-to-Site VPN is the documented way to make a VPN path more consistent without buying Direct Connect: it "uses AWS Global Accelerator to route traffic from your on-premises network to an AWS edge location that is closest to your customer gateway device", then carries it over the AWS global network "to avoid network disruptions that might occur when traffic is routed over the public internet".  
   ↳ [[05-vpc-hybrid#Worked examples|note]]
+- **the VPN's two tunnels as the answer to a failed customer gateway** — Two tunnels don't help if your on-premises device dies. AWS: "To protect against a loss of connectivity in case your customer gateway device becomes unavailable, you can set up a second Site-to-Site VPN connection to your VPC and virtual private gateway by adding a second customer gateway device." Both devices advertise the same routes and BGP picks the working one.  
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 
 
 ## [[07-rds-aurora|07 – RDS & Aurora]]
@@ -231,6 +235,10 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Aurora replica lag is like RDS replica lag** — No — Aurora replicas share one storage volume (no data copy), so lag is ~milliseconds; RDS read replicas copy data asynchronously and can lag seconds.  
   ↳ [[07-rds-aurora#Worked examples|note]]
 - **"RDS is serverless / auto-scales like Aurora"** — Plain RDS is provisioned instances, and true serverless plus global <1s replication are Aurora features — "serverless relational" → Aurora Serverless v2.  
+  ↳ [[07-rds-aurora#Worked examples|note]]
+- **OS patching and engine upgrades treated the same on Multi-AZ** — OS patches on a Multi-AZ DB instance roll: standby first, fail over, then the old primary — minimal impact.  
+  ↳ [[07-rds-aurora#Worked examples|note]]
+- **snapshot → encrypted copy → restore on a busy database** — It encrypts, but the snapshot is point-in-time: every write after it is missing from the new instance.  
   ↳ [[07-rds-aurora#Worked examples|note]]
 
 
@@ -382,6 +390,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[11-cloudfront#Traps|note]]
 - **geo restriction vs geolocation routing** — CloudFront geo restriction decides whether a country may access the content at all (allow/block list, enforced at the edge). Route 53 geolocation routing ([[10-route53]]) decides which endpoint a country is sent to. "Block viewers in country X for licensing reasons" → CloudFront.  
   ↳ [[11-cloudfront#Traps|note]]
+- **locking an ALB origin with OAI or signed URLs** — OAI is for S3 origins. Signed URLs/cookies control viewers going through CloudFront, not traffic that skips it.  
+  ↳ [[11-cloudfront#Traps|note]]
 
 
 ## [[12-storage-extras|12 – Storage extras (EFS, FSx, Storage Gateway, DataSync, Snow, Backup)]]
@@ -431,6 +441,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **Graviton for a Windows or x86-only workload** — For a Linux or containerised workload asked to cut EC2 or Fargate compute cost with no architecture constraint, moving to Graviton is a documented lever (figures in Key facts).  
   ↳ [[13-cost-optimization#Traps|note]]
 - **Cost Explorer vs Budgets vs Compute Optimizer** — Three tools, three jobs. Cost Explorer analyses what already happened and forecasts. Budgets alerts you when spend or usage crosses a threshold you set. Compute Optimizer looks at CloudWatch metrics and says the resource is the wrong size. "Notify us before we exceed $5,000" → Budgets, not Cost Explorer.  
+  ↳ [[13-cost-optimization#Traps|note]]
+- **tracking service-quota usage with a bare SNS topic, or on the Developer plan** — AWS's Quota Monitor solution refreshes Trusted Advisor checks on a schedule (its Lambda "executes at an interval of 24 hours to refresh Trusted Advisor checks") and routes the events through EventBridge to SNS; the other route is Service Quotas + CloudWatch alarms.  
   ↳ [[13-cost-optimization#Traps|note]]
 
 

@@ -313,6 +313,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - **DMS Serverless** vs **DMS Standard**: Serverless auto-provisions and auto-scales capacity with built-in HA and pay-for-use, and removes capacity estimation, provisioning and engine patching. You define a **replication configuration**, not a replication instance. Trigger: spiky/variable volume + least operational overhead.
 - **DMS with Snowball Edge — RETIRED, still examinable:** **AWS SCT + a local DMS Agent** extract to the Edge device → ship back → AWS loads into an **S3** staging bucket → a **remote DMS task** loads S3 into the target. Cloud DMS does not do the extraction. AWS has removed this chapter from the DMS user guide; the Snow Family is closed to new customers ([[12-storage-extras]]). Modern answer: **DataSync** or **AWS Data Transfer Terminal**.
 *Verified against AWS docs 2026-09-30.*
+- **AWS Amplify Hosting** deploys static sites to a CloudFront-backed CDN, and AWS's S3 docs recommend it for convenience: *"We recommend that you use AWS Amplify Hosting to host static website content stored on S3."* For a **MOST cost-effective** stem, plain **S3 + CloudFront** avoids Amplify's per-GB-served and build-minute charges (an inference from pricing — ⚠️ check current pricing). *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -414,6 +415,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Directory Service is for **corporate/workforce** identity — employees, domain-joined machines, AD-aware applications. For a **consumer or SaaS application's own users**, including social sign-in and scaling to millions, the answer is **Amazon Cognito**. AWS's own guidance makes this split explicitly.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **Amplify Hosting vs S3 + CloudFront** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **AppSync pipeline resolvers** (trainer-sourced, mock-03, 2026-10-10, answered `guess`). Needed efficient reads/writes across multiple DynamoDB tables from a serverless microservice app. The note had AppSync as "managed GraphQL fronting multiple data sources" but never named **pipeline resolvers** or the single-call aggregation that is the actual discriminator. Note's own coverage table had already flagged AppSync as `thin`. Now thickened above.
 
 - [ ] **Written 2026-09-26 from a coverage audit** — these are the seven in-scope services the vault had missed. Not drilled or mocked yet.
@@ -423,6 +425,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [S3 static website hosting (Amplify recommendation)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html); verified 2026-10-15
 - [RDS for SQL Server with self-managed AD](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_SQLServer_SelfManagedActiveDirectory.html) — joins a self-managed AD wherever it is hosted; verified 2026-10-14
 - [AWS Batch multi-node parallel jobs](https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)
 - [What is AWS App2Container](https://docs.aws.amazon.com/app2container/latest/UserGuide/what-is-a2c.html) · [DynamoDB auto scaling](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AutoScaling.html)

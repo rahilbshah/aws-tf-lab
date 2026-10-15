@@ -181,6 +181,7 @@ flowchart TB
 > accounts *inside one* VPC, using its implicit routing. "Many accounts, same network,
 > lowest complexity, same Organization" → **VPC sharing via RAM**, not peering and not
 > Transit Gateway.
+- **A peering connection has no single point of failure.** AWS: *"There is no single point of failure for communication or a bandwidth bottleneck"* — it isn't a gateway or VPN on separate hardware. So "add a second peering connection for redundancy" removes nothing. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -241,6 +242,7 @@ flowchart TB
 - [ ] **VPC sharing vs peering, and *subnets* vs *the VPC*** — four encounters, zero confident-correct: `2025-4-T2-Q36` wrong-and-`sure`, `2025-4-T3-Q17` right-but-a-guess, `2025-8-T1-Q62` right-but-`unsure`, and an external practice question on 2026-10-13 answered "VPC **peering** to share one or more subnets" (right object, wrong mechanism). The trap above states both halves. *(Trainer-sourced, 2026-10-13.)*
 
 ## 🔗 Docs
+- [What is VPC peering](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) — no single point of failure; verified 2026-10-15
 - [Security groups and VPC peering](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-security-groups.html)
 
 - [Gateway endpoints (S3/DynamoDB)](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html)

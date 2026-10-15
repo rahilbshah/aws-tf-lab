@@ -444,6 +444,8 @@ flowchart TD
 - **Scaling out is not right-sizing.** An ASG adds *more* instances; it never corrects an instance that is the wrong *size*. "Over-provisioned / under-utilised / right-size" is **Compute Optimizer**, and a stem asking to fix performance **and** availability wants one of each — the axis is tabulated in [[13-cost-optimization#Right-size first, or scale out? (vertical vs horizontal)]].
 - **ALB `redirect` action:** a URI is `protocol://hostname:port/path?query`; you must change **at least one** of protocol, hostname, port or path or you create a redirect loop. Status codes are **`HTTP_301`** (permanent) and **`HTTP_302`** (temporary). Reserved keywords carry the original parts through: `#{protocol}`, `#{host}`, `#{port}`, `#{path}`, `#{query}`. **You can redirect HTTP→HTTPS, HTTP→HTTP and HTTPS→HTTPS — but never HTTPS→HTTP.** Every rule must **end** in exactly one of `forward`, `redirect`, or `fixed-response`; an `authenticate-cognito` or `authenticate-oidc` action may precede it on an **HTTPS listener only** — AWS: *"The `authenticate-cognito` and `authenticate-oidc` action types are supported only with HTTPS listeners."* *(Verified 2026-10-14.)*
 - **Manual (out-of-band) termination is not instant to the ASG** — it detects via its periodic health-check cycle (~1–2 min to notice), then launches a replacement. The console pages are **static snapshots** — refresh to see truth; the **Activity tab** is the authoritative event log.
+- **An Auto Scaling group lives in one Region.** You choose its VPC and subnets, and *"A VPC spans all Availability Zones in its AWS Region"* — so an ASG spreads across AZs, never Regions. Multi-Region means a **separate ASG per Region** behind Route 53 failover or Global Accelerator. (AWS states the VPC scope; "can't span Regions" follows from it.) *(Verified 2026-10-15.)*
+- **Minimum capacity for a load-balanced multi-AZ fleet:** with a minimum of 1, losing that AZ leaves you down until Auto Scaling *"can launch instances in another one to compensate"* — not instant. A minimum of **2, in two AZs**, keeps one serving. (Reasoning from AWS's wording, not an AWS rule. The "ASG of one" HA answer above is for a single instance that can tolerate relaunch downtime.) *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -622,6 +624,8 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **an ASG is single-Region** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **minimum ≥ 2 across AZs for a load-balanced fleet** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Conflated "ALB health check fails" with "instance gets terminated."** A failed ALB health check only stops routing; termination needs the ASG to have **ELB health checks turned on** (`HealthCheckType = ELB`). Two systems, one linking knob.
 - [ ] **Console staleness vs ASG detection lag** — saw an instance as "Healthy" in the ASG tab right after terminating it and thought something was broken. It was a stale page snapshot + the ASG's periodic detection cycle (1–2 min), not a bug. Use the Activity tab + refresh.
 - [ ] **Target tracking scale-out needs the metric ABOVE target** — lowering the target scales out only if it goes below the current metric; on an idle fleet it just scales in.
@@ -631,6 +635,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [Auto Scaling in a VPC](https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-in-vpc.html) · [Auto Scaling benefits (multi-AZ)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/auto-scaling-benefits.html); verified 2026-10-15
 - [HTTPS listener certificates and SNI](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)
 - [Temporarily remove an instance (Standby)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html) · [Suspend and resume processes](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) · [Scaling cooldowns](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scaling-cooldowns.html)
 - [Scaling based on an SQS queue (backlog per instance)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html) · [Lifecycle hooks](https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html) · [Step and simple scaling (warm-up)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-simple-step.html)

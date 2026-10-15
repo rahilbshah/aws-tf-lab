@@ -387,6 +387,8 @@ flowchart TB
 - **Babelfish for Aurora PostgreSQL:** an **additional endpoint** understanding the SQL Server **TDS** wire protocol (**versions 7.1–7.4**) and T-SQL. **T-SQL on port 1433, PostgreSQL on 5432**, both live at once. **Aurora PostgreSQL only** — not RDS for PostgreSQL, not Aurora MySQL. It migrates **nothing**: schema conversion is **AWS SCT / DMS Schema Conversion**, data movement is **DMS**.
 - **Enhanced Monitoring:** real-time **OS** metrics from an **agent on the DB instance** (CloudWatch reads the **hypervisor** instead, so the two can disagree — more so on small instance classes). Delivered to **CloudWatch Logs**, log group **`RDSOSMetrics`**, default retention **30 days**; charged at **Logs** rates, and only above the CloudWatch Logs free allowance. Process list has **three** groups: **RDS child processes**, **RDS processes**, **OS processes**. Engines: **Db2, MariaDB, SQL Server, MySQL, Oracle, PostgreSQL**.
 *Verified against AWS docs 2026-09-29.*
+- **Multi-AZ (one standby) and OS maintenance:** RDS patches the standby first — *"Perform maintenance on the standby"*, *"Promote the standby to primary"*, *"Perform maintenance on the old primary, which becomes the new standby"* — which is why Multi-AZ *"can further reduce the impact of a maintenance event"*. A database **engine upgrade** is different: it *"modifies both primary and secondary DB instances at the same time"*, so there is downtime. *(Verified 2026-10-15.)*
+- **Provisioned and Serverless v2 can share one cluster.** AWS: *"You can set up a cluster that contains both Aurora serverless and provisioned capacity, called a mixed-configuration cluster."* So moving to Serverless v2 needs no new cluster: add or convert a `db.serverless` **reader**, then **fail over** to it — *"you can minimize downtime by converting a DB instance to Aurora serverless as the first step in the switchover process."* A new cluster (snapshot restore or DMS) means an endpoint cutover. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -535,7 +537,8 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > primary instance"* **or** *"by creating a new primary instance"*. The fast CNAME flip everyone
 > quotes is the **first** case, and it needs a reader to exist. A single-instance Aurora cluster
 > with **no reader** has nothing to promote, so Aurora must **create a new primary** — far
-> slower. AWS's recommendation follows directly: *"create at least one or more reader instances
+> slower, and AWS says *"the primary instance is recreated in the same AZ during a failure event"*
+> (not another AZ first). *(Same-AZ detail verified 2026-10-15.)* AWS's recommendation follows directly: *"create at least one or more reader instances
 > in two or more different Availability Zones."* A stem describing a one-instance Aurora cluster
 > and asking why failover was slow is asking for a **reader in another AZ**.
 >
@@ -554,8 +557,18 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 > [!warning] Trap — "RDS is serverless / auto-scales like Aurora"
 > Plain RDS is provisioned instances, and **true serverless** plus **global <1s replication** are Aurora features — "serverless relational" → Aurora Serverless v2. But do **not** extend that to storage: **plain RDS has storage autoscaling too** (see Key facts). The Aurora difference is that its *cluster volume* grows with no setting at all, whereas RDS grows an allocated volume up to a threshold you set.
 
+> [!warning] Trap — OS patching and engine upgrades treated the same on Multi-AZ
+> **OS patches** on a Multi-AZ DB instance roll: standby first, fail over, then the old primary — minimal impact. An **engine upgrade** changes both at the same time — downtime (blue/green deployments are the minimal-downtime route). "Multi-AZ means no downtime for upgrades" is only true for the OS case. *(Verified 2026-10-15.)*
+
+> [!warning] Trap — snapshot → encrypted copy → restore on a busy database
+> It encrypts, but the snapshot is point-in-time: every write after it is missing from the new instance. For **no data loss** on a live database, add **DMS ongoing replication (CDC)** from the old instance to the new encrypted one until they're in sync, then cut over. (AWS doesn't publish this as one recipe; it follows from *"You can only encrypt an Amazon RDS DB instance when you create it"* plus DMS CDC — *"This process is called ongoing replication or change data capture"*.) *(Verified 2026-10-15.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Multi-AZ OS patch order vs engine upgrade** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **Aurora with no replica recreates the primary in the same AZ** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **Provisioned → Serverless v2 via a mixed-configuration cluster** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
+- [ ] **encrypting a busy RDS instance with no data loss (snapshot + DMS CDC)** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **An Aurora replica is read scaling AND a failover target** (trainer-sourced,
   drill-mock02-concepts, 2026-10-10): missed this marked **"sure"**, on a fact this note states
   outright. Picked the reader endpoint correctly, then chose the wrong second answer. On RDS you
@@ -570,6 +583,7 @@ ARN shape: `arn:aws:rds-db:{region}:{account-id}:dbuser:{DbiResourceId}/{db-user
 - [ ] **Aurora Replicas double as failover targets** — missed while marked _sure_ (mock 2026-08-28, trainer-sourced). An Aurora Replica is not read-scaling *or* HA; it is **both at once**, which is exactly what makes it different from an RDS read replica.
 
 ## 🔗 Docs
+- [Multi-AZ and maintenance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Maintenance.html) · [Aurora HA (same-AZ recreation)](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html) · [Serverless v2 how it works](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.how-it-works.html) · [Serverless v2 administration](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-administration.html) · [RDS encryption](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html) · [DMS CDC](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Task.CDC.html); verified 2026-10-15
 - [Encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html) — the full limitations list: no encrypted replica of an unencrypted source (and vice versa), encryption only at creation, no encrypted snapshot of an unencrypted instance, KMS key immutable, replication traffic always encrypted, and the classes that can't be encrypted incl. db.t2.micro; verified 2026-10-05
 - [Working with DB instance read replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) — no autoscaling, deleting the source promotes replicas, no circular replication, engine-dependent replica-of-a-replica, snapshot-based creation, standby can't serve reads; verified 2026-10-05
 - [Multi-AZ DB instance deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html) — the "data redundancy and minimize latency spikes during system backups" wording, standby not readable, increased write/commit latency; verified 2026-10-05

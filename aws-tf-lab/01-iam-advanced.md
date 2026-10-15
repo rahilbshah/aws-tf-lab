@@ -228,6 +228,7 @@ temporary credentials. **IAM Identity Center** = a **human** signing in, with pe
 with a long-lived access key is the thing Roles Anywhere exists to replace, so it is the wrong
 answer whenever Roles Anywhere is on the menu.
 *(Added 2026-10-09 after a mock; verified against the IAM Roles Anywhere user guide.)*
+- **Per-user folders from one policy: IAM policy variables.** One role policy can resolve per user, e.g. `arn:aws:s3:::bucket/home/${aws:userid}/*`. Variables need `"Version": "2012-10-17"`; without it they *"are treated as literal strings in the policy"*. **`${aws:username}` is not present for roles or federated (SAML/OIDC) users** — it works for IAM users only; federated users need `${aws:userid}`, a SAML key such as `${saml:sub}`, or principal tags. *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -388,7 +389,11 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 > [!warning] Trap — `aws:SourceIp` behind a VPC endpoint
 > The key is simply **absent** for requests that traverse a VPC endpoint, so an IP-allowlist policy silently fails closed for in-VPC traffic. Use `aws:VpcSourceIp`, or scope on `aws:SourceVpce` / `aws:SourceVpc` instead.
 
+> [!warning] Trap — ${aws:username} to scope federated users' S3 folders
+> For a user who signed in through a corporate IdP (SAML/OIDC) and is acting as a role, `aws:username` is **not present**, so a policy keyed on it matches nothing. Use `${aws:userid}`, a SAML key like `${saml:sub}`, or a principal tag. *(Verified 2026-10-15.)*
+
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **per-user S3 folders via IAM policy variables (`${aws:username}` absent for federated users)** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **Non-SAML identity store → custom identity broker + STS** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). The vault covered SAML, OIDC, Identity Center and AD Connector but had **no coverage at all** of what to do when the stem says the identity store is *not* SAML-compatible — the one case where "build a custom application" is the right answer. Now written above.
 
 - [ ] **Organizations "all features" + Identity Center federated to AD** (trainer-sourced,
@@ -408,6 +413,7 @@ however much the scenario stresses "multiple accounts". *(Verified 2026-10-04.)*
 - [ ] **Union vs intersection** — resource policies widen, boundaries and SCPs narrow.
 
 ## 🔗 Docs
+- [IAM policy variables](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html) — Version 2012-10-17, which variables exist per principal type; verified 2026-10-15
 - [Organizations tag policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
 - [Resource control policies (RCPs)](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html) — SCP-vs-RCP split, supported services, management-account and service-linked-role exceptions; verified 2026-10-04
 - [Permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) — the user-ARN vs role-ARN implicit-deny difference, and what a session policy is; verified 2026-10-04

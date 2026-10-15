@@ -191,6 +191,7 @@ AWS designates for compute, and it is the one with EC2-compatible instances as t
 
 ⚠️ Currency: the **entire Snow Family** is closed to new customers — including **Snowcone**, so every
 row below is exam material rather than something you could order today. See the callout above.
+- **A Snowball Edge import lands in S3:** *"each file becomes an object in Amazon S3 and each directory becomes a prefix."* To get it into Glacier Flexible Retrieval or Deep Archive, add an **S3 Lifecycle** rule afterwards (DataSync, by contrast, can write straight into the chosen class). *(Verified 2026-10-15.)*
 
 ## Comparisons
 
@@ -288,6 +289,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Snowball import lands in S3, Lifecycle to Glacier** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **FSx for NetApp ONTAP is the multi-protocol one** (trainer-sourced, mock-02 2026-10-09
   **and** drill-mock02-concepts 2026-10-10): **missed twice in two days**, the second time as a
   guess. "Both SMB and NFS from one file system" → **ONTAP**, and nothing else. This is the
@@ -300,6 +302,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 - [ ] **Lustre scratch vs persistent is a durability choice**, not a speed one.
 
 ## 🔗 Docs
+- [Snowball import jobs](https://docs.aws.amazon.com/snowball/latest/developer-guide/importtype.html) — files become S3 objects; verified 2026-10-15
 - [FSx for NetApp ONTAP (NFS, SMB, iSCSI, NVMe; Multi-AZ)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html)
 - [EFS mount targets — one per Availability Zone](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs.html)
 

@@ -896,3 +896,39 @@ many VPCs + Direct Connect) are covered in `05-vpc-endpoints-peering` and `05-vp
 was still missed a second time — 8 of them answered `sure`. More note-writing will not fix these;
 the next lever is active recall on exactly these 10 (explain why each wrong option is wrong before
 looking).
+
+## Coverage check #5 — all 132 open misses, 2026-10-15
+
+Every question whose most recent attempt was wrong (132: 63 `sure`, 51 `guess`, 18 `unsure`;
+13 missed twice or more). 10 Opus 5.5 triage agents + 9 verify agents, with a stricter bar than
+before: "covered" required a VERBATIM line that STATES the deciding fact (a passing mention is not
+coverage — the lesson of the CloudFront custom-error-page miss), and each question also recorded
+whether the vault eliminates the option the candidate chose.
+
+**Result:** 108 covered · 22 genuine gaps · 1 wrong bank key · 1 suspect key that holds.
+All 128 "covered" quotes and 73 elimination quotes confirmed verbatim in the notes; the 108
+covered verdicts were read by hand, and the three that quoted only half the fact (VPC Lambda +
+NAT, Cognito identity pool, client-side encryption) were confirmed to have the other half.
+
+**The 22 gaps** (every AWS sentence re-confirmed on the live page, 41/41 in the final text):
+Multi-AZ OS-patch order vs engine upgrade · Aurora no-replica recreates primary in the same AZ ·
+provisioned → Serverless v2 via a mixed-configuration cluster · encrypting a busy RDS instance with
+no data loss (snapshot + DMS CDC) · IAM policy variables, `${aws:username}` absent for federated
+users · ASG is single-Region · minimum ≥ 2 across AZs for an LB fleet · second customer gateway for
+VPN redundancy · peering has no SPOF · instance store as the maximum-I/O answer · RIs/SP on the
+steady floor with On-Demand + Spot above · Quota Monitor / Service Quotas for quota tracking ·
+locking an ALB to CloudFront (custom header, managed prefix list, VPC origins) · cache behaviours
+route by path, default processed last · field-level encryption · Snowball import lands in S3 ·
+WAF IP set (and why not SG/NACL on CloudFront) · DDoS best practices · CloudTrail logs encrypted
+by default · AWS Health account-specific events → EventBridge → SNS · CloudTrail errors via Athena
+· Object Ownership's three settings · DynamoDB 3 AZs / 99.99% by default · Amplify Hosting vs
+S3 + CloudFront.
+
+**Bank keys:** `2025-8-T5-Q63` (morning slowdown, scheduled scaling) — the trainer grades the
+candidate's A as wrong after a "correction" to C; AWS supports A (a scheduled action can set
+desired capacity alone and dynamic scaling continues), and so does 04-alb-asg. Not the candidate's
+miss. The bank is read-only (§13.12), so this is recorded, not edited. `2025-7-T5-Q65` (Karpenter)
+holds on the EKS Best Practices Guide.
+
+**What it says:** 108 of 132 open misses (82%) were answerable from the notes. As with
+coverage check #4, the constraint is conversion, not coverage.
