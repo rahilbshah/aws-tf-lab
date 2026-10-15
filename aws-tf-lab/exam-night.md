@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 433 pointers · ~34 min read*
+*176 recall hooks · 434 pointers · ~34 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -568,6 +568,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - CloudFront Functions asked to do too much
 - a response headers policy that varies the response per client
 - a Global Accelerator traffic dial at 10% sends 10% of all users
+- "static error page if the website goes down" answered with Route 53 failover
 - geo restriction vs geolocation routing
 
 **Failure modes**

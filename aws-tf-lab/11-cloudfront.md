@@ -131,6 +131,7 @@ flowchart LR
 - **Origins:** an S3 bucket (REST endpoint), an S3 bucket configured as a **website endpoint** (treated as a *custom* origin), S3 Access Points, S3 Object Lambda, S3 Multi-Region Access Points, **MediaPackage**, **ALB**, **NLB**, **EC2**, **Lambda function URLs**, **API Gateway**, and **any public HTTP(S) server, including on-premises**.
 - **VPC origins** let an **ALB, NLB or EC2 instance in a private subnet** ([[04-alb-asg]]) be an origin without any public internet exposure — the modern way to keep the load balancer private while still fronting it with CloudFront.
 - **Origin groups** provide CloudFront's own failover: a primary and a secondary origin, switching when the primary returns an HTTP status code you nominated for failover (pick from **400, 403, 404, 416, 429, 500, 502, 503, 504**). A **failed connection** counts only if **503** is configured; a **timeout** only if **504** is. (Distinct from Route 53 failover — no DNS involved.)
+- **Custom error responses** — when the origin returns an error status, CloudFront can return a **custom error page** instead. AWS recommends keeping those pages in an **S3 bucket, not on the same origin**: *"If you store the custom error pages on the same origin as your website or application, and the origin starts to return 5xx errors, CloudFront can't get the custom error pages because the origin server is unavailable."* Errors are cached **10 seconds** by default (the **Error Caching Minimum TTL** changes it). So "show a static error page when the site is down" → CloudFront in front of the ALB + a custom error page in S3. *(Verified 2026-10-15.)*
 - **The origin-group restriction that decides exam questions:** CloudFront fails over "only when the HTTP method of the viewer request is `GET`, `HEAD`, or `OPTIONS`. CloudFront does not fail over when the viewer sends a different HTTP method (for example `POST`, `PUT`, and so on)." So for a **write path or an API**, origin groups are the *wrong* answer. There is a second gotcha: failover won't happen at all if `OPTIONS` isn't among the cache behaviour's **cached HTTP methods**.
 - **Origin-group timing:** by default CloudFront spends up to **30 seconds** on the primary (3 connection attempts × 10 s) before failing over. Tunable: connection timeout **1–10 s**, connection attempts **1–3**, origin response timeout default **30 s** and settable **1–120 s**. And there is no stickiness — "CloudFront routes all incoming requests to the primary origin, even when a previous request failed over to the secondary origin."
 - **OAC vs OAI:** AWS recommends **OAC**. OAI does **not** support all Regions (including opt-in Regions launched after Dec 2022/Jan 2023), **SSE-KMS**, or dynamic `PUT`/`POST`/`DELETE`. Migration path: allow both principals in the bucket policy, switch the distribution, then remove the OAI statement.
@@ -212,6 +213,7 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 
 > [!warning] Not yet applied
 > **Not applied or verified live** as of 2026-09-04 — the practical was deferred. Everything in this note comes from AWS documentation (dated in `## 🔗 Docs`), **not** from observed behaviour. Worth doing when it is applied: delete the `SourceArn` condition from the bucket policy and observe that nothing visibly breaks — that condition is not what makes your distribution work, it is what stops everyone else's.
+- [Custom error responses](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GeneratingCustomErrorResponses.html) · [Configure them](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/custom-error-pages-procedure.html) — keep pages in S3, not on the failing origin · [Error caching](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/custom-error-pages-expiration.html) — 10 s default; verified 2026-10-15
 
 ## Traps
 
@@ -239,6 +241,9 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 > [!warning] Trap — a Global Accelerator traffic dial at 10% sends 10% of all users
 > It doesn't. AWS: *"The percentage is applied only to traffic that is already directed to the endpoint group, not to all listener traffic."* Clients are first steered to an endpoint group by proximity; the dial then trims **that group's** share, and the rest is served elsewhere. So dials of 50% on two Regions do not produce a clean global 50/50 — in AWS's own example each Region ends up serving a mix of both coasts. What the dial *does* give you over weighted [[10-route53]] records is no DNS change at all — the client-facing IPs stay the same — so a blue/green shift isn't bounded by resolver caching. *(Verified 2026-10-14.)*
 
+> [!warning] Trap — "static error page if the website goes down" answered with Route 53 failover
+> The tempting build: Route 53 active-passive failover, with a static S3 website as the passive record. It works, but it is the heavier answer — a health check, a second record, and DNS caching before users see the change. With **CloudFront in front of the ALB**, a **custom error response** pointing at an error page **in S3** does the same job inside one distribution. For *"LEAST operational overhead"*, that's the answer. Keep the error page off the failing origin — AWS says CloudFront can't fetch it from an origin that is returning 5xx. *(Verified 2026-10-15.)*
+
 > [!warning] Trap — geo restriction vs geolocation routing
 > **CloudFront geo restriction** decides *whether a country may access the content at all* (allow/block list, enforced at the edge). **Route 53 geolocation routing** ([[10-route53]]) decides *which endpoint a country is sent to*. "Block viewers in country X for licensing reasons" → CloudFront. "Send German users to the German site" → Route 53.
 
@@ -249,6 +254,7 @@ Signers are configured as **trusted key groups** (recommended) or the legacy **t
 - [ ] **OAC's hard constraint** — S3 *website* endpoint = custom origin = no OAC. This is exactly why the [[10-route53]] buckets had to be public.
 - [ ] **The `us-east-1` certificate rule** — untested so far; a favourite exam detail.
 - [ ] ⚠️ Lab written but **not yet applied** — no live verification of any of this.
+- [ ] **Static error page when the site is down** — answered Route 53 failover to an S3 website (twice: `recap-studied-3`, `weak-01`); the least-overhead answer is a CloudFront custom error response with the page in S3. *(Trainer-sourced, 2026-10-15.)*
 
 ## 🔗 Docs
 

@@ -858,3 +858,41 @@ invisible from the miss list alone. Keyword matching was again noisy — `Lambda
 matched 35 files on generic tokens, and `Layers` matched a dozen notes on the ordinary English
 word, which nearly hid the fact that `19-serverless` has no layer content. **Concept greps must
 use the note's likely wording and be read, not counted.**
+
+## Coverage check #4 — weak-01, 2026-10-15, 21/31 (67.7%)
+
+A weak-topic drill: all 31 questions were previously-missed ones. Confidence: `sure` 19/27 (8
+sure-wrong), `guess` 2/4. **All 10 misses had been missed before** — the drill re-served them as
+designed, and they did not convert.
+
+### The 1 gap, verified first-hand before writing (§13.10c)
+
+| Miss | Note | Why the vault couldn't answer |
+|---|---|---|
+| `2025-8-T2-Q61` static error page if the site is down, LEAST overhead → CloudFront custom error response (page in S3) | `11-cloudfront` | Custom error pages appeared only in passing, as a replacement for S3 website features. The mechanism (origin 5xx → custom page from S3, 10 s error caching) was absent. This was a 2026-09-12 GAP_HUNT item that I marked covered on 2026-10-14 from a 2-hit grep — both hits were the passing mentions. |
+
+Written as a key fact + trap (reaches `discriminators.md`), a cheatsheet row, a `signals.md`
+entry and a weak-spot line. Sources: CloudFront `GeneratingCustomErrorResponses`,
+`custom-error-pages-procedure`, `custom-error-pages-expiration`.
+
+### The 9 misses that were NOT gaps (§13.13)
+
+All covered in the owning note, several in a trap or cheatsheet row:
+DataSync + S3 Object Lock for a one-off move (`12-storage-extras` DataSync-vs-Storage-Gateway trap);
+RIs for the steady 80 + On-Demand/Spot for spikes (`13-cost-optimization`); SCP caps member-account
+root but not service-linked roles (`01-iam-advanced:190`, cheatsheet, and already a weak-spot line);
+DX gateway → VGWs in other accounts and Regions (`05-vpc-hybrid`); Snowball Edge clustering
+(`12-storage-extras`, cheatsheet); Aurora Global Database managed failover (`07-rds-aurora`,
+`signals.md`); `rds.force_ssl` + RDS root CA for in-flight encryption (`07-rds-aurora:303`);
+same-Region EC2 avoids S3 transfer charges (`13-cost-optimization` trap, added 2026-10-14);
+pilot light with Aurora Global Database + ASG at zero for a 30-min RTO (`14-dr-resilience`).
+
+The 2 correct guesses (Transit Gateway with inter-Region peering; Transit Gateway as the hub for
+many VPCs + Direct Connect) are covered in `05-vpc-endpoints-peering` and `05-vpc-hybrid`.
+
+### What this run says
+
+9 of 10 misses are **conversion failures, not coverage**: the fact is in the notes, was read, and
+was still missed a second time — 8 of them answered `sure`. More note-writing will not fix these;
+the next lever is active recall on exactly these 10 (explain why each wrong option is wrong before
+looking).

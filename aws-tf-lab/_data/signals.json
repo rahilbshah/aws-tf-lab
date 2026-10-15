@@ -3166,5 +3166,14 @@
   "heading": "Key facts, limits & pricing",
   "quote": "does not need source code for the application to containerize it",
   "section": "Other services"
+ },
+ {
+  "signal": "display a static error page if the website becomes unavailable, with the LEAST operational overhead",
+  "answer": "CloudFront in front of the ALB with a custom error response pointing at an error page in S3",
+  "against": "Route 53 active-passive failover to an S3 static website — it works, but adds a health check, a second record and DNS caching",
+  "note": "11-cloudfront.md",
+  "heading": "Key facts, limits & pricing",
+  "quote": "So \"show a static error page when the site is down\" → CloudFront in front of the ALB + a custom error page in S3.",
+  "section": "DNS & edge"
  }
 ]

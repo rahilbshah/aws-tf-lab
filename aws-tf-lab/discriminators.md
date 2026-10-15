@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*133 comparison tables · 268 discriminators · ~57 min read*
+*133 comparison tables · 269 discriminators · ~57 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -377,6 +377,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **a response headers policy that varies the response per client** — A response headers policy adds fixed headers (CORS, security, custom) — AWS says it "doesn't require writing code" and adds them "to every response that it returns to viewers".  
   ↳ [[11-cloudfront#Traps|note]]
 - **a Global Accelerator traffic dial at 10% sends 10% of all users** — It doesn't. AWS: "The percentage is applied only to traffic that is already directed to the endpoint group, not to all listener traffic." Clients are first steered to an endpoint group by proximity; the dial then trims that group's share, and the rest is served elsewhere.  
+  ↳ [[11-cloudfront#Traps|note]]
+- **"static error page if the website goes down" answered with Route 53 failover** — The tempting build: Route 53 active-passive failover, with a static S3 website as the passive record.  
   ↳ [[11-cloudfront#Traps|note]]
 - **geo restriction vs geolocation routing** — CloudFront geo restriction decides whether a country may access the content at all (allow/block list, enforced at the edge). Route 53 geolocation routing ([[10-route53]]) decides which endpoint a country is sent to. "Block viewers in country X for licensing reasons" → CloudFront.  
   ↳ [[11-cloudfront#Traps|note]]

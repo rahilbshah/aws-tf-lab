@@ -159,7 +159,7 @@ would otherwise pick.
 ✗ EC2 Instance Savings Plan or a Reserved Instance — the deeper discount, but locked to one family (and one Region), so it is wasted the moment they migrate
 
 
-## DNS & edge  ·  18
+## DNS & edge  ·  19
 
 **a CloudFront distribution is already in the architecture and named countries must be DENIED the content (403)**  
 → **CloudFront geo restriction (allow/block list, applied to the whole distribution, 403 to blocked viewers)** [[11-cloudfront#Traps|11-cloudfront]]  
@@ -184,6 +184,10 @@ would otherwise pick.
 **CloudFront in front of an S3 bucket configured as a static website endpoint, with the bucket required to be private**  
 → **Switch the origin to the S3 REST endpoint and use OAC, replacing S3's website features with CloudFront's default root object and custom error pages** [[11-cloudfront#Traps|11-cloudfront]]  
 ✗ OAC (or OAI) on the website endpoint — a website endpoint is a custom origin and supports neither
+
+**display a static error page if the website becomes unavailable, with the LEAST operational overhead**  
+→ **CloudFront in front of the ALB with a custom error response pointing at an error page in S3** [[11-cloudfront#Key facts, limits & pricing|11-cloudfront]]  
+✗ Route 53 active-passive failover to an S3 static website — it works, but adds a health check, a second record and DNS caching
 
 **each country must be SERVED A DIFFERENT endpoint or site**  
 → **Geolocation routing — plus a * default record so unmatched locations get an answer** [[10-route53#Traps|10-route53]]  
