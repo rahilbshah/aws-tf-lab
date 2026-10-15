@@ -1,0 +1,8 @@
+/* Hide every top-level folder whose name starts with "_" (_archive, _data, _findings,
+   _prompts, _scripts, _templates) from the file explorer. Nothing is renamed or moved:
+   the generators still read _data/ and _scripts/, and the Templates core plugin still
+   uses _templates/. Turn this snippet off in Settings → Appearance → CSS snippets to see
+   them again. */
+.nav-folder:has(> .nav-folder-title[data-path^="_"]) {
+  display: none;
+}
