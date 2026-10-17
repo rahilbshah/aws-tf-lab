@@ -162,6 +162,7 @@ The discriminator that matters: **Cost Explorer explains the past, Budgets warn 
 - **Standard RIs** give the largest RI discount and can be **modified but never exchanged**. **Convertible RIs** discount less but **can be exchanged** for another Convertible RI with different attributes. **Purchases cannot be cancelled**, though Standard RIs can be **sold on the Reserved Instance Marketplace**.
 - **RIs do not auto-renew.** On expiry the instance keeps running and silently reverts to On-Demand rates.
 - **Savings Plans and *regional* RIs are discounts only — neither holds capacity.** What actually holds capacity for you: **zonal Reserved Instances**, **On-Demand Capacity Reservations**, **Capacity Blocks** (AWS: "Capacity Blocks can be used to reserve a cluster of GPU instances"), and **Dedicated Hosts** ("a physical host that is fully dedicated to running your instances"). *(Corrected 2026-10-07 — this bullet said "only zonal RIs and Capacity Reservations", which the note's own purchasing-options line already contradicted.)*
+- **An immediate-use Capacity Reservation has no term.** AWS: *"there is no term commitment"* and *"you can cancel it at any time"* — so it holds AZ capacity for a workload without the 1- or 3-year RI commitment. (A *future-dated* reservation does carry a commitment period.) *(Verified 2026-10-16.)*
 - **Spot interruption notice = 2 minutes**, emitted as an **EventBridge event** (`EC2 Spot Instance Interruption Warning`) and as instance metadata at **`/latest/meta-data/spot/instance-action`** (which gives the action and time; HTTP 404 when not marked). AWS recommends polling **every 5 seconds**; notices are **best-effort**.
 - **Interruption behaviours:** terminate, stop, or **hibernate** — and hibernate gets a notice **without** the two-minute lead time, because hibernation starts immediately.
 - **Spot interruption causes:** EC2 needing the capacity back (most common), the Spot price exceeding a maximum price you set, or a constraint (launch group / AZ group) no longer being satisfiable. **Setting a maximum price increases interruption frequency.**
@@ -321,6 +322,7 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Capacity in one AZ, no commitment → On-Demand Capacity Reservation** — picked plain On-Demand (guess), which reserves nothing. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **RIs/SP on the steady floor, On-Demand + Spot above** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **tracking service-quota usage** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Compute Optimizer is the right-sizing recommender** (trainer-sourced,
@@ -335,6 +337,7 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 - [ ] **Non-compute levers** — gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
 
 ## 🔗 Docs
+- [On-Demand Capacity Reservations](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html) — immediate use: no term commitment, cancel any time; future-dated: commitment; verified 2026-10-16
 - [Mixed-instances groups](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-mixed-instances-groups.html) · [Reserved Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html) · [Quota Monitor architecture](https://docs.aws.amazon.com/solutions/latest/quota-monitor-for-aws/architecture-overview.html) · [Trusted Advisor + EventBridge](https://docs.aws.amazon.com/awssupport/latest/user/cloudwatch-events-ta.html); verified 2026-10-15
 - [Cost Explorer rightsizing calculations](https://docs.aws.amazon.com/cost-management/latest/userguide/understanding-rr-calc.html) — ML engine identifies optimal EC2 instance types · [What is Compute Optimizer](https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html) — supported resource list; verified 2026-10-14
 - [Working with read replicas](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) — same-Region replica replication traffic not charged (**cite this, not the pricing page** — the pricing table carries only the Multi-AZ line); **verified 2026-10-10**

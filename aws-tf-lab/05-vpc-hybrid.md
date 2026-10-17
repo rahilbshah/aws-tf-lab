@@ -223,6 +223,17 @@ flowchart LR
 > [!warning] Trap — "Direct Connect is encrypted because it's private"
 > Private ≠ encrypted. DX carries plaintext over a dedicated circuit. For encryption, run a **VPN over DX**. Very common distractor.
 
+> [!warning] Trap — a VPN *over* Direct Connect as the resilience answer
+> A VPN running **over** DX uses that same DX connection (a public or transit VIF), so when the
+> circuit fails the VPN fails with it — it adds **encryption**, not a second path. Extra VIFs
+> are the same: AWS has you create virtual interfaces *"to begin using your Direct Connect
+> connection"*, so they all ride that one connection. The **backup** is a Site-to-Site VPN over
+> the **internet**; AWS's FAQ: *"Yes, but only for failover. The AWS Direct Connect path will
+> always be preferred, when established, regardless of AS path prepending."* So advertising the
+> same prefix over both is fine — DX carries traffic while it is up. The **highest** resiliency
+> is separate connections at **more than one DX location** (AWS's maximum-resiliency model:
+> *"resiliency against device, connectivity, and complete location failures"*). *(Verified 2026-10-16.)*
+
 > [!warning] Trap — "use Direct Connect for a quick or temporary connection"
 > DX takes **weeks-to-months** to provision. Anything "fast," "temporary," or "immediately" is a **Site-to-Site VPN**.
 
@@ -240,6 +251,7 @@ flowchart LR
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **VPN over DX ≠ backup** — missed twice (sure both times): picked "VPN over the DX link" for the cheapest backup, and "encrypted VPN on top of DX" for highest resiliency. Over DX = same circuit = encryption only. Backup = internet VPN; maximum = DX at multiple locations. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **second customer gateway for VPN redundancy** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Whole topic was cold** at orientation — learned fresh here, so it needs re-reading rather than recall.
 - [ ] **DX is NOT encrypted by default** — the single most-tested nuance; encrypt via VPN-over-DX.
@@ -248,6 +260,7 @@ flowchart LR
 - [ ] **Direct Connect Gateway** = one DX to multiple regions; non-transitive *by design*, but a supernet advertised from on-prem defeats it.
 
 ## 🔗 Docs
+- [Direct Connect FAQs](https://aws.amazon.com/directconnect/faqs/) — DX + VPN to the same VPC "only for failover", DX always preferred; [Resiliency Toolkit](https://docs.aws.amazon.com/directconnect/latest/UserGuide/resiliency_toolkit.html) — maximum resiliency = more than one location; [Virtual interfaces](https://docs.aws.amazon.com/directconnect/latest/UserGuide/WorkingWithVirtualInterfaces.html) — VIFs run on a connection; verified 2026-10-16
 - [Redundant Site-to-Site VPN connections](https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-redundant-connection.html) — second customer gateway device; verified 2026-10-15
 - [Direct Connect pricing elements (port hours + outbound data transfer)](https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html)
 - [Direct Connect hosted connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/hosted_connection.html) · [dedicated connection speeds](https://docs.aws.amazon.com/directconnect/latest/UserGuide/dedicated_connection.html)

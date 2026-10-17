@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 440 pointers · ~34 min read*
+*176 recall hooks · 444 pointers · ~35 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -299,6 +299,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[05-vpc-hybrid#Worked examples|open]]
 - "Direct Connect is encrypted because it's private"
+- a VPN over Direct Connect as the resilience answer
 - "use Direct Connect for a quick or temporary connection"
 - "VGW vs CGW"
 - "Client VPN = Site-to-Site VPN"
@@ -444,6 +445,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 - replication copies existing objects
 - replication is transitive
 - Transfer Acceleration moves your data closer to users
+- Transfer Acceleration for a link that is simply too small
 - point an S3 event notification straight at a FIFO queue to keep the order
 - SSE-C objects can't be replicated
 - Batch Replication can backfill anything
@@ -604,6 +606,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[12-storage-extras#AWS Backup: one place instead of six|explain]]
 
 **Traps** [[12-storage-extras#Traps|open]]
+- DataSync to "continuously replicate" for a legacy app that reads the files
 - EFS for a Windows workload
 - cached vs stored Volume Gateway, reversed
 - DataSync vs Storage Gateway
@@ -1032,6 +1035,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[24-other-services#Traps|open]]
 - "aggregate several DynamoDB tables in one call" answered with Lambda, Athena Federated Query or CloudFront Functions
+- Cognito "for your CloudFront distribution" when CloudFront fronts an ALB
 - user pool offered where an identity pool is needed
 - DMS offered as the tool that extracts to the Snowball Edge device
 - Glue, EMR or Kinesis offered for continuous database replication

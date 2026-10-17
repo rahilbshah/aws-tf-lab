@@ -259,6 +259,14 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 > [!warning] Trap — Transfer Acceleration moves your data closer to users
 > It doesn't move the bucket — it changes the **path**: enter AWS at the nearest **edge location**, then an **optimized network path** to the bucket's region. The axis being tested is **caching vs path**: for the same objects read repeatedly by many people you want **CloudFront**, which caches at the edge; for one large object crossing a long distance you want Transfer Acceleration, for which AWS documents no cache.
 
+> [!warning] Trap — Transfer Acceleration for a link that is simply too small
+> Transfer Acceleration gives a better **path**, not a bigger pipe. AWS's reason to use it is
+> *"You can't use all of your available bandwidth over the internet when uploading to Amazon
+> S3"* — it helps you use the bandwidth you **have**. Do the arithmetic: 250 TB over 100 Mbps is
+> 250 × 10¹² × 8 bits ÷ 10⁸ bit/s ≈ 2 × 10⁷ s ≈ **231 days** at full line rate. When the
+> numbers come out in months, the answer is **offline transfer (Snowball)**, not a faster
+> route. *(Verified 2026-10-16.)*
+
 > [!warning] Trap — point an S3 event notification straight at a FIFO queue to keep the order
 > You can't. AWS: "Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination. To send a notification for an Amazon S3 event to an Amazon SQS FIFO queue, you can use Amazon EventBridge." The same bar applies to topics — only **Standard** SNS is allowed, "whereas SNS FIFO is not allowed". So the shape is **S3 → EventBridge → FIFO queue**. And note S3 events are at-least-once and unordered anyway, so a FIFO queue downstream does not make the *delivery* ordered.
 
@@ -282,6 +290,7 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Transfer Acceleration vs Snowball** — picked Transfer Acceleration for 250 TB over 100 Mbps (sure). TA can't exceed your own link; months of transfer → Snowball. Do the TB ÷ Mbps sum. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **S3 event destinations exclude FIFO** (trainer-sourced, mock-02, 2026-10-09): Standard
   SQS and Standard SNS only; FIFO needs **EventBridge** in the path. Also same-Region, one
   destination type per notification, 64 KB message ceiling.
@@ -295,6 +304,7 @@ An object in Glacier Flexible Retrieval or Deep Archive cannot be read where it 
 - [ ] **Incomplete multipart uploads bill invisibly** — lifecycle abort rule is mandatory hygiene.
 
 ## 🔗 Docs
+- [Transfer Acceleration — why use it](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html) — "can't use all of your available bandwidth"; verified 2026-10-16
 - [Replicating encrypted objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-config-for-kms-objects.html) — "By default, Amazon S3 doesn't replicate objects that are encrypted with SSE-KMS or DSSE-KMS"; verified 2026-10-14
 - [S3 performance — request rates per prefix](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) — 3,500/5,500 per partitioned prefix, gradual scaling, 503 Slow Down; **verified 2026-10-05**
 - [S3 Transfer Acceleration](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html) — "between your client and an S3 general purpose bucket", edge + backbone, no periods in the bucket name, 20-min activation; **verified 2026-10-06**

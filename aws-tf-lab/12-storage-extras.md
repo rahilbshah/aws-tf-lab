@@ -123,9 +123,15 @@ The tell: *"reduce on-premises storage footprint"* → **cached**. *"low-latency
 
 Two very different answers, and the discriminator is simple.
 
-**DataSync** moves data **over the network**. It runs as an agent, reads from on-premises **NFS, SMB, HDFS or object storage** — and from other clouds — and writes to **S3, EFS, or any of the FSx file systems**. It encrypts in transit, **validates data integrity** on arrival, can run on a schedule rather than once, and can go through a VPC endpoint so the traffic never touches the public internet. That last set of properties is why it's the answer for *recurring* transfers, not just migrations.
+**DataSync** moves data **over the network**. It runs as an agent, reads from on-premises **NFS, SMB, HDFS or object storage** — and from other clouds — and writes to **S3, EFS, or any of the FSx file systems**. It encrypts in transit, **validates data integrity** on arrival, can run on a schedule rather than once, and can go through a VPC endpoint so the traffic never touches the public internet. That last set of properties is why it's the answer for *scheduled* transfers, not just migrations — but a schedule runs at most hourly (AWS: *"You can't schedule a task to run at an interval faster than 1 hour"*), and DataSync copies files rather than giving an application a share to work on. A legacy app that must keep **reading and writing files** while they land in S3 → **S3 File Gateway**. *(Verified 2026-10-16.)*
 
 **The Snow Family** moves data **physically**, on a rugged device AWS ships you. Snowball Edge comes Storage Optimized (210 TB) or Compute Optimized, encryption is enforced, and the devices can also run EC2 instances and Lambda at the edge — which is the other half of why they exist, for sites with poor connectivity.
+
+> [!warning] Trap — DataSync to "continuously replicate" for a legacy app that reads the files
+> DataSync is a transfer job: scheduled at most once an hour, and the app gets no file share out
+> of it. When the stem says the legacy application must keep working against the files *and*
+> they must end up in S3, the app needs a share in front of S3 — **S3 File Gateway**. Volume
+> Gateway is block (iSCSI), not files.
 
 > [!warning] Currency — the whole Snow Family is closed to new customers
 > AWS states it plainly: *"AWS Snowball Edge is no longer available to new customers"*, and *"with this change, AWS will no longer offer **any AWS Snow Family devices** for new customers to order."* So this covers Snowcone too, not just Snowball Edge. New users are directed to **DataSync** (online transfer), **AWS Data Transfer Terminal** (bring your own disks to an AWS facility), **AWS Partner solutions**, or **AWS Outposts** (edge compute). **SAA-C03 material still tests Snow, so learn it.**
@@ -289,6 +295,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **File Gateway vs DataSync for a legacy app** — picked DataSync "continuously replicate" (guess). The app needs a share backed by S3 → File Gateway; DataSync schedules run at most hourly. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **Snowball import lands in S3, Lifecycle to Glacier** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **FSx for NetApp ONTAP is the multi-protocol one** (trainer-sourced, mock-02 2026-10-09
   **and** drill-mock02-concepts 2026-10-10): **missed twice in two days**, the second time as a
@@ -302,6 +309,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 - [ ] **Lustre scratch vs persistent is a durability choice**, not a speed one.
 
 ## 🔗 Docs
+- [DataSync task scheduling](https://docs.aws.amazon.com/datasync/latest/userguide/task-scheduling.html) — minimum interval 1 hour; verified 2026-10-16
 - [Snowball import jobs](https://docs.aws.amazon.com/snowball/latest/developer-guide/importtype.html) — files become S3 objects; verified 2026-10-15
 - [FSx for NetApp ONTAP (NFS, SMB, iSCSI, NVMe; Multi-AZ)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html)
 - [EFS mount targets — one per Availability Zone](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs.html)

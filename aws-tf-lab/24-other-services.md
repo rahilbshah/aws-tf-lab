@@ -217,13 +217,23 @@ telling them apart *is* the exam question:
   (unauthenticated) credentials**. This is the one that answers *"what may you touch in my
   account"*.
 
-**ALB and CloudFront can authenticate for you.** An **Application Load Balancer** has
+**An ALB can authenticate for you; on CloudFront it takes your own code.** An **Application Load Balancer** has
 built-in **Cognito user pool** authentication — the listener rule authenticates the user before
 the request ever reaches your instances, which is how a scenario "decouples user
 authentication from the application". That integration is with a **user pool**; an identity
-pool has no part in it.
+pool has no part in it. On CloudFront, AWS's documented way is code: its example *"Redirect
+unauthenticated users to a sign-in page"* is a **Lambda@Edge** function you write. With
+CloudFront in front of the ALB, the ALB still does the signing in — AWS's ALB guide says to
+forward all request headers and all cookies, so *"CloudFront forwards all authentication
+cookies to the load balancer"*. *(Verified 2026-10-16.)*
 
-They **work independently or together**. The combined flow is the one scenarios describe:
+> [!warning] Trap — Cognito "for your CloudFront distribution" when CloudFront fronts an ALB
+> The stem says *"minimal development effort"* and *"decouple user authentication"*. The ALB has
+> a built-in `authenticate-cognito` action against a **user pool** — no code. Doing it at
+> CloudFront means writing a **Lambda@Edge** function. And an **identity pool** is wrong either
+> way: it hands out AWS credentials, it does not sign users in to a web app.
+
+User pools and identity pools **work independently or together**. The combined flow is the one scenarios describe:
 sign in at the **user pool** → exchange the token at the **identity pool** → get temporary
 credentials → call **S3 or DynamoDB directly from the mobile app**.
 
@@ -415,6 +425,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Directory Service is for **corporate/workforce** identity — employees, domain-joined machines, AD-aware applications. For a **consumer or SaaS application's own users**, including social sign-in and scaling to millions, the answer is **Amazon Cognito**. AWS's own guidance makes this split explicitly.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **Cognito on the ALB, not on CloudFront** — picked "identity pool for CloudFront" (sure). The ALB has the built-in user-pool action; CloudFront needs Lambda@Edge code. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **Amplify Hosting vs S3 + CloudFront** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **AppSync pipeline resolvers** (trainer-sourced, mock-03, 2026-10-10, answered `guess`). Needed efficient reads/writes across multiple DynamoDB tables from a serverless microservice app. The note had AppSync as "managed GraphQL fronting multiple data sources" but never named **pipeline resolvers** or the single-call aggregation that is the actual discriminator. Note's own coverage table had already flagged AppSync as `thin`. Now thickened above.
 
@@ -425,6 +436,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [ALB: authenticate users](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) + [Lambda@Edge examples — redirect unauthenticated users](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-examples.html) — ALB built-in Cognito; CloudFront sign-in via Lambda@Edge; verified 2026-10-16
 - [S3 static website hosting (Amplify recommendation)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html); verified 2026-10-15
 - [RDS for SQL Server with self-managed AD](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_SQLServer_SelfManagedActiveDirectory.html) — joins a self-managed AD wherever it is hosted; verified 2026-10-14
 - [AWS Batch multi-node parallel jobs](https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)

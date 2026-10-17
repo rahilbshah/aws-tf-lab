@@ -478,6 +478,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | Hosted DX connection speeds | Fixed steps **50/100/200/300/400/500 Mbps and 1/2/5/10/25 Gbps** via a partner. It is the only route to a **sub-1 Gbps** link (dedicated starts at 1 Gbps) — but it is **not** capped below 1 Gbps |
 | How to encrypt Direct Connect | IPsec VPN over DX — classic: over a **public VIF**; newer: **private IP VPN** over a transit VIF (no public IPs). MACsec = L2 on the cross-connect only, not end-to-end |
+| VPN over DX as a DX backup? | **No** — it rides the same DX circuit, so it adds encryption only. Backup = Site-to-Site VPN over the **internet** (DX always preferred while up). Highest resiliency = DX at **multiple locations** |
 | The three VIF types and where they land | Private → one VPC (via VGW); Public → AWS public services; Transit → TGW (via DXGW) |
 | Direct Connect Gateway reach and limit | Global fan-out to multiple VGWs/TGWs across regions and accounts; non-transitive |
 | Dedicated DX port speeds | 1 / 10 / 100 Gbps (400 on some) |
@@ -830,6 +831,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Addresses it gives you | Two static anycast IPs (four dual-stack), kept until the accelerator is deleted |
+| BYOIP on Global Accelerator | Up to two /24 ranges; bring one and AWS supplies the second IP; bring two → **one IP from each** (different network zones) |
 | Valid endpoint types | NLB, ALB, EC2, Elastic IP |
 | Caching and protocols | Caches nothing; routes any TCP/UDP |
 
@@ -937,6 +939,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | DataSync sources | On-prem NFS, SMB, HDFS, object storage; and other clouds (Azure Blob/Files, GCS) |
 | DataSync directions | **Both ways**: into S3, EFS, all four FSx — and back out to NFS/SMB/HDFS/object storage/other clouds |
 | DataSync vs Storage Gateway | DataSync transfers (one-off or scheduled); Storage Gateway is a permanent bridge |
+| Legacy app keeps using files, data must land in S3 | **S3 File Gateway** (a share in front of S3). Not DataSync — a transfer job, scheduled at most **hourly** |
 
 **AWS Backup**
 
@@ -956,6 +959,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 
 | EFS Archive — Regional vs One Zone | AWS states it **affirmatively**: *"supported on EFS Regional file systems using EFS's default Elastic Throughput mode"*, and the storage-class table has no One Zone entry for Archive. Carry the affirmative, not the flat negative |
 | Where a Snowball import lands | S3 objects; an S3 Lifecycle rule afterwards to reach Glacier |
+| Transfer Acceleration vs a link that's too small | TA improves the path, not the pipe. 250 TB at 100 Mbps ≈ 231 days → **Snowball** |
 
 ↳ [[12-storage-extras]]
 
@@ -970,6 +974,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | EC2 Instance Savings Plan max discount | up to 72% — locked to one instance family in one Region |
 | Compute Savings Plan max discount | up to 66% — flexible on family, size, Region, OS, tenancy |
 | Which purchases actually reserve capacity | **Zonal** Reserved Instances · **On-Demand Capacity Reservations** · **Capacity Blocks** (a cluster of GPU instances) · **Dedicated Hosts** (a physical host dedicated to you). **Savings Plans and *regional* RIs reserve nothing** — they are discounts. *(Corrected 2026-10-07: this row said "only zonal RIs and Capacity Reservations", missing two.)* |
+| On-Demand Capacity Reservation term | Immediate use: **no term commitment**, cancel any time. Future-dated: has a commitment period |
 | Spot request type — one-time vs persistent | *One-time*: if interrupted, "the request is **not** resubmitted". *Persistent*: "the request **is** resubmitted to replenish the interrupted Spot Instance". **Default = one-time.** Interruption behaviour is tied to type: `Stop`/`Hibernate` **persistent only**, `Terminate` **one-time only** (and `Terminate` is the default, so a persistent request left on the default errors). "Valid to" expiry is persistent-only. Maintaining a **target capacity** is EC2 Fleet / Spot Fleet, not a persistent request |
 | Who gives Savings Plans / reservation purchase recommendations | **Cost Explorer** *and* **Cost Optimization Hub** (AWS steers you to the Hub first). **Compute Optimizer never does** — it only rightsizes and finds idle resources |
 | Reserved Instances vs Savings Plans — status | AWS: "We recommend Savings Plans over Reserved Instances." RIs are **not legacy**: RI Marketplace + RDS/Redshift/ElastiCache reservations are RI-only. AZ capacity: **zonal RI or Capacity Reservation** |
@@ -1221,6 +1226,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | ECS capacity options beyond EC2-vs-Fargate | **ECS Managed Instances** (AWS manages the EC2 capacity; EC2 price + a management fee, per second with a 1-minute minimum) and the **`EXTERNAL`** launch type for **ECS Anywhere** (tasks on your own on-prem servers/VMs — no ELB, no service discovery, no `awsvpc` there) |
 | EKS autoscaling — two layers, usually both needed | **Pods: Horizontal Pod Autoscaler**, which needs a metrics source — the **Metrics Server** — installed; it scales replicas on CPU. **Nodes: Karpenter** (launches right-sized EC2 "in under a minute"), the **Cluster Autoscaler** (adjusts node count **via Auto Scaling groups**), or **EKS Auto Mode** (managed, built on Karpenter). HPA alone leaves extra pods `Pending`; nodes alone leaves the replica count unchanged |
 | ECS autoscaling — two layers, same axis as EKS | **Service Auto Scaling** (via **Application Auto Scaling**) changes the service's **desired task count**. An **EC2 ASG / capacity provider** changes how many **container instances** exist to place tasks on. ASG alone = empty capacity, no more tasks. Service alone = tasks stuck `PENDING` when the cluster is full. On **Fargate** there is no instance layer, so an ASG answer is wrong by construction |
+| Encrypt data in EKS etcd | **EKS envelope encryption** with a KMS key (default on 1.28+). Not Secrets Manager (stores secrets outside the cluster), not EBS encryption |
 | ECS Service Auto Scaling policy types | **Target tracking** (easiest — metric + target, e.g. ECS average CPU/memory) · **step** (CloudWatch alarms with step adjustments, fastest reaction) · **scheduled** · **predictive** (historical patterns) · **SQS backlog per task** for worker services |
 | ECS Service Auto Scaling behaviours | Metrics at **1-minute** intervals · **scale-in suspended during a deployment**, scale-out continues · scales from the **actual running task count**, not desired, to prevent runaway scaling · **min capacity can be 0** (scale to zero) · active policies **can override a manually set desired count** |
 | Karpenter vs Cluster Autoscaler | Karpenter = just-in-time, right-sized instances matching workload requirements, **open-source you install and manage, no AWS SLA**. Cluster Autoscaler = adjusts node count **through ASGs**, so it inherits ASG (control-plane) behaviour |
@@ -1550,6 +1556,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Simple AD underlying technology and gaps | Samba 4; no MFA, trusts, schema extensions, LDAPS, or PowerShell AD cmdlets |
 | AD Connector in three words | Proxy to on-premises — stores nothing, no sync, no federation |
 | Identity service for a SaaS app's own end users | Amazon Cognito, not Directory Service |
+| Offload sign-in, CloudFront → ALB → EC2, least effort | **Cognito user pool on the ALB** (built-in action). CloudFront needs Lambda@Edge code; identity pools issue AWS credentials, not sign-in |
 
 **Transfer Family**
 

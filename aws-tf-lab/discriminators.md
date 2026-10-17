@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*133 comparison tables · 275 discriminators · ~58 min read*
+*133 comparison tables · 279 discriminators · ~59 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -198,6 +198,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **"Direct Connect is encrypted because it's private"** — Private ≠ encrypted. DX carries plaintext over a dedicated circuit. For encryption, run a VPN over DX.  
   ↳ [[05-vpc-hybrid#Worked examples|note]]
+- **a VPN over Direct Connect as the resilience answer** — A VPN running over DX uses that same DX connection (a public or transit VIF), so when the circuit fails the VPN fails with it — it adds encryption, not a second path.  
+  ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"use Direct Connect for a quick or temporary connection"** — DX takes weeks-to-months to provision. Anything "fast," "temporary," or "immediately" is a Site-to-Site VPN.  
   ↳ [[05-vpc-hybrid#Worked examples|note]]
 - **"VGW vs CGW"** — VGW = AWS side (attached to the VPC). CGW = on-prem side (a config object describing your router). Swapping these is a classic mix-up.  
@@ -289,6 +291,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 - **replication is transitive** — No. A→B and B→C does not deliver A's objects to C. Replicas can only be re-replicated with Batch Replication.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **Transfer Acceleration moves your data closer to users** — It doesn't move the bucket — it changes the path: enter AWS at the nearest edge location, then an optimized network path to the bucket's region.  
+  ↳ [[09-s3-advanced#Worked examples|note]]
+- **Transfer Acceleration for a link that is simply too small** — Transfer Acceleration gives a better path, not a bigger pipe. AWS's reason to use it is "You can't use all of your available bandwidth over the internet when uploading to Amazon S3" — it helps you use the bandwidth you have.  
   ↳ [[09-s3-advanced#Worked examples|note]]
 - **point an S3 event notification straight at a FIFO queue to keep the order** — You can't. AWS: "Amazon Simple Queue Service FIFO (First-In-First-Out) queues aren't supported as an Amazon S3 event notification destination.  
   ↳ [[09-s3-advanced#Worked examples|note]]
@@ -398,6 +402,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[12-storage-extras#EFS vs FSx vs EBS vs S3|EFS vs FSx vs EBS vs S3]] · [[12-storage-extras#EFS throughput modes: Elastic vs Provisioned vs Bursting|EFS throughput modes: Elastic vs Provisioned vs Bursting]] · [[12-storage-extras#S3 File Gateway vs FSx File Gateway|S3 File Gateway vs FSx File Gateway]] · [[12-storage-extras#Volume Gateway: cached vs stored|Volume Gateway: cached vs stored]] · [[12-storage-extras#Getting data in: DataSync vs Snow vs Storage Gateway|Getting data in: DataSync vs Snow vs Storage Gateway]]
 
+- **DataSync to "continuously replicate" for a legacy app that reads the files** — DataSync is a transfer job: scheduled at most once an hour, and the app gets no file share out of it.  
+  ↳ [[12-storage-extras#Traps|note]]
 - **EFS for a Windows workload** — The most reliable elimination in this topic. AWS does not support EFS with Windows EC2 instances. A question mentioning Windows, SMB, Active Directory or Windows ACLs usually points at FSx for Windows File Server, however well "shared file system" seems to fit EFS — unless it also needs NFS or iSCSI block, which is FSx for NetApp ONTAP (it speaks SMB and joins AD too).  
   ↳ [[12-storage-extras#Traps|note]]
 - **cached vs stored Volume Gateway, reversed** — Read where the primary copy lives. Cached = primary in S3, hot subset local — chosen to stop on-premises storage growing. Stored = primary on-premises, snapshots to S3 — chosen when you need low-latency access to the whole dataset and want offsite backups.  
@@ -695,6 +701,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 **Compare:** [[24-other-services#Step Functions — Standard vs Express|Step Functions — Standard vs Express]] · [[24-other-services#Directory Service options|Directory Service options]] · [[24-other-services#Batch vs Lambda|Batch vs Lambda]] · [[24-other-services#Transfer Family vs DataSync|Transfer Family vs DataSync]]
 
 - **"aggregate several DynamoDB tables in one call" answered with Lambda, Athena Federated Query or CloudFront Functions** — All three are real services doing the wrong job. Lambda behind API Gateway works but is the operationally heavier answer and still means you write the fan-out logic — the stem's "most operationally efficient" rules it out.  
+  ↳ [[24-other-services#Traps|note]]
+- **Cognito "for your CloudFront distribution" when CloudFront fronts an ALB** — The stem says "minimal development effort" and "decouple user authentication". The ALB has a built-in authenticate-cognito action against a user pool — no code.  
   ↳ [[24-other-services#Traps|note]]
 - **user pool offered where an identity pool is needed** — The tell is what the app does after signing in. If it only needs to know who the user is, or to put a token in front of an API, that is a user pool.  
   ↳ [[24-other-services#Traps|note]]

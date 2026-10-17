@@ -932,3 +932,29 @@ holds on the EKS Best Practices Guide.
 
 **What it says:** 108 of 132 open misses (82%) were answerable from the notes. As with
 coverage check #4, the constraint is conversion, not coverage.
+
+## Coverage check #6 — `weak-02`, 2026-10-16
+
+**Score:** 18/31 (58.1%). `sure` 14/22, `guess` 2/6, `unsure` 2/3. All 13 misses were repeats.
+Workflow `wf_4df8de40-8ec` (5 Opus 5.5 triage batches + 1 verify): every miss, both lucky
+guesses and both unsure-correct read in full by hand as well.
+
+**Coverage:** 30/31 COVERED, 0 absent. The one flag, `2025-8-T5-Q63`, held (answer A; AWS's
+scheduled-scaling page supports it — see coverage check #5). The constraint was **elimination**,
+not coverage: on 5 misses the vault never said why the pick loses, and one line pulled toward it.
+
+**Fixed (all re-verified on live AWS pages 2026-10-16):**
+- `24-other-services` — lead-in said "ALB **and CloudFront** can authenticate for you"; only the
+  ALB has the built-in Cognito action, CloudFront's documented way is Lambda@Edge. Corrected + trap.
+- `12-storage-extras` — "the answer for *recurring* transfers" pulled toward DataSync; added the
+  1-hour minimum schedule and the File Gateway rule + trap.
+- `05-vpc-hybrid` — VPN **over** DX adds encryption, not resilience (missed twice, sure both
+  times); DX FAQ "only for failover", Resiliency Toolkit maximum model. Trap.
+- `09-s3-advanced` — Transfer Acceleration can't beat your own uplink; 250 TB / 100 Mbps ≈ 231 days. Trap.
+- `11-cloudfront` — Global Accelerator BYOIP with two ranges: one IP from each.
+- `17-containers` — Secrets Manager is not the etcd control.
+- `13-cost-optimization` — immediate-use Capacity Reservation has no term commitment.
+- 7 cheatsheet rows; 7 trainer-sourced weak-spot lines.
+
+**Misses that were covered and eliminated (recall, not gaps):** RDS IAM auth (`AWSAuthenticationPlugin`),
+ASG impaired status, CloudFront → ELB origin lock, second customer gateway, Route 53 alias at the apex.

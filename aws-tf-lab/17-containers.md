@@ -257,6 +257,10 @@ is encrypted with a **data encryption key (DEK)** before it is written to **etcd
 DEK is itself encrypted by a **root KMS key (the KEK)** held in AWS KMS. Scope limit that
 decides questions: *"Envelope encryption does not apply to data on nodes or EBS volumes"* —
 for those you want EBS encryption, which is a different control. *(Verified 2026-10-14.)*
+Secrets Manager is a third, separate thing: with the Secrets Store CSI driver AWS describes it as
+a way to *"store and manage your secrets in Secrets Manager and then retrieve them through your
+workloads"* — the secret is kept in Secrets Manager, so it does not encrypt what is in etcd. A
+question about data **in etcd** → EKS envelope encryption with a KMS key. *(Verified 2026-10-16.)*
 
 ### ALB target types
 | | `instance` | `ip` |
@@ -309,6 +313,7 @@ for those you want EBS encryption, which is a different control. *(Verified 2026
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **etcd encryption = EKS envelope encryption, not Secrets Manager** — picked Secrets Manager (sure). Secrets Manager stores secrets outside the cluster; it is not the control for etcd. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **EKS scaling is two layers** (trainer-sourced, mock-02, 2026-10-09): missed a Select-TWO
   that needed **HPA + Metrics Server** for pods *and* **Karpenter** for nodes. Anchor on
   "pods vs nodes", not on "autoscaling".
@@ -341,6 +346,7 @@ Worth getting right, because "it trips after 3 failures" is the common claim and
 With `enable = true, rollback = true` and no custom threshold, a deployment failing with **`CannotPullContainerError`** reached **12 failed tasks while still `IN_PROGRESS`** and never went `FAILED`. The documented mechanics above do not account for that: a task that cannot pull its image never reaches `RUNNING`, so it should increment the stage-1 counter consecutively and trip at the computed threshold. Unconfirmed hypothesis, unchanged: an unresolvable image may produce *"unable to place a task"*, accounted differently from a task that starts and then fails a health check. **Not exam-relevant** — the exam tests that the circuit breaker rolls back and that EventBridge `SERVICE_DEPLOYMENT_FAILED` is the hook. Re-test by breaking the **container health check** rather than the image.
 
 ## 🔗 Docs
+- [Use Secrets Manager secrets with EKS Pods](https://docs.aws.amazon.com/eks/latest/userguide/manage-secrets.html) — ASCP: secrets stored in Secrets Manager, mounted as files; verified 2026-10-16
 - [How the ECS deployment circuit breaker detects failures](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — `thresholdConfiguration` types, the 50%/min-3/max-200 formula with worked examples, `resetOnHealthyTask`, the two failure stages, rolling-update-only; **verified 2026-10-10**
 - [Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html) · [Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) · [Cluster endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html) · [CloudWatch Container Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html)
 - [ECS service load balancing (dynamic host port mapping)](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html)
