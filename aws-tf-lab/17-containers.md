@@ -108,6 +108,8 @@ For Fargate platform 1.4.0+, AWS states you *"require both Amazon ECR VPC endpoi
 
 The endpoint's security group must allow **443 inbound from the private subnets**. And note the cost inversion: three interface endpoints billed per ENI per AZ can exceed one NAT gateway at $0.045/hr ([[05-vpc-core]] owns NAT pricing; [[05-vpc-endpoints-peering]] owns endpoint pricing). Endpoints win on security posture, not automatically on price — count before assuming.
 
+**An EKS cluster with no internet.** Nodes in private subnets, no NAT, public endpoint off. AWS: *"Your cluster must have endpoint private access enabled. This is required for nodes to register with the cluster endpoint"*, and the subnets *"must have a VPC interface endpoint for any AWS services that your Pods need access to"* — ECR (`api`, `dkr`), S3 (gateway), plus `ec2`, `sts`, `logs` and others as used. Nodes that fail to join a private cluster → **VPC endpoints**. Peering or moving nodes to public subnets is not the fix; `AmazonEKSClusterPolicy` belongs to the cluster role, not the nodes. *(Verified 2026-10-18.)*
+
 ### Scaling ECS: the service and the capacity under it are two different things
 
 A gap a drill exposed — and it is the same shape as the EKS one below, which is the point
@@ -313,6 +315,7 @@ question about data **in etcd** → EKS envelope encryption with a KMS key. *(Ve
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Private EKS cluster, nodes won't join → VPC endpoints (EKS, ECR, S3, EC2, STS)** — guessed right. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **etcd encryption = EKS envelope encryption, not Secrets Manager** — picked Secrets Manager (sure). Secrets Manager stores secrets outside the cluster; it is not the control for etcd. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **EKS scaling is two layers** (trainer-sourced, mock-02, 2026-10-09): missed a Select-TWO
   that needed **HPA + Metrics Server** for pods *and* **Karpenter** for nodes. Anchor on
@@ -346,6 +349,7 @@ Worth getting right, because "it trips after 3 failures" is the common claim and
 With `enable = true, rollback = true` and no custom threshold, a deployment failing with **`CannotPullContainerError`** reached **12 failed tasks while still `IN_PROGRESS`** and never went `FAILED`. The documented mechanics above do not account for that: a task that cannot pull its image never reaches `RUNNING`, so it should increment the stage-1 counter consecutively and trip at the computed threshold. Unconfirmed hypothesis, unchanged: an unresolvable image may produce *"unable to place a task"*, accounted differently from a task that starts and then fails a health check. **Not exam-relevant** — the exam tests that the circuit breaker rolls back and that EventBridge `SERVICE_DEPLOYMENT_FAILED` is the hook. Re-test by breaking the **container health check** rather than the image.
 
 ## 🔗 Docs
+- [EKS private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html) — private endpoint required for node registration; interface endpoints for every service used; verified 2026-10-18
 - [Use Secrets Manager secrets with EKS Pods](https://docs.aws.amazon.com/eks/latest/userguide/manage-secrets.html) — ASCP: secrets stored in Secrets Manager, mounted as files; verified 2026-10-16
 - [How the ECS deployment circuit breaker detects failures](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-circuit-breaker.html) — `thresholdConfiguration` types, the 50%/min-3/max-200 formula with worked examples, `resetOnHealthyTask`, the two failure stages, rolling-update-only; **verified 2026-10-10**
 - [Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html) · [Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) · [Cluster endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html) · [CloudWatch Container Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html)

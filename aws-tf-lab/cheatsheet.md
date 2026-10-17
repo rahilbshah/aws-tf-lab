@@ -164,6 +164,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Data volume added via console at launch, or attached after launch | Preserve |
 | Additional EBS volume default | false via console or after launch (survives, bills); CLI at launch: true |
 | Root volume default | true — deleted with the instance |
+| Change it on a **running** instance | Yes — **AWS CLI** `modify-instance-attribute` (block-device mapping) or PowerShell; no stop. The console checkbox is the at-launch path |
 
 **T-family CPU credits**
 
@@ -319,6 +320,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Time to ELB-healthy with boot-time apt install | Measure from **`InService`**, not from launch — the grace-period clock starts *"after it enters the `InService` state"*. What must fit inside it: remaining bootstrap (~60s for an apt install) **plus one health-check interval** (~30s), so ~90s. (Corrected 2026-10-05.) |
 | Health-check convergence arithmetic | **A newly registered target needs ONE passing check**: *"After your target is registered, it must pass one health check to be considered healthy."* `HealthyThresholdCount` (default **5**) is for bringing an **already-unhealthy** target back; `UnhealthyThresholdCount` (default **2**) × 30s ≈ 60s to pull a healthy one. Thresholds 2–10, interval 5–300s, timeout 2–120s. (Corrected 2026-10-05 — this row previously said 5 × 30s = 150s to *become* healthy.) |
 | Safe health check grace period values | ~300s with a boot-time install; ~40s time-to-healthy with a baked AMI |
+| New AMI for an Auto Scaling group | **New launch template version** (templates are immutable). Running instances keep the old AMI until replaced |
 
 **Target tracking**
 
@@ -956,6 +958,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | | |
 |---|---|
 | Block / file / object → services | Block = EBS, instance store; File = EFS, FSx; Object = S3, Glacier |
+| "Written using standard API calls", kept indefinitely, many readers | **S3**. Concurrent access alone does not mean EFS — S3 serves many clients too; "mount"/file path means EFS |
 
 | EFS Archive — Regional vs One Zone | AWS states it **affirmatively**: *"supported on EFS Regional file systems using EFS's default Elastic Throughput mode"*, and the storage-class table has no One Zone entry for Archive. Carry the affirmative, not the flat negative |
 | Where a Snowball import lands | S3 objects; an S3 Lifecycle rule afterwards to reach Glacier |
@@ -1016,6 +1019,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Compute Optimizer metric lookback | 14 days default; 32 days free; 93 days needs paid enhanced infrastructure metrics |
 | Compute Optimizer enablement | you must opt in |
 | Cost Explorer vs Budgets vs Compute Optimizer | Explorer analyses/forecasts past; Budgets alerts on a threshold; Optimizer says the resource is the wrong size |
+| Stop new provisioning when an account hits its budget | **Budget action** applying an **SCP** or IAM policy, via an IAM **service role** (not a user). Budgets can act, not only alert |
 
 **Non-compute cost levers**
 
@@ -1251,6 +1255,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | S3 endpoint type needed for ECR, and why | Gateway (free) — ECR stores image layers in S3 (prod-<region>-starport-layer-bucket) |
 | Fargate platform version requiring both endpoint sets | 1.4.0+ requires both the ECR VPC endpoints and the S3 gateway endpoint |
 | Endpoint security group inbound requirement | 443 inbound from the private subnets |
+| EKS nodes in private subnets, no internet, fail to join | **Private endpoint access** on + **VPC endpoints** (ECR api/dkr, S3 gateway, EC2, STS, logs…). Not peering, not public subnets |
 
 **Lambda VPC**
 
@@ -1311,6 +1316,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | The three authorizer types | IAM (AWS principal), Cognito (logged-in end user), Lambda authorizer (your own scheme) |
 | What API keys and usage plans actually do | "Track and limit usage" — metering and throttling only; they are not authentication |
 | Does API Gateway load balance across targets? | Only via HTTP API + Cloud Map (spreads over healthy instances) |
+| Read-heavy API, stale data OK, cut backend cost, minimal change | **API Gateway stage caching** (TTL default 300 s, max 3600 s; billed hourly by size). Not read replicas |
 
 | WebSocket API — the two fixed timers | **Idle connection timeout 10 minutes**, **max connection duration 2 hours**, *neither increasable* — so heartbeats and reconnect logic are mandatory. **500** new connections/sec/account/Region (increasable); **no** concurrent-connection quota (ceiling ≈ rate × duration). Frame **32 KB**, message **128 KB**, both fixed; exceeding either closes with code **1009** |
 | Circuit breaker `resetOnHealthyTask` | **`true` by default** — the failure count resets to 0 on every healthy task, so only **consecutive** failures count. Set `false` to accumulate across the whole deployment. Circuit breaker is **rolling-update (`ECS`) controller only** |
@@ -1333,6 +1339,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Standard vs high resolution granularity | standard = 1 minute; high resolution = 1 second |
 | EC2 basic vs detailed monitoring interval | basic = every 5 minutes; detailed = 1 minute (costs extra) |
 | EC2 metrics NOT available by default | memory utilisation and disk space used — in-guest, need the CloudWatch agent |
+| Let someone with no AWS account access view a dashboard | **Share the dashboard** (up to 5 email addresses, or public link). Not an IAM user. Viewers can read **all** metrics — the permissions can't be scoped down |
 
 **CloudWatch alarms**
 
@@ -1367,6 +1374,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 |---|---|
 | EventBridge former name | CloudWatch Events — same service, renamed |
 | "Was it ever open to 0.0.0.0/0 last month?" | Config (config history + can remediate); CloudTrail gives the caller only |
+| Automatically check the IAM password policy | Config managed rule **`iam-password-policy`** (Periodic); NON_COMPLIANT on the default policy |
 
 **KMS**
 
@@ -1533,6 +1541,7 @@ Nothing here explains itself. If a line surprises you, follow it back.
 | Transcribe vs Polly direction | Transcribe: audio → text. Polly: text → speech |
 | Comprehend outputs | Entities, key phrases, PII, dominant language, sentiment, targeted sentiment, syntax, topic modeling |
 | Comprehend vs Kendra | Comprehend analyses text; Kendra searches it (natural-language Q&A, semantic similarity) |
+| Find PHI in medical documents | **Comprehend Medical** (HIPAA eligible; detects PHI). PDFs → **Textract** first. Transcribe Medical = audio |
 
 **Step Functions**
 

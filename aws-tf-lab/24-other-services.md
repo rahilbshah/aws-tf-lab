@@ -278,6 +278,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 
 | Service | One line |
 |---|---|
+| **Amazon SWF** (Simple Workflow) | Legacy workflow coordination; AWS: *"Workers can run either on cloud infrastructure, such as Amazon Elastic Compute Cloud (Amazon EC2), or on your own premises"* — so it can decouple a hybrid app. AWS: *"For most use cases, we recommend considering AWS Step Functions"*. *(Verified 2026-10-18.)* |
 | **Amazon QLDB** | immutable, cryptographically verifiable **ledger** database — an append-only journal with history you can prove. ⚠️ **Full shutdown, end of support July 31, 2025** (AWS General Reference). Learn the concept for the exam; it cannot be deployed |
 | **Amazon AppFlow** | no-code data transfer between **SaaS apps** (Salesforce, Slack, Zendesk) and AWS |
 | **AWS Application Migration Service (MGN)** — now branded **AWS Transform MGN** | lift-and-shift **server** migration by block-level replication (the DR cousin — see [[14-dr-resilience]]); workflow in Key facts below |
@@ -425,6 +426,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 > Directory Service is for **corporate/workforce** identity — employees, domain-joined machines, AD-aware applications. For a **consumer or SaaS application's own users**, including social sign-in and scaling to millions, the answer is **Amazon Cognito**. AWS's own guidance makes this split explicitly.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **SWF exists, workers on EC2 or on-prem** — got it right unsure; the vault had no SWF line. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **Cognito on the ALB, not on CloudFront** — picked "identity pool for CloudFront" (sure). The ALB has the built-in user-pool action; CloudFront needs Lambda@Edge code. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **Amplify Hosting vs S3 + CloudFront** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **AppSync pipeline resolvers** (trainer-sourced, mock-03, 2026-10-10, answered `guess`). Needed efficient reads/writes across multiple DynamoDB tables from a serverless microservice app. The note had AppSync as "managed GraphQL fronting multiple data sources" but never named **pipeline resolvers** or the single-call aggregation that is the actual discriminator. Note's own coverage table had already flagged AppSync as `thin`. Now thickened above.
@@ -436,6 +438,7 @@ These are in scope but carry 0–4 bank questions each. One line is the correct 
 - [ ] **Transfer Family vs DataSync** — protocol endpoint vs transfer job.
 
 ## 🔗 Docs
+- [What is Amazon SWF?](https://docs.aws.amazon.com/amazonswf/latest/developerguide/welcome.html) — workers on EC2 or on premises; Step Functions recommended for most use cases; verified 2026-10-18
 - [ALB: authenticate users](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) + [Lambda@Edge examples — redirect unauthenticated users](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-examples.html) — ALB built-in Cognito; CloudFront sign-in via Lambda@Edge; verified 2026-10-16
 - [S3 static website hosting (Amplify recommendation)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html); verified 2026-10-15
 - [RDS for SQL Server with self-managed AD](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_SQLServer_SelfManagedActiveDirectory.html) — joins a self-managed AD wherever it is hosted; verified 2026-10-14

@@ -134,7 +134,7 @@ Plenty of exam cost questions never mention an instance. These are the levers, a
 Six, and the exam mostly wants you to pick the right one for a described job.
 
 - **AWS Cost Explorer** — the analysis console. Visualise cost and usage, filter and group, **forecast** future spend, and get **Savings Plans purchase recommendations**. This is where you go to *understand* the bill.
-- **AWS Budgets** — set a budget on **cost or usage** and get **alerted** when you cross a threshold. This is where you go to *be told* before it's too late.
+- **AWS Budgets** — set a budget on **cost or usage** and get **alerted** when you cross a threshold. This is where you go to *be told* before it's too late. It can also **act**: a **budget action** applies an IAM policy or an **SCP**, or targets EC2/RDS instances, when the threshold is crossed — AWS: *"You can use SCPs so that you don't need to provision any new resources during the budget period."* Budgets runs it through a **service role** (an IAM role, not a user). *(Verified 2026-10-18.)*
 - **Cost Optimization Hub** — one ranked list of *what to change*: unused resources to delete, rightsizing, Savings Plans and reservations, with the estimated saving attached. AWS now points here first when the question is "where is the money going spare?"
 - **Cost Anomaly Detection** — AWS's own ML spots unusual spend and alerts you, rather than you naming the dollar figure up front as you do with **Budgets**. That contrast is the exam point, but state it precisely: an alert **subscription does** take a threshold (an absolute dollar impact or a percentage, and two can be combined with AND/OR). What needs no threshold is the **detection** — *"Even if an anomaly is below the alert threshold, the machine learning model continues to detect spend anomalies on your account."* So the distinction is *detection needs no number; notification does*, where a Budget needs a number to do anything at all. Alerting comes in three frequencies: **individual** alerts (require an **SNS** topic), **daily** summaries (top 10 anomalies, sent 00:00 UTC) and **weekly** summaries.
 - **Cost allocation tags** and **cost categories** — how you slice the bill by team, application or environment. Tags are the mechanism; without them the bill is one undifferentiated number.
@@ -322,6 +322,7 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Budgets can act, not only alert** — guessed right. Stop provisioning at the budget → budget action (SCP / IAM policy) run by an IAM **role**. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **Capacity in one AZ, no commitment → On-Demand Capacity Reservation** — picked plain On-Demand (guess), which reserves nothing. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **RIs/SP on the steady floor, On-Demand + Spot above** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **tracking service-quota usage** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
@@ -337,6 +338,7 @@ only half the stem. See [[04-alb-asg]] for the horizontal half.
 - [ ] **Non-compute levers** — gateway endpoints vs NAT, unattached EIPs, orphaned snapshots, cross-AZ transfer. Cost questions often never mention an instance.
 
 ## 🔗 Docs
+- [Budget actions](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html) + [Budgets action role](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-action-role.html) — IAM policy / SCP / EC2-RDS actions; service role required; verified 2026-10-18
 - [On-Demand Capacity Reservations](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html) — immediate use: no term commitment, cancel any time; future-dated: commitment; verified 2026-10-16
 - [Mixed-instances groups](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-mixed-instances-groups.html) · [Reserved Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html) · [Quota Monitor architecture](https://docs.aws.amazon.com/solutions/latest/quota-monitor-for-aws/architecture-overview.html) · [Trusted Advisor + EventBridge](https://docs.aws.amazon.com/awssupport/latest/user/cloudwatch-events-ta.html); verified 2026-10-15
 - [Cost Explorer rightsizing calculations](https://docs.aws.amazon.com/cost-management/latest/userguide/understanding-rr-calc.html) — ML engine identifies optimal EC2 instance types · [What is Compute Optimizer](https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html) — supported resource list; verified 2026-10-14

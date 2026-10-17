@@ -10,7 +10,7 @@ tags: [exam-prep, generated]
 **How to use it.** Read a hook. If the concept comes straight back, move on.
 If it doesn't, follow the ↳ link — it lands on the section that *explains*
 that idea. Trap and comparison entries are titles only, on purpose.
-*176 recall hooks · 444 pointers · ~35 min read*
+*176 recall hooks · 447 pointers · ~35 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -607,6 +607,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 
 **Traps** [[12-storage-extras#Traps|open]]
 - DataSync to "continuously replicate" for a legacy app that reads the files
+- EFS because "concurrent access to all files"
 - EFS for a Windows workload
 - cached vs stored Volume Gateway, reversed
 - DataSync vs Storage Gateway
@@ -824,6 +825,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
 **Traps** [[19-serverless#⚠️ Traps — why the wrong answer looks right|open]]
 - "add a security group rule to let API Gateway in"
 - the certificate Region for a custom domain
+- Aurora read replicas for a read-heavy API where stale data is fine
 - Lambda in a public subnet
 - ENI per concurrent execution
 - SQS is not an asynchronous invocation
@@ -860,6 +862,7 @@ that idea. Trap and comparison entries are titles only, on purpose.
   ↳ [[20-monitoring#Alerting before a certificate expires|explain]]
 
 **Traps** [[20-monitoring#⚠️ Traps — why the wrong answer looks right|open]]
+- an IAM user with read-only access for an outsider who needs one dashboard
 - reboot offered for a failed system status check
 - "ACM auto-renews, so no monitoring is needed"
 - Patch Manager offered for "install this tool", Run Command for "apply this patch"

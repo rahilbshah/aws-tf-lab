@@ -221,6 +221,8 @@ graph TB
 - **AWS Health: account-specific vs public events.** *"Account-specific events affect your account and resources, such as an event that tells you about a required update to an Amazon EC2 instance"*; public events are about a service's Regional availability. To be warned about scheduled events on **your** instances, *"You can use Amazon EventBridge to detect and react to AWS Health events"* with an **SNS** target — the public service-health page can't tell you about your instance. *(Verified 2026-10-15.)*
 - **Finding errors in CloudTrail:** every record has `errorCode` / `errorMessage`, and the message *"includes messages for authorization failures"*. Query the logs in place with **Athena** — *"You can use Athena to query these log files directly from Amazon S3"*. *(Verified 2026-10-15.)*
 
+- **Sharing a CloudWatch dashboard with someone outside the account.** AWS: *"You can share your CloudWatch dashboards with people who do not have direct access to your AWS account."* Either name people — *"designate as many as five email addresses"*, and each sets their own password — or share it publicly by link. No IAM user is created. The catch, on the same page: viewers get `cloudwatch:GetMetricData` and `ec2:DescribeTags`, which *"cannot be scoped down"* — so they can query **every** metric in the account, not just the dashboard's. *(Verified 2026-10-18.)*
+
 ## Comparisons
 
 ### Which Systems Manager tool — the discrimination that actually gets tested
@@ -321,6 +323,12 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 
 ## ⚠️ Traps — why the wrong answer looks right
 
+> [!warning] Trap — an IAM user with read-only access for an outsider who needs one dashboard
+> The stem: someone with **no access to the account** (a client, a manager at a third party) needs
+> to *view* dashboards, under **least privilege**. Creating an IAM user and attaching
+> `CloudWatchReadOnlyAccess` or `ViewOnlyAccess` hands out account credentials. **Share the
+> dashboard** instead — by email address or link.
+
 > [!warning] Trap — reboot offered for a failed system status check
 > The stem describes an instance made unreachable by a fault on the **underlying host** and offers
 > a reboot alarm. A reboot keeps the instance on the **same broken host**, so it fixes nothing —
@@ -395,6 +403,7 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **Dashboard sharing for outsiders** — picked "IAM user + CloudWatchReadOnlyAccess" (unsure). No account access + least privilege → share the dashboard. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **CloudTrail logs encrypted by default** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **AWS Health account-specific events** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **CloudTrail errors via Athena** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
@@ -410,6 +419,7 @@ No single CloudWatch feature gives one pane of **metrics *and* logs across many 
 > This note covers what the exam tests; production adds **X-Ray** (distributed tracing across the API-to-Lambda-to-DB hops), **Container Insights** and **Lambda Insights**, **CloudWatch Synthetics** canaries for outside-in checks, **Contributor Insights** for top-N analysis, log **subscription filters** to a SIEM, and an **organization trail** so member accounts cannot disable their own auditing. Config gains **conformance packs** and auto-remediation via SSM Automation.
 
 ## 🔗 Docs
+- [Sharing CloudWatch dashboards](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch-dashboard-sharing.html) — outside viewers, up to five email addresses or public; permissions can't be scoped down; verified 2026-10-18
 - [How CloudTrail works (default encryption)](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html) · [AWS Health public vs account events](https://docs.aws.amazon.com/health/latest/ug/about-public-events.html) · [Health + EventBridge](https://docs.aws.amazon.com/health/latest/ug/cloudwatch-events-health.html) · [CloudTrail record contents](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html) · [Athena + CloudTrail](https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html); verified 2026-10-15
 - [List the available CloudWatch metrics for your instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/viewing_metrics_with_cloudwatch.html) — `Disk*` = instance store only ("either the value is 0 or the metric is not reported"), the per-instance `EBS*` metrics in `AWS/EC2`; **verified 2026-10-10**
 - [Events from AWS services via CloudTrail](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-service-event-cloudtrail.html) — the exact detail-type, default-bus-only, trail-must-be-logging, per-Region buses, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS` for read-only events; **verified 2026-10-10**

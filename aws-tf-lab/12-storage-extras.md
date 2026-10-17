@@ -12,7 +12,7 @@ tags: [topic, domain/resilient]
 Everything in AWS storage that isn't S3 or EBS. Shared file systems, the bridge to on-premises, and the two ways to move bulk data in.
 
 > [!info] Exam TL;DR
-> - **Block / file / object.** EBS = one disk, one instance. EFS + FSx = a shared file system many machines mount. S3 = an API. "Mount", "shared across instances" → file.
+> - **Block / file / object.** EBS = one disk, one instance. EFS + FSx = a shared file system many machines mount. S3 = an API. "Mount", "shared across instances" → file — but "written using **standard API calls**" → S3, even when many instances read at once.
 > - **EFS** = elastic **NFS** for **Linux**, mounted by many instances across AZs, no capacity to provision. **Not supported with Windows EC2 instances.** Regional vs One Zone; Standard / IA / Archive with lifecycle on last access.
 > - **FSx for Windows File Server** = **SMB + Active Directory + Windows ACLs**. The lift-and-shift-a-Windows-app answer. Single-AZ or Multi-AZ.
 > - **FSx for Lustre** = HPC/ML speed, sub-ms latency, **links to an S3 bucket and presents objects as files**. **Scratch** = not replicated; **Persistent** = replicated.
@@ -269,6 +269,12 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 
 ## Traps
 
+> [!warning] Trap — EFS because "concurrent access to all files"
+> Many readers at once does not by itself mean a file system — S3 serves many instances
+> concurrently too, over its API. The deciding words are **how** the app writes: *"standard API
+> calls"* (or an SDK, HTTP PUT/GET) → **S3**; *"mount"*, a file path, POSIX → EFS. With "store
+> indefinitely" and "most cost-effective" added, the object store is the answer.
+
 > [!warning] Trap — EFS for a Windows workload
 > The most reliable elimination in this topic. **AWS does not support EFS with Windows EC2 instances.** A question mentioning Windows, SMB, Active Directory or Windows ACLs usually points at **FSx for Windows File Server**, however well "shared file system" seems to fit EFS — **unless it also needs NFS or iSCSI block, which is FSx for NetApp ONTAP** (it speaks SMB and joins AD too).
 
@@ -295,6 +301,7 @@ AWS publishes this as a decision list; the **5% average-to-peak ratio** is the a
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **"Standard API calls" → S3, not EFS** — picked EFS (sure) because of "concurrent access". The write method decides, not the reader count. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **File Gateway vs DataSync for a legacy app** — picked DataSync "continuously replicate" (guess). The app needs a share backed by S3 → File Gateway; DataSync schedules run at most hourly. *(Trainer-sourced, weak-02, 2026-10-16.)*
 - [ ] **Snowball import lands in S3, Lifecycle to Glacier** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **FSx for NetApp ONTAP is the multi-protocol one** (trainer-sourced, mock-02 2026-10-09

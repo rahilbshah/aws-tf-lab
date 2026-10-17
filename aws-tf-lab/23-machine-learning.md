@@ -20,7 +20,7 @@ Eleven one-line services. The exam never asks you to train a model — it asks w
 > - **Lex** = chatbots (intents/slots). **Kendra** = natural-language enterprise **search** over documents.
 > - **Forecast** = time-series prediction. **Fraud Detector** = fraud risk scoring. **Amazon Personalize is explicitly OUT of scope** — the course covers it, the exam guide excludes it.
 > - **Comprehend analyses text; Kendra searches it.** **Kendra is natural-language Q&A; OpenSearch is the keyword/log engine you run.**
-> - **Chain services** when the scenario has two verbs: Transcribe → Comprehend (call sentiment), Textract → Comprehend (extract then redact PII).
+> - **Chain services** when the scenario has two verbs: Transcribe → Comprehend (call sentiment), Textract → Comprehend (extract then redact PII) — and for **PHI** in medical text, Textract → **Comprehend Medical**.
 > - **Use async APIs + SNS** for multi-page documents and long audio — sync APIs are single-page/short only.
 > - **Renamed/retired:** SageMaker → **SageMaker AI** (Dec 2024). **Forecast, Fraud Detector and Kendra are closed to new customers** — still exam-answerable.
 
@@ -153,6 +153,8 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 - **Rekognition** covers object and scene detection, facial analysis and comparison, celebrity recognition, text-in-image, and **content moderation** — the last is the one the exam reaches for in "filter inappropriate user uploads" scenarios.
 - **Bank evidence (coverage shaping only, per the trainer boundary):** across the bank (~1,168 questions by one count, 1,156 per CLAUDE.md — not an AWS figure), **zero** carry an ML `topics[]` tag, while ML service names appear in question text in the low hundreds — consistent with distractor use rather than subject use.
 
+- **Amazon Comprehend Medical** is the medical version of Comprehend. AWS: it *"uses natural language processing (NLP) models to detect entities, which are textual references to medical information such as medical conditions, medications, or Protected Health Information(PHI)"*, and *"This is a HIPAA Eligible Service."* So "find **PHI** in medical reports" → **Comprehend Medical**; scanned PDFs first go through **Textract**. (Transcribe Medical is the *audio* one.) *(Verified 2026-10-18.)*
+
 ## Comparisons
 
 ### Pre-trained AI service vs SageMaker
@@ -231,12 +233,14 @@ They remain in the SAA-C03 exam guide's in-scope list, and existing customers ke
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **PHI in PDF reports → Textract + Comprehend Medical** — picked Transcribe + CloudWatch Logs (unsure). Transcribe is audio; PHI detection is Comprehend Medical. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **Written from docs 2026-09-26**, not yet drilled or mocked. Lowest-stakes topic in the vault — if revision time is short, this is the first thing to cut.
 - [ ] **Rekognition vs Textract** — the only pair here I'd genuinely lose a mark on. Document versus scene.
 - [ ] **Comprehend vs Kendra** — analyse versus search; both described as "understanding documents".
 - [ ] **Not over-picking SageMaker** — it reads like the competent answer and is usually the trap.
 
 ## 🔗 Docs
+- [What is Amazon Comprehend Medical?](https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html) — medical entities incl. PHI, HIPAA eligible; verified 2026-10-18
 - [SAA-C03 exam guide (online)](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html) — domain weightings (Domain 2 = 26%) · [In-scope services](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/saa-03-in-scope-services.html) — 8 ML services; verified 2026-10-14
 - [Post-call analytics](https://docs.aws.amazon.com/transcribe/latest/dg/call-analytics-batch.html) — speaker sentiment as a native Call Analytics insight, the 5 to −5 score, per-turn labels, no Comprehend involved; **verified 2026-10-10**
 

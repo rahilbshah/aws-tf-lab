@@ -447,6 +447,9 @@ flowchart TD
 - **An Auto Scaling group lives in one Region.** You choose its VPC and subnets, and *"A VPC spans all Availability Zones in its AWS Region"* — so an ASG spreads across AZs, never Regions. Multi-Region means a **separate ASG per Region** behind Route 53 failover or Global Accelerator. (AWS states the VPC scope; "can't span Regions" follows from it.) *(Verified 2026-10-15.)*
 - **Minimum capacity for a load-balanced multi-AZ fleet:** with a minimum of 1, losing that AZ leaves you down until Auto Scaling *"can launch instances in another one to compensate"* — not instant. A minimum of **2, in two AZs**, keeps one serving. (Reasoning from AWS's wording, not an AWS rule. The "ASG of one" HA answer above is for a single instance that can tolerate relaunch downtime.) *(Verified 2026-10-15.)*
 
+- **Launch templates can't be edited — you add a version.** AWS: *"Launch templates are immutable; after you create a launch template, you can't modify it. Instead, you can create a new version of the launch template that includes any changes you require."* New AMI → **new launch template version** with the new image, and point the ASG at that version. Running instances keep the old AMI until replaced (e.g. instance refresh). Old questions say "create a new launch template/configuration" — same idea, from before versions. *(Verified 2026-10-18.)*
+- **When no option offers backlog per instance**, an option that scales on the SQS queue metric still beats CPU, predictive or scheduled scaling for an unpredictable queue — pick the best available. *(Exam reasoning, from coverage check 2026-10-18.)*
+
 ## Comparisons
 
 ### ALB vs NLB vs GWLB
@@ -624,6 +627,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 
 ## 🔴 My weak spots (this topic)   #weak-spot
 
+- [ ] **New AMI for an ASG → new launch template (version)** — guessed right. Templates are immutable; you add a version. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **an ASG is single-Region** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **minimum ≥ 2 across AZs for a load-balanced fleet** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - [ ] **Conflated "ALB health check fails" with "instance gets terminated."** A failed ALB health check only stops routing; termination needs the ASG to have **ELB health checks turned on** (`HealthCheckType = ELB`). Two systems, one linking knob.
@@ -635,6 +639,7 @@ are built from: it satisfies "spread across two AZs" and fails "still serving 2 
 - [ ] **Cross-zone defaults differ by LB type** — ALB always-on/free vs NLB off-by-default/inter-AZ-charged. Easy to blur.
 
 ## 🔗 Docs
+- [Modify a launch template (versions)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/manage-launch-template-versions.html) — immutable; create a new version; verified 2026-10-18
 - [Auto Scaling in a VPC](https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-in-vpc.html) · [Auto Scaling benefits (multi-AZ)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/auto-scaling-benefits.html); verified 2026-10-15
 - [HTTPS listener certificates and SNI](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)
 - [Temporarily remove an instance (Standby)](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html) · [Suspend and resume processes](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) · [Scaling cooldowns](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scaling-cooldowns.html)

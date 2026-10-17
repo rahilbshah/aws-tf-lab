@@ -138,6 +138,8 @@ a subnet behind a NACL. Two consequences:
 > non-CloudFront question.
 - **DynamoDB is highly available with nothing to configure:** *"By default, DynamoDB automatically replicates your data across three Availability Zones to provide high durability and a 99.99% availability SLA."* *"Global tables provide multi-active replication of your data across your chosen AWS Regions with 99.999% availability."* *(Verified 2026-10-15.)*
 
+- **API Gateway caching** (REST APIs) is turned on **per stage**. AWS: *"With caching, you can reduce the number of calls made to your endpoint and also improve the latency of requests to your API."* *"The default TTL value for API caching is 300 seconds. The maximum TTL value is 3600 seconds."* Only `GET` methods are cached by default. It is not free — *"Caching is charged by the hour based on the cache size that you select"* — so it saves money when the backend calls it removes (Lambda, the database) cost more than the cache. *(Verified 2026-10-18.)*
+
 ## Comparisons
 
 ### DynamoDB vs relational (RDS / Aurora, including Serverless)
@@ -219,6 +221,13 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 
 ## ⚠️ Traps — why the wrong answer looks right
 
+> [!warning] Trap — Aurora read replicas for a read-heavy API where stale data is fine
+> The stem: API Gateway → Lambda → Aurora, mostly **reads**, data **rarely changes**, stale is
+> acceptable, database cost too high, **minimal changes**. **Enable API Gateway caching**: repeated
+> requests are answered from the cache and never reach Lambda or Aurora. A read replica is another
+> instance to pay for, and every request still runs Lambda and a query. "Lambda in-memory caching"
+> is code you write, not a switch.
+
 > [!warning] Trap — Lambda in a public subnet
 > "Give the VPC-attached function internet access" is **not** answered by moving it to a public subnet. AWS: *"Connecting a function to a public subnet doesn't give it internet access or a public IP address."* A Lambda ENI never gets a public IP. The answers are a **private subnet routed to a NAT gateway**, or **VPC endpoints** for the specific services.
 
@@ -247,6 +256,7 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > Not necessarily. Lambda bills GB-seconds, and CPU scales with memory, so doubling memory on a CPU-bound function can more than halve its duration. The cost-optimisation answer to "this function is slow and expensive" is often **raise the memory**.
 
 ## 🔴 My weak spots (this topic)   #weak-spot
+- [ ] **API Gateway caching to cut backend cost** — picked Aurora read replicas (sure). Read-heavy + stale OK + minimal change → stage cache. *(Trainer-sourced, mock-04, 2026-10-18.)*
 - [ ] **DynamoDB is multi-AZ by default** — open miss, gap closed 2026-10-15. *(Trainer-sourced.)*
 - **Lambda layers and `ConcurrentExecutions`** (trainer-sourced, mock-03, 2026-10-10, answered `unsure`). A select-three on Lambda design considerations. The VPC-egress leg was well covered by the existing public-subnet trap, but **layers were not mentioned in this note at all** and `ConcurrentExecutions` appeared nowhere in the vault — two of the three legs were missing. Now written above.
 
@@ -262,6 +272,7 @@ Three Lambda operational facts the vault was missing, all of which show up toget
 > This lab has no authorizer, no throttling, no WAF, no tracing, and a `$default` stage with no canary. Production adds an authorizer (**Cognito** for end users, **IAM** for service-to-service), **usage plans** if you meter customers, **X-Ray** for tracing across the API-to-Lambda-to-DynamoDB hop, **provisioned concurrency** if cold starts hurt a user-facing path, and **PITR** on the table.
 
 ## 🔗 Docs
+- [API Gateway caching](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html) — per stage, TTL 300 s default / 3600 s max, GET only by default, billed hourly by cache size; verified 2026-10-18
 - [What is DynamoDB (3 AZs, 99.99%; global tables 99.999%)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html); verified 2026-10-15
 - [SNS message delivery retries](https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html) — 5XX and 429 retryable, AWS-managed delivery policy, only HTTP/S policies customisable; with [Lambda concurrency](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html) for the 1,000-per-Region default; **verified 2026-10-14**
 - [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) — snapshot mechanism, Java/Python/.NET runtimes, versions only, no provisioned concurrency, pricing; **verified 2026-10-14**

@@ -12,7 +12,7 @@ Your mock data says what costs you marks is **choosing between two plausible
 options**, not recalling facts. This is every such pair in the vault: the
 comparison tables to open, and the sentence that separates each trap pair.
 
-*133 comparison tables · 279 discriminators · ~59 min read*
+*133 comparison tables · 282 discriminators · ~59 min read*
 
 ## [[01-iam|01 – IAM (Identity and Access Management)]]
 
@@ -404,6 +404,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 - **DataSync to "continuously replicate" for a legacy app that reads the files** — DataSync is a transfer job: scheduled at most once an hour, and the app gets no file share out of it.  
   ↳ [[12-storage-extras#Traps|note]]
+- **EFS because "concurrent access to all files"** — Many readers at once does not by itself mean a file system — S3 serves many instances concurrently too, over its API.  
+  ↳ [[12-storage-extras#Traps|note]]
 - **EFS for a Windows workload** — The most reliable elimination in this topic. AWS does not support EFS with Windows EC2 instances. A question mentioning Windows, SMB, Active Directory or Windows ACLs usually points at FSx for Windows File Server, however well "shared file system" seems to fit EFS — unless it also needs NFS or iSCSI block, which is FSx for NetApp ONTAP (it speaks SMB and joins AD too).  
   ↳ [[12-storage-extras#Traps|note]]
 - **cached vs stored Volume Gateway, reversed** — Read where the primary copy lives. Cached = primary in S3, hot subset local — chosen to stop on-premises storage growing. Stored = primary on-premises, snapshots to S3 — chosen when you need low-latency access to the whole dataset and want offsite backups.  
@@ -558,6 +560,8 @@ comparison tables to open, and the sentence that separates each trap pair.
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **the certificate Region for a custom domain** — It depends on the endpoint type, not on the service. AWS: to use an ACM certificate with a Regional custom domain name you must have it "in the same Region as your API"; with an edge-optimized custom domain name you must have it *"in the US East (N.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
+- **Aurora read replicas for a read-heavy API where stale data is fine** — The stem: API Gateway → Lambda → Aurora, mostly reads, data rarely changes, stale is acceptable, database cost too high, minimal changes.  
+  ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **Lambda in a public subnet** — "Give the VPC-attached function internet access" is not answered by moving it to a public subnet.  
   ↳ [[19-serverless#⚠️ Traps — why the wrong answer looks right|note]]
 - **ENI per concurrent execution** — Older material teaches that a VPC Lambda creates one ENI per concurrent execution, making IP exhaustion a scaling risk.  
@@ -582,6 +586,8 @@ comparison tables to open, and the sentence that separates each trap pair.
 
 **Compare:** [[20-monitoring#Which Systems Manager tool — the discrimination that actually gets tested|Which Systems Manager tool — the discrimination that actually gets tested]] · [[20-monitoring#The four services — the discrimination the exam actually tests|The four services — the discrimination the exam actually tests]] · [[20-monitoring#CloudTrail vs Config, on the same security group change|CloudTrail vs Config, on the same security group change]] · [[20-monitoring#EC2 alarm actions — reboot vs recover|EC2 alarm actions — reboot vs recover]] · [[20-monitoring#CloudWatch event types|CloudWatch event types]] · [[20-monitoring#Management vs data events (CloudTrail)|Management vs data events (CloudTrail)]] · [[20-monitoring#Getting an alert out of a log line|Getting an alert out of a log line]] · [[20-monitoring#Cross-account observability vs the cross-account cross-Region console|Cross-account observability vs the cross-account cross-Region console]]
 
+- **an IAM user with read-only access for an outsider who needs one dashboard** — The stem: someone with no access to the account (a client, a manager at a third party) needs to view dashboards, under least privilege.  
+  ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **reboot offered for a failed system status check** — The stem describes an instance made unreachable by a fault on the underlying host and offers a reboot alarm.  
   ↳ [[20-monitoring#⚠️ Traps — why the wrong answer looks right|note]]
 - **"ACM auto-renews, so no monitoring is needed"** — True and irrelevant. Auto-renewal can still fail — DNS validation records removed, a CAA record blocking issuance, an email-validated certificate nobody clicked.  

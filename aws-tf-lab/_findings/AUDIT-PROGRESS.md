@@ -958,3 +958,33 @@ not coverage: on 5 misses the vault never said why the pick loses, and one line 
 
 **Misses that were covered and eliminated (recall, not gaps):** RDS IAM auth (`AWSAuthenticationPlugin`),
 ASG impaired status, CloudFront → ELB origin lock, second customer gateway, Route 53 alias at the apex.
+
+## Coverage check #7 — `mock-04`, 2026-10-18
+
+**Score:** 53/65 (81.5%). `sure` 38/41, `guess` 9/14, `unsure` 5/9 (one answer had no confidence).
+All 12 misses were **first-time** — no repeats. Workflow `wf_6901648e-3ef` (6 Opus 5.5 triage
+batches + 5 verify); the 12 misses and 9 lucky guesses were also read in full by hand, and every
+AWS quote used (18) was re-checked on the live page.
+
+**Coverage:** 54 COVERED, 7 PARTIAL, 3 ABSENT, 1 key suspect. 9 gaps confirmed, 1 trap written
+without a price claim, 1 key held.
+
+**Written (10):** CloudWatch dashboard sharing for outsiders (`20-monitoring`) · DeleteOnTermination
+changed on a running instance via CLI (`02-ec2`) · Comprehend Medical for PHI (`23-machine-learning`) ·
+API Gateway stage caching + trap (`19-serverless`) · "standard API calls" → S3 trap, and the
+TL;DR cue that pulled toward EFS qualified (`12-storage-extras`) · Budgets actions (SCP / IAM
+policy, service role) (`13-cost-optimization`) · launch templates immutable → new version, and a
+best-available note for queue-metric scaling (`04-alb-asg`) · private EKS cluster VPC endpoints
+(`17-containers`) · Amazon SWF row (`24-other-services`) · Config `iam-password-policy` rule
+(`21-security`), with `01-iam`'s "not a Config rule" line qualified so it no longer pulls against it.
+9 cheatsheet rows; 9 weak-spot lines.
+
+**Key held:** `2025-8-T2-Q35` (C) — best of four, though AWS says raw `ApproximateNumberOfMessagesVisible`
+doesn't work for target tracking.
+
+**Misses that were covered (recall/discrimination, not gaps):** Compute Optimizer covers EBS (vs
+DLM) · S3 → Lambda for a 40 s job · Network Firewall for VPC inspection · ACM / IAM cert store ·
+RDS SQL Server Multi-AZ · RDS + KMS · S3 Standard-IA + Athena.
+
+**Not written (would assert a negative without a counter-example hunt):** "Redshift storage can't
+move to S3 IA", "CloudFront is not a certificate import target", any S3-vs-EFS price line.
